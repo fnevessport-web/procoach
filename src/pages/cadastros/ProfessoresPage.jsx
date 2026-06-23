@@ -42,6 +42,7 @@ export function ProfessoresPage() {
   function abrirCriar() {
     setEditando(null)
     setForm(formInicial())
+    setSalvando(false)
     setModal(true)
   }
 
@@ -59,6 +60,7 @@ export function ProfessoresPage() {
       tipo_conta: prof.tipo_conta || 'corrente',
       pix: prof.pix || ''
     })
+    setSalvando(false)
     setModal(true)
   }
 
@@ -169,15 +171,12 @@ export function ProfessoresPage() {
 
       <Modal open={modal} onClose={() => setModal(false)} title={editando ? 'Editar Professor' : 'Novo Professor'} size="lg">
         <div className="flex flex-col gap-4">
-
-          {/* NOME — primeiro campo, sempre visível */}
           <Input
             label="Nome completo *"
             placeholder="Nome do professor"
             value={form.nome}
             onChange={e => update('nome', e.target.value)}
           />
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="E-mail" type="email" placeholder="email@exemplo.com" value={form.email} onChange={e => update('email', e.target.value)} />
             <Input label="Telefone" placeholder="(11) 99999-9999" value={form.telefone} onChange={e => update('telefone', e.target.value)} />
@@ -187,7 +186,6 @@ export function ProfessoresPage() {
             </Select>
             <Input label="Valor Hora/Aula (R$)" type="number" placeholder="0.00" value={form.valor_hora_aula} onChange={e => update('valor_hora_aula', e.target.value)} />
           </div>
-
           <div className="border-t border-[#2A2D3E] pt-4">
             <h3 className="text-sm font-semibold text-[#F0F2F5] mb-3">Dados Bancários</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -206,7 +204,6 @@ export function ProfessoresPage() {
               </div>
             </div>
           </div>
-
           <div className="flex gap-3 pt-2">
             <Button variant="secondary" onClick={() => setModal(false)} className="flex-1">Cancelar</Button>
             <Button onClick={handleSalvar} loading={salvando} className="flex-1">
