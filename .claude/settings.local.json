@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Receive-Job *)",
+      "PowerShell(notepad *)",
+      "PowerShell(Start-Process \"https://supabase.com/dashboard/project/xmntwdppiflfwoaccknd/sql/new\")",
+      "PowerShell(Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c npm run dev > C:\\\\Users\\\\fneve\\\\AppData\\\\Local\\\\Temp\\\\procoach-dev.log 2>&1\" -WorkingDirectory \"C:\\\\Users\\\\fneve\\\\Documents\\\\procoach\" -WindowStyle Hidden; Write-Output \"Dev server process started\")",
+      "PowerShell(where.exe npx 2>$null; npx playwright --version 2>$null; where.exe node 2>$null)",
+      "PowerShell(Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c npm run dev > C:\\\\Users\\\\fneve\\\\AppData\\\\Local\\\\Temp\\\\procoach-dev.log 2>&1\" -WorkingDirectory \"C:\\\\Users\\\\fneve\\\\Documents\\\\procoach\" -WindowStyle Hidden)"
+    ]
+  }
+}
