@@ -75,10 +75,12 @@ export default function ProfessoresPage() {
   const [removendo, setRemovendo] = useState(false)
   const [form, setForm] = useState(FORM_VAZIO)
 
-  const fecharModal = useCallback(() => {
-    setSalvando(false)
-    setRemovendo(false)
+const fecharModal = useCallback(() => {
     setModalAberto(false)
+    setTimeout(() => {
+      setSalvando(false)
+      setRemovendo(false)
+    }, 300)
   }, [])
 
   function abrirCriar() {
