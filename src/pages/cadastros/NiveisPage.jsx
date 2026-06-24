@@ -118,4 +118,20 @@ export function NiveisPage() {
             value={form.nome}
             onChange={e => update('nome', e.target.value)}
           />
-          <Select label="Modalidade" value={form.modalidade_id} onChange={e
+          <Select label="Modalidade" value={form.modalidade_id} onChange={e => update('modalidade_id', e.target.value)}>
+            <option value="">Selecione...</option>
+            {modalidades?.map(m => (
+              <option key={m.id} value={m.id}>{m.icone_emoji} {m.nome}</option>
+            ))}
+          </Select>
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setModal(false)} className="flex-1">Cancelar</Button>
+            <Button onClick={handleSalvar} loading={salvando} className="flex-1">
+              {editando ? 'Salvar' : 'Cadastrar'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  )
+}
