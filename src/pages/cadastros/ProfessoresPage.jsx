@@ -53,19 +53,28 @@ export default function ProfessoresPage() {
     pix: '',
   })
 
+  function fecharModal() {
+    setModalAberto(false)
+    setSalvando(false)
+    setRemovendo(false)
+  }
+
   function abrirCriar() {
+    setSalvando(false)
+    setRemovendo(false)
+    setModoEdicao(false)
     setForm({
       id: null, nome: '', email: '', telefone: '',
       modalidade_id: '', valor_hora_aula: '', ativo: true,
       banco: '', agencia: '', conta: '', tipo_conta: 'corrente', pix: '',
     })
-    setModoEdicao(false)
-    setSalvando(false)
-    setRemovendo(false)
     setModalAberto(true)
   }
 
   function abrirEditar(prof) {
+    setSalvando(false)
+    setRemovendo(false)
+    setModoEdicao(true)
     setForm({
       id: prof.id,
       nome: prof.nome || '',
@@ -80,16 +89,7 @@ export default function ProfessoresPage() {
       tipo_conta: prof.tipo_conta || 'corrente',
       pix: prof.pix || '',
     })
-    setModoEdicao(true)
-    setSalvando(false)
-    setRemovendo(false)
     setModalAberto(true)
-  }
-
-  function fecharModal() {
-    setModalAberto(false)
-    setSalvando(false)
-    setRemovendo(false)
   }
 
   function set(campo, valor) {
@@ -114,32 +114,23 @@ export default function ProfessoresPage() {
         pix: form.pix || null,
       }
 
-      console.log('1. Iniciando save, modoEdicao:', modoEdicao, 'id:', form.id)
-      console.log('2. Payload:', payload)
-
       if (modoEdicao) {
         const { error } = await supabase
           .from('professores')
           .update(payload)
           .eq('id', form.id)
-        console.log('3. Update error:', error)
         if (error) throw error
       } else {
         const { error } = await supabase
           .from('professores')
           .insert(payload)
-        console.log('3. Insert error:', error)
         if (error) throw error
       }
 
-      console.log('4. Invalidando queries...')
-      await queryClient.invalidateQueries({ queryKey: ['professores'] })
-      console.log('5. Fechando modal...')
+      queryClient.invalidateQueries({ queryKey: ['professores'] })
       fecharModal()
     } catch (err) {
-      console.log('ERRO:', err)
       alert('Erro ao salvar: ' + err.message)
-    } finally {
       setSalvando(false)
     }
   }
@@ -154,11 +145,10 @@ export default function ProfessoresPage() {
         .delete()
         .eq('id', form.id)
       if (error) throw error
-      await queryClient.invalidateQueries({ queryKey: ['professores'] })
+      queryClient.invalidateQueries({ queryKey: ['professores'] })
       fecharModal()
     } catch (err) {
       alert('Erro ao remover: ' + err.message)
-    } finally {
       setRemovendo(false)
     }
   }
