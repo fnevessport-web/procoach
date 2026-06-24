@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
-import { useNiveis, useSalvarNivel, useExcluirNivel } from '../../hooks/useNiveis'
+import { useNiveis, useNiveisActions } from '../../hooks/useNiveis'
 import { useModalidades } from '../../hooks/useModalidades'
 import useAppStore from '../../store/useAppStore'
 import { Card, CardBody } from '../../components/ui/Card'
@@ -15,8 +15,7 @@ export function NiveisPage() {
   const { modalidadeSelecionada } = useAppStore()
   const { data: niveis, isLoading } = useNiveis(modalidadeSelecionada?.id)
   const { data: modalidades } = useModalidades()
-  const salvar = useSalvarNivel()
-  const excluir = useExcluirNivel()
+  const { salvar, excluir } = useNiveisActions()
 
   const [busca, setBusca] = useState('')
   const [modal, setModal] = useState(false)
@@ -29,20 +28,23 @@ export function NiveisPage() {
   function abrirCriar() {
     setEditando(null)
     setForm({ nome: '', modalidade_id: '' })
+    setSalvando(false)
     setModal(true)
   }
 
   function abrirEditar(nivel) {
     setEditando(nivel)
     setForm({ nome: nivel.nome || '', modalidade_id: nivel.modalidade_id || '' })
+    setSalvando(false)
     setModal(true)
   }
 
   async function handleSalvar() {
     if (!form.nome.trim()) return toast.error('Nome é obrigatório')
+    if (salvando) return
     setSalvando(true)
     try {
-      await salvar.mutateAsync({ id: editando?.id, ...form })
+      await salvar({ id: editando?.id, ...form })
       toast.success(editando ? 'Nível atualizado!' : 'Nível cadastrado!')
       setModal(false)
     } catch (err) {
@@ -55,7 +57,7 @@ export function NiveisPage() {
   async function handleExcluir(id) {
     if (!confirm('Remover este nível?')) return
     try {
-      await excluir.mutateAsync(id)
+      await excluir(id)
       toast.success('Nível removido')
     } catch (err) {
       toast.error(err.message)
@@ -116,18 +118,4 @@ export function NiveisPage() {
             value={form.nome}
             onChange={e => update('nome', e.target.value)}
           />
-          <Select label="Modalidade" value={form.modalidade_id} onChange={e => update('modalidade_id', e.target.value)}>
-            <option value="">Selecione...</option>
-            {modalidades?.map(m => <option key={m.id} value={m.id}>{m.icone_emoji} {m.nome}</option>)}
-          </Select>
-          <div className="flex gap-3 pt-2">
-            <Button variant="secondary" onClick={() => setModal(false)} className="flex-1">Cancelar</Button>
-            <Button onClick={handleSalvar} loading={salvando} className="flex-1">
-              {editando ? 'Salvar' : 'Cadastrar'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-    </div>
-  )
-}
+          <Select label="Modalidade" value={form.modalidade_id} onChange={e

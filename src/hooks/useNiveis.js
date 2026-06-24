@@ -1,6 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { logAudit } from '../lib/audit'
 
 export function useNiveis(modalidadeId = null) {
   return useQuery({
@@ -19,38 +18,29 @@ export function useNiveis(modalidadeId = null) {
   })
 }
 
-export function useSalvarNivel() {
+export function useNiveisActions() {
   const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, ...dados }) => {
-      const sanitized = Object.fromEntries(
-        Object.entries(dados).map(([k, v]) => [k, v === '' ? null : v])
-      )
-      if (id) {
-        const { data: anterior } = await supabase.from('niveis').select('*').eq('id', id).single()
-        const { data, error } = await supabase.from('niveis').update(sanitized).eq('id', id).select().single()
-        if (error) throw error
-        await logAudit('niveis', id, 'UPDATE', anterior, data)
-        return data
-      } else {
-        const { data, error } = await supabase.from('niveis').insert(sanitized).select().single()
-        if (error) throw error
-        await logAudit('niveis', data.id, 'INSERT', null, data)
-        return data
-      }
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['niveis'] })
-  })
-}
 
-export function useExcluirNivel() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (id) => {
-      const { error } = await supabase.from('niveis').update({ ativo: false }).eq('id', id)
+  async function salvar({ id, ...dados }) {
+    const payload = {
+      nome: dados.nome,
+      modalidade_id: dados.modalidade_id || null,
+    }
+    if (id) {
+      const { error } = await supabase.from('niveis').update(payload).eq('id', id)
       if (error) throw error
-      await logAudit('niveis', id, 'DELETE', null, null)
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['niveis'] })
-  })
+    } else {
+      const { error } = await supabase.from('niveis').insert(payload)
+      if (error) throw error
+    }
+    await qc.invalidateQueries({ queryKey: ['niveis'] })
+  }
+
+  async function excluir(id) {
+    const { error } = await supabase.from('niveis').update({ ativo: false }).eq('id', id)
+    if (error) throw error
+    await qc.invalidateQueries({ queryKey: ['niveis'] })
+  }
+
+  return { salvar, excluir }
 }

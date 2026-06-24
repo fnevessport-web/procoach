@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
-import { useQuadras, useSalvarQuadra, useExcluirQuadra } from '../../hooks/useQuadras'
+import { useQuadras, useQuadrasActions } from '../../hooks/useQuadras'
 import { useModalidades } from '../../hooks/useModalidades'
 import useAppStore from '../../store/useAppStore'
 import { Card, CardBody } from '../../components/ui/Card'
@@ -15,8 +15,7 @@ export function QuadrasPage() {
   const { modalidadeSelecionada } = useAppStore()
   const { data: quadras, isLoading } = useQuadras(modalidadeSelecionada?.id)
   const { data: modalidades } = useModalidades()
-  const salvar = useSalvarQuadra()
-  const excluir = useExcluirQuadra()
+  const { salvar, excluir } = useQuadrasActions()
 
   const [busca, setBusca] = useState('')
   const [modal, setModal] = useState(false)
@@ -29,20 +28,23 @@ export function QuadrasPage() {
   function abrirCriar() {
     setEditando(null)
     setForm({ nome: '', modalidade_id: '' })
+    setSalvando(false)
     setModal(true)
   }
 
   function abrirEditar(quadra) {
     setEditando(quadra)
     setForm({ nome: quadra.nome || '', modalidade_id: quadra.modalidade_id || '' })
+    setSalvando(false)
     setModal(true)
   }
 
   async function handleSalvar() {
     if (!form.nome.trim()) return toast.error('Nome é obrigatório')
+    if (salvando) return
     setSalvando(true)
     try {
-      await salvar.mutateAsync({ id: editando?.id, ...form })
+      await salvar({ id: editando?.id, ...form })
       toast.success(editando ? 'Quadra atualizada!' : 'Quadra cadastrada!')
       setModal(false)
     } catch (err) {
@@ -55,7 +57,7 @@ export function QuadrasPage() {
   async function handleExcluir(id) {
     if (!confirm('Remover esta quadra?')) return
     try {
-      await excluir.mutateAsync(id)
+      await excluir(id)
       toast.success('Quadra removida')
     } catch (err) {
       toast.error(err.message)
@@ -78,7 +80,7 @@ export function QuadrasPage() {
       </div>
 
       {isLoading ? <Loading /> : !filtradas?.length ? (
-        <EmptyState icon="🏟️" title="Nenhuma quadra" action={<Button onClick={abrirCriar}><Plus size={16} /> Adicionar</Button>} />
+        <EmptyState icon="🟩" title="Nenhuma quadra" action={<Button onClick={abrirCriar}><Plus size={16} /> Adicionar</Button>} />
       ) : (
         <div className="flex flex-col gap-3">
           {filtradas.map(quadra => (

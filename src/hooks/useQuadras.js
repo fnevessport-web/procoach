@@ -1,6 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { logAudit } from '../lib/audit'
 
 export function useQuadras(modalidadeId = null) {
   return useQuery({
@@ -19,38 +18,29 @@ export function useQuadras(modalidadeId = null) {
   })
 }
 
-export function useSalvarQuadra() {
+export function useQuadrasActions() {
   const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, ...dados }) => {
-      const sanitized = Object.fromEntries(
-        Object.entries(dados).map(([k, v]) => [k, v === '' ? null : v])
-      )
-      if (id) {
-        const { data: anterior } = await supabase.from('quadras').select('*').eq('id', id).single()
-        const { data, error } = await supabase.from('quadras').update(sanitized).eq('id', id).select().single()
-        if (error) throw error
-        await logAudit('quadras', id, 'UPDATE', anterior, data)
-        return data
-      } else {
-        const { data, error } = await supabase.from('quadras').insert(sanitized).select().single()
-        if (error) throw error
-        await logAudit('quadras', data.id, 'INSERT', null, data)
-        return data
-      }
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['quadras'] })
-  })
-}
 
-export function useExcluirQuadra() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (id) => {
-      const { error } = await supabase.from('quadras').update({ ativo: false }).eq('id', id)
+  async function salvar({ id, ...dados }) {
+    const payload = {
+      nome: dados.nome,
+      modalidade_id: dados.modalidade_id || null,
+    }
+    if (id) {
+      const { error } = await supabase.from('quadras').update(payload).eq('id', id)
       if (error) throw error
-      await logAudit('quadras', id, 'DELETE', null, null)
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['quadras'] })
-  })
+    } else {
+      const { error } = await supabase.from('quadras').insert(payload)
+      if (error) throw error
+    }
+    await qc.invalidateQueries({ queryKey: ['quadras'] })
+  }
+
+  async function excluir(id) {
+    const { error } = await supabase.from('quadras').update({ ativo: false }).eq('id', id)
+    if (error) throw error
+    await qc.invalidateQueries({ queryKey: ['quadras'] })
+  }
+
+  return { salvar, excluir }
 }
