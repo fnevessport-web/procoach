@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { logAudit } from '../lib/audit'
 
 export function useProfessores(modalidadeId = null) {
   return useQuery({
@@ -48,15 +47,12 @@ export function useSalvarProfessor() {
         sanitized.valor_hora_aula = Number(sanitized.valor_hora_aula)
       }
       if (id) {
-        const { data: anterior } = await supabase.from('professores').select('*').eq('id', id).single()
         const { data, error } = await supabase.from('professores').update(sanitized).eq('id', id).select().single()
         if (error) throw error
-        await logAudit('professores', id, 'UPDATE', anterior, data)
         return data
       } else {
         const { data, error } = await supabase.from('professores').insert(sanitized).select().single()
         if (error) throw error
-        await logAudit('professores', data.id, 'INSERT', null, data)
         return data
       }
     },
@@ -70,7 +66,6 @@ export function useExcluirProfessor() {
     mutationFn: async (id) => {
       const { error } = await supabase.from('professores').update({ ativo: false }).eq('id', id)
       if (error) throw error
-      await logAudit('professores', id, 'DELETE', null, null)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['professores'] })
   })
