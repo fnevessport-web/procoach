@@ -26,6 +26,7 @@ export function ProfessoresPage() {
   const [busca, setBusca] = useState('')
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
+  const [salvando, setSalvando] = useState(false)
   const [form, setForm] = useState(formInicial())
 
   function formInicial() {
@@ -41,7 +42,7 @@ export function ProfessoresPage() {
   function abrirCriar() {
     setEditando(null)
     setForm(formInicial())
-    setTimeout(() => salvar.reset(), 0)
+    setSalvando(false)
     setModal(true)
   }
 
@@ -59,7 +60,7 @@ export function ProfessoresPage() {
       tipo_conta: prof.tipo_conta || 'corrente',
       pix: prof.pix || ''
     })
-    setTimeout(() => salvar.reset(), 0)
+    setSalvando(false)
     setModal(true)
   }
 
@@ -68,6 +69,7 @@ export function ProfessoresPage() {
       toast.error('Nome é obrigatório')
       return
     }
+    setSalvando(true)
     try {
       await salvar.mutateAsync({
         id: editando?.id,
@@ -76,8 +78,10 @@ export function ProfessoresPage() {
         valor_hora_aula: form.valor_hora_aula !== '' ? Number(form.valor_hora_aula) : null,
       })
       toast.success(editando ? 'Professor atualizado!' : 'Professor cadastrado!')
+      setSalvando(false)
       setModal(false)
     } catch (err) {
+      setSalvando(false)
       toast.error('Erro ao salvar: ' + err.message)
     }
   }
@@ -165,7 +169,7 @@ export function ProfessoresPage() {
         </div>
       )}
 
-      <Modal open={modal} onClose={() => { salvar.reset(); setModal(false) }} title={editando ? 'Editar Professor' : 'Novo Professor'} size="lg">
+      <Modal open={modal} onClose={() => { setSalvando(false); setModal(false) }} title={editando ? 'Editar Professor' : 'Novo Professor'} size="lg">
         <div className="flex flex-col gap-4">
           <Input
             label="Nome completo *"
@@ -201,8 +205,8 @@ export function ProfessoresPage() {
             </div>
           </div>
           <div className="flex gap-3 pt-2">
-            <Button variant="secondary" onClick={() => { salvar.reset(); setModal(false) }} className="flex-1">Cancelar</Button>
-            <Button onClick={handleSalvar} loading={salvar.isPending} className="flex-1">
+            <Button variant="secondary" onClick={() => { setSalvando(false); setModal(false) }} className="flex-1">Cancelar</Button>
+            <Button onClick={handleSalvar} loading={salvando} className="flex-1">
               {editando ? 'Salvar' : 'Cadastrar'}
             </Button>
           </div>
