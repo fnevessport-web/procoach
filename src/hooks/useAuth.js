@@ -7,16 +7,22 @@ export function useAuth() {
   const { user, perfil, setUser, setPerfil, reset } = useAppStore()
 
   useEffect(() => {
+    let mounted = true
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return
       if (session?.user) {
         setUser(session.user)
         fetchPerfil(session.user.id)
       } else {
         setLoading(false)
       }
+    }).catch(() => {
+      if (mounted) setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return
       if (session?.user) {
         setUser(session.user)
         await fetchPerfil(session.user.id)
@@ -26,7 +32,10 @@ export function useAuth() {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function fetchPerfil(userId) {
@@ -40,7 +49,6 @@ export function useAuth() {
       if (data) {
         setPerfil(data)
       } else {
-        // First user — create as admin
         const { data: newPerfil } = await supabase
           .from('perfis_usuario')
           .insert({ user_id: userId, role: 'admin', nome: 'Admin' })
