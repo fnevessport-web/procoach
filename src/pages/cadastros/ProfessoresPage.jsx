@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 
-const MODALIDADES = [
-  { id: null, nome: 'Todas' },
+const BANCOS = [
+  'Itaú', 'Bradesco', 'Santander', 'Banco do Brasil', 'Caixa Econômica',
+  'Nubank', 'Inter', 'C6 Bank', 'BTG', 'Sicredi', 'Sicoob', 'Outro'
 ]
 
 export default function ProfessoresPage() {
   const queryClient = useQueryClient()
 
-  // Lista
   const { data: professores = [], isLoading } = useQuery({
     queryKey: ['professores'],
     queryFn: async () => {
@@ -34,7 +34,6 @@ export default function ProfessoresPage() {
     },
   })
 
-  // Modal state
   const [modalAberto, setModalAberto] = useState(false)
   const [modoEdicao, setModoEdicao] = useState(false)
   const [salvando, setSalvando] = useState(false)
@@ -45,12 +44,21 @@ export default function ProfessoresPage() {
     email: '',
     telefone: '',
     modalidade_id: '',
-    valor_hora: '',
+    valor_hora_aula: '',
     ativo: true,
+    banco: '',
+    agencia: '',
+    conta: '',
+    tipo_conta: 'corrente',
+    pix: '',
   })
 
   function abrirCriar() {
-    setForm({ id: null, nome: '', email: '', telefone: '', modalidade_id: '', valor_hora: '', ativo: true })
+    setForm({
+      id: null, nome: '', email: '', telefone: '',
+      modalidade_id: '', valor_hora_aula: '', ativo: true,
+      banco: '', agencia: '', conta: '', tipo_conta: 'corrente', pix: '',
+    })
     setModoEdicao(false)
     setSalvando(false)
     setRemovendo(false)
@@ -64,8 +72,13 @@ export default function ProfessoresPage() {
       email: prof.email || '',
       telefone: prof.telefone || '',
       modalidade_id: prof.modalidade_id || '',
-      valor_hora: prof.valor_hora || '',
+      valor_hora_aula: prof.valor_hora_aula || '',
       ativo: prof.ativo !== false,
+      banco: prof.banco || '',
+      agencia: prof.agencia || '',
+      conta: prof.conta || '',
+      tipo_conta: prof.tipo_conta || 'corrente',
+      pix: prof.pix || '',
     })
     setModoEdicao(true)
     setSalvando(false)
@@ -79,6 +92,10 @@ export default function ProfessoresPage() {
     setRemovendo(false)
   }
 
+  function set(campo, valor) {
+    setForm(f => ({ ...f, [campo]: valor }))
+  }
+
   async function handleSalvar() {
     if (salvando) return
     setSalvando(true)
@@ -88,8 +105,13 @@ export default function ProfessoresPage() {
         email: form.email || null,
         telefone: form.telefone || null,
         modalidade_id: form.modalidade_id || null,
-        valor_hora: form.valor_hora ? parseFloat(form.valor_hora) : null,
+        valor_hora_aula: form.valor_hora_aula ? parseFloat(form.valor_hora_aula) : null,
         ativo: form.ativo,
+        banco: form.banco || null,
+        agencia: form.agencia || null,
+        conta: form.conta || null,
+        tipo_conta: form.tipo_conta || 'corrente',
+        pix: form.pix || null,
       }
 
       if (modoEdicao) {
@@ -169,54 +191,103 @@ export default function ProfessoresPage() {
         </div>
       )}
 
-      {/* Modal */}
       {modalAberto && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-end justify-center z-50">
-          <div className="bg-gray-900 w-full max-w-lg rounded-t-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold text-white">
+          <div className="bg-gray-900 w-full max-w-lg rounded-t-2xl p-6 space-y-3 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-bold text-white mb-2">
               {modoEdicao ? 'Editar Professor' : 'Novo Professor'}
             </h2>
 
             <input
               className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-              placeholder="Nome *"
+              placeholder="Nome completo *"
               value={form.nome}
-              onChange={(e) => setForm({ ...form, nome: e.target.value })}
+              onChange={e => set('nome', e.target.value)}
             />
+
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+                placeholder="E-mail"
+                value={form.email}
+                onChange={e => set('email', e.target.value)}
+              />
+              <input
+                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+                placeholder="Telefone"
+                value={form.telefone}
+                onChange={e => set('telefone', e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+                value={form.modalidade_id}
+                onChange={e => set('modalidade_id', e.target.value)}
+              >
+                <option value="">Modalidade</option>
+                {modalidades.map(m => (
+                  <option key={m.id} value={m.id}>{m.nome}</option>
+                ))}
+              </select>
+              <input
+                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+                placeholder="Valor Hora/Aula (R$)"
+                type="number"
+                value={form.valor_hora_aula}
+                onChange={e => set('valor_hora_aula', e.target.value)}
+              />
+            </div>
+
+            <p className="text-gray-400 text-xs font-semibold pt-1">DADOS BANCÁRIOS</p>
+
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+                value={form.banco}
+                onChange={e => set('banco', e.target.value)}
+              >
+                <option value="">Banco</option>
+                {BANCOS.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+              <input
+                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+                placeholder="Agência"
+                value={form.agencia}
+                onChange={e => set('agencia', e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+                placeholder="Conta"
+                value={form.conta}
+                onChange={e => set('conta', e.target.value)}
+              />
+              <select
+                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+                value={form.tipo_conta}
+                onChange={e => set('tipo_conta', e.target.value)}
+              >
+                <option value="corrente">Corrente</option>
+                <option value="poupanca">Poupança</option>
+              </select>
+            </div>
+
             <input
               className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-              placeholder="Email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="Chave PIX"
+              value={form.pix}
+              onChange={e => set('pix', e.target.value)}
             />
-            <input
-              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-              placeholder="Telefone"
-              value={form.telefone}
-              onChange={(e) => setForm({ ...form, telefone: e.target.value })}
-            />
-            <select
-              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-              value={form.modalidade_id}
-              onChange={(e) => setForm({ ...form, modalidade_id: e.target.value })}
-            >
-              <option value="">Modalidade (opcional)</option>
-              {modalidades.map((m) => (
-                <option key={m.id} value={m.id}>{m.nome}</option>
-              ))}
-            </select>
-            <input
-              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-              placeholder="Valor por hora (R$)"
-              type="number"
-              value={form.valor_hora}
-              onChange={(e) => setForm({ ...form, valor_hora: e.target.value })}
-            />
+
             <label className="flex items-center gap-2 text-sm text-gray-300">
               <input
                 type="checkbox"
                 checked={form.ativo}
-                onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
+                onChange={e => set('ativo', e.target.checked)}
               />
               Professor ativo
             </label>
@@ -242,7 +313,7 @@ export default function ProfessoresPage() {
                 disabled={salvando || !form.nome}
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm disabled:opacity-50"
               >
-                {salvando ? 'Salvando...' : 'Salvar'}
+                {salvando ? 'Salvando...' : modoEdicao ? 'Salvar' : 'Cadastrar'}
               </button>
             </div>
           </div>
