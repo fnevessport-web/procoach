@@ -20,14 +20,12 @@ export function ProfessoresPage() {
   const { modalidadeSelecionada } = useAppStore()
   const { data: professores, isLoading } = useProfessores(modalidadeSelecionada?.id)
   const { data: modalidades } = useModalidades()
-  const salvarMutation = useSalvarProfessor()
-const salvar = { mutateAsync: salvarMutation.mutateAsync }
+  const salvar = useSalvarProfessor()
   const excluir = useExcluirProfessor()
 
   const [busca, setBusca] = useState('')
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
-  const [salvando, setSalvando] = useState(false)
   const [form, setForm] = useState(formInicial())
 
   function formInicial() {
@@ -43,7 +41,7 @@ const salvar = { mutateAsync: salvarMutation.mutateAsync }
   function abrirCriar() {
     setEditando(null)
     setForm(formInicial())
-    setSalvando(false)
+    salvar.reset()
     setModal(true)
   }
 
@@ -61,7 +59,7 @@ const salvar = { mutateAsync: salvarMutation.mutateAsync }
       tipo_conta: prof.tipo_conta || 'corrente',
       pix: prof.pix || ''
     })
-    setSalvando(false)
+    salvar.reset()
     setModal(true)
   }
 
@@ -70,7 +68,6 @@ const salvar = { mutateAsync: salvarMutation.mutateAsync }
       toast.error('Nome é obrigatório')
       return
     }
-    setSalvando(true)
     try {
       await salvar.mutateAsync({
         id: editando?.id,
@@ -82,8 +79,6 @@ const salvar = { mutateAsync: salvarMutation.mutateAsync }
       setModal(false)
     } catch (err) {
       toast.error('Erro ao salvar: ' + err.message)
-    } finally {
-      setSalvando(false)
     }
   }
 
@@ -170,7 +165,7 @@ const salvar = { mutateAsync: salvarMutation.mutateAsync }
         </div>
       )}
 
-      <Modal open={modal} onClose={() => setModal(false)} title={editando ? 'Editar Professor' : 'Novo Professor'} size="lg">
+      <Modal open={modal} onClose={() => { salvar.reset(); setModal(false) }} title={editando ? 'Editar Professor' : 'Novo Professor'} size="lg">
         <div className="flex flex-col gap-4">
           <Input
             label="Nome completo *"
@@ -206,8 +201,8 @@ const salvar = { mutateAsync: salvarMutation.mutateAsync }
             </div>
           </div>
           <div className="flex gap-3 pt-2">
-            <Button variant="secondary" onClick={() => setModal(false)} className="flex-1">Cancelar</Button>
-            <Button onClick={handleSalvar} loading={salvando} className="flex-1">
+            <Button variant="secondary" onClick={() => { salvar.reset(); setModal(false) }} className="flex-1">Cancelar</Button>
+            <Button onClick={handleSalvar} loading={salvar.isPending} className="flex-1">
               {editando ? 'Salvar' : 'Cadastrar'}
             </Button>
           </div>
