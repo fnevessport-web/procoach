@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 
@@ -9,6 +9,7 @@ const BANCOS = [
 
 export default function ProfessoresPage() {
   const queryClient = useQueryClient()
+  const operando = useRef(false)
 
   const { data: professores = [], isLoading } = useQuery({
     queryKey: ['professores'],
@@ -36,32 +37,25 @@ export default function ProfessoresPage() {
 
   const [modalAberto, setModalAberto] = useState(false)
   const [modoEdicao, setModoEdicao] = useState(false)
-  const [salvando, setSalvando] = useState(false)
-  const [removendo, setRemovendo] = useState(false)
+  const [btnLabel, setBtnLabel] = useState('Salvar')
+  const [btnRemLabel, setBtnRemLabel] = useState('Remover')
   const [form, setForm] = useState({
-    id: null,
-    nome: '',
-    email: '',
-    telefone: '',
-    modalidade_id: '',
-    valor_hora_aula: '',
-    ativo: true,
-    banco: '',
-    agencia: '',
-    conta: '',
-    tipo_conta: 'corrente',
-    pix: '',
+    id: null, nome: '', email: '', telefone: '',
+    modalidade_id: '', valor_hora_aula: '', ativo: true,
+    banco: '', agencia: '', conta: '', tipo_conta: 'corrente', pix: '',
   })
 
   function fecharModal() {
+    operando.current = false
     setModalAberto(false)
-    setSalvando(false)
-    setRemovendo(false)
+    setBtnLabel('Salvar')
+    setBtnRemLabel('Remover')
   }
 
   function abrirCriar() {
-    setSalvando(false)
-    setRemovendo(false)
+    operando.current = false
+    setBtnLabel('Cadastrar')
+    setBtnRemLabel('Remover')
     setModoEdicao(false)
     setForm({
       id: null, nome: '', email: '', telefone: '',
@@ -72,8 +66,9 @@ export default function ProfessoresPage() {
   }
 
   function abrirEditar(prof) {
-    setSalvando(false)
-    setRemovendo(false)
+    operando.current = false
+    setBtnLabel('Salvar')
+    setBtnRemLabel('Remover')
     setModoEdicao(true)
     setForm({
       id: prof.id,
@@ -97,8 +92,9 @@ export default function ProfessoresPage() {
   }
 
   async function handleSalvar() {
-    if (salvando) return
-    setSalvando(true)
+    if (operando.current) return
+    operando.current = true
+    setBtnLabel('Salvando...')
     try {
       const payload = {
         nome: form.nome,
@@ -116,43 +112,39 @@ export default function ProfessoresPage() {
         pix: form.pix || null,
       }
 
-      const promise = modoEdicao
-        ? supabase.from('professores').update(payload).eq('id', form.id)
-        : supabase.from('professores').insert(payload)
+      let error
+      if (modoEdicao) {
+        const res = await supabase.from('professores').update(payload).eq('id', form.id)
+        error = res.error
+      } else {
+        const res = await supabase.from('professores').insert(payload)
+        error = res.error
+      }
 
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout - tente novamente')), 30000)
-      )
-
-      const { error } = await Promise.race([promise, timeout])
       if (error) throw error
-
       queryClient.invalidateQueries({ queryKey: ['professores'] })
       fecharModal()
     } catch (err) {
       alert('Erro: ' + err.message)
-    } finally {
-      setSalvando(false)
+      operando.current = false
+      setBtnLabel(modoEdicao ? 'Salvar' : 'Cadastrar')
     }
   }
 
   async function handleRemover() {
-    if (!form.id || removendo) return
+    if (!form.id || operando.current) return
     if (!confirm('Remover este professor?')) return
-    setRemovendo(true)
+    operando.current = true
+    setBtnRemLabel('Removendo...')
     try {
-      const promise = supabase.from('professores').delete().eq('id', form.id)
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout - tente novamente')), 8000)
-      )
-      const { error } = await Promise.race([promise, timeout])
+      const { error } = await supabase.from('professores').delete().eq('id', form.id)
       if (error) throw error
       queryClient.invalidateQueries({ queryKey: ['professores'] })
       fecharModal()
     } catch (err) {
       alert('Erro: ' + err.message)
-    } finally {
-      setRemovendo(false)
+      operando.current = false
+      setBtnRemLabel('Remover')
     }
   }
 
@@ -303,18 +295,17 @@ export default function ProfessoresPage() {
               {modoEdicao && (
                 <button
                   onClick={handleRemover}
-                  disabled={removendo}
-                  className="flex-1 bg-red-700 hover:bg-red-600 text-white py-2 rounded-lg text-sm disabled:opacity-50"
+                  className="flex-1 bg-red-700 hover:bg-red-600 text-white py-2 rounded-lg text-sm"
                 >
-                  {removendo ? 'Removendo...' : 'Remover'}
+                  {btnRemLabel}
                 </button>
               )}
               <button
                 onClick={handleSalvar}
-                disabled={salvando || !form.nome}
+                disabled={!form.nome}
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm disabled:opacity-50"
               >
-                {salvando ? 'Salvando...' : modoEdicao ? 'Salvar' : 'Cadastrar'}
+                {btnLabel}
               </button>
             </div>
           </div>
