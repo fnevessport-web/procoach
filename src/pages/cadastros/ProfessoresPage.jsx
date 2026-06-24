@@ -41,7 +41,7 @@ export function ProfessoresPage() {
   function abrirCriar() {
     setEditando(null)
     setForm(formInicial())
-    salvar.reset()
+    setTimeout(() => salvar.reset(), 0)
     setModal(true)
   }
 
@@ -59,7 +59,7 @@ export function ProfessoresPage() {
       tipo_conta: prof.tipo_conta || 'corrente',
       pix: prof.pix || ''
     })
-    salvar.reset()
+    setTimeout(() => salvar.reset(), 0)
     setModal(true)
   }
 
