@@ -121,7 +121,7 @@ export default function ProfessoresPage() {
         : supabase.from('professores').insert(payload)
 
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout - tente novamente')), 8000)
+        setTimeout(() => reject(new Error('Timeout - tente novamente')), 30000)
       )
 
       const { error } = await Promise.race([promise, timeout])
