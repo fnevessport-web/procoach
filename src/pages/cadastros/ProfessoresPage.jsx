@@ -1,217 +1,253 @@
 import { useState } from 'react'
-import { Plus, Edit2, Trash2, Phone, DollarSign } from 'lucide-react'
-import { useProfessores, useSalvarProfessor, useExcluirProfessor } from '../../hooks/useProfessores'
-import { useModalidades } from '../../hooks/useModalidades'
-import useAppStore from '../../store/useAppStore'
-import { Card, CardBody } from '../../components/ui/Card'
-import { Button } from '../../components/ui/Button'
-import { Modal } from '../../components/ui/Modal'
-import { Input, Select } from '../../components/ui/Input'
-import { SearchBar } from '../../components/ui/SearchBar'
-import { Loading, EmptyState } from '../../components/ui/Loading'
-import toast from 'react-hot-toast'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '../../lib/supabase'
 
-const bancos = [
-  'Nubank', 'Itaú', 'Bradesco', 'Caixa', 'Banco do Brasil',
-  'Santander', 'Inter', 'C6 Bank', 'Sicoob', 'Outro'
+const MODALIDADES = [
+  { id: null, nome: 'Todas' },
 ]
 
-export function ProfessoresPage() {
-  const { modalidadeSelecionada } = useAppStore()
-  const { data: professores, isLoading } = useProfessores(modalidadeSelecionada?.id)
-  const { data: modalidades } = useModalidades()
-  const salvar = useSalvarProfessor()
-  const excluir = useExcluirProfessor()
+export default function ProfessoresPage() {
+  const queryClient = useQueryClient()
 
-  const [busca, setBusca] = useState('')
-  const [modal, setModal] = useState(false)
-  const [editando, setEditando] = useState(null)
+  // Lista
+  const { data: professores = [], isLoading } = useQuery({
+    queryKey: ['professores'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('professores')
+        .select('*, modalidades(nome)')
+        .order('nome')
+      if (error) throw error
+      return data || []
+    },
+  })
+
+  const { data: modalidades = [] } = useQuery({
+    queryKey: ['modalidades'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('modalidades')
+        .select('*')
+        .order('nome')
+      if (error) throw error
+      return data || []
+    },
+  })
+
+  // Modal state
+  const [modalAberto, setModalAberto] = useState(false)
+  const [modoEdicao, setModoEdicao] = useState(false)
   const [salvando, setSalvando] = useState(false)
-  const [form, setForm] = useState(formInicial())
-
-  function formInicial() {
-    return {
-      nome: '', email: '', telefone: '', modalidade_id: '',
-      valor_hora_aula: '', banco: '', agencia: '', conta: '',
-      tipo_conta: 'corrente', pix: ''
-    }
-  }
-
-  const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const [removendo, setRemovendo] = useState(false)
+  const [form, setForm] = useState({
+    id: null,
+    nome: '',
+    email: '',
+    telefone: '',
+    modalidade_id: '',
+    valor_hora: '',
+    ativo: true,
+  })
 
   function abrirCriar() {
-    setEditando(null)
-    setForm(formInicial())
+    setForm({ id: null, nome: '', email: '', telefone: '', modalidade_id: '', valor_hora: '', ativo: true })
+    setModoEdicao(false)
     setSalvando(false)
-    setModal(true)
+    setRemovendo(false)
+    setModalAberto(true)
   }
 
   function abrirEditar(prof) {
-    setEditando(prof)
     setForm({
+      id: prof.id,
       nome: prof.nome || '',
       email: prof.email || '',
       telefone: prof.telefone || '',
       modalidade_id: prof.modalidade_id || '',
-      valor_hora_aula: prof.valor_hora_aula || '',
-      banco: prof.banco || '',
-      agencia: prof.agencia || '',
-      conta: prof.conta || '',
-      tipo_conta: prof.tipo_conta || 'corrente',
-      pix: prof.pix || ''
+      valor_hora: prof.valor_hora || '',
+      ativo: prof.ativo !== false,
     })
+    setModoEdicao(true)
     setSalvando(false)
-    setModal(true)
+    setRemovendo(false)
+    setModalAberto(true)
+  }
+
+  function fecharModal() {
+    setModalAberto(false)
+    setSalvando(false)
+    setRemovendo(false)
   }
 
   async function handleSalvar() {
-    if (!form.nome.trim()) {
-      toast.error('Nome é obrigatório')
-      return
-    }
+    if (salvando) return
     setSalvando(true)
     try {
-      await salvar.mutateAsync({
-        id: editando?.id,
-        ...form,
+      const payload = {
+        nome: form.nome,
+        email: form.email || null,
+        telefone: form.telefone || null,
         modalidade_id: form.modalidade_id || null,
-        valor_hora_aula: form.valor_hora_aula !== '' ? Number(form.valor_hora_aula) : null,
-      })
-      toast.success(editando ? 'Professor atualizado!' : 'Professor cadastrado!')
-      setSalvando(false)
-      setModal(false)
+        valor_hora: form.valor_hora ? parseFloat(form.valor_hora) : null,
+        ativo: form.ativo,
+      }
+
+      if (modoEdicao) {
+        const { error } = await supabase
+          .from('professores')
+          .update(payload)
+          .eq('id', form.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('professores')
+          .insert(payload)
+        if (error) throw error
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['professores'] })
+      fecharModal()
     } catch (err) {
+      alert('Erro ao salvar: ' + err.message)
+    } finally {
       setSalvando(false)
-      toast.error('Erro ao salvar: ' + err.message)
     }
   }
 
-  async function handleExcluir(id) {
+  async function handleRemover() {
+    if (!form.id || removendo) return
     if (!confirm('Remover este professor?')) return
+    setRemovendo(true)
     try {
-      await excluir.mutateAsync(id)
-      toast.success('Professor removido')
+      const { error } = await supabase
+        .from('professores')
+        .delete()
+        .eq('id', form.id)
+      if (error) throw error
+      await queryClient.invalidateQueries({ queryKey: ['professores'] })
+      fecharModal()
     } catch (err) {
-      toast.error(err.message)
+      alert('Erro ao remover: ' + err.message)
+    } finally {
+      setRemovendo(false)
     }
   }
-
-  const filtrados = professores?.filter(p =>
-    p.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    p.email?.toLowerCase().includes(busca.toLowerCase())
-  )
 
   return (
-    <div className="fade-in">
-      <div className="flex gap-3 mb-4">
-        <div className="flex-1">
-          <SearchBar value={busca} onChange={setBusca} placeholder="Buscar professor..." />
-        </div>
-        <Button onClick={abrirCriar} size="sm">
-          <Plus size={16} /> Novo
-        </Button>
+    <div className="p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-xl font-bold text-white">Professores</h1>
+        <button
+          onClick={abrirCriar}
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm"
+        >
+          + Novo Professor
+        </button>
       </div>
 
-      {isLoading ? <Loading /> : !filtrados?.length ? (
-        <EmptyState icon="👨‍🏫" title="Nenhum professor" action={<Button onClick={abrirCriar}><Plus size={16} /> Adicionar</Button>} />
+      {isLoading ? (
+        <p className="text-gray-400">Carregando...</p>
+      ) : professores.length === 0 ? (
+        <p className="text-gray-400">Nenhum professor cadastrado.</p>
       ) : (
-        <div className="flex flex-col gap-3">
-          {filtrados.map(prof => (
-            <Card key={prof.id}>
-              <CardBody>
-                <div className="flex items-start gap-3">
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0"
-                    style={{
-                      backgroundColor: `${prof.modalidades?.cor_hex || '#00D4AA'}20`,
-                      color: prof.modalidades?.cor_hex || '#00D4AA'
-                    }}
-                  >
-                    {prof.nome[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <div className="font-semibold text-[#F0F2F5] truncate">{prof.nome}</div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-                        <button onClick={() => abrirEditar(prof)} className="p-1.5 rounded-lg text-[#8B8FA8] hover:text-[#F0F2F5] hover:bg-[#2A2D3E]">
-                          <Edit2 size={14} />
-                        </button>
-                        <button onClick={() => handleExcluir(prof.id)} className="p-1.5 rounded-lg text-[#8B8FA8] hover:text-[#EF4444] hover:bg-[#EF4444]/10">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
-                      {prof.modalidades && (
-                        <span className="text-xs" style={{ color: prof.modalidades.cor_hex }}>
-                          {prof.modalidades.icone_emoji} {prof.modalidades.nome}
-                        </span>
-                      )}
-                      {prof.valor_hora_aula && (
-                        <span className="text-xs text-[#8B8FA8] flex items-center gap-1">
-                          <DollarSign size={11} /> R$ {Number(prof.valor_hora_aula).toFixed(2)}/h
-                        </span>
-                      )}
-                      {prof.telefone && (
-                        <span className="text-xs text-[#8B8FA8] flex items-center gap-1">
-                          <Phone size={11} /> {prof.telefone}
-                        </span>
-                      )}
-                    </div>
-                    {prof.pix && (
-                      <div className="text-xs text-[#8B8FA8] mt-1">PIX: {prof.pix}</div>
-                    )}
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
+        <div className="space-y-2">
+          {professores.map((prof) => (
+            <div
+              key={prof.id}
+              onClick={() => abrirEditar(prof)}
+              className="bg-gray-800 rounded-lg p-3 flex justify-between items-center cursor-pointer hover:bg-gray-700"
+            >
+              <div>
+                <p className="text-white font-medium">{prof.nome}</p>
+                <p className="text-gray-400 text-sm">{prof.modalidades?.nome || '—'}</p>
+              </div>
+              <span className={`text-xs px-2 py-1 rounded-full ${prof.ativo ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
+                {prof.ativo ? 'Ativo' : 'Inativo'}
+              </span>
+            </div>
           ))}
         </div>
       )}
 
-      <Modal open={modal} onClose={() => { setSalvando(false); setModal(false) }} title={editando ? 'Editar Professor' : 'Novo Professor'} size="lg">
-        <div className="flex flex-col gap-4">
-          <Input
-            label="Nome completo *"
-            placeholder="Nome do professor"
-            value={form.nome}
-            onChange={e => update('nome', e.target.value)}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="E-mail" type="email" placeholder="email@exemplo.com" value={form.email} onChange={e => update('email', e.target.value)} />
-            <Input label="Telefone" placeholder="(11) 99999-9999" value={form.telefone} onChange={e => update('telefone', e.target.value)} />
-            <Select label="Modalidade" value={form.modalidade_id} onChange={e => update('modalidade_id', e.target.value)}>
-              <option value="">Selecione...</option>
-              {modalidades?.map(m => <option key={m.id} value={m.id}>{m.icone_emoji} {m.nome}</option>)}
-            </Select>
-            <Input label="Valor Hora/Aula (R$)" type="number" placeholder="0.00" value={form.valor_hora_aula} onChange={e => update('valor_hora_aula', e.target.value)} />
-          </div>
-          <div className="border-t border-[#2A2D3E] pt-4">
-            <h3 className="text-sm font-semibold text-[#F0F2F5] mb-3">Dados Bancários</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Select label="Banco" value={form.banco} onChange={e => update('banco', e.target.value)}>
-                <option value="">Selecione...</option>
-                {bancos.map(b => <option key={b} value={b}>{b}</option>)}
-              </Select>
-              <Input label="Agência" placeholder="0000" value={form.agencia} onChange={e => update('agencia', e.target.value)} />
-              <Input label="Conta" placeholder="00000-0" value={form.conta} onChange={e => update('conta', e.target.value)} />
-              <Select label="Tipo de Conta" value={form.tipo_conta} onChange={e => update('tipo_conta', e.target.value)}>
-                <option value="corrente">Corrente</option>
-                <option value="poupanca">Poupança</option>
-              </Select>
-              <div className="sm:col-span-2">
-                <Input label="Chave PIX" placeholder="CPF, e-mail, telefone ou chave aleatória" value={form.pix} onChange={e => update('pix', e.target.value)} />
-              </div>
+      {/* Modal */}
+      {modalAberto && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-end justify-center z-50">
+          <div className="bg-gray-900 w-full max-w-lg rounded-t-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-bold text-white">
+              {modoEdicao ? 'Editar Professor' : 'Novo Professor'}
+            </h2>
+
+            <input
+              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+              placeholder="Nome *"
+              value={form.nome}
+              onChange={(e) => setForm({ ...form, nome: e.target.value })}
+            />
+            <input
+              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+              placeholder="Email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+            <input
+              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+              placeholder="Telefone"
+              value={form.telefone}
+              onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+            />
+            <select
+              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+              value={form.modalidade_id}
+              onChange={(e) => setForm({ ...form, modalidade_id: e.target.value })}
+            >
+              <option value="">Modalidade (opcional)</option>
+              {modalidades.map((m) => (
+                <option key={m.id} value={m.id}>{m.nome}</option>
+              ))}
+            </select>
+            <input
+              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+              placeholder="Valor por hora (R$)"
+              type="number"
+              value={form.valor_hora}
+              onChange={(e) => setForm({ ...form, valor_hora: e.target.value })}
+            />
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={form.ativo}
+                onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
+              />
+              Professor ativo
+            </label>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={fecharModal}
+                className="flex-1 bg-gray-700 text-white py-2 rounded-lg text-sm"
+              >
+                Cancelar
+              </button>
+              {modoEdicao && (
+                <button
+                  onClick={handleRemover}
+                  disabled={removendo}
+                  className="flex-1 bg-red-700 hover:bg-red-600 text-white py-2 rounded-lg text-sm disabled:opacity-50"
+                >
+                  {removendo ? 'Removendo...' : 'Remover'}
+                </button>
+              )}
+              <button
+                onClick={handleSalvar}
+                disabled={salvando || !form.nome}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm disabled:opacity-50"
+              >
+                {salvando ? 'Salvando...' : 'Salvar'}
+              </button>
             </div>
           </div>
-          <div className="flex gap-3 pt-2">
-            <Button variant="secondary" onClick={() => { setSalvando(false); setModal(false) }} className="flex-1">Cancelar</Button>
-            <Button onClick={handleSalvar} loading={salvando} className="flex-1">
-              {editando ? 'Salvar' : 'Cadastrar'}
-            </Button>
-          </div>
         </div>
-      </Modal>
+      )}
     </div>
   )
 }
