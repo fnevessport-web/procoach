@@ -21,11 +21,16 @@ export function useAuth() {
       if (mounted) setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return
       if (session?.user) {
         setUser(session.user)
-        await fetchPerfil(session.user.id)
+        // Só busca o perfil se ainda não tiver carregado
+        if (!useAppStore.getState().perfil) {
+          fetchPerfil(session.user.id)
+        } else {
+          setLoading(false)
+        }
       } else {
         reset()
         setLoading(false)
