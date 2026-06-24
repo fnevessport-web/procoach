@@ -114,22 +114,30 @@ export default function ProfessoresPage() {
         pix: form.pix || null,
       }
 
+      console.log('1. Iniciando save, modoEdicao:', modoEdicao, 'id:', form.id)
+      console.log('2. Payload:', payload)
+
       if (modoEdicao) {
         const { error } = await supabase
           .from('professores')
           .update(payload)
           .eq('id', form.id)
+        console.log('3. Update error:', error)
         if (error) throw error
       } else {
         const { error } = await supabase
           .from('professores')
           .insert(payload)
+        console.log('3. Insert error:', error)
         if (error) throw error
       }
 
+      console.log('4. Invalidando queries...')
       await queryClient.invalidateQueries({ queryKey: ['professores'] })
+      console.log('5. Fechando modal...')
       fecharModal()
     } catch (err) {
+      console.log('ERRO:', err)
       alert('Erro ao salvar: ' + err.message)
     } finally {
       setSalvando(false)
