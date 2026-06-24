@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 
@@ -7,8 +7,6 @@ const BANCOS = [
   'Nubank', 'Inter', 'C6 Bank', 'BTG', 'Sicredi', 'Sicoob', 'Outro'
 ]
 
-// ── Funções fora do componente ──────────────────────────────────────────────
-// Ficam aqui fora para nunca serem interrompidas por re-renders do React
 async function inserirProfessor(payload) {
   const { data, error } = await supabase
     .from('professores')
@@ -37,7 +35,6 @@ async function removerProfessor(id) {
     .eq('id', id)
   if (error) throw error
 }
-// ────────────────────────────────────────────────────────────────────────────
 
 const FORM_VAZIO = {
   id: null, nome: '', email: '', telefone: '',
@@ -47,7 +44,6 @@ const FORM_VAZIO = {
 
 export default function ProfessoresPage() {
   const queryClient = useQueryClient()
-  const emOperacao = useRef(false)
 
   const { data: professores = [], isLoading } = useQuery({
     queryKey: ['professores'],
@@ -75,28 +71,27 @@ export default function ProfessoresPage() {
 
   const [modalAberto, setModalAberto] = useState(false)
   const [modoEdicao, setModoEdicao] = useState(false)
-  const [status, setStatus] = useState('idle')
+  const [salvando, setSalvando] = useState(false)
+  const [removendo, setRemovendo] = useState(false)
   const [form, setForm] = useState(FORM_VAZIO)
 
   const fecharModal = useCallback(() => {
-    emOperacao.current = false
-    setStatus('idle')
+    setSalvando(false)
+    setRemovendo(false)
     setModalAberto(false)
   }, [])
 
   function abrirCriar() {
-    if (emOperacao.current) return
-    emOperacao.current = false
-    setStatus('idle')
+    setSalvando(false)
+    setRemovendo(false)
     setModoEdicao(false)
     setForm({ ...FORM_VAZIO })
     setModalAberto(true)
   }
 
   function abrirEditar(prof) {
-    if (emOperacao.current) return
-    emOperacao.current = false
-    setStatus('idle')
+    setSalvando(false)
+    setRemovendo(false)
     setModoEdicao(true)
     setForm({
       id: prof.id,
@@ -120,14 +115,13 @@ export default function ProfessoresPage() {
   }
 
   async function handleSalvar() {
-    if (emOperacao.current) return
+    if (salvando || removendo) return
     if (!form.nome.trim()) {
       alert('Nome é obrigatório.')
       return
     }
 
-    emOperacao.current = true
-    setStatus('salvando')
+    setSalvando(true)
 
     const payload = {
       nome: form.nome.trim(),
@@ -154,34 +148,29 @@ export default function ProfessoresPage() {
       queryClient.invalidateQueries({ queryKey: ['professores'] })
       fecharModal()
     } catch (err) {
-      console.error('Erro ao salvar professor:', err)
+      console.error('Erro ao salvar:', err)
       alert('Erro ao salvar: ' + (err.message || 'Tente novamente.'))
-      emOperacao.current = false
-      setStatus('idle')
+      setSalvando(false)
     }
   }
 
   async function handleRemover() {
-    if (!form.id || emOperacao.current) return
+    if (!form.id || salvando || removendo) return
     if (!confirm('Remover este professor?')) return
 
-    emOperacao.current = true
-    setStatus('removendo')
+    setRemovendo(true)
 
     try {
       await removerProfessor(form.id)
       queryClient.invalidateQueries({ queryKey: ['professores'] })
       fecharModal()
     } catch (err) {
-      console.error('Erro ao remover professor:', err)
+      console.error('Erro ao remover:', err)
       alert('Erro ao remover: ' + (err.message || 'Tente novamente.'))
-      emOperacao.current = false
-      setStatus('idle')
+      setRemovendo(false)
     }
   }
 
-  const salvando = status === 'salvando'
-  const removendo = status === 'removendo'
   const ocupado = salvando || removendo
 
   return (
