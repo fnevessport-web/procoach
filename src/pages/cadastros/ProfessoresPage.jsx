@@ -105,7 +105,9 @@ export default function ProfessoresPage() {
         email: form.email || null,
         telefone: form.telefone || null,
         modalidade_id: form.modalidade_id || null,
-        valor_hora_aula: form.valor_hora_aula ? parseFloat(form.valor_hora_aula) : null,
+        valor_hora_aula: form.valor_hora_aula
+          ? parseFloat(String(form.valor_hora_aula).replace(',', '.'))
+          : null,
         ativo: form.ativo,
         banco: form.banco || null,
         agencia: form.agencia || null,
@@ -114,23 +116,22 @@ export default function ProfessoresPage() {
         pix: form.pix || null,
       }
 
-      if (modoEdicao) {
-        const { error } = await supabase
-          .from('professores')
-          .update(payload)
-          .eq('id', form.id)
-        if (error) throw error
-      } else {
-        const { error } = await supabase
-          .from('professores')
-          .insert(payload)
-        if (error) throw error
-      }
+      const promise = modoEdicao
+        ? supabase.from('professores').update(payload).eq('id', form.id)
+        : supabase.from('professores').insert(payload)
+
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout - tente novamente')), 8000)
+      )
+
+      const { error } = await Promise.race([promise, timeout])
+      if (error) throw error
 
       queryClient.invalidateQueries({ queryKey: ['professores'] })
       fecharModal()
     } catch (err) {
-      alert('Erro ao salvar: ' + err.message)
+      alert('Erro: ' + err.message)
+    } finally {
       setSalvando(false)
     }
   }
@@ -140,15 +141,17 @@ export default function ProfessoresPage() {
     if (!confirm('Remover este professor?')) return
     setRemovendo(true)
     try {
-      const { error } = await supabase
-        .from('professores')
-        .delete()
-        .eq('id', form.id)
+      const promise = supabase.from('professores').delete().eq('id', form.id)
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout - tente novamente')), 8000)
+      )
+      const { error } = await Promise.race([promise, timeout])
       if (error) throw error
       queryClient.invalidateQueries({ queryKey: ['professores'] })
       fecharModal()
     } catch (err) {
-      alert('Erro ao remover: ' + err.message)
+      alert('Erro: ' + err.message)
+    } finally {
       setRemovendo(false)
     }
   }
