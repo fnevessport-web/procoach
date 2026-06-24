@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 
@@ -7,9 +7,47 @@ const BANCOS = [
   'Nubank', 'Inter', 'C6 Bank', 'BTG', 'Sicredi', 'Sicoob', 'Outro'
 ]
 
+// ── Funções fora do componente ──────────────────────────────────────────────
+// Ficam aqui fora para nunca serem interrompidas por re-renders do React
+async function inserirProfessor(payload) {
+  const { data, error } = await supabase
+    .from('professores')
+    .insert(payload)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+async function atualizarProfessor(id, payload) {
+  const { data, error } = await supabase
+    .from('professores')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+async function removerProfessor(id) {
+  const { error } = await supabase
+    .from('professores')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+// ────────────────────────────────────────────────────────────────────────────
+
+const FORM_VAZIO = {
+  id: null, nome: '', email: '', telefone: '',
+  modalidade_id: '', valor_hora_aula: '', ativo: true,
+  banco: '', agencia: '', conta: '', tipo_conta: 'corrente', pix: '',
+}
+
 export default function ProfessoresPage() {
   const queryClient = useQueryClient()
-  const operando = useRef(false)
+  const emOperacao = useRef(false)
 
   const { data: professores = [], isLoading } = useQuery({
     queryKey: ['professores'],
@@ -37,38 +75,28 @@ export default function ProfessoresPage() {
 
   const [modalAberto, setModalAberto] = useState(false)
   const [modoEdicao, setModoEdicao] = useState(false)
-  const [btnLabel, setBtnLabel] = useState('Salvar')
-  const [btnRemLabel, setBtnRemLabel] = useState('Remover')
-  const [form, setForm] = useState({
-    id: null, nome: '', email: '', telefone: '',
-    modalidade_id: '', valor_hora_aula: '', ativo: true,
-    banco: '', agencia: '', conta: '', tipo_conta: 'corrente', pix: '',
-  })
+  const [status, setStatus] = useState('idle')
+  const [form, setForm] = useState(FORM_VAZIO)
 
-  function fecharModal() {
-    operando.current = false
+  const fecharModal = useCallback(() => {
+    emOperacao.current = false
+    setStatus('idle')
     setModalAberto(false)
-    setBtnLabel('Salvar')
-    setBtnRemLabel('Remover')
-  }
+  }, [])
 
   function abrirCriar() {
-    operando.current = false
-    setBtnLabel('Cadastrar')
-    setBtnRemLabel('Remover')
+    if (emOperacao.current) return
+    emOperacao.current = false
+    setStatus('idle')
     setModoEdicao(false)
-    setForm({
-      id: null, nome: '', email: '', telefone: '',
-      modalidade_id: '', valor_hora_aula: '', ativo: true,
-      banco: '', agencia: '', conta: '', tipo_conta: 'corrente', pix: '',
-    })
+    setForm({ ...FORM_VAZIO })
     setModalAberto(true)
   }
 
   function abrirEditar(prof) {
-    operando.current = false
-    setBtnLabel('Salvar')
-    setBtnRemLabel('Remover')
+    if (emOperacao.current) return
+    emOperacao.current = false
+    setStatus('idle')
     setModoEdicao(true)
     setForm({
       id: prof.id,
@@ -92,61 +120,69 @@ export default function ProfessoresPage() {
   }
 
   async function handleSalvar() {
-    if (operando.current) return
-    operando.current = true
-    setBtnLabel('Salvando...')
+    if (emOperacao.current) return
+    if (!form.nome.trim()) {
+      alert('Nome é obrigatório.')
+      return
+    }
+
+    emOperacao.current = true
+    setStatus('salvando')
+
+    const payload = {
+      nome: form.nome.trim(),
+      email: form.email || null,
+      telefone: form.telefone || null,
+      modalidade_id: form.modalidade_id || null,
+      valor_hora_aula: form.valor_hora_aula
+        ? parseFloat(String(form.valor_hora_aula).replace(',', '.'))
+        : null,
+      ativo: form.ativo,
+      banco: form.banco || null,
+      agencia: form.agencia || null,
+      conta: form.conta || null,
+      tipo_conta: form.tipo_conta || 'corrente',
+      pix: form.pix || null,
+    }
+
     try {
-      const payload = {
-        nome: form.nome,
-        email: form.email || null,
-        telefone: form.telefone || null,
-        modalidade_id: form.modalidade_id || null,
-        valor_hora_aula: form.valor_hora_aula
-          ? parseFloat(String(form.valor_hora_aula).replace(',', '.'))
-          : null,
-        ativo: form.ativo,
-        banco: form.banco || null,
-        agencia: form.agencia || null,
-        conta: form.conta || null,
-        tipo_conta: form.tipo_conta || 'corrente',
-        pix: form.pix || null,
-      }
-
-      let error
       if (modoEdicao) {
-        const res = await supabase.from('professores').update(payload).eq('id', form.id)
-        error = res.error
+        await atualizarProfessor(form.id, payload)
       } else {
-        const res = await supabase.from('professores').insert(payload)
-        error = res.error
+        await inserirProfessor(payload)
       }
-
-      if (error) throw error
       queryClient.invalidateQueries({ queryKey: ['professores'] })
       fecharModal()
     } catch (err) {
-      alert('Erro: ' + err.message)
-      operando.current = false
-      setBtnLabel(modoEdicao ? 'Salvar' : 'Cadastrar')
+      console.error('Erro ao salvar professor:', err)
+      alert('Erro ao salvar: ' + (err.message || 'Tente novamente.'))
+      emOperacao.current = false
+      setStatus('idle')
     }
   }
 
   async function handleRemover() {
-    if (!form.id || operando.current) return
+    if (!form.id || emOperacao.current) return
     if (!confirm('Remover este professor?')) return
-    operando.current = true
-    setBtnRemLabel('Removendo...')
+
+    emOperacao.current = true
+    setStatus('removendo')
+
     try {
-      const { error } = await supabase.from('professores').delete().eq('id', form.id)
-      if (error) throw error
+      await removerProfessor(form.id)
       queryClient.invalidateQueries({ queryKey: ['professores'] })
       fecharModal()
     } catch (err) {
-      alert('Erro: ' + err.message)
-      operando.current = false
-      setBtnRemLabel('Remover')
+      console.error('Erro ao remover professor:', err)
+      alert('Erro ao remover: ' + (err.message || 'Tente novamente.'))
+      emOperacao.current = false
+      setStatus('idle')
     }
   }
+
+  const salvando = status === 'salvando'
+  const removendo = status === 'removendo'
+  const ocupado = salvando || removendo
 
   return (
     <div className="p-4">
@@ -196,6 +232,7 @@ export default function ProfessoresPage() {
               placeholder="Nome completo *"
               value={form.nome}
               onChange={e => set('nome', e.target.value)}
+              disabled={ocupado}
             />
 
             <div className="grid grid-cols-2 gap-2">
@@ -204,12 +241,14 @@ export default function ProfessoresPage() {
                 placeholder="E-mail"
                 value={form.email}
                 onChange={e => set('email', e.target.value)}
+                disabled={ocupado}
               />
               <input
                 className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
                 placeholder="Telefone"
                 value={form.telefone}
                 onChange={e => set('telefone', e.target.value)}
+                disabled={ocupado}
               />
             </div>
 
@@ -218,6 +257,7 @@ export default function ProfessoresPage() {
                 className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
                 value={form.modalidade_id}
                 onChange={e => set('modalidade_id', e.target.value)}
+                disabled={ocupado}
               >
                 <option value="">Modalidade</option>
                 {modalidades.map(m => (
@@ -230,6 +270,7 @@ export default function ProfessoresPage() {
                 type="number"
                 value={form.valor_hora_aula}
                 onChange={e => set('valor_hora_aula', e.target.value)}
+                disabled={ocupado}
               />
             </div>
 
@@ -240,6 +281,7 @@ export default function ProfessoresPage() {
                 className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
                 value={form.banco}
                 onChange={e => set('banco', e.target.value)}
+                disabled={ocupado}
               >
                 <option value="">Banco</option>
                 {BANCOS.map(b => <option key={b} value={b}>{b}</option>)}
@@ -249,6 +291,7 @@ export default function ProfessoresPage() {
                 placeholder="Agência"
                 value={form.agencia}
                 onChange={e => set('agencia', e.target.value)}
+                disabled={ocupado}
               />
             </div>
 
@@ -258,11 +301,13 @@ export default function ProfessoresPage() {
                 placeholder="Conta"
                 value={form.conta}
                 onChange={e => set('conta', e.target.value)}
+                disabled={ocupado}
               />
               <select
                 className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
                 value={form.tipo_conta}
                 onChange={e => set('tipo_conta', e.target.value)}
+                disabled={ocupado}
               >
                 <option value="corrente">Corrente</option>
                 <option value="poupanca">Poupança</option>
@@ -274,6 +319,7 @@ export default function ProfessoresPage() {
               placeholder="Chave PIX"
               value={form.pix}
               onChange={e => set('pix', e.target.value)}
+              disabled={ocupado}
             />
 
             <label className="flex items-center gap-2 text-sm text-gray-300">
@@ -281,6 +327,7 @@ export default function ProfessoresPage() {
                 type="checkbox"
                 checked={form.ativo}
                 onChange={e => set('ativo', e.target.checked)}
+                disabled={ocupado}
               />
               Professor ativo
             </label>
@@ -288,24 +335,26 @@ export default function ProfessoresPage() {
             <div className="flex gap-2 pt-2">
               <button
                 onClick={fecharModal}
-                className="flex-1 bg-gray-700 text-white py-2 rounded-lg text-sm"
+                disabled={ocupado}
+                className="flex-1 bg-gray-700 text-white py-2 rounded-lg text-sm disabled:opacity-50"
               >
                 Cancelar
               </button>
               {modoEdicao && (
                 <button
                   onClick={handleRemover}
-                  className="flex-1 bg-red-700 hover:bg-red-600 text-white py-2 rounded-lg text-sm"
+                  disabled={ocupado}
+                  className="flex-1 bg-red-700 hover:bg-red-600 text-white py-2 rounded-lg text-sm disabled:opacity-50"
                 >
-                  {btnRemLabel}
+                  {removendo ? 'Removendo...' : 'Remover'}
                 </button>
               )}
               <button
                 onClick={handleSalvar}
-                disabled={!form.nome}
+                disabled={ocupado || !form.nome.trim()}
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm disabled:opacity-50"
               >
-                {btnLabel}
+                {salvando ? 'Salvando...' : modoEdicao ? 'Salvar' : 'Cadastrar'}
               </button>
             </div>
           </div>
