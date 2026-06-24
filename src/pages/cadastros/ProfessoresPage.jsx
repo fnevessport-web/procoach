@@ -20,7 +20,8 @@ export function ProfessoresPage() {
   const { modalidadeSelecionada } = useAppStore()
   const { data: professores, isLoading } = useProfessores(modalidadeSelecionada?.id)
   const { data: modalidades } = useModalidades()
-  const salvar = useSalvarProfessor()
+  const salvarMutation = useSalvarProfessor()
+const salvar = { mutateAsync: salvarMutation.mutateAsync }
   const excluir = useExcluirProfessor()
 
   const [busca, setBusca] = useState('')
