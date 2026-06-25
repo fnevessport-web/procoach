@@ -39,15 +39,16 @@ export function HomePage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        gap: '0',
         marginBottom: '24px',
-        paddingBottom: '16px',
+        paddingBottom: '20px',
         borderBottom: '1px solid #1e1e1e'
       }}>
-        <img src="/images/logobeyond.png" alt="Beyond" style={{ height: '44px', objectFit: 'contain' }} />
-        <span style={{ color: '#2a2a2a', margin: '0 16px', fontSize: '24px' }}>|</span>
-        <img src="/images/logoprocopio.png" alt="Procopio" style={{ height: '44px', objectFit: 'contain' }} />
-        <span style={{ color: '#2a2a2a', margin: '0 16px', fontSize: '24px' }}>|</span>
-        <img src="/images/logobeacharena.png" alt="Beach Arena" style={{ height: '44px', objectFit: 'contain' }} />
+        <img src="/images/logobeyond.png" alt="Beyond" style={{ height: '52px', objectFit: 'contain' }} />
+        <span style={{ color: '#2a2a2a', margin: '0 20px', fontSize: '28px' }}>|</span>
+        <img src="/images/logoprocopio.png" alt="Procopio" style={{ height: '52px', objectFit: 'contain' }} />
+        <span style={{ color: '#2a2a2a', margin: '0 20px', fontSize: '28px' }}>|</span>
+        <img src="/images/logobeacharena.png" alt="Beach Arena" style={{ height: '52px', objectFit: 'contain' }} />
       </div>
 
       {/* Saudação */}
@@ -102,22 +103,25 @@ export function HomePage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '16px',
+                    padding: '12px',
                     borderRadius: '16px',
-                    border: selected ? '2px solid #cf1b9b' : '1px solid #1e1e1e',
+                    border: selected
+                      ? '2px solid #cf1b9b'
+                      : '1px solid #1e1e1e',
                     background: selected
                       ? 'linear-gradient(135deg, rgba(252,200,37,0.08), rgba(207,27,155,0.12))'
                       : '#1a1a1a',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     transform: selected ? 'scale(1.02)' : 'scale(1)',
+                    aspectRatio: '1',
                   }}
                 >
                   {icone ? (
                     <img
                       src={icone}
                       alt={mod.nome}
-                      style={{ width: '140px', height: '140px', objectFit: 'contain' }}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                     />
                   ) : (
                     <span style={{ fontSize: '60px' }}>{mod.icone_emoji}</span>

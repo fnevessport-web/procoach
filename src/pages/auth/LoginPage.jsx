@@ -30,34 +30,59 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0F1117] flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-3xl bg-[#00D4AA]/20 flex items-center justify-center mx-auto mb-4 border border-[#00D4AA]/30">
-            <span className="text-4xl">🏆</span>
-          </div>
-          <h1 className="text-3xl font-bold text-[#F0F2F5]">ProCoach</h1>
-          <p className="text-[#8B8FA8] text-sm mt-2">Gestão esportiva inteligente</p>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#110f0f',
+      background: 'radial-gradient(ellipse at center, #2d0a2e 0%, #1a051a 40%, #110f0f 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '16px'
+    }}>
+      <div style={{ width: '100%', maxWidth: '380px' }}>
+
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <img
+            src="/images/logoprocoach.png"
+            alt="ProCoach"
+            style={{ height: '48px', objectFit: 'contain', margin: '0 auto 16px' }}
+          />
+          <p style={{ color: '#555', fontSize: '13px', margin: 0 }}>Gestão esportiva inteligente</p>
         </div>
 
-        <div className="bg-[#1A1D27] rounded-2xl border border-[#2A2D3E] p-6">
-          <div className="flex gap-2 mb-6 p-1 bg-[#0F1117] rounded-xl">
+        {/* Card */}
+        <div style={{
+          backgroundColor: '#1a1a1a',
+          borderRadius: '20px',
+          border: '1px solid #1e1e1e',
+          padding: '24px'
+        }}>
+          {/* Tabs */}
+          <div style={{
+            display: 'flex', gap: '8px', marginBottom: '24px',
+            padding: '4px', backgroundColor: '#110f0f', borderRadius: '12px'
+          }}>
             {['login', 'cadastro'].map(m => (
               <button
                 key={m}
                 onClick={() => { setModo(m); setErro('') }}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                  modo === m
-                    ? 'bg-[#00D4AA] text-[#0F1117]'
-                    : 'text-[#8B8FA8] hover:text-[#F0F2F5]'
-                }`}
+                style={{
+                  flex: 1, padding: '8px', borderRadius: '8px',
+                  fontSize: '13px', fontWeight: '500', cursor: 'pointer', border: 'none',
+                  background: modo === m
+                    ? 'linear-gradient(135deg, #fcc825, #cf1b9b)'
+                    : 'transparent',
+                  color: modo === m ? 'white' : '#555',
+                  transition: 'all 0.2s'
+                }}
               >
                 {m === 'login' ? 'Entrar' : 'Criar Conta'}
               </button>
             ))}
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {modo === 'cadastro' && (
               <Input
                 label="Nome completo"
@@ -85,19 +110,36 @@ export function LoginPage() {
             />
 
             {erro && (
-              <div className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/30 text-sm text-[#EF4444]">
+              <div style={{
+                padding: '12px', borderRadius: '10px',
+                backgroundColor: 'rgba(239,68,68,0.1)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                fontSize: '13px', color: '#EF4444'
+              }}>
                 {erro}
               </div>
             )}
 
-            <Button type="submit" loading={loading} size="lg" className="w-full mt-2">
-              {modo === 'login' ? 'Entrar' : 'Criar conta'}
-            </Button>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%', padding: '14px',
+                borderRadius: '12px', border: 'none',
+                background: 'linear-gradient(135deg, #fcc825, #d28c3c, #cf1b9b)',
+                color: 'white', fontSize: '15px', fontWeight: '600',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.7 : 1,
+                marginTop: '8px'
+              }}
+            >
+              {loading ? 'Aguarde...' : modo === 'login' ? 'Entrar' : 'Criar conta'}
+            </button>
           </form>
         </div>
 
-        <p className="text-center text-xs text-[#4A4D65] mt-6">
-          ProCoach © {new Date().getFullYear()} — Gestão esportiva
+        <p style={{ textAlign: 'center', fontSize: '11px', color: '#222', marginTop: '24px', letterSpacing: '1px' }}>
+          POWERED BY FNEVESSPORT
         </p>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { Home, CalendarDays, Users, DollarSign, BarChart3, BookOpen } from 'lucide-react'
+import { Home, CalendarDays, Users, DollarSign, BarChart3 } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
 
@@ -30,26 +30,37 @@ export function BottomNav() {
   const items = role === 'admin' ? navItemsAdmin : role === 'coordenador' ? navItemsCoordenador : navItemsProfessor
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0F1117]/95 backdrop-blur border-t border-[#2A2D3E] safe-area-inset-bottom">
-      <div className="flex items-center justify-around px-2 py-1 max-w-5xl mx-auto">
+    <nav style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
+      backgroundColor: '#110f0f',
+      borderTop: '1px solid #1e1e1e',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-around',
+        padding: '8px 8px 12px', maxWidth: '1024px', margin: '0 auto'
+      }}>
         {items.map(({ path, icon: Icon, label }) => {
           const active = location.pathname === path || (path !== '/' && location.pathname.startsWith(path))
           return (
             <button
               key={path}
               onClick={() => navigate(path)}
-              className={`
-                flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all
-                min-w-[52px]
-                ${active
-                  ? 'text-[#00D4AA]'
-                  : 'text-[#4A4D65] hover:text-[#8B8FA8]'
-                }
-              `}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
+                padding: '8px 12px', borderRadius: '12px', border: 'none',
+                backgroundColor: 'transparent', cursor: 'pointer', minWidth: '52px',
+                color: active ? '#fcc825' : '#333',
+                transition: 'all 0.2s'
+              }}
             >
               <Icon size={22} strokeWidth={active ? 2.5 : 2} />
-              <span className="text-[10px] font-medium leading-tight">{label}</span>
-              {active && <div className="w-1 h-1 rounded-full bg-[#00D4AA]" />}
+              <span style={{ fontSize: '10px', fontWeight: '500', lineHeight: 1 }}>{label}</span>
+              {active && (
+                <div style={{
+                  width: '20px', height: '2px', borderRadius: '1px',
+                  background: 'linear-gradient(90deg, #fcc825, #cf1b9b)'
+                }} />
+              )}
             </button>
           )
         })}
