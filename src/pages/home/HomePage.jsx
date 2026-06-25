@@ -5,6 +5,16 @@ import { Loading } from '../../components/ui/Loading'
 import { Bell } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
+const ICONES_MODALIDADES = {
+  'Tênis':           '/images/tenis.png',
+  'Padel':           '/images/padel.png',
+  'Pickleball':      '/images/pickleball.png',
+  'Squash':          '/images/squash.png',
+  'Beach Tennis':    '/images/beach tennis.png',
+  'Futevôlei':       '/images/futevolei.png',
+  'Vôlei de Praia':  '/images/volei de praia.png',
+}
+
 export function HomePage() {
   const { data: modalidades, isLoading } = useModalidades()
   const { data: pendentes = 0 } = useAulasPendentes()
@@ -22,73 +32,122 @@ export function HomePage() {
   }
 
   return (
-    <div className="fade-in">
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-1">
-          <div>
-            <h1 className="text-2xl font-bold text-[#F0F2F5]">
-              Olá, {perfil?.nome?.split(' ')[0] || 'Usuário'} 👋
-            </h1>
-            <p className="text-sm text-[#8B8FA8] capitalize">{role}</p>
-          </div>
-          {pendentes > 0 && (
-            <button
-              onClick={() => navigate('/aulas')}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/30 text-[#EF4444] text-sm font-medium"
-            >
-              <Bell size={16} />
-              <span>{pendentes} pendente{pendentes > 1 ? 's' : ''}</span>
-            </button>
-          )}
-        </div>
+    <div className="fade-in" style={{ backgroundColor: '#110f0f', minHeight: '100vh', padding: '16px' }}>
+
+      {/* Header com logos */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '0',
+        marginBottom: '24px',
+        padding: '12px 0',
+        borderBottom: '1px solid #2a2a2a'
+      }}>
+        <img src="/images/logo beyond.png" alt="Beyond" style={{ height: '32px', objectFit: 'contain' }} />
+        <span style={{ color: '#333', margin: '0 12px', fontSize: '18px' }}>|</span>
+        <img src="/images/logo procopio.png" alt="Procopio" style={{ height: '32px', objectFit: 'contain' }} />
+        <span style={{ color: '#333', margin: '0 12px', fontSize: '18px' }}>|</span>
+        <img src="/images/logo beach arena.png" alt="Beach Arena" style={{ height: '32px', objectFit: 'contain' }} />
       </div>
 
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-[#F0F2F5]">Modalidades</h2>
+      {/* Saudação */}
+      <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
+            Olá, {perfil?.nome?.split(' ')[0] || 'Usuário'} 👋
+          </h1>
+          <p style={{ fontSize: '13px', color: '#555', margin: '2px 0 0', textTransform: 'capitalize' }}>{role}</p>
+        </div>
+        {pendentes > 0 && (
+          <button
+            onClick={() => navigate('/aulas')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '8px 12px', borderRadius: '12px',
+              backgroundColor: 'rgba(239,68,68,0.1)',
+              border: '1px solid rgba(239,68,68,0.3)',
+              color: '#EF4444', fontSize: '13px', fontWeight: '500', cursor: 'pointer'
+            }}
+          >
+            <Bell size={16} />
+            <span>{pendentes} pendente{pendentes > 1 ? 's' : ''}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Modalidades */}
+      <div style={{ marginBottom: '28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#F0F2F5', margin: 0 }}>Modalidades</h2>
           {modalidadeSelecionada && (
             <button
               onClick={() => setModalidadeSelecionada(null)}
-              className="text-xs text-[#00D4AA] hover:underline"
+              style={{ fontSize: '12px', color: '#fcc825', background: 'none', border: 'none', cursor: 'pointer' }}
             >
               Ver todas
             </button>
           )}
         </div>
 
-        {isLoading ? (
-          <Loading />
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        {isLoading ? <Loading /> : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
             {modalidades?.map(mod => {
               const selected = modalidadeSelecionada?.id === mod.id
+              const icone = ICONES_MODALIDADES[mod.nome]
               return (
                 <button
                   key={mod.id}
                   onClick={() => selectModalidade(mod)}
-                  className={`
-                    relative flex flex-col items-center justify-center gap-2.5
-                    p-5 rounded-2xl border transition-all active:scale-95
-                    ${selected
-                      ? 'border-2 scale-[1.02]'
-                      : 'bg-[#1A1D27] border-[#2A2D3E] hover:bg-[#1E2235] hover:border-[#3A3D4E]'
-                    }
-                  `}
-                  style={selected ? {
-                    backgroundColor: `${mod.cor_hex}20`,
-                    borderColor: mod.cor_hex,
-                  } : {}}
+                  style={{
+                    position: 'relative',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    padding: '20px 12px',
+                    borderRadius: '16px',
+                    border: selected
+                      ? '2px solid #cf1b9b'
+                      : '1px solid #1e1e1e',
+                    background: selected
+                      ? 'linear-gradient(135deg, rgba(252,200,37,0.08), rgba(207,27,155,0.12))'
+                      : '#1a1a1a',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    transform: selected ? 'scale(1.02)' : 'scale(1)',
+                  }}
                 >
-                  <span className="text-4xl">{mod.icone_emoji}</span>
-                  <span className="text-sm font-semibold text-[#F0F2F5] text-center leading-tight">
+                  {/* Borda gradiente no hover/selected */}
+                  {selected && (
+                    <div style={{
+                      position: 'absolute', inset: 0, borderRadius: '16px',
+                      background: 'linear-gradient(135deg, #fcc825, #cf1b9b, #430c3a)',
+                      padding: '2px', zIndex: 0,
+                      WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                      WebkitMaskComposite: 'xor',
+                    }} />
+                  )}
+
+                  {icone ? (
+                    <img
+                      src={icone}
+                      alt={mod.nome}
+                      style={{ width: '72px', height: '72px', objectFit: 'contain', position: 'relative', zIndex: 1 }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: '40px' }}>{mod.icone_emoji}</span>
+                  )}
+
+                  <span style={{
+                    fontSize: '13px', fontWeight: '600',
+                    color: selected ? '#fcc825' : '#F0F2F5',
+                    textAlign: 'center', lineHeight: '1.3',
+                    position: 'relative', zIndex: 1
+                  }}>
                     {mod.nome}
                   </span>
-                  {selected && (
-                    <div
-                      className="absolute top-2 right-2 w-2 h-2 rounded-full"
-                      style={{ backgroundColor: mod.cor_hex }}
-                    />
-                  )}
                 </button>
               )
             })}
@@ -96,7 +155,16 @@ export function HomePage() {
         )}
       </div>
 
+      {/* Acesso Rápido */}
       <QuickActions role={role} navigate={navigate} />
+
+      {/* Footer fnevessport */}
+      <div style={{ textAlign: 'center', marginTop: '32px', paddingBottom: '8px' }}>
+        <span style={{ fontSize: '10px', color: '#2a2a2a', letterSpacing: '2px' }}>
+          POWERED BY FNEVESSPORT
+        </span>
+      </div>
+
     </div>
   )
 }
@@ -104,17 +172,17 @@ export function HomePage() {
 function QuickActions({ role, navigate }) {
   const actions = {
     admin: [
-      { label: '📅 Ver Aulas Hoje', path: '/aulas', color: '#00D4AA' },
-      { label: '👥 Professores', path: '/cadastros/professores', color: '#3B82F6' },
-      { label: '🏫 Turmas', path: '/cadastros/turmas', color: '#8B5CF6' },
-      { label: '💰 Financeiro', path: '/financeiro', color: '#F59E0B' },
+      { label: 'Ver Aulas Hoje', path: '/aulas', color: '#fcc825' },
+      { label: 'Professores', path: '/cadastros/professores', color: '#cf1b9b' },
+      { label: 'Turmas', path: '/cadastros/turmas', color: '#d28c3c' },
+      { label: 'Financeiro', path: '/financeiro', color: '#430c3a' },
     ],
     coordenador: [
-      { label: '📅 Ver Aulas Hoje', path: '/aulas', color: '#00D4AA' },
-      { label: '📊 KPIs', path: '/kpis', color: '#3B82F6' },
+      { label: 'Ver Aulas Hoje', path: '/aulas', color: '#fcc825' },
+      { label: 'KPIs', path: '/kpis', color: '#cf1b9b' },
     ],
     professor: [
-      { label: '📅 Minhas Aulas', path: '/aulas', color: '#00D4AA' },
+      { label: 'Minhas Aulas', path: '/aulas', color: '#fcc825' },
     ],
   }
 
@@ -122,16 +190,23 @@ function QuickActions({ role, navigate }) {
 
   return (
     <div>
-      <h2 className="text-base font-semibold text-[#F0F2F5] mb-3">Acesso Rápido</h2>
-      <div className="flex flex-col gap-2">
+      <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#F0F2F5', marginBottom: '12px' }}>
+        Acesso Rápido
+      </h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {items.map(({ label, path, color }) => (
           <button
             key={path}
             onClick={() => navigate(path)}
-            className="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-[#1A1D27] border border-[#2A2D3E] hover:bg-[#1E2235] transition-all active:scale-[0.98] text-left"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '12px',
+              padding: '14px 16px', borderRadius: '12px',
+              backgroundColor: '#1a1a1a', border: '1px solid #1e1e1e',
+              cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
+            }}
           >
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-            <span className="text-sm font-medium text-[#F0F2F5]">{label}</span>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
+            <span style={{ fontSize: '14px', fontWeight: '500', color: '#F0F2F5' }}>{label}</span>
           </button>
         ))}
       </div>
