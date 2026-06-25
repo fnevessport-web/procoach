@@ -32,16 +32,11 @@ export function HomePage() {
 
   return (
     <div className="fade-in" style={{
-      minHeight: '100vh',
-      background: `
-        radial-gradient(ellipse at 20% 20%, rgba(252,200,37,0.05) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 80%, rgba(67,12,58,0.35) 0%, transparent 60%),
-        radial-gradient(ellipse at 50% 50%, rgba(207,27,155,0.04) 0%, transparent 70%),
-        #110f0f
-      `,
+      minHeight: '100%',
+      background: 'transparent',
     }}>
 
-      {/* Logos — só separador vertical, sem bordas horizontais */}
+      {/* Logos */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -50,17 +45,17 @@ export function HomePage() {
       }}>
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <img src="/images/logobeyond.png" alt="Beyond"
-            style={{ height: '24px', width: 'auto', maxWidth: '100px', objectFit: 'contain' }} />
+            style={{ height: '34px', width: 'auto', maxWidth: '110px', objectFit: 'contain' }} />
         </div>
-        <div style={{ width: '1px', height: '24px', backgroundColor: '#2a2a2a', flexShrink: 0 }} />
+        <div style={{ width: '1px', height: '28px', backgroundColor: '#2a2a2a', flexShrink: 0 }} />
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <img src="/images/logoprocopio.png" alt="Procopio"
-            style={{ height: '24px', width: 'auto', maxWidth: '100px', objectFit: 'contain' }} />
+            style={{ height: '34px', width: 'auto', maxWidth: '110px', objectFit: 'contain' }} />
         </div>
-        <div style={{ width: '1px', height: '24px', backgroundColor: '#2a2a2a', flexShrink: 0 }} />
+        <div style={{ width: '1px', height: '28px', backgroundColor: '#2a2a2a', flexShrink: 0 }} />
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <img src="/images/logobeacharena.png" alt="Beach Arena"
-            style={{ height: '24px', width: 'auto', maxWidth: '100px', objectFit: 'contain' }} />
+            style={{ height: '34px', width: 'auto', maxWidth: '110px', objectFit: 'contain' }} />
         </div>
       </div>
 

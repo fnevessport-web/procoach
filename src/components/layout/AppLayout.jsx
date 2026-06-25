@@ -5,7 +5,12 @@ export function AppLayout({ children }) {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#110f0f',
+      background: `
+        radial-gradient(ellipse at 20% 10%, rgba(252,200,37,0.07) 0%, transparent 45%),
+        radial-gradient(ellipse at 80% 90%, rgba(67,12,58,0.45) 0%, transparent 55%),
+        radial-gradient(ellipse at 50% 50%, rgba(207,27,155,0.04) 0%, transparent 65%),
+        #110f0f
+      `,
       display: 'flex',
       flexDirection: 'column',
     }}>
