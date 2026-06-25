@@ -16,35 +16,43 @@ const ABAS = [
 
 export function CadastrosPage() {
   const [abaAtiva, setAbaAtiva] = useState('professores')
-
   const AbaComponent = ABAS.find(a => a.id === abaAtiva)?.component
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-4 pt-4 pb-0">
-        <h1 className="text-xl font-bold text-[#F0F2F5] mb-4">Cadastros</h1>
-        <div className="flex gap-1 overflow-x-auto pb-0 scrollbar-hide">
-          {ABAS.map(aba => {
-            const Icon = aba.icon
-            const ativa = abaAtiva === aba.id
-            return (
-              <button
-                key={aba.id}
-                onClick={() => setAbaAtiva(aba.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                  ativa
-                    ? 'bg-[#00D4AA] text-[#0A0B0F]'
-                    : 'text-[#8B8FA8] hover:text-[#F0F2F5]'
-                }`}
-              >
-                <Icon size={14} />
-                {aba.label}
-              </button>
-            )
-          })}
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', marginBottom: '16px' }}>
+        Cadastros
+      </h1>
+
+      {/* Abas */}
+      <div style={{
+        display: 'flex', gap: '4px', overflowX: 'auto',
+        marginBottom: '20px', paddingBottom: '2px',
+      }}>
+        {ABAS.map(aba => {
+          const Icon = aba.icon
+          const ativa = abaAtiva === aba.id
+          return (
+            <button
+              key={aba.id}
+              onClick={() => setAbaAtiva(aba.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '8px 14px', borderRadius: '10px', border: 'none',
+                whiteSpace: 'nowrap', cursor: 'pointer', fontSize: '13px', fontWeight: '500',
+                flexShrink: 0, transition: 'all 0.2s',
+                background: ativa ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
+                color: ativa ? 'white' : '#555',
+              }}
+            >
+              <Icon size={13} />
+              {aba.label}
+            </button>
+          )
+        })}
       </div>
-      <div className="flex-1 overflow-y-auto p-4">
+
+      <div style={{ flex: 1, overflowY: 'auto' }}>
         {AbaComponent && <AbaComponent />}
       </div>
     </div>

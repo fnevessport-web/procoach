@@ -8,12 +8,12 @@ import { Input, Select } from '../../components/ui/Input'
 import { Loading } from '../../components/ui/Loading'
 
 const KPI_ICONS = {
-  totalAulas:      '/images/totaldeaulas.png',
-  comMatch:        '/images/commatch.png',
-  divergencias:    '/images/divergencia.png',
-  taxaPresenca:    '/images/taxadepresença.png',
-  naoDadas:        '/images/naodadas.png',
-  substituicoes:   '/images/substituição.png',
+  totalAulas:    '/images/totaldeaulas.png',
+  comMatch:      '/images/commatch.png',
+  divergencias:  '/images/divergencia.png',
+  taxaPresenca:  '/images/taxadepresença.png',
+  naoDadas:      '/images/naodadas.png',
+  substituicoes: '/images/substituição.png',
 }
 
 export function KPIsPage() {
@@ -29,37 +29,32 @@ export function KPIsPage() {
         Dashboard KPIs
       </h1>
 
-      {/* Filtros */}
+      {/* Filtros — todos em coluna */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
         <Input type="date" label="De" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-          <Input type="date" label="Até" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} />
-          <Select label="Modalidade" value={modalidadeId} onChange={e => setModalidadeId(e.target.value)}>
-            <option value="">Todas</option>
-            {modalidades?.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-          </Select>
-        </div>
+        <Input type="date" label="Até" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} />
+        <Select label="Modalidade" value={modalidadeId} onChange={e => setModalidadeId(e.target.value)}>
+          <option value="">Todas</option>
+          {modalidades?.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+        </Select>
       </div>
 
       {isLoading ? <Loading /> : kpis ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-          {/* Cards KPI */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <KpiCard icon={KPI_ICONS.totalAulas} label="Total de Aulas" value={kpis.totalAulas} color="#fcc825" />
-            <KpiCard icon={KPI_ICONS.comMatch} label="Com Match" value={kpis.totalMatch} color="#22c55e" />
-            <KpiCard icon={KPI_ICONS.divergencias} label="Divergências" value={kpis.totalDivergencias} color="#EF4444" />
-            <KpiCard icon={KPI_ICONS.taxaPresenca} label="Taxa Presença" value={`${kpis.taxaPresenca}%`} color="#cf1b9b" />
-            <KpiCard icon={KPI_ICONS.naoDadas} label="Não Dadas" value={kpis.totalNaoDadas} color="#d28c3c" />
-            <KpiCard icon={KPI_ICONS.substituicoes} label="Substituições" value={kpis.totalSubs} color="#7c3aed" />
+            <KpiCard icon={KPI_ICONS.totalAulas} label="Total de Aulas" value={kpis.totalAulas} dot="#fcc825" />
+            <KpiCard icon={KPI_ICONS.comMatch} label="Com Match" value={kpis.totalMatch} dot="#22c55e" />
+            <KpiCard icon={KPI_ICONS.divergencias} label="Divergências" value={kpis.totalDivergencias} dot="#EF4444" />
+            <KpiCard icon={KPI_ICONS.taxaPresenca} label="Taxa Presença" value={`${kpis.taxaPresenca}%`} dot="#cf1b9b" />
+            <KpiCard icon={KPI_ICONS.naoDadas} label="Não Dadas" value={kpis.totalNaoDadas} dot="#d28c3c" />
+            <KpiCard icon={KPI_ICONS.substituicoes} label="Substituições" value={kpis.totalSubs} dot="#7c3aed" />
           </div>
 
-          {/* Comparativo */}
           {kpis.variacaoPerc !== null && (
             <div style={{
               padding: '16px', borderRadius: '16px',
-              backgroundColor: '#1a1a1a',
-              border: '1px solid rgba(255,255,255,0.06)',
+              backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
@@ -80,12 +75,10 @@ export function KPIsPage() {
             </div>
           )}
 
-          {/* Gráfico professores */}
           {kpis.profsMaisAulas?.length > 0 && (
             <div style={{
               padding: '16px', borderRadius: '16px',
-              backgroundColor: '#1a1a1a',
-              border: '1px solid rgba(255,255,255,0.06)',
+              backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)',
             }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5', marginBottom: '12px' }}>
                 🏆 Professores por Aulas
@@ -105,12 +98,10 @@ export function KPIsPage() {
             </div>
           )}
 
-          {/* Por modalidade */}
           {kpis.porModalidade?.length > 0 && (
             <div style={{
               padding: '16px', borderRadius: '16px',
-              backgroundColor: '#1a1a1a',
-              border: '1px solid rgba(255,255,255,0.06)',
+              backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)',
             }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5', marginBottom: '12px' }}>
                 📊 Frequência por Modalidade
@@ -143,7 +134,7 @@ export function KPIsPage() {
   )
 }
 
-function KpiCard({ icon, label, value, color }) {
+function KpiCard({ icon, label, value, dot }) {
   return (
     <div style={{
       padding: '16px', borderRadius: '16px',
@@ -153,9 +144,9 @@ function KpiCard({ icon, label, value, color }) {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <img src={icon} alt={label} style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
-        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: color }} />
+        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dot }} />
       </div>
-      <div style={{ fontSize: '26px', fontWeight: '700', color }}>{value}</div>
+      <div style={{ fontSize: '26px', fontWeight: '700', color: '#F0F2F5' }}>{value}</div>
       <div style={{ fontSize: '11px', color: '#555' }}>{label}</div>
     </div>
   )
