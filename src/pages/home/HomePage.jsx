@@ -32,23 +32,37 @@ export function HomePage() {
   }
 
   return (
-    <div className="fade-in">
+    <div className="fade-in" style={{
+      minHeight: '100vh',
+      background: 'radial-gradient(ellipse at 50% 60%, rgba(67,12,58,0.6) 0%, rgba(17,15,15,1) 70%)',
+    }}>
 
       {/* Logos das empresas */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '0',
-        marginBottom: '24px',
-        paddingBottom: '20px',
+        padding: '16px 0 20px',
+        marginBottom: '20px',
         borderBottom: '1px solid #1e1e1e'
       }}>
-        <img src="/images/logobeyond.png" alt="Beyond" style={{ height: '52px', objectFit: 'contain' }} />
-        <span style={{ color: '#2a2a2a', margin: '0 20px', fontSize: '28px' }}>|</span>
-        <img src="/images/logoprocopio.png" alt="Procopio" style={{ height: '52px', objectFit: 'contain' }} />
-        <span style={{ color: '#2a2a2a', margin: '0 20px', fontSize: '28px' }}>|</span>
-        <img src="/images/logobeacharena.png" alt="Beach Arena" style={{ height: '52px', objectFit: 'contain' }} />
+        <img
+          src="/images/logobeyond.png"
+          alt="Beyond"
+          style={{ height: '40px', objectFit: 'contain', maxWidth: '90px' }}
+        />
+        <span style={{ color: '#2a2a2a', margin: '0 16px', fontSize: '24px', lineHeight: 1 }}>|</span>
+        <img
+          src="/images/logoprocopio.png"
+          alt="Procopio"
+          style={{ height: '40px', objectFit: 'contain', maxWidth: '90px' }}
+        />
+        <span style={{ color: '#2a2a2a', margin: '0 16px', fontSize: '24px', lineHeight: 1 }}>|</span>
+        <img
+          src="/images/logobeacharena.png"
+          alt="Beach Arena"
+          style={{ height: '40px', objectFit: 'contain', maxWidth: '90px' }}
+        />
       </div>
 
       {/* Saudação */}
@@ -107,9 +121,9 @@ export function HomePage() {
                     borderRadius: '16px',
                     border: selected
                       ? '2px solid #cf1b9b'
-                      : '1px solid #1e1e1e',
+                      : '1px solid #222',
                     background: selected
-                      ? 'linear-gradient(135deg, rgba(252,200,37,0.08), rgba(207,27,155,0.12))'
+                      ? 'linear-gradient(135deg, rgba(252,200,37,0.08), rgba(207,27,155,0.15))'
                       : '#1a1a1a',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
@@ -179,7 +193,7 @@ function QuickActions({ role, navigate }) {
             style={{
               display: 'flex', alignItems: 'center', gap: '12px',
               padding: '14px 16px', borderRadius: '12px',
-              backgroundColor: '#1a1a1a', border: '1px solid #1e1e1e',
+              backgroundColor: '#1a1a1a', border: '1px solid #222',
               cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
             }}
           >

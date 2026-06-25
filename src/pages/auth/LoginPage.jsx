@@ -33,29 +33,30 @@ export function LoginPage() {
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#110f0f',
-      background: 'radial-gradient(ellipse at center, #2d0a2e 0%, #1a051a 40%, #110f0f 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '16px'
+      padding: '24px 16px'
     }}>
-      <div style={{ width: '100%', maxWidth: '380px' }}>
+      <div style={{ width: '100%', maxWidth: '360px' }}>
 
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <img
             src="/images/logoprocoach.png"
             alt="ProCoach"
-            style={{ height: '48px', objectFit: 'contain', margin: '0 auto 16px' }}
+            style={{ height: '52px', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }}
           />
-          <p style={{ color: '#555', fontSize: '13px', margin: 0 }}>Gestão esportiva inteligente</p>
+          <p style={{ color: '#444', fontSize: '13px', margin: 0, letterSpacing: '1px' }}>
+            Gestão esportiva inteligente
+          </p>
         </div>
 
         {/* Card */}
         <div style={{
           backgroundColor: '#1a1a1a',
           borderRadius: '20px',
-          border: '1px solid #1e1e1e',
+          border: '1px solid #222',
           padding: '24px'
         }}>
           {/* Tabs */}
@@ -68,12 +69,12 @@ export function LoginPage() {
                 key={m}
                 onClick={() => { setModo(m); setErro('') }}
                 style={{
-                  flex: 1, padding: '8px', borderRadius: '8px',
+                  flex: 1, padding: '10px', borderRadius: '8px',
                   fontSize: '13px', fontWeight: '500', cursor: 'pointer', border: 'none',
                   background: modo === m
                     ? 'linear-gradient(135deg, #fcc825, #cf1b9b)'
                     : 'transparent',
-                  color: modo === m ? 'white' : '#555',
+                  color: modo === m ? 'white' : '#444',
                   transition: 'all 0.2s'
                 }}
               >
@@ -138,7 +139,7 @@ export function LoginPage() {
           </form>
         </div>
 
-        <p style={{ textAlign: 'center', fontSize: '11px', color: '#222', marginTop: '24px', letterSpacing: '1px' }}>
+        <p style={{ textAlign: 'center', fontSize: '10px', color: '#222', marginTop: '24px', letterSpacing: '2px' }}>
           POWERED BY FNEVESSPORT
         </p>
       </div>
