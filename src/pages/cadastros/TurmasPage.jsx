@@ -219,7 +219,7 @@ export function TurmasPage({ onIrParaProfessores }) {
                   <button
                     type="button"
                     onClick={() => { setModal(false); onIrParaProfessores?.() }}
-                    className="text-[#00D4AA] underline hover:text-[#00A884]"
+                    className="style={{ color: '#fcc825' }} underline hover:text-[#00A884]"
                   >
                     Cadastrar professor
                   </button>
@@ -240,7 +240,7 @@ export function TurmasPage({ onIrParaProfessores }) {
                     onClick={() => toggleAluno(aluno.id)}
                     className={`flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-left ${
                       alunosSelecionados.includes(aluno.id)
-                        ? 'bg-[#00D4AA]/10 border-[#00D4AA]/40 text-[#00D4AA]'
+                        ? 'style={{ background: 'linear-gradient(135deg, #fcc825, #cf1b9b)' }}/10 style={{ borderColor: 'rgba(252,200,37,0.4)' }} style={{ color: '#fcc825' }}'
                         : 'bg-[#0F1117] border-[#2A2D3E] text-[#8B8FA8]'
                     }`}
                   >

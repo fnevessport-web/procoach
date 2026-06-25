@@ -74,7 +74,11 @@ function AulasDivergencias() {
 
   if (isLoading) return <Loading />
   if (!aulas?.length) return (
-    <EmptyState icon="✅" title="Nenhuma divergência" description="Todas as aulas estão com match!" />
+    <EmptyState
+      icon="✅"
+      title="Nenhuma divergência"
+      description="Todas as aulas estão com match!"
+    />
   )
 
   return (

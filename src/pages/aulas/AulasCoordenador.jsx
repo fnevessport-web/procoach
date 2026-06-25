@@ -83,7 +83,10 @@ export function AulasCoordenador() {
       </div>
 
       {isLoading ? <Loading /> : !aulasFiltradas?.length ? (
-        <EmptyState icon="📅" title="Nenhuma aula encontrada" />
+        <EmptyState
+          iconImg="/images/totaldeaulas.png"
+          title="Nenhuma aula encontrada"
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {aulasFiltradas.map(aula => {
