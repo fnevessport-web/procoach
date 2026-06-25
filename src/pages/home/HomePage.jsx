@@ -20,7 +20,6 @@ export function HomePage() {
   const { data: pendentes = 0 } = useAulasPendentes()
   const { modalidadeSelecionada, setModalidadeSelecionada, perfil } = useAppStore()
   const navigate = useNavigate()
-
   const role = perfil?.role || 'professor'
 
   function selectModalidade(mod) {
@@ -33,45 +32,36 @@ export function HomePage() {
 
   return (
     <div className="fade-in" style={{
+      background: 'radial-gradient(ellipse at 50% 50%, rgba(67,12,58,0.5) 0%, rgba(17,15,15,1) 70%)',
       minHeight: '100vh',
-      background: 'radial-gradient(ellipse at 50% 60%, rgba(67,12,58,0.6) 0%, rgba(17,15,15,1) 70%)',
     }}>
 
-      {/* Logos das empresas */}
+      {/* Logos */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px 0 20px',
-        marginBottom: '20px',
+        justifyContent: 'space-evenly',
+        padding: '16px 8px',
+        marginBottom: '16px',
         borderBottom: '1px solid #1e1e1e'
       }}>
-        <img
-          src="/images/logobeyond.png"
-          alt="Beyond"
-          style={{ height: '40px', objectFit: 'contain', maxWidth: '90px' }}
-        />
-        <span style={{ color: '#2a2a2a', margin: '0 16px', fontSize: '24px', lineHeight: 1 }}>|</span>
-        <img
-          src="/images/logoprocopio.png"
-          alt="Procopio"
-          style={{ height: '40px', objectFit: 'contain', maxWidth: '90px' }}
-        />
-        <span style={{ color: '#2a2a2a', margin: '0 16px', fontSize: '24px', lineHeight: 1 }}>|</span>
-        <img
-          src="/images/logobeacharena.png"
-          alt="Beach Arena"
-          style={{ height: '40px', objectFit: 'contain', maxWidth: '90px' }}
-        />
+        <img src="/images/logobeyond.png" alt="Beyond"
+          style={{ height: '36px', width: '80px', objectFit: 'contain' }} />
+        <span style={{ color: '#2a2a2a', fontSize: '20px' }}>|</span>
+        <img src="/images/logoprocopio.png" alt="Procopio"
+          style={{ height: '36px', width: '80px', objectFit: 'contain' }} />
+        <span style={{ color: '#2a2a2a', fontSize: '20px' }}>|</span>
+        <img src="/images/logobeacharena.png" alt="Beach Arena"
+          style={{ height: '36px', width: '80px', objectFit: 'contain' }} />
       </div>
 
       {/* Saudação */}
-      <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
+          <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
             Olá, {perfil?.nome?.split(' ')[0] || 'Usuário'} 👋
           </h1>
-          <p style={{ fontSize: '13px', color: '#555', margin: '2px 0 0', textTransform: 'capitalize' }}>{role}</p>
+          <p style={{ fontSize: '12px', color: '#555', margin: '2px 0 0', textTransform: 'capitalize' }}>{role}</p>
         </div>
         {pendentes > 0 && (
           <button
@@ -91,9 +81,9 @@ export function HomePage() {
       </div>
 
       {/* Modalidades */}
-      <div style={{ marginBottom: '28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#F0F2F5', margin: 0 }}>Modalidades</h2>
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', margin: 0 }}>Modalidades</h2>
           {modalidadeSelecionada && (
             <button
               onClick={() => setModalidadeSelecionada(null)}
@@ -105,7 +95,11 @@ export function HomePage() {
         </div>
 
         {isLoading ? <Loading /> : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '10px',
+          }}>
             {modalidades?.map(mod => {
               const selected = modalidadeSelecionada?.id === mod.id
               const icone = ICONES_MODALIDADES[mod.nome]
@@ -117,11 +111,9 @@ export function HomePage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '12px',
-                    borderRadius: '16px',
-                    border: selected
-                      ? '2px solid #cf1b9b'
-                      : '1px solid #222',
+                    padding: '8px',
+                    borderRadius: '14px',
+                    border: selected ? '2px solid #cf1b9b' : '1px solid #222',
                     background: selected
                       ? 'linear-gradient(135deg, rgba(252,200,37,0.08), rgba(207,27,155,0.15))'
                       : '#1a1a1a',
@@ -129,6 +121,7 @@ export function HomePage() {
                     transition: 'all 0.2s',
                     transform: selected ? 'scale(1.02)' : 'scale(1)',
                     aspectRatio: '1',
+                    overflow: 'hidden',
                   }}
                 >
                   {icone ? (
@@ -138,7 +131,7 @@ export function HomePage() {
                       style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                     />
                   ) : (
-                    <span style={{ fontSize: '60px' }}>{mod.icone_emoji}</span>
+                    <span style={{ fontSize: '48px' }}>{mod.icone_emoji}</span>
                   )}
                 </button>
               )
@@ -151,7 +144,7 @@ export function HomePage() {
       <QuickActions role={role} navigate={navigate} />
 
       {/* Footer */}
-      <div style={{ textAlign: 'center', marginTop: '32px', paddingBottom: '8px' }}>
+      <div style={{ textAlign: 'center', marginTop: '24px', paddingBottom: '8px' }}>
         <span style={{ fontSize: '10px', color: '#222', letterSpacing: '2px' }}>
           POWERED BY FNEVESSPORT
         </span>
@@ -182,7 +175,7 @@ function QuickActions({ role, navigate }) {
 
   return (
     <div>
-      <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#F0F2F5', marginBottom: '12px' }}>
+      <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '10px' }}>
         Acesso Rápido
       </h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -194,7 +187,8 @@ function QuickActions({ role, navigate }) {
               display: 'flex', alignItems: 'center', gap: '12px',
               padding: '14px 16px', borderRadius: '12px',
               backgroundColor: '#1a1a1a', border: '1px solid #222',
-              cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
+              cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
+              width: '100%',
             }}
           >
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />

@@ -36,9 +36,11 @@ export function LoginPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '24px 16px'
+      padding: '24px 16px',
+      maxWidth: '480px',
+      margin: '0 auto',
     }}>
-      <div style={{ width: '100%', maxWidth: '360px' }}>
+      <div style={{ width: '100%' }}>
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>

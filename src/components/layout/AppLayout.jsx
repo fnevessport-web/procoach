@@ -3,9 +3,21 @@ import { BottomNav } from './BottomNav'
 
 export function AppLayout({ children }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#110f0f' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100vh',
+      backgroundColor: '#110f0f',
+      maxWidth: '480px',
+      margin: '0 auto',
+      position: 'relative',
+    }}>
       <Header />
-      <main style={{ flex: 1, paddingBottom: '96px', maxWidth: '1024px', width: '100%', margin: '0 auto', padding: '0 16px 96px' }}>
+      <main style={{
+        flex: 1,
+        padding: '16px 16px 96px',
+        width: '100%',
+      }}>
         {children}
       </main>
       <BottomNav />
