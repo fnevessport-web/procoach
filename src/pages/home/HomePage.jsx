@@ -39,16 +39,15 @@ export function HomePage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '0',
         marginBottom: '24px',
         paddingBottom: '16px',
         borderBottom: '1px solid #1e1e1e'
       }}>
-        <img src="/images/logobeyond.png" alt="Beyond" style={{ height: '28px', objectFit: 'contain' }} />
-        <span style={{ color: '#2a2a2a', margin: '0 14px', fontSize: '20px' }}>|</span>
-        <img src="/images/logoprocopio.png" alt="Procopio" style={{ height: '28px', objectFit: 'contain' }} />
-        <span style={{ color: '#2a2a2a', margin: '0 14px', fontSize: '20px' }}>|</span>
-        <img src="/images/logobeacharena.png" alt="Beach Arena" style={{ height: '28px', objectFit: 'contain' }} />
+        <img src="/images/logobeyond.png" alt="Beyond" style={{ height: '44px', objectFit: 'contain' }} />
+        <span style={{ color: '#2a2a2a', margin: '0 16px', fontSize: '24px' }}>|</span>
+        <img src="/images/logoprocopio.png" alt="Procopio" style={{ height: '44px', objectFit: 'contain' }} />
+        <span style={{ color: '#2a2a2a', margin: '0 16px', fontSize: '24px' }}>|</span>
+        <img src="/images/logobeacharena.png" alt="Beach Arena" style={{ height: '44px', objectFit: 'contain' }} />
       </div>
 
       {/* Saudação */}
@@ -100,13 +99,10 @@ export function HomePage() {
                   key={mod.id}
                   onClick={() => selectModalidade(mod)}
                   style={{
-                    position: 'relative',
                     display: 'flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '10px',
-                    padding: '20px 12px',
+                    padding: '16px',
                     borderRadius: '16px',
                     border: selected ? '2px solid #cf1b9b' : '1px solid #1e1e1e',
                     background: selected
@@ -121,19 +117,11 @@ export function HomePage() {
                     <img
                       src={icone}
                       alt={mod.nome}
-                      style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+                      style={{ width: '140px', height: '140px', objectFit: 'contain' }}
                     />
                   ) : (
-                    <span style={{ fontSize: '40px' }}>{mod.icone_emoji}</span>
+                    <span style={{ fontSize: '60px' }}>{mod.icone_emoji}</span>
                   )}
-
-                  <span style={{
-                    fontSize: '13px', fontWeight: '600',
-                    color: selected ? '#fcc825' : '#F0F2F5',
-                    textAlign: 'center', lineHeight: '1.3'
-                  }}>
-                    {mod.nome}
-                  </span>
                 </button>
               )
             })}
