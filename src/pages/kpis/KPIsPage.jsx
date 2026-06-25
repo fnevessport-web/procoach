@@ -24,13 +24,13 @@ export function KPIsPage() {
   const { data: kpis, isLoading } = useKPIs({ periodoInicio, periodoFim, modalidadeId: modalidadeId || null })
 
   return (
-    <div className="fade-in">
+    <div className="fade-in" style={{ width: '100%', boxSizing: 'border-box' }}>
       <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', marginBottom: '20px' }}>
         Dashboard KPIs
       </h1>
 
-      {/* Filtros — todos em coluna */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+      {/* Filtros */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', width: '100%', boxSizing: 'border-box' }}>
         <Input type="date" label="De" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)} />
         <Input type="date" label="Até" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} />
         <Select label="Modalidade" value={modalidadeId} onChange={e => setModalidadeId(e.target.value)}>
@@ -40,7 +40,7 @@ export function KPIsPage() {
       </div>
 
       {isLoading ? <Loading /> : kpis ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', boxSizing: 'border-box' }}>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <KpiCard icon={KPI_ICONS.totalAulas} label="Total de Aulas" value={kpis.totalAulas} dot="#fcc825" />
@@ -55,6 +55,7 @@ export function KPIsPage() {
             <div style={{
               padding: '16px', borderRadius: '16px',
               backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)',
+              width: '100%', boxSizing: 'border-box',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
@@ -79,6 +80,7 @@ export function KPIsPage() {
             <div style={{
               padding: '16px', borderRadius: '16px',
               backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)',
+              width: '100%', boxSizing: 'border-box',
             }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5', marginBottom: '12px' }}>
                 🏆 Professores por Aulas
@@ -102,6 +104,7 @@ export function KPIsPage() {
             <div style={{
               padding: '16px', borderRadius: '16px',
               backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)',
+              width: '100%', boxSizing: 'border-box',
             }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5', marginBottom: '12px' }}>
                 📊 Frequência por Modalidade
@@ -110,7 +113,7 @@ export function KPIsPage() {
                 {kpis.porModalidade.map(m => (
                   <div key={m.nome} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{ fontSize: '14px', width: '20px', flexShrink: 0 }}>{m.icone}</span>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                         <span style={{ fontSize: '12px', color: '#F0F2F5' }}>{m.nome}</span>
                         <span style={{ fontSize: '11px', color: '#555' }}>{m.match}/{m.total}</span>
@@ -141,6 +144,7 @@ function KpiCard({ icon, label, value, dot }) {
       backgroundColor: '#1a1a1a',
       border: '1px solid rgba(255,255,255,0.06)',
       display: 'flex', flexDirection: 'column', gap: '8px',
+      boxSizing: 'border-box',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <img src={icon} alt={label} style={{ width: '28px', height: '28px', objectFit: 'contain' }} />

@@ -10,12 +10,6 @@ import { Badge } from '../../components/ui/Badge'
 import { Select, Input } from '../../components/ui/Input'
 import toast from 'react-hot-toast'
 
-const inputStyle = {
-  width: '100%', padding: '10px 14px', borderRadius: '10px',
-  backgroundColor: '#110f0f', border: '1px solid #2a2a2a',
-  color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
-}
-
 export function FinanceiroPage() {
   const [tab, setTab] = useState('novo')
   const [professorId, setProfessorId] = useState('')
@@ -91,7 +85,7 @@ export function FinanceiroPage() {
   }
 
   return (
-    <div className="fade-in">
+    <div className="fade-in" style={{ width: '100%', boxSizing: 'border-box' }}>
       <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', marginBottom: '20px' }}>
         Financeiro
       </h1>
@@ -101,6 +95,7 @@ export function FinanceiroPage() {
         display: 'flex', gap: '4px', marginBottom: '20px',
         padding: '4px', backgroundColor: '#1a1a1a',
         border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px',
+        width: '100%', boxSizing: 'border-box',
       }}>
         {[
           { key: 'novo', label: '🧮 Novo Fechamento' },
@@ -118,16 +113,17 @@ export function FinanceiroPage() {
       </div>
 
       {tab === 'novo' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', boxSizing: 'border-box' }}>
           {/* Card Calcular */}
           <div style={{
             backgroundColor: '#1a1a1a', borderRadius: '16px',
             border: '1px solid rgba(255,255,255,0.06)', padding: '16px',
+            width: '100%', boxSizing: 'border-box', overflow: 'hidden',
           }}>
             <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '14px' }}>
               Calcular Período
             </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
               <Select
                 label="Professor"
                 value={professorId}
@@ -160,6 +156,7 @@ export function FinanceiroPage() {
                   cursor: !professorId ? 'not-allowed' : 'pointer',
                   opacity: !professorId ? 0.6 : 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  boxSizing: 'border-box',
                 }}
               >
                 <Calculator size={16} />
@@ -173,6 +170,7 @@ export function FinanceiroPage() {
             <div style={{
               backgroundColor: '#1a1a1a', borderRadius: '16px',
               border: '1px solid rgba(252,200,37,0.2)', padding: '16px',
+              width: '100%', boxSizing: 'border-box',
             }}>
               <div style={{ textAlign: 'center', marginBottom: '16px' }}>
                 <div style={{ fontSize: '36px', fontWeight: '700', color: '#fcc825' }}>
@@ -220,6 +218,7 @@ export function FinanceiroPage() {
                   color: 'white', fontSize: '14px', fontWeight: '600',
                   cursor: 'pointer', opacity: criar.isPending ? 0.7 : 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  boxSizing: 'border-box',
                 }}
               >
                 <FileText size={16} />
@@ -242,6 +241,7 @@ export function FinanceiroPage() {
                   <div key={f.id} style={{
                     backgroundColor: '#1a1a1a', borderRadius: '14px',
                     border: '1px solid rgba(255,255,255,0.06)', padding: '14px 16px',
+                    width: '100%', boxSizing: 'border-box',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}>
                       <div>
