@@ -6,13 +6,13 @@ import { Bell } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 const ICONES_MODALIDADES = {
-  'Tênis':           '/images/tenis.png',
-  'Padel':           '/images/padel.png',
-  'Pickleball':      '/images/pickleball.png',
-  'Squash':          '/images/squash.png',
-  'Beach Tennis':    '/images/beach%20tennis.png',
-  'Futevôlei':       '/images/futevolei.png',
-  'Vôlei de Praia':  '/images/volei%20de%20praia.png',
+  'Tênis':          '/images/tenis.png',
+  'Padel':          '/images/padel.png',
+  'Pickleball':     '/images/pickleball.png',
+  'Squash':         '/images/squash.png',
+  'Beach Tennis':   '/images/beachtennis.png',
+  'Futevôlei':      '/images/futevolei.png',
+  'Vôlei de Praia': '/images/voleidepraia.png',
 }
 
 export function HomePage() {
@@ -32,23 +32,23 @@ export function HomePage() {
   }
 
   return (
-    <div className="fade-in" style={{ backgroundColor: '#110f0f', minHeight: '100vh', padding: '16px' }}>
+    <div className="fade-in">
 
-      {/* Header com logos */}
+      {/* Logos das empresas */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         gap: '0',
         marginBottom: '24px',
-        padding: '12px 0',
-        borderBottom: '1px solid #2a2a2a'
+        paddingBottom: '16px',
+        borderBottom: '1px solid #1e1e1e'
       }}>
-        <img src="/images/logo beyond.png" alt="Beyond" style={{ height: '32px', objectFit: 'contain' }} />
-        <span style={{ color: '#333', margin: '0 12px', fontSize: '18px' }}>|</span>
-        <img src="/images/logo procopio.png" alt="Procopio" style={{ height: '32px', objectFit: 'contain' }} />
-        <span style={{ color: '#333', margin: '0 12px', fontSize: '18px' }}>|</span>
-        <img src="/images/logo beach arena.png" alt="Beach Arena" style={{ height: '32px', objectFit: 'contain' }} />
+        <img src="/images/logobeyond.png" alt="Beyond" style={{ height: '28px', objectFit: 'contain' }} />
+        <span style={{ color: '#2a2a2a', margin: '0 14px', fontSize: '20px' }}>|</span>
+        <img src="/images/logoprocopio.png" alt="Procopio" style={{ height: '28px', objectFit: 'contain' }} />
+        <span style={{ color: '#2a2a2a', margin: '0 14px', fontSize: '20px' }}>|</span>
+        <img src="/images/logobeacharena.png" alt="Beach Arena" style={{ height: '28px', objectFit: 'contain' }} />
       </div>
 
       {/* Saudação */}
@@ -108,9 +108,7 @@ export function HomePage() {
                     gap: '10px',
                     padding: '20px 12px',
                     borderRadius: '16px',
-                    border: selected
-                      ? '2px solid #cf1b9b'
-                      : '1px solid #1e1e1e',
+                    border: selected ? '2px solid #cf1b9b' : '1px solid #1e1e1e',
                     background: selected
                       ? 'linear-gradient(135deg, rgba(252,200,37,0.08), rgba(207,27,155,0.12))'
                       : '#1a1a1a',
@@ -119,22 +117,11 @@ export function HomePage() {
                     transform: selected ? 'scale(1.02)' : 'scale(1)',
                   }}
                 >
-                  {/* Borda gradiente no hover/selected */}
-                  {selected && (
-                    <div style={{
-                      position: 'absolute', inset: 0, borderRadius: '16px',
-                      background: 'linear-gradient(135deg, #fcc825, #cf1b9b, #430c3a)',
-                      padding: '2px', zIndex: 0,
-                      WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                      WebkitMaskComposite: 'xor',
-                    }} />
-                  )}
-
                   {icone ? (
                     <img
                       src={icone}
                       alt={mod.nome}
-                      style={{ width: '72px', height: '72px', objectFit: 'contain', position: 'relative', zIndex: 1 }}
+                      style={{ width: '80px', height: '80px', objectFit: 'contain' }}
                     />
                   ) : (
                     <span style={{ fontSize: '40px' }}>{mod.icone_emoji}</span>
@@ -143,8 +130,7 @@ export function HomePage() {
                   <span style={{
                     fontSize: '13px', fontWeight: '600',
                     color: selected ? '#fcc825' : '#F0F2F5',
-                    textAlign: 'center', lineHeight: '1.3',
-                    position: 'relative', zIndex: 1
+                    textAlign: 'center', lineHeight: '1.3'
                   }}>
                     {mod.nome}
                   </span>
@@ -158,9 +144,9 @@ export function HomePage() {
       {/* Acesso Rápido */}
       <QuickActions role={role} navigate={navigate} />
 
-      {/* Footer fnevessport */}
+      {/* Footer */}
       <div style={{ textAlign: 'center', marginTop: '32px', paddingBottom: '8px' }}>
-        <span style={{ fontSize: '10px', color: '#2a2a2a', letterSpacing: '2px' }}>
+        <span style={{ fontSize: '10px', color: '#222', letterSpacing: '2px' }}>
           POWERED BY FNEVESSPORT
         </span>
       </div>

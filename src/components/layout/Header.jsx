@@ -18,9 +18,8 @@ export function Header() {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', maxWidth: '1024px', margin: '0 auto' }}>
 
-        {/* Logo ProCoach */}
         <img
-          src="/images/logo procoach.png"
+          src="/images/logoprocoach.png"
           alt="ProCoach"
           style={{ height: '28px', objectFit: 'contain' }}
         />
