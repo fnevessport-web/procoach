@@ -219,7 +219,7 @@ export function TurmasPage({ onIrParaProfessores }) {
                   <button
                     type="button"
                     onClick={() => { setModal(false); onIrParaProfessores?.() }}
-                    className="style={{ color: '#fcc825' }} underline hover:text-[#00A884]"
+                    style={{ color: '#fcc825' }}
                   >
                     Cadastrar professor
                   </button>
@@ -238,13 +238,27 @@ export function TurmasPage({ onIrParaProfessores }) {
                   <button
                     key={aluno.id}
                     onClick={() => toggleAluno(aluno.id)}
-                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-left ${
-                      alunosSelecionados.includes(aluno.id)
-                        ? 'style={{ background: 'linear-gradient(135deg, #fcc825, #cf1b9b)' }}/10 style={{ borderColor: 'rgba(252,200,37,0.4)' }} style={{ color: '#fcc825' }}'
-                        : 'bg-[#0F1117] border-[#2A2D3E] text-[#8B8FA8]'
-                    }`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 12px',
+                      borderRadius: '12px',
+                      border: alunosSelecionados.includes(aluno.id)
+                        ? '1px solid rgba(252,200,37,0.4)'
+                        : '1px solid #2A2D3E',
+                      background: alunosSelecionados.includes(aluno.id)
+                        ? 'rgba(252,200,37,0.1)'
+                        : '#0F1117',
+                      color: alunosSelecionados.includes(aluno.id) ? '#fcc825' : '#8B8FA8',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                    }}
                   >
-                    <span className="text-sm">{aluno.nome}</span>
+                    <span style={{ fontSize: '14px' }}>{aluno.nome}</span>
                     <span>{alunosSelecionados.includes(aluno.id) ? '✓' : '+'}</span>
                   </button>
                 ))}
