@@ -1,45 +1,40 @@
 import { useState, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
+import { MessageCircle } from 'lucide-react'
 
 const BANCOS = [
   'Itaú', 'Bradesco', 'Santander', 'Banco do Brasil', 'Caixa Econômica',
   'Nubank', 'Inter', 'C6 Bank', 'BTG', 'Sicredi', 'Sicoob', 'Outro'
 ]
 
-async function inserirProfessor(payload) {
-  const { data, error } = await supabase
-    .from('professores')
-    .insert(payload)
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
-async function atualizarProfessor(id, payload) {
-  const { data, error } = await supabase
-    .from('professores')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
-async function removerProfessor(id) {
-  const { error } = await supabase
-    .from('professores')
-    .delete()
-    .eq('id', id)
-  if (error) throw error
+const inputStyle = {
+  width: '100%', padding: '10px 14px', borderRadius: '10px',
+  backgroundColor: '#110f0f', border: '1px solid #2a2a2a',
+  color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
 }
 
 const FORM_VAZIO = {
   id: null, nome: '', email: '', telefone: '',
   modalidade_id: '', valor_hora_aula: '', ativo: true,
   banco: '', agencia: '', conta: '', tipo_conta: 'corrente', pix: '',
+}
+
+async function inserirProfessor(payload) {
+  const { data, error } = await supabase.from('professores').insert(payload).select().single()
+  if (error) throw error
+  return data
+}
+
+async function atualizarProfessor(id, payload) {
+  const { data, error } = await supabase.from('professores').update(payload).eq('id', id).select().single()
+  if (error) throw error
+  return data
+}
+
+async function removerProfessor(id) {
+  const { error } = await supabase.from('professores').delete().eq('id', id)
+  if (error) throw error
 }
 
 export default function ProfessoresPage() {
@@ -49,9 +44,7 @@ export default function ProfessoresPage() {
     queryKey: ['professores'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('professores')
-        .select('*, modalidades(nome)')
-        .order('nome')
+        .from('professores').select('*, modalidades(nome)').order('nome')
       if (error) throw error
       return data || []
     },
@@ -60,10 +53,7 @@ export default function ProfessoresPage() {
   const { data: modalidades = [] } = useQuery({
     queryKey: ['modalidades'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('modalidades')
-        .select('*')
-        .order('nome')
+      const { data, error } = await supabase.from('modalidades').select('*').order('nome')
       if (error) throw error
       return data || []
     },
@@ -75,82 +65,46 @@ export default function ProfessoresPage() {
   const [removendo, setRemovendo] = useState(false)
   const [form, setForm] = useState(FORM_VAZIO)
 
-const fecharModal = useCallback(() => {
+  const fecharModal = useCallback(() => {
     setModalAberto(false)
-    setTimeout(() => {
-      setSalvando(false)
-      setRemovendo(false)
-    }, 300)
+    setTimeout(() => { setSalvando(false); setRemovendo(false) }, 300)
   }, [])
 
   function abrirCriar() {
-    setSalvando(false)
-    setRemovendo(false)
-    setModoEdicao(false)
-    setForm({ ...FORM_VAZIO })
-    setModalAberto(true)
+    setSalvando(false); setRemovendo(false); setModoEdicao(false)
+    setForm({ ...FORM_VAZIO }); setModalAberto(true)
   }
 
   function abrirEditar(prof) {
-    setSalvando(false)
-    setRemovendo(false)
-    setModoEdicao(true)
+    setSalvando(false); setRemovendo(false); setModoEdicao(true)
     setForm({
-      id: prof.id,
-      nome: prof.nome || '',
-      email: prof.email || '',
-      telefone: prof.telefone || '',
-      modalidade_id: prof.modalidade_id || '',
-      valor_hora_aula: prof.valor_hora_aula || '',
-      ativo: prof.ativo !== false,
-      banco: prof.banco || '',
-      agencia: prof.agencia || '',
-      conta: prof.conta || '',
-      tipo_conta: prof.tipo_conta || 'corrente',
-      pix: prof.pix || '',
+      id: prof.id, nome: prof.nome || '', email: prof.email || '',
+      telefone: prof.telefone || '', modalidade_id: prof.modalidade_id || '',
+      valor_hora_aula: prof.valor_hora_aula || '', ativo: prof.ativo !== false,
+      banco: prof.banco || '', agencia: prof.agencia || '',
+      conta: prof.conta || '', tipo_conta: prof.tipo_conta || 'corrente', pix: prof.pix || '',
     })
     setModalAberto(true)
   }
 
-  function set(campo, valor) {
-    setForm(f => ({ ...f, [campo]: valor }))
-  }
+  function set(campo, valor) { setForm(f => ({ ...f, [campo]: valor })) }
 
   async function handleSalvar() {
     if (salvando || removendo) return
-    if (!form.nome.trim()) {
-      alert('Nome é obrigatório.')
-      return
-    }
-
+    if (!form.nome.trim()) { alert('Nome é obrigatório.'); return }
     setSalvando(true)
-
     const payload = {
-      nome: form.nome.trim(),
-      email: form.email || null,
-      telefone: form.telefone || null,
+      nome: form.nome.trim(), email: form.email || null, telefone: form.telefone || null,
       modalidade_id: form.modalidade_id || null,
-      valor_hora_aula: form.valor_hora_aula
-        ? parseFloat(String(form.valor_hora_aula).replace(',', '.'))
-        : null,
-      ativo: form.ativo,
-      banco: form.banco || null,
-      agencia: form.agencia || null,
-      conta: form.conta || null,
-      tipo_conta: form.tipo_conta || 'corrente',
-      pix: form.pix || null,
+      valor_hora_aula: form.valor_hora_aula ? parseFloat(String(form.valor_hora_aula).replace(',', '.')) : null,
+      ativo: form.ativo, banco: form.banco || null, agencia: form.agencia || null,
+      conta: form.conta || null, tipo_conta: form.tipo_conta || 'corrente', pix: form.pix || null,
     }
-
     try {
-      if (modoEdicao) {
-        await atualizarProfessor(form.id, payload)
-      } else {
-        await inserirProfessor(payload)
-      }
+      if (modoEdicao) { await atualizarProfessor(form.id, payload) } else { await inserirProfessor(payload) }
       queryClient.invalidateQueries({ queryKey: ['professores'] })
       fecharModal()
     } catch (err) {
-      console.error('Erro ao salvar:', err)
       alert('Erro ao salvar: ' + (err.message || 'Tente novamente.'))
       setSalvando(false)
     }
@@ -159,194 +113,180 @@ const fecharModal = useCallback(() => {
   async function handleRemover() {
     if (!form.id || salvando || removendo) return
     if (!confirm('Remover este professor?')) return
-
     setRemovendo(true)
-
     try {
       await removerProfessor(form.id)
       queryClient.invalidateQueries({ queryKey: ['professores'] })
       fecharModal()
     } catch (err) {
-      console.error('Erro ao remover:', err)
       alert('Erro ao remover: ' + (err.message || 'Tente novamente.'))
       setRemovendo(false)
     }
   }
 
+  function abrirWhatsApp(telefone) {
+    const numero = telefone.replace(/\D/g, '')
+    window.open(`https://wa.me/55${numero}`, '_blank')
+  }
+
   const ocupado = salvando || removendo
 
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold text-white">Professores</h1>
-        <button
-          onClick={abrirCriar}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm"
-        >
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>Professores</h2>
+        <button onClick={abrirCriar} style={{
+          padding: '8px 16px', borderRadius: '10px', border: 'none',
+          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+          color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+        }}>
           + Novo Professor
         </button>
       </div>
 
       {isLoading ? (
-        <p className="text-gray-400">Carregando...</p>
+        <p style={{ color: '#555', fontSize: '14px' }}>Carregando...</p>
       ) : professores.length === 0 ? (
-        <p className="text-gray-400">Nenhum professor cadastrado.</p>
+        <p style={{ color: '#555', fontSize: '14px' }}>Nenhum professor cadastrado.</p>
       ) : (
-        <div className="space-y-2">
-          {professores.map((prof) => (
-            <div
-              key={prof.id}
-              onClick={() => abrirEditar(prof)}
-              className="bg-gray-800 rounded-lg p-3 flex justify-between items-center cursor-pointer hover:bg-gray-700"
-            >
-              <div>
-                <p className="text-white font-medium">{prof.nome}</p>
-                <p className="text-gray-400 text-sm">{prof.modalidades?.nome || '—'}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {professores.map(prof => (
+            <div key={prof.id} style={{
+              backgroundColor: '#1a1a1a', borderRadius: '12px',
+              border: '1px solid rgba(255,255,255,0.06)',
+              padding: '14px 16px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <div onClick={() => abrirEditar(prof)} style={{ flex: 1, cursor: 'pointer' }}>
+                <p style={{ color: '#F0F2F5', fontWeight: '600', fontSize: '14px', margin: 0 }}>{prof.nome}</p>
+                <p style={{ color: '#555', fontSize: '12px', margin: '2px 0 0' }}>
+                  {prof.modalidades?.nome || '—'}
+                </p>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full ${prof.ativo ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
-                {prof.ativo ? 'Ativo' : 'Inativo'}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {prof.telefone && (
+                  <button
+                    onClick={() => abrirWhatsApp(prof.telefone)}
+                    style={{
+                      width: '32px', height: '32px', borderRadius: '8px',
+                      backgroundColor: 'rgba(37,211,102,0.15)',
+                      border: '1px solid rgba(37,211,102,0.3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', flexShrink: 0,
+                    }}
+                  >
+                    <MessageCircle size={14} color="#25D166" />
+                  </button>
+                )}
+                <span style={{
+                  fontSize: '11px', padding: '4px 10px', borderRadius: '20px', fontWeight: '500',
+                  backgroundColor: prof.ativo ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                  color: prof.ativo ? '#22c55e' : '#EF4444',
+                  border: `1px solid ${prof.ativo ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                }}>
+                  {prof.ativo ? 'Ativo' : 'Inativo'}
+                </span>
+              </div>
             </div>
           ))}
         </div>
       )}
 
+      {/* Modal */}
       {modalAberto && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-end justify-center z-50">
-          <div className="bg-gray-900 w-full max-w-lg rounded-t-2xl p-6 space-y-3 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold text-white mb-2">
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50,
+        }}>
+          <div style={{
+            backgroundColor: '#1a1a1a', width: '100%', maxWidth: '480px',
+            borderRadius: '20px 20px 0 0', padding: '24px',
+            maxHeight: '90vh', overflowY: 'auto',
+            border: '1px solid rgba(255,255,255,0.06)',
+          }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#F0F2F5', marginBottom: '16px' }}>
               {modoEdicao ? 'Editar Professor' : 'Novo Professor'}
             </h2>
 
-            <input
-              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-              placeholder="Nome completo *"
-              value={form.nome}
-              onChange={e => set('nome', e.target.value)}
-              disabled={ocupado}
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <input style={inputStyle} placeholder="Nome completo *"
+                value={form.nome} onChange={e => set('nome', e.target.value)} disabled={ocupado} />
 
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-                placeholder="E-mail"
-                value={form.email}
-                onChange={e => set('email', e.target.value)}
-                disabled={ocupado}
-              />
-              <input
-                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-                placeholder="Telefone"
-                value={form.telefone}
-                onChange={e => set('telefone', e.target.value)}
-                disabled={ocupado}
-              />
-            </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <input style={inputStyle} placeholder="E-mail"
+                  value={form.email} onChange={e => set('email', e.target.value)} disabled={ocupado} />
+                <input style={inputStyle} placeholder="Telefone (WhatsApp)"
+                  value={form.telefone} onChange={e => set('telefone', e.target.value)} disabled={ocupado} />
+              </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-                value={form.modalidade_id}
-                onChange={e => set('modalidade_id', e.target.value)}
-                disabled={ocupado}
-              >
-                <option value="">Modalidade</option>
-                {modalidades.map(m => (
-                  <option key={m.id} value={m.id}>{m.nome}</option>
-                ))}
-              </select>
-              <input
-                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-                placeholder="Valor Hora/Aula (R$)"
-                type="number"
-                value={form.valor_hora_aula}
-                onChange={e => set('valor_hora_aula', e.target.value)}
-                disabled={ocupado}
-              />
-            </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <select style={inputStyle} value={form.modalidade_id}
+                  onChange={e => set('modalidade_id', e.target.value)} disabled={ocupado}>
+                  <option value="">Modalidade</option>
+                  {modalidades.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                </select>
+                <input style={inputStyle} placeholder="Valor/Aula (R$)" type="number"
+                  value={form.valor_hora_aula} onChange={e => set('valor_hora_aula', e.target.value)} disabled={ocupado} />
+              </div>
 
-            <p className="text-gray-400 text-xs font-semibold pt-1">DADOS BANCÁRIOS</p>
+              <p style={{ fontSize: '11px', color: '#555', fontWeight: '600', letterSpacing: '1px', margin: '4px 0 0' }}>
+                DADOS BANCÁRIOS
+              </p>
 
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-                value={form.banco}
-                onChange={e => set('banco', e.target.value)}
-                disabled={ocupado}
-              >
-                <option value="">Banco</option>
-                {BANCOS.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
-              <input
-                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-                placeholder="Agência"
-                value={form.agencia}
-                onChange={e => set('agencia', e.target.value)}
-                disabled={ocupado}
-              />
-            </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <select style={inputStyle} value={form.banco}
+                  onChange={e => set('banco', e.target.value)} disabled={ocupado}>
+                  <option value="">Banco</option>
+                  {BANCOS.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+                <input style={inputStyle} placeholder="Agência"
+                  value={form.agencia} onChange={e => set('agencia', e.target.value)} disabled={ocupado} />
+              </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-                placeholder="Conta"
-                value={form.conta}
-                onChange={e => set('conta', e.target.value)}
-                disabled={ocupado}
-              />
-              <select
-                className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-                value={form.tipo_conta}
-                onChange={e => set('tipo_conta', e.target.value)}
-                disabled={ocupado}
-              >
-                <option value="corrente">Corrente</option>
-                <option value="poupanca">Poupança</option>
-              </select>
-            </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <input style={inputStyle} placeholder="Conta"
+                  value={form.conta} onChange={e => set('conta', e.target.value)} disabled={ocupado} />
+                <select style={inputStyle} value={form.tipo_conta}
+                  onChange={e => set('tipo_conta', e.target.value)} disabled={ocupado}>
+                  <option value="corrente">Corrente</option>
+                  <option value="poupanca">Poupança</option>
+                </select>
+              </div>
 
-            <input
-              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
-              placeholder="Chave PIX"
-              value={form.pix}
-              onChange={e => set('pix', e.target.value)}
-              disabled={ocupado}
-            />
+              <input style={inputStyle} placeholder="Chave PIX"
+                value={form.pix} onChange={e => set('pix', e.target.value)} disabled={ocupado} />
 
-            <label className="flex items-center gap-2 text-sm text-gray-300">
-              <input
-                type="checkbox"
-                checked={form.ativo}
-                onChange={e => set('ativo', e.target.checked)}
-                disabled={ocupado}
-              />
-              Professor ativo
-            </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#888' }}>
+                <input type="checkbox" checked={form.ativo}
+                  onChange={e => set('ativo', e.target.checked)} disabled={ocupado} />
+                Professor ativo
+              </label>
 
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={fecharModal}
-                disabled={ocupado}
-                className="flex-1 bg-gray-700 text-white py-2 rounded-lg text-sm disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              {modoEdicao && (
-                <button
-                  onClick={handleRemover}
-                  disabled={ocupado}
-                  className="flex-1 bg-red-700 hover:bg-red-600 text-white py-2 rounded-lg text-sm disabled:opacity-50"
-                >
-                  {removendo ? 'Removendo...' : 'Remover'}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <button onClick={fecharModal} disabled={ocupado} style={{
+                  flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #2a2a2a',
+                  backgroundColor: 'transparent', color: '#888', fontSize: '13px', cursor: 'pointer',
+                }}>
+                  Cancelar
                 </button>
-              )}
-              <button
-                onClick={handleSalvar}
-                disabled={ocupado || !form.nome.trim()}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm disabled:opacity-50"
-              >
-                {salvando ? 'Salvando...' : modoEdicao ? 'Salvar' : 'Cadastrar'}
-              </button>
+                {modoEdicao && (
+                  <button onClick={handleRemover} disabled={ocupado} style={{
+                    flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
+                    backgroundColor: 'rgba(239,68,68,0.15)', color: '#EF4444',
+                    fontSize: '13px', cursor: 'pointer',
+                  }}>
+                    {removendo ? 'Removendo...' : 'Remover'}
+                  </button>
+                )}
+                <button onClick={handleSalvar} disabled={ocupado || !form.nome.trim()} style={{
+                  flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
+                  background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                  color: 'white', fontSize: '13px', fontWeight: '600',
+                  cursor: ocupado ? 'not-allowed' : 'pointer', opacity: ocupado ? 0.7 : 1,
+                }}>
+                  {salvando ? 'Salvando...' : modoEdicao ? 'Salvar' : 'Cadastrar'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

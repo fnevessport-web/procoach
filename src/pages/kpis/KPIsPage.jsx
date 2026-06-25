@@ -1,12 +1,20 @@
 import { useState } from 'react'
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
-import { BarChart3, TrendingUp, TrendingDown, Users, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
+import { format, startOfMonth, endOfMonth } from 'date-fns'
+import { TrendingUp, TrendingDown } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { useKPIs } from '../../hooks/useKPIs'
 import { useModalidades } from '../../hooks/useModalidades'
-import { Card, CardBody, CardHeader } from '../../components/ui/Card'
 import { Input, Select } from '../../components/ui/Input'
 import { Loading } from '../../components/ui/Loading'
+
+const KPI_ICONS = {
+  totalAulas:      '/images/totaldeaulas.png',
+  comMatch:        '/images/commatch.png',
+  divergencias:    '/images/divergencia.png',
+  taxaPresenca:    '/images/taxadepresença.png',
+  naoDadas:        '/images/naodadas.png',
+  substituicoes:   '/images/substituição.png',
+}
 
 export function KPIsPage() {
   const [periodoInicio, setPeriodoInicio] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
@@ -17,108 +25,117 @@ export function KPIsPage() {
 
   return (
     <div className="fade-in">
-      <h1 className="text-xl font-bold text-[#F0F2F5] mb-5">Dashboard KPIs</h1>
+      <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', marginBottom: '20px' }}>
+        Dashboard KPIs
+      </h1>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-5">
-        <div className="col-span-2 sm:col-span-1">
-          <Input type="date" label="De" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)} />
-        </div>
-        <div>
+      {/* Filtros */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+        <Input type="date" label="De" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           <Input type="date" label="Até" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} />
-        </div>
-        <div>
           <Select label="Modalidade" value={modalidadeId} onChange={e => setModalidadeId(e.target.value)}>
             <option value="">Todas</option>
-            {modalidades?.map(m => <option key={m.id} value={m.id}>{m.icone_emoji} {m.nome}</option>)}
+            {modalidades?.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </Select>
         </div>
       </div>
 
       {isLoading ? <Loading /> : kpis ? (
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <KpiCard icon="📅" label="Total de Aulas" value={kpis.totalAulas} color="#3B82F6" />
-            <KpiCard icon="✅" label="Com Match" value={kpis.totalMatch} color="#10B981" />
-            <KpiCard icon="🔴" label="Divergências" value={kpis.totalDivergencias} color="#EF4444" />
-            <KpiCard icon="👥" label="Taxa Presença" value={`${kpis.taxaPresenca}%`} color="#00D4AA" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+          {/* Cards KPI */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <KpiCard icon={KPI_ICONS.totalAulas} label="Total de Aulas" value={kpis.totalAulas} color="#fcc825" />
+            <KpiCard icon={KPI_ICONS.comMatch} label="Com Match" value={kpis.totalMatch} color="#22c55e" />
+            <KpiCard icon={KPI_ICONS.divergencias} label="Divergências" value={kpis.totalDivergencias} color="#EF4444" />
+            <KpiCard icon={KPI_ICONS.taxaPresenca} label="Taxa Presença" value={`${kpis.taxaPresenca}%`} color="#cf1b9b" />
+            <KpiCard icon={KPI_ICONS.naoDadas} label="Não Dadas" value={kpis.totalNaoDadas} color="#d28c3c" />
+            <KpiCard icon={KPI_ICONS.substituicoes} label="Substituições" value={kpis.totalSubs} color="#7c3aed" />
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
-            <KpiCard icon="❌" label="Não Dadas" value={kpis.totalNaoDadas} color="#F59E0B" />
-            <KpiCard icon="🔄" label="Substituições" value={kpis.totalSubs} color="#8B5CF6" />
-          </div>
-
+          {/* Comparativo */}
           {kpis.variacaoPerc !== null && (
-            <Card className="border-[#00D4AA]/20">
-              <CardBody>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-[#8B8FA8]">Comparativo vs. mês anterior</div>
-                    <div className="text-sm font-medium text-[#F0F2F5] mt-1">
-                      {kpis.matchAtual} aulas com match vs {kpis.matchAnterior} anterior
-                    </div>
-                  </div>
-                  <div className={`flex items-center gap-1 text-lg font-bold ${kpis.variacaoPerc >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
-                    {kpis.variacaoPerc >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
-                    {kpis.variacaoPerc > 0 ? '+' : ''}{kpis.variacaoPerc}%
+            <div style={{
+              padding: '16px', borderRadius: '16px',
+              backgroundColor: '#1a1a1a',
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '12px', color: '#555' }}>Comparativo vs. mês anterior</div>
+                  <div style={{ fontSize: '13px', color: '#F0F2F5', marginTop: '4px' }}>
+                    {kpis.matchAtual} aulas vs {kpis.matchAnterior} anterior
                   </div>
                 </div>
-              </CardBody>
-            </Card>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                  fontSize: '18px', fontWeight: '700',
+                  color: kpis.variacaoPerc >= 0 ? '#22c55e' : '#EF4444'
+                }}>
+                  {kpis.variacaoPerc >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
+                  {kpis.variacaoPerc > 0 ? '+' : ''}{kpis.variacaoPerc}%
+                </div>
+              </div>
+            </div>
           )}
 
+          {/* Gráfico professores */}
           {kpis.profsMaisAulas?.length > 0 && (
-            <Card>
-              <CardHeader>
-                <span className="text-sm font-semibold text-[#F0F2F5]">🏆 Professores por Aulas (Match)</span>
-              </CardHeader>
-              <CardBody>
-                <ResponsiveContainer width="100%" height={180}>
-                  <BarChart data={kpis.profsMaisAulas} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                    <XAxis dataKey="nome" tick={{ fill: '#8B8FA8', fontSize: 11 }} tickFormatter={v => v?.split(' ')[0]} />
-                    <YAxis tick={{ fill: '#8B8FA8', fontSize: 11 }} />
-                    <Tooltip
-                      contentStyle={{ background: '#1A1D27', border: '1px solid #2A2D3E', borderRadius: 8 }}
-                      labelStyle={{ color: '#F0F2F5' }}
-                      itemStyle={{ color: '#00D4AA' }}
-                    />
-                    <Bar dataKey="total" fill="#00D4AA" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardBody>
-            </Card>
+            <div style={{
+              padding: '16px', borderRadius: '16px',
+              backgroundColor: '#1a1a1a',
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5', marginBottom: '12px' }}>
+                🏆 Professores por Aulas
+              </div>
+              <ResponsiveContainer width="100%" height={160}>
+                <BarChart data={kpis.profsMaisAulas} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                  <XAxis dataKey="nome" tick={{ fill: '#555', fontSize: 10 }} tickFormatter={v => v?.split(' ')[0]} />
+                  <YAxis tick={{ fill: '#555', fontSize: 10 }} />
+                  <Tooltip
+                    contentStyle={{ background: '#1a1a1a', border: '1px solid #222', borderRadius: 8 }}
+                    labelStyle={{ color: '#F0F2F5' }}
+                    itemStyle={{ color: '#fcc825' }}
+                  />
+                  <Bar dataKey="total" fill="#fcc825" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
 
+          {/* Por modalidade */}
           {kpis.porModalidade?.length > 0 && (
-            <Card>
-              <CardHeader>
-                <span className="text-sm font-semibold text-[#F0F2F5]">📊 Frequência por Modalidade</span>
-              </CardHeader>
-              <CardBody>
-                <div className="flex flex-col gap-2">
-                  {kpis.porModalidade.map(m => (
-                    <div key={m.nome} className="flex items-center gap-3">
-                      <span className="text-base w-6 flex-shrink-0">{m.icone}</span>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-[#F0F2F5]">{m.nome}</span>
-                          <span className="text-xs text-[#8B8FA8]">{m.match}/{m.total}</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-[#2A2D3E] overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{
-                              width: `${m.total > 0 ? (m.match / m.total) * 100 : 0}%`,
-                              backgroundColor: m.cor || '#00D4AA'
-                            }}
-                          />
-                        </div>
+            <div style={{
+              padding: '16px', borderRadius: '16px',
+              backgroundColor: '#1a1a1a',
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5', marginBottom: '12px' }}>
+                📊 Frequência por Modalidade
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {kpis.porModalidade.map(m => (
+                  <div key={m.nome} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '14px', width: '20px', flexShrink: 0 }}>{m.icone}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '12px', color: '#F0F2F5' }}>{m.nome}</span>
+                        <span style={{ fontSize: '11px', color: '#555' }}>{m.match}/{m.total}</span>
+                      </div>
+                      <div style={{ height: '4px', borderRadius: '2px', backgroundColor: '#222' }}>
+                        <div style={{
+                          height: '100%', borderRadius: '2px',
+                          width: `${m.total > 0 ? (m.match / m.total) * 100 : 0}%`,
+                          background: 'linear-gradient(90deg, #fcc825, #cf1b9b)',
+                        }} />
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardBody>
-            </Card>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       ) : null}
@@ -128,13 +145,18 @@ export function KPIsPage() {
 
 function KpiCard({ icon, label, value, color }) {
   return (
-    <div className="bg-[#1A1D27] border border-[#2A2D3E] rounded-2xl p-4">
-      <div className="flex items-start justify-between mb-2">
-        <span className="text-2xl">{icon}</span>
-        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+    <div style={{
+      padding: '16px', borderRadius: '16px',
+      backgroundColor: '#1a1a1a',
+      border: '1px solid rgba(255,255,255,0.06)',
+      display: 'flex', flexDirection: 'column', gap: '8px',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <img src={icon} alt={label} style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: color }} />
       </div>
-      <div className="text-2xl font-bold" style={{ color }}>{value}</div>
-      <div className="text-xs text-[#8B8FA8] mt-0.5">{label}</div>
+      <div style={{ fontSize: '26px', fontWeight: '700', color }}>{value}</div>
+      <div style={{ fontSize: '11px', color: '#555' }}>{label}</div>
     </div>
   )
 }
