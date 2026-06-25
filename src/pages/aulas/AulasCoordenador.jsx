@@ -4,8 +4,6 @@ import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, CheckCircle, AlertTriangle } from 'lucide-react'
 import { useAulas, useConfirmarAulaCoordenador } from '../../hooks/useAulas'
 import useAppStore from '../../store/useAppStore'
-import { Card, CardBody } from '../../components/ui/Card'
-import { Button } from '../../components/ui/Button'
 import { StatusBadge } from '../../components/ui/Badge'
 import { Loading, EmptyState } from '../../components/ui/Loading'
 
@@ -22,6 +20,7 @@ export function AulasCoordenador() {
 
   const dataObj = new Date(data + 'T12:00:00')
   const label = format(dataObj, "EEEE, d 'de' MMMM", { locale: ptBR })
+  const isHoje = data === format(new Date(), 'yyyy-MM-dd')
 
   function navData(dir) {
     const d = dir > 0 ? addDays(dataObj, 1) : subDays(dataObj, 1)
@@ -43,24 +42,42 @@ export function AulasCoordenador() {
 
   return (
     <div className="fade-in">
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-bold text-[#F0F2F5]">Confirmação de Aulas</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
+          Confirmação de Aulas
+        </h2>
         {modalidadeSelecionada && (
-          <span className="text-sm text-[#00D4AA]">{modalidadeSelecionada.icone_emoji} {modalidadeSelecionada.nome}</span>
+          <span style={{ fontSize: '13px', color: '#fcc825' }}>
+            {modalidadeSelecionada.icone_emoji} {modalidadeSelecionada.nome}
+          </span>
         )}
       </div>
 
-      <div className="flex items-center justify-between bg-[#1A1D27] border border-[#2A2D3E] rounded-xl px-4 py-3 mb-5">
-        <button onClick={() => navData(-1)} className="p-1 text-[#8B8FA8] hover:text-[#F0F2F5]">
+      {/* Navegador de data */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: '12px', padding: '12px 16px', marginBottom: '16px',
+      }}>
+        <button onClick={() => navData(-1)} style={{
+          background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px',
+        }}>
           <ChevronLeft size={20} />
         </button>
-        <div className="text-center">
-          <div className="text-sm font-semibold text-[#F0F2F5] capitalize">{label}</div>
-          <button onClick={() => setData(format(new Date(), 'yyyy-MM-dd'))} className="text-xs text-[#00D4AA]">
-            Hoje
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', textTransform: 'capitalize' }}>
+            {label}
+          </div>
+          <button onClick={() => setData(format(new Date(), 'yyyy-MM-dd'))} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: '12px', color: isHoje ? '#fcc825' : '#555', marginTop: '2px',
+          }}>
+            {isHoje ? 'Hoje' : 'Ir para hoje'}
           </button>
         </div>
-        <button onClick={() => navData(1)} className="p-1 text-[#8B8FA8] hover:text-[#F0F2F5]">
+        <button onClick={() => navData(1)} style={{
+          background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px',
+        }}>
           <ChevronRight size={20} />
         </button>
       </div>
@@ -68,56 +85,83 @@ export function AulasCoordenador() {
       {isLoading ? <Loading /> : !aulasFiltradas?.length ? (
         <EmptyState icon="📅" title="Nenhuma aula encontrada" />
       ) : (
-        <div className="flex flex-col gap-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {aulasFiltradas.map(aula => {
             const podeConfirmar = !['match', 'nao_dada'].includes(aula.status)
-            const isLoading = loadingId === aula.id
+            const carregando = loadingId === aula.id
+            const isDivergencia = aula.status === 'divergencia'
 
             return (
-              <Card key={aula.id} className={aula.status === 'divergencia' ? 'border-[#EF4444]/50' : ''}>
-                <CardBody>
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-base">{aula.turmas?.modalidades?.icone_emoji}</span>
-                        <span className="font-semibold text-[#F0F2F5]">{aula.turmas?.nome}</span>
-                      </div>
-                      <div className="text-xs text-[#8B8FA8]">
-                        Prof: {aula.professores?.nome} • {aula.turmas?.horario_inicio?.slice(0, 5)}–{aula.turmas?.horario_fim?.slice(0, 5)}
-                      </div>
+              <div key={aula.id} style={{
+                backgroundColor: '#1a1a1a',
+                borderRadius: '14px',
+                border: isDivergencia
+                  ? '1px solid rgba(239,68,68,0.4)'
+                  : '1px solid rgba(255,255,255,0.06)',
+                padding: '14px 16px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <span>{aula.turmas?.modalidades?.icone_emoji}</span>
+                      <span style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '14px' }}>
+                        {aula.turmas?.nome}
+                      </span>
                     </div>
-                    <StatusBadge status={aula.status} />
+                    <div style={{ fontSize: '12px', color: '#555' }}>
+                      Prof: {aula.professores?.nome} • {aula.turmas?.horario_inicio?.slice(0, 5)}–{aula.turmas?.horario_fim?.slice(0, 5)}
+                    </div>
                   </div>
+                  <StatusBadge status={aula.status} />
+                </div>
 
-                  {aula.status === 'divergencia' && (
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-[#EF4444]/10 mb-3">
-                      <AlertTriangle size={14} className="text-[#EF4444]" />
-                      <span className="text-xs text-[#EF4444]">Divergência detectada — requer atenção</span>
-                    </div>
-                  )}
+                {isDivergencia && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '8px 12px', borderRadius: '8px',
+                    backgroundColor: 'rgba(239,68,68,0.1)', marginBottom: '10px',
+                  }}>
+                    <AlertTriangle size={14} color="#EF4444" />
+                    <span style={{ fontSize: '12px', color: '#EF4444' }}>
+                      Divergência detectada — requer atenção
+                    </span>
+                  </div>
+                )}
 
-                  {podeConfirmar && (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleConfirmar(aula.id, true)}
-                        loading={isLoading}
-                        className="flex-1"
-                      >
-                        <CheckCircle size={14} /> Confirmar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => handleConfirmar(aula.id, false)}
-                        loading={isLoading}
-                      >
-                        <AlertTriangle size={14} /> Divergência
-                      </Button>
-                    </div>
-                  )}
-                </CardBody>
-              </Card>
+                {podeConfirmar && (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => handleConfirmar(aula.id, true)}
+                      disabled={carregando}
+                      style={{
+                        flex: 1, padding: '10px', borderRadius: '10px', border: 'none',
+                        background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                        color: 'white', fontSize: '13px', fontWeight: '600',
+                        cursor: carregando ? 'not-allowed' : 'pointer',
+                        opacity: carregando ? 0.7 : 1,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                      }}
+                    >
+                      <CheckCircle size={14} />
+                      {carregando ? 'Aguarde...' : 'Confirmar'}
+                    </button>
+                    <button
+                      onClick={() => handleConfirmar(aula.id, false)}
+                      disabled={carregando}
+                      style={{
+                        padding: '10px 14px', borderRadius: '10px', border: 'none',
+                        backgroundColor: 'rgba(239,68,68,0.15)',
+                        color: '#EF4444', fontSize: '13px', fontWeight: '600',
+                        cursor: carregando ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                      }}
+                    >
+                      <AlertTriangle size={14} />
+                      Divergência
+                    </button>
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>

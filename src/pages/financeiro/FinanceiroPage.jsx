@@ -1,17 +1,20 @@
 import { useState } from 'react'
-import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { Calculator, DollarSign, CheckCircle, FileText } from 'lucide-react'
+import { format, startOfMonth, endOfMonth } from 'date-fns'
+import { Calculator, FileText, CheckCircle } from 'lucide-react'
 import { useProfessores } from '../../hooks/useProfessores'
 import {
   useFechamentos, useCalcularFechamento, useCriarFechamento, useAtualizarFechamento
 } from '../../hooks/useFinanceiro'
-import { Card, CardBody, CardHeader } from '../../components/ui/Card'
-import { Button } from '../../components/ui/Button'
-import { Select, Input } from '../../components/ui/Input'
-import { Badge } from '../../components/ui/Badge'
 import { Loading, EmptyState } from '../../components/ui/Loading'
+import { Badge } from '../../components/ui/Badge'
+import { Select, Input } from '../../components/ui/Input'
 import toast from 'react-hot-toast'
+
+const inputStyle = {
+  width: '100%', padding: '10px 14px', borderRadius: '10px',
+  backgroundColor: '#110f0f', border: '1px solid #2a2a2a',
+  color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+}
 
 export function FinanceiroPage() {
   const [tab, setTab] = useState('novo')
@@ -33,45 +36,34 @@ export function FinanceiroPage() {
     try {
       const resultado = await calcular.mutateAsync({ professorId, periodoInicio, periodoFim })
       setCalculo(resultado)
-    } catch (err) {
-      toast.error(err.message)
-    }
+    } catch (err) { toast.error(err.message) }
   }
 
   async function handleCriarFechamento() {
     if (!calculo) return
     try {
       await criar.mutateAsync({
-        professor_id: professorId,
-        periodo_inicio: periodoInicio,
-        periodo_fim: periodoFim,
-        total_aulas: calculo.totalAulas,
-        valor_hora: calculo.valorHora,
-        total_bruto: calculo.totalBruto,
-        status: 'aberto'
+        professor_id: professorId, periodo_inicio: periodoInicio, periodo_fim: periodoFim,
+        total_aulas: calculo.totalAulas, valor_hora: calculo.valorHora,
+        total_bruto: calculo.totalBruto, status: 'aberto'
       })
       toast.success('Fechamento criado!')
-      setCalculo(null)
-      setTab('historico')
-    } catch (err) {
-      toast.error(err.message)
-    }
+      setCalculo(null); setTab('historico')
+    } catch (err) { toast.error(err.message) }
   }
 
   async function handleMarcarPago(id) {
     try {
       await atualizar.mutateAsync({ id, status: 'pago' })
       toast.success('Marcado como pago!')
-    } catch (err) {
-      toast.error(err.message)
-    }
+    } catch (err) { toast.error(err.message) }
   }
 
   function exportarPDF(fechamento) {
     const w = window.open('', '_blank')
     w.document.write(`
       <html><head><title>Fechamento ProCoach</title>
-      <style>body{font-family:Arial;padding:40px;} h1{color:#00D4AA;} table{width:100%;border-collapse:collapse;} td,th{padding:8px;border:1px solid #ddd;} .total{font-size:1.5em;font-weight:bold;color:#00D4AA;}</style>
+      <style>body{font-family:Arial;padding:40px;} h1{color:#fcc825;} table{width:100%;border-collapse:collapse;} td,th{padding:8px;border:1px solid #ddd;} .total{font-size:1.5em;font-weight:bold;color:#fcc825;}</style>
       </head><body>
       <h1>🏆 ProCoach — Fechamento</h1>
       <h2>${fechamento.professores?.nome}</h2>
@@ -100,73 +92,140 @@ export function FinanceiroPage() {
 
   return (
     <div className="fade-in">
-      <h1 className="text-xl font-bold text-[#F0F2F5] mb-5">Financeiro</h1>
+      <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', marginBottom: '20px' }}>
+        Financeiro
+      </h1>
 
-      <div className="flex gap-2 mb-5 p-1 bg-[#1A1D27] border border-[#2A2D3E] rounded-xl">
+      {/* Tabs */}
+      <div style={{
+        display: 'flex', gap: '4px', marginBottom: '20px',
+        padding: '4px', backgroundColor: '#1a1a1a',
+        border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px',
+      }}>
         {[
           { key: 'novo', label: '🧮 Novo Fechamento' },
-          { key: 'historico', label: '📋 Histórico' }
+          { key: 'historico', label: '📋 Histórico' },
         ].map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${tab === t.key ? 'bg-[#00D4AA] text-[#0F1117]' : 'text-[#8B8FA8]'}`}>
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
+            fontSize: '13px', fontWeight: '500', cursor: 'pointer',
+            background: tab === t.key ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : 'transparent',
+            color: tab === t.key ? 'white' : '#555', transition: 'all 0.2s',
+          }}>
             {t.label}
           </button>
         ))}
       </div>
 
       {tab === 'novo' && (
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader><span className="text-base font-semibold text-[#F0F2F5]">Calcular Período</span></CardHeader>
-            <CardBody className="flex flex-col gap-4">
-              <Select label="Professor" value={professorId} onChange={e => { setProfessorId(e.target.value); setCalculo(null) }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Card Calcular */}
+          <div style={{
+            backgroundColor: '#1a1a1a', borderRadius: '16px',
+            border: '1px solid rgba(255,255,255,0.06)', padding: '16px',
+          }}>
+            <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '14px' }}>
+              Calcular Período
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <Select
+                label="Professor"
+                value={professorId}
+                onChange={e => { setProfessorId(e.target.value); setCalculo(null) }}
+              >
                 <option value="">Selecione o professor</option>
                 {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
               </Select>
-              <div className="grid grid-cols-2 gap-3">
-                <Input label="Data Início" type="date" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)} />
-                <Input label="Data Fim" type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} />
-              </div>
-              <Button onClick={handleCalcular} loading={calcular.isPending} disabled={!professorId} className="w-full">
-                <Calculator size={16} /> Calcular
-              </Button>
-            </CardBody>
-          </Card>
 
+              <Input
+                label="Data Início"
+                type="date"
+                value={periodoInicio}
+                onChange={e => setPeriodoInicio(e.target.value)}
+              />
+              <Input
+                label="Data Fim"
+                type="date"
+                value={periodoFim}
+                onChange={e => setPeriodoFim(e.target.value)}
+              />
+
+              <button
+                onClick={handleCalcular}
+                disabled={calcular.isPending || !professorId}
+                style={{
+                  width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
+                  background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                  color: 'white', fontSize: '14px', fontWeight: '600',
+                  cursor: !professorId ? 'not-allowed' : 'pointer',
+                  opacity: !professorId ? 0.6 : 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                }}
+              >
+                <Calculator size={16} />
+                {calcular.isPending ? 'Calculando...' : 'Calcular'}
+              </button>
+            </div>
+          </div>
+
+          {/* Resultado */}
           {calculo && (
-            <Card className="border-[#00D4AA]/30">
-              <CardBody>
-                <div className="text-center mb-4">
-                  <div className="text-4xl font-bold text-[#00D4AA]">
-                    R$ {calculo.totalBruto.toFixed(2)}
-                  </div>
-                  <div className="text-sm text-[#8B8FA8] mt-1">Total a pagar</div>
+            <div style={{
+              backgroundColor: '#1a1a1a', borderRadius: '16px',
+              border: '1px solid rgba(252,200,37,0.2)', padding: '16px',
+            }}>
+              <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                <div style={{ fontSize: '36px', fontWeight: '700', color: '#fcc825' }}>
+                  R$ {calculo.totalBruto.toFixed(2)}
                 </div>
+                <div style={{ fontSize: '12px', color: '#555', marginTop: '4px' }}>Total a pagar</div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="p-3 rounded-xl bg-[#0F1117] border border-[#2A2D3E] text-center">
-                    <div className="text-xl font-bold text-[#F0F2F5]">{calculo.totalAulas}</div>
-                    <div className="text-xs text-[#8B8FA8]">Aulas com match</div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-[#0F1117] border border-[#2A2D3E] text-center">
-                    <div className="text-xl font-bold text-[#F0F2F5]">R$ {Number(calculo.valorHora).toFixed(2)}</div>
-                    <div className="text-xs text-[#8B8FA8]">Por aula</div>
-                  </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                <div style={{
+                  padding: '12px', borderRadius: '10px',
+                  backgroundColor: '#110f0f', border: '1px solid #2a2a2a', textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5' }}>{calculo.totalAulas}</div>
+                  <div style={{ fontSize: '11px', color: '#555' }}>Aulas com match</div>
                 </div>
-
-                {professorSelecionado?.pix && (
-                  <div className="p-3 rounded-xl bg-[#1E2235] border border-[#2A2D3E] mb-4">
-                    <div className="text-xs text-[#8B8FA8] mb-1">Dados bancários</div>
-                    <div className="text-sm text-[#F0F2F5]">{professorSelecionado.banco}</div>
-                    <div className="text-xs text-[#8B8FA8]">PIX: {professorSelecionado.pix}</div>
+                <div style={{
+                  padding: '12px', borderRadius: '10px',
+                  backgroundColor: '#110f0f', border: '1px solid #2a2a2a', textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5' }}>
+                    R$ {Number(calculo.valorHora).toFixed(2)}
                   </div>
-                )}
+                  <div style={{ fontSize: '11px', color: '#555' }}>Por aula</div>
+                </div>
+              </div>
 
-                <Button onClick={handleCriarFechamento} loading={criar.isPending} className="w-full">
-                  <FileText size={16} /> Gerar Fechamento
-                </Button>
-              </CardBody>
-            </Card>
+              {professorSelecionado?.pix && (
+                <div style={{
+                  padding: '12px', borderRadius: '10px',
+                  backgroundColor: '#110f0f', border: '1px solid #2a2a2a', marginBottom: '14px',
+                }}>
+                  <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Dados bancários</div>
+                  <div style={{ fontSize: '13px', color: '#F0F2F5' }}>{professorSelecionado.banco}</div>
+                  <div style={{ fontSize: '12px', color: '#555' }}>PIX: {professorSelecionado.pix}</div>
+                </div>
+              )}
+
+              <button
+                onClick={handleCriarFechamento}
+                disabled={criar.isPending}
+                style={{
+                  width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
+                  background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                  color: 'white', fontSize: '14px', fontWeight: '600',
+                  cursor: 'pointer', opacity: criar.isPending ? 0.7 : 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                }}
+              >
+                <FileText size={16} />
+                {criar.isPending ? 'Gerando...' : 'Gerar Fechamento'}
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -176,41 +235,63 @@ export function FinanceiroPage() {
           {loadingFechamentos ? <Loading /> : !fechamentos?.length ? (
             <EmptyState icon="💰" title="Nenhum fechamento" description="Crie seu primeiro fechamento na aba ao lado" />
           ) : (
-            <div className="flex flex-col gap-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {fechamentos.map(f => {
                 const { variant, label } = statusMap[f.status] || {}
                 return (
-                  <Card key={f.id}>
-                    <CardBody>
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <div className="font-semibold text-[#F0F2F5]">{f.professores?.nome}</div>
-                          <div className="text-xs text-[#8B8FA8] mt-0.5">
-                            {format(new Date(f.periodo_inicio + 'T12:00'), 'dd/MM')} –{' '}
-                            {format(new Date(f.periodo_fim + 'T12:00'), 'dd/MM/yyyy')}
-                          </div>
+                  <div key={f.id} style={{
+                    backgroundColor: '#1a1a1a', borderRadius: '14px',
+                    border: '1px solid rgba(255,255,255,0.06)', padding: '14px 16px',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}>
+                      <div>
+                        <div style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '14px' }}>
+                          {f.professores?.nome}
                         </div>
-                        <Badge variant={variant}>{label}</Badge>
+                        <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>
+                          {format(new Date(f.periodo_inicio + 'T12:00'), 'dd/MM')} –{' '}
+                          {format(new Date(f.periodo_fim + 'T12:00'), 'dd/MM/yyyy')}
+                        </div>
                       </div>
+                      <Badge variant={variant}>{label}</Badge>
+                    </div>
 
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-lg font-bold text-[#00D4AA]">R$ {Number(f.total_bruto).toFixed(2)}</div>
-                          <div className="text-xs text-[#8B8FA8]">{f.total_aulas} aulas × R$ {Number(f.valor_hora).toFixed(2)}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontSize: '18px', fontWeight: '700', color: '#fcc825' }}>
+                          R$ {Number(f.total_bruto).toFixed(2)}
                         </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="ghost" onClick={() => exportarPDF(f)}>
-                            <FileText size={14} />
-                          </Button>
-                          {f.status !== 'pago' && (
-                            <Button size="sm" variant="secondary" onClick={() => handleMarcarPago(f.id)}>
-                              <CheckCircle size={14} /> Pago
-                            </Button>
-                          )}
+                        <div style={{ fontSize: '12px', color: '#555' }}>
+                          {f.total_aulas} aulas × R$ {Number(f.valor_hora).toFixed(2)}
                         </div>
                       </div>
-                    </CardBody>
-                  </Card>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => exportarPDF(f)}
+                          style={{
+                            padding: '8px', borderRadius: '8px', border: 'none',
+                            backgroundColor: 'rgba(255,255,255,0.05)', color: '#888',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <FileText size={14} />
+                        </button>
+                        {f.status !== 'pago' && (
+                          <button
+                            onClick={() => handleMarcarPago(f.id)}
+                            style={{
+                              padding: '8px 12px', borderRadius: '8px', border: 'none',
+                              backgroundColor: 'rgba(34,197,94,0.15)', color: '#22c55e',
+                              fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', gap: '4px',
+                            }}
+                          >
+                            <CheckCircle size={13} /> Pago
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )
               })}
             </div>

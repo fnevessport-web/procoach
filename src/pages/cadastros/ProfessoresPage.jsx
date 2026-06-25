@@ -180,9 +180,9 @@ export default function ProfessoresPage() {
                 )}
                 <span style={{
                   fontSize: '11px', padding: '4px 10px', borderRadius: '20px', fontWeight: '500',
-                  backgroundColor: prof.ativo ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                  color: prof.ativo ? '#22c55e' : '#EF4444',
-                  border: `1px solid ${prof.ativo ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                  backgroundColor: prof.ativo ? 'rgba(124,58,237,0.15)' : 'rgba(239,68,68,0.15)',
+color: prof.ativo ? '#a78bfa' : '#EF4444',
+border: `1px solid ${prof.ativo ? 'rgba(124,58,237,0.3)' : 'rgba(239,68,68,0.3)'}`,
                 }}>
                   {prof.ativo ? 'Ativo' : 'Inativo'}
                 </span>
