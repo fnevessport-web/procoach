@@ -3,9 +3,9 @@ import { BottomNav } from './BottomNav'
 
 export function AppLayout({ children }) {
   return (
-    <div className="flex flex-col min-h-screen bg-[#0F1117]">
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#110f0f' }}>
       <Header />
-      <main className="flex-1 pb-24 max-w-5xl w-full mx-auto px-4 py-5">
+      <main style={{ flex: 1, paddingBottom: '96px', maxWidth: '1024px', width: '100%', margin: '0 auto', padding: '0 16px 96px' }}>
         {children}
       </main>
       <BottomNav />

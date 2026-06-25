@@ -10,9 +10,9 @@ const ICONES_MODALIDADES = {
   'Padel':           '/images/padel.png',
   'Pickleball':      '/images/pickleball.png',
   'Squash':          '/images/squash.png',
-  'Beach Tennis':    '/images/beach tennis.png',
+  'Beach Tennis':    '/images/beach%20tennis.png',
   'Futevôlei':       '/images/futevolei.png',
-  'Vôlei de Praia':  '/images/volei de praia.png',
+  'Vôlei de Praia':  '/images/volei%20de%20praia.png',
 }
 
 export function HomePage() {

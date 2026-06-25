@@ -1,4 +1,4 @@
-import { Bell, LogOut, Settings, ChevronDown } from 'lucide-react'
+import { Bell, LogOut, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useAulasPendentes } from '../../hooks/useAulas'
@@ -11,20 +11,30 @@ export function Header() {
   const { modalidadeSelecionada, setModalidadeSelecionada } = useAppStore()
 
   return (
-    <header className="sticky top-0 z-40 bg-[#0F1117]/95 backdrop-blur border-b border-[#2A2D3E]">
-      <div className="flex items-center justify-between px-4 py-3 max-w-5xl mx-auto">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#00D4AA]/20 flex items-center justify-center">
-            <span className="text-xl">🏆</span>
-          </div>
-          <span className="text-lg font-bold text-[#F0F2F5]">ProCoach</span>
-        </div>
+    <header style={{
+      position: 'sticky', top: 0, zIndex: 40,
+      backgroundColor: '#110f0f',
+      borderBottom: '1px solid #1e1e1e',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', maxWidth: '1024px', margin: '0 auto' }}>
 
-        <div className="flex items-center gap-2">
+        {/* Logo ProCoach */}
+        <img
+          src="/images/logo procoach.png"
+          alt="ProCoach"
+          style={{ height: '28px', objectFit: 'contain' }}
+        />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {pendentes > 0 && (
-            <div className="relative">
-              <Bell size={20} className="text-[#8B8FA8]" />
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#EF4444] rounded-full text-xs text-white flex items-center justify-center pulse-badge font-bold">
+            <div style={{ position: 'relative' }}>
+              <Bell size={20} color="#555" />
+              <span style={{
+                position: 'absolute', top: '-6px', right: '-6px',
+                width: '16px', height: '16px', backgroundColor: '#EF4444',
+                borderRadius: '50%', fontSize: '10px', color: 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold'
+              }}>
                 {pendentes > 9 ? '9+' : pendentes}
               </span>
             </div>
@@ -33,42 +43,65 @@ export function Header() {
           {modalidadeSelecionada && (
             <button
               onClick={() => setModalidadeSelecionada(null)}
-              className="px-2.5 py-1 rounded-lg bg-[#00D4AA]/15 text-[#00D4AA] text-xs font-medium border border-[#00D4AA]/30 flex items-center gap-1"
+              style={{
+                padding: '4px 10px', borderRadius: '8px',
+                backgroundColor: 'rgba(252,200,37,0.1)',
+                border: '1px solid rgba(252,200,37,0.3)',
+                color: '#fcc825', fontSize: '12px', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '4px'
+              }}
             >
-              {modalidadeSelecionada.icone_emoji} {modalidadeSelecionada.nome}
-              <span className="text-[#00D4AA]/60">×</span>
+              {modalidadeSelecionada.nome} ×
             </button>
           )}
 
-          <div className="relative">
+          <div style={{ position: 'relative' }}>
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#1A1D27] border border-[#2A2D3E] hover:bg-[#1E2235] transition-colors"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '6px 10px', borderRadius: '10px',
+                backgroundColor: '#1a1a1a', border: '1px solid #1e1e1e',
+                cursor: 'pointer'
+              }}
             >
-              <div className="w-6 h-6 rounded-full bg-[#00D4AA]/30 flex items-center justify-center">
-                <span className="text-xs font-bold text-[#00D4AA]">
+              <div style={{
+                width: '24px', height: '24px', borderRadius: '50%',
+                background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'white' }}>
                   {(perfil?.nome || 'U')[0].toUpperCase()}
                 </span>
               </div>
-              <span className="text-xs text-[#8B8FA8] hidden sm:block max-w-24 truncate">
-                {perfil?.nome || perfil?.role || 'Usuário'}
+              <span style={{ fontSize: '12px', color: '#555' }}>
+                {perfil?.nome?.split(' ')[0] || 'Usuário'}
               </span>
-              <ChevronDown size={12} className="text-[#4A4D65]" />
+              <ChevronDown size={12} color="#333" />
             </button>
 
             {menuOpen && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-full mt-2 w-48 bg-[#1A1D27] border border-[#2A2D3E] rounded-xl shadow-2xl z-50 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-[#2A2D3E]">
-                    <div className="text-sm font-medium text-[#F0F2F5]">{perfil?.nome || 'Usuário'}</div>
-                    <div className="text-xs text-[#8B8FA8] capitalize">{perfil?.role}</div>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(false)} />
+                <div style={{
+                  position: 'absolute', right: 0, top: '100%', marginTop: '8px',
+                  width: '180px', backgroundColor: '#1a1a1a',
+                  border: '1px solid #1e1e1e', borderRadius: '12px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 50, overflow: 'hidden'
+                }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e1e1e' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '500', color: '#F0F2F5' }}>{perfil?.nome || 'Usuário'}</div>
+                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'capitalize' }}>{perfil?.role}</div>
                   </div>
                   <button
                     onClick={() => { setMenuOpen(false); signOut() }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors"
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                      padding: '12px 16px', fontSize: '13px', color: '#EF4444',
+                      backgroundColor: 'transparent', border: 'none', cursor: 'pointer'
+                    }}
                   >
-                    <LogOut size={16} />
+                    <LogOut size={15} />
                     Sair
                   </button>
                 </div>
