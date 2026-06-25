@@ -34,35 +34,33 @@ export function HomePage() {
     <div className="fade-in" style={{
       minHeight: '100vh',
       background: `
-        radial-gradient(ellipse at 20% 20%, rgba(252,200,37,0.06) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 80%, rgba(67,12,58,0.4) 0%, transparent 60%),
-        radial-gradient(ellipse at 50% 50%, rgba(207,27,155,0.05) 0%, transparent 70%),
+        radial-gradient(ellipse at 20% 20%, rgba(252,200,37,0.05) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(67,12,58,0.35) 0%, transparent 60%),
+        radial-gradient(ellipse at 50% 50%, rgba(207,27,155,0.04) 0%, transparent 70%),
         #110f0f
       `,
     }}>
 
-      {/* Logos — sem bordas horizontais, só separador vertical */}
+      {/* Logos — só separador vertical, sem bordas horizontais */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '0',
-        padding: '14px 16px',
-        marginBottom: '4px',
+        padding: '12px 16px 16px',
       }}>
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <img src="/images/logobeyond.png" alt="Beyond"
-            style={{ height: '32px', maxWidth: '90px', objectFit: 'contain' }} />
+            style={{ height: '24px', width: 'auto', maxWidth: '100px', objectFit: 'contain' }} />
         </div>
-        <div style={{ width: '1px', height: '28px', backgroundColor: '#2a2a2a', flexShrink: 0 }} />
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        <div style={{ width: '1px', height: '24px', backgroundColor: '#2a2a2a', flexShrink: 0 }} />
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <img src="/images/logoprocopio.png" alt="Procopio"
-            style={{ height: '32px', maxWidth: '90px', objectFit: 'contain' }} />
+            style={{ height: '24px', width: 'auto', maxWidth: '100px', objectFit: 'contain' }} />
         </div>
-        <div style={{ width: '1px', height: '28px', backgroundColor: '#2a2a2a', flexShrink: 0 }} />
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        <div style={{ width: '1px', height: '24px', backgroundColor: '#2a2a2a', flexShrink: 0 }} />
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <img src="/images/logobeacharena.png" alt="Beach Arena"
-            style={{ height: '32px', maxWidth: '90px', objectFit: 'contain' }} />
+            style={{ height: '24px', width: 'auto', maxWidth: '100px', objectFit: 'contain' }} />
         </div>
       </div>
 
@@ -126,40 +124,24 @@ export function HomePage() {
                     padding: '12px',
                     borderRadius: '16px',
                     border: selected
-                      ? '1.5px solid rgba(207,27,155,0.8)'
-                      : '1px solid rgba(255,255,255,0.07)',
-                    background: selected
-                      ? 'linear-gradient(135deg, rgba(252,200,37,0.08), rgba(207,27,155,0.12))'
-                      : 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
+                      ? '1.5px solid rgba(207,27,155,0.7)'
+                      : '1px solid rgba(255,255,255,0.06)',
+                    background: selected ? 'rgba(252,200,37,0.06)' : '#1a1a1a',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     aspectRatio: '1',
                     overflow: 'hidden',
-                    boxShadow: selected
-                      ? '0 0 20px rgba(207,27,155,0.2), inset 0 1px 0 rgba(255,255,255,0.05)'
-                      : 'inset 0 1px 0 rgba(255,255,255,0.04)',
+                    boxShadow: selected ? '0 0 16px rgba(207,27,155,0.15)' : 'none',
                   }}
                 >
-                  {/* Glow amarelo sutil no canto superior */}
-                  {!selected && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '-10px', left: '-10px',
-                      width: '40px', height: '40px',
-                      background: 'radial-gradient(circle, rgba(252,200,37,0.15) 0%, transparent 70%)',
-                      pointerEvents: 'none',
-                    }} />
-                  )}
                   {icone ? (
                     <img
                       src={icone}
                       alt={mod.nome}
                       style={{
-                        width: '75%',
-                        height: '75%',
+                        width: '80%',
+                        height: '80%',
                         objectFit: 'contain',
-                        position: 'relative',
-                        zIndex: 1,
                       }}
                     />
                   ) : (

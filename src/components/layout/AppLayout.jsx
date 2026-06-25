@@ -9,10 +9,7 @@ export function AppLayout({ children }) {
       display: 'flex',
       flexDirection: 'column',
     }}>
-      {/* Header full-width */}
       <Header />
-
-      {/* Conteúdo centralizado */}
       <main style={{
         flex: 1,
         width: '100%',
@@ -20,11 +17,10 @@ export function AppLayout({ children }) {
         margin: '0 auto',
         padding: '16px 16px 96px',
         boxSizing: 'border-box',
+        overflowX: 'hidden',
       }}>
         {children}
       </main>
-
-      {/* BottomNav full-width mas conteúdo centralizado */}
       <BottomNav />
     </div>
   )
