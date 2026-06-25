@@ -34,18 +34,24 @@ export function LoginPage() {
       width: '100%',
       backgroundColor: '#110f0f',
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '24px 16px',
+      padding: '0 16px',
     }}>
       <div style={{ width: '100%', maxWidth: '400px' }}>
 
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+        {/* Logo — posicionado mais alto */}
+        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
           <img
             src="/images/logoprocoach.png"
             alt="ProCoach"
-            style={{ height: '52px', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }}
+            style={{
+              height: '60px',
+              objectFit: 'contain',
+              margin: '0 auto 14px',
+              display: 'block'
+            }}
           />
           <p style={{ color: '#444', fontSize: '13px', margin: 0, letterSpacing: '1px' }}>
             Gestão esportiva inteligente
