@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
-import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 
 export function LoginPage() {
@@ -32,15 +31,14 @@ export function LoginPage() {
   return (
     <div style={{
       minHeight: '100vh',
+      width: '100%',
       backgroundColor: '#110f0f',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       padding: '24px 16px',
-      maxWidth: '480px',
-      margin: '0 auto',
     }}>
-      <div style={{ width: '100%' }}>
+      <div style={{ width: '100%', maxWidth: '400px' }}>
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -63,7 +61,7 @@ export function LoginPage() {
         }}>
           {/* Tabs */}
           <div style={{
-            display: 'flex', gap: '8px', marginBottom: '24px',
+            display: 'flex', gap: '4px', marginBottom: '24px',
             padding: '4px', backgroundColor: '#110f0f', borderRadius: '12px'
           }}>
             {['login', 'cadastro'].map(m => (
@@ -76,7 +74,7 @@ export function LoginPage() {
                   background: modo === m
                     ? 'linear-gradient(135deg, #fcc825, #cf1b9b)'
                     : 'transparent',
-                  color: modo === m ? 'white' : '#444',
+                  color: modo === m ? 'white' : '#555',
                   transition: 'all 0.2s'
                 }}
               >
@@ -85,7 +83,7 @@ export function LoginPage() {
             ))}
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {modo === 'cadastro' && (
               <Input
                 label="Nome completo"
@@ -124,7 +122,7 @@ export function LoginPage() {
             )}
 
             <button
-              type="submit"
+              onClick={handleSubmit}
               disabled={loading}
               style={{
                 width: '100%', padding: '14px',
@@ -138,7 +136,7 @@ export function LoginPage() {
             >
               {loading ? 'Aguarde...' : modo === 'login' ? 'Entrar' : 'Criar conta'}
             </button>
-          </form>
+          </div>
         </div>
 
         <p style={{ textAlign: 'center', fontSize: '10px', color: '#222', marginTop: '24px', letterSpacing: '2px' }}>

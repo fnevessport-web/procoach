@@ -32,27 +32,38 @@ export function HomePage() {
 
   return (
     <div className="fade-in" style={{
-      background: 'radial-gradient(ellipse at 50% 50%, rgba(67,12,58,0.5) 0%, rgba(17,15,15,1) 70%)',
       minHeight: '100vh',
+      background: `
+        radial-gradient(ellipse at 20% 20%, rgba(252,200,37,0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(67,12,58,0.4) 0%, transparent 60%),
+        radial-gradient(ellipse at 50% 50%, rgba(207,27,155,0.05) 0%, transparent 70%),
+        #110f0f
+      `,
     }}>
 
-      {/* Logos */}
+      {/* Logos — sem bordas horizontais, só separador vertical */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-evenly',
-        padding: '16px 8px',
-        marginBottom: '16px',
-        borderBottom: '1px solid #1e1e1e'
+        justifyContent: 'center',
+        gap: '0',
+        padding: '14px 16px',
+        marginBottom: '4px',
       }}>
-        <img src="/images/logobeyond.png" alt="Beyond"
-          style={{ height: '36px', width: '80px', objectFit: 'contain' }} />
-        <span style={{ color: '#2a2a2a', fontSize: '20px' }}>|</span>
-        <img src="/images/logoprocopio.png" alt="Procopio"
-          style={{ height: '36px', width: '80px', objectFit: 'contain' }} />
-        <span style={{ color: '#2a2a2a', fontSize: '20px' }}>|</span>
-        <img src="/images/logobeacharena.png" alt="Beach Arena"
-          style={{ height: '36px', width: '80px', objectFit: 'contain' }} />
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <img src="/images/logobeyond.png" alt="Beyond"
+            style={{ height: '32px', maxWidth: '90px', objectFit: 'contain' }} />
+        </div>
+        <div style={{ width: '1px', height: '28px', backgroundColor: '#2a2a2a', flexShrink: 0 }} />
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <img src="/images/logoprocopio.png" alt="Procopio"
+            style={{ height: '32px', maxWidth: '90px', objectFit: 'contain' }} />
+        </div>
+        <div style={{ width: '1px', height: '28px', backgroundColor: '#2a2a2a', flexShrink: 0 }} />
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <img src="/images/logobeacharena.png" alt="Beach Arena"
+            style={{ height: '32px', maxWidth: '90px', objectFit: 'contain' }} />
+        </div>
       </div>
 
       {/* Saudação */}
@@ -108,30 +119,51 @@ export function HomePage() {
                   key={mod.id}
                   onClick={() => selectModalidade(mod)}
                   style={{
+                    position: 'relative',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '8px',
-                    borderRadius: '14px',
-                    border: selected ? '2px solid #cf1b9b' : '1px solid #222',
+                    padding: '12px',
+                    borderRadius: '16px',
+                    border: selected
+                      ? '1.5px solid rgba(207,27,155,0.8)'
+                      : '1px solid rgba(255,255,255,0.07)',
                     background: selected
-                      ? 'linear-gradient(135deg, rgba(252,200,37,0.08), rgba(207,27,155,0.15))'
-                      : '#1a1a1a',
+                      ? 'linear-gradient(135deg, rgba(252,200,37,0.08), rgba(207,27,155,0.12))'
+                      : 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    transform: selected ? 'scale(1.02)' : 'scale(1)',
                     aspectRatio: '1',
                     overflow: 'hidden',
+                    boxShadow: selected
+                      ? '0 0 20px rgba(207,27,155,0.2), inset 0 1px 0 rgba(255,255,255,0.05)'
+                      : 'inset 0 1px 0 rgba(255,255,255,0.04)',
                   }}
                 >
+                  {/* Glow amarelo sutil no canto superior */}
+                  {!selected && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '-10px', left: '-10px',
+                      width: '40px', height: '40px',
+                      background: 'radial-gradient(circle, rgba(252,200,37,0.15) 0%, transparent 70%)',
+                      pointerEvents: 'none',
+                    }} />
+                  )}
                   {icone ? (
                     <img
                       src={icone}
                       alt={mod.nome}
-                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      style={{
+                        width: '75%',
+                        height: '75%',
+                        objectFit: 'contain',
+                        position: 'relative',
+                        zIndex: 1,
+                      }}
                     />
                   ) : (
-                    <span style={{ fontSize: '48px' }}>{mod.icone_emoji}</span>
+                    <span style={{ fontSize: '40px' }}>{mod.icone_emoji}</span>
                   )}
                 </button>
               )
@@ -149,7 +181,6 @@ export function HomePage() {
           POWERED BY FNEVESSPORT
         </span>
       </div>
-
     </div>
   )
 }
@@ -160,7 +191,7 @@ function QuickActions({ role, navigate }) {
       { label: 'Ver Aulas Hoje', path: '/aulas', color: '#fcc825' },
       { label: 'Professores', path: '/cadastros/professores', color: '#cf1b9b' },
       { label: 'Turmas', path: '/cadastros/turmas', color: '#d28c3c' },
-      { label: 'Financeiro', path: '/financeiro', color: '#430c3a' },
+      { label: 'Financeiro', path: '/financeiro', color: '#7c3aed' },
     ],
     coordenador: [
       { label: 'Ver Aulas Hoje', path: '/aulas', color: '#fcc825' },
@@ -186,7 +217,8 @@ function QuickActions({ role, navigate }) {
             style={{
               display: 'flex', alignItems: 'center', gap: '12px',
               padding: '14px 16px', borderRadius: '12px',
-              backgroundColor: '#1a1a1a', border: '1px solid #222',
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.07)',
               cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
               width: '100%',
             }}

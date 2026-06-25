@@ -4,22 +4,27 @@ import { BottomNav } from './BottomNav'
 export function AppLayout({ children }) {
   return (
     <div style={{
-      display: 'flex',
-      flexDirection: 'column',
       minHeight: '100vh',
       backgroundColor: '#110f0f',
-      maxWidth: '480px',
-      margin: '0 auto',
-      position: 'relative',
+      display: 'flex',
+      flexDirection: 'column',
     }}>
+      {/* Header full-width */}
       <Header />
+
+      {/* Conteúdo centralizado */}
       <main style={{
         flex: 1,
-        padding: '16px 16px 96px',
         width: '100%',
+        maxWidth: '480px',
+        margin: '0 auto',
+        padding: '16px 16px 96px',
+        boxSizing: 'border-box',
       }}>
         {children}
       </main>
+
+      {/* BottomNav full-width mas conteúdo centralizado */}
       <BottomNav />
     </div>
   )

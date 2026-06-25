@@ -14,9 +14,9 @@ export function Header() {
     <header style={{
       position: 'sticky', top: 0, zIndex: 40,
       backgroundColor: '#110f0f',
-      borderBottom: '1px solid #1e1e1e',
+      borderBottom: 'none',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', maxWidth: '1024px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', maxWidth: '480px', margin: '0 auto' }}>
 
         <img
           src="/images/logoprocoach.png"

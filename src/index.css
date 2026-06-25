@@ -1,18 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-base: #0F1117;
-  --color-bg-card: #1A1D27;
-  --color-bg-card-hover: #1E2235;
-  --color-border: #2A2D3E;
-  --color-accent: #00D4AA;
-  --color-accent-dim: #00A884;
+  --color-bg-base: #110f0f;
+  --color-bg-card: #1a1a1a;
+  --color-bg-card-hover: #1e1e1e;
+  --color-border: #222;
+  --color-accent: #fcc825;
+  --color-accent-pink: #cf1b9b;
+  --color-accent-orange: #d28c3c;
+  --color-accent-deep: #430c3a;
   --color-text-primary: #F0F2F5;
-  --color-text-secondary: #8B8FA8;
-  --color-text-muted: #4A4D65;
+  --color-text-secondary: #888;
+  --color-text-muted: #444;
   --color-danger: #EF4444;
-  --color-warning: #F59E0B;
-  --color-success: #10B981;
+  --color-warning: #fcc825;
+  --color-success: #22c55e;
   --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
@@ -23,7 +25,7 @@
 
 body {
   margin: 0;
-  background-color: #0F1117;
+  background-color: #110f0f;
   color: #F0F2F5;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
@@ -39,8 +41,8 @@ body {
 }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: #1A1D27; }
-::-webkit-scrollbar-thumb { background: #2A2D3E; border-radius: 2px; }
+::-webkit-scrollbar-track { background: #1a1a1a; }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
 
 input, textarea, select { outline: none; }
 
@@ -66,4 +68,17 @@ input, textarea, select { outline: none; }
 @keyframes pulseBadge {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
+}
+/* Layout responsivo */
+.app-content {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (min-width: 768px) {
+  .app-content {
+    max-width: 520px;
+  }
 }
