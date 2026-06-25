@@ -9,12 +9,11 @@ export function Input({ label, error, className = '', type = 'text', ...props })
         className={className}
         style={{
           width: '100%', padding: '12px 16px', borderRadius: '12px',
-          backgroundColor: '#1a1a1a',
+          backgroundColor: '#110f0f',
           border: error ? '1px solid #EF4444' : '1px solid #2a2a2a',
           color: '#F0F2F5', fontSize: '14px',
           outline: 'none', transition: 'border-color 0.2s',
           boxSizing: 'border-box',
-          WebkitTextFillColor: '#F0F2F5',
         }}
         onFocus={e => e.target.style.borderColor = '#fcc825'}
         onBlur={e => e.target.style.borderColor = error ? '#EF4444' : '#2a2a2a'}
@@ -33,12 +32,11 @@ export function Textarea({ label, error, className = '', ...props }) {
         className={className}
         style={{
           width: '100%', padding: '12px 16px', borderRadius: '12px',
-          backgroundColor: '#1a1a1a',
+          backgroundColor: '#110f0f',
           border: error ? '1px solid #EF4444' : '1px solid #2a2a2a',
           color: '#F0F2F5', fontSize: '14px', resize: 'none',
           outline: 'none', transition: 'border-color 0.2s',
           boxSizing: 'border-box',
-          WebkitTextFillColor: '#F0F2F5',
         }}
         rows={3}
         onFocus={e => e.target.style.borderColor = '#fcc825'}
@@ -58,12 +56,11 @@ export function Select({ label, error, children, className = '', ...props }) {
         className={className}
         style={{
           width: '100%', padding: '12px 16px', borderRadius: '12px',
-          backgroundColor: '#1a1a1a',
+          backgroundColor: '#110f0f',
           border: error ? '1px solid #EF4444' : '1px solid #2a2a2a',
           color: '#F0F2F5', fontSize: '14px',
           outline: 'none', transition: 'border-color 0.2s',
           boxSizing: 'border-box', cursor: 'pointer', appearance: 'none',
-          WebkitTextFillColor: '#F0F2F5',
         }}
         onFocus={e => e.target.style.borderColor = '#fcc825'}
         onBlur={e => e.target.style.borderColor = error ? '#EF4444' : '#2a2a2a'}
