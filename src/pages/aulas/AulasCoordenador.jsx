@@ -1,22 +1,42 @@
 import { useState } from 'react'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, CheckCircle, AlertTriangle } from 'lucide-react'
-import { useAulas, useConfirmarAulaCoordenador } from '../../hooks/useAulas'
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, UserPlus } from 'lucide-react'
+import { useAulas, useAtualizarStatusAula, useSalvarPresencas } from '../../hooks/useAulas'
+import { useAlunos } from '../../hooks/useAlunos'
 import useAppStore from '../../store/useAppStore'
-import { StatusBadge } from '../../components/ui/Badge'
 import { Loading, EmptyState } from '../../components/ui/Loading'
+import toast from 'react-hot-toast'
+
+const STATUS_AULA = [
+  { value: 'dada', label: '✅ Aula Dada', paga: true },
+  { value: 'nao_dada', label: '❌ Não Dada', paga: true },
+  { value: 'cancelada', label: '🌧️ Cancelada', paga: false },
+]
+
+const STATUS_PRESENCA = [
+  { value: 'presente', label: 'Presente', color: '#22c55e' },
+  { value: 'falta', label: 'Falta', color: '#EF4444' },
+  { value: 'falta_justificada', label: 'Falta Just.', color: '#f97316' },
+]
+
+const TIPO_PARTICIPACAO = [
+  { value: 'mensalista', label: 'Mensalista' },
+  { value: 'experimental', label: 'Experimental' },
+  { value: 'reposicao', label: 'Reposição' },
+]
 
 export function AulasCoordenador() {
   const { modalidadeSelecionada } = useAppStore()
   const [data, setData] = useState(format(new Date(), 'yyyy-MM-dd'))
-  const [loadingId, setLoadingId] = useState(null)
+  const [aulaAberta, setAulaAberta] = useState(null)
+  const [presencasLocal, setPresencasLocal] = useState({})
+  const [adicionandoAluno, setAdicionandoAluno] = useState(null)
 
-  const { data: aulas, isLoading } = useAulas({
-    data,
-    modalidadeId: modalidadeSelecionada?.id
-  })
-  const confirmar = useConfirmarAulaCoordenador()
+  const { data: aulas, isLoading } = useAulas({ data, modalidadeId: modalidadeSelecionada?.id })
+  const { data: todosAlunos } = useAlunos()
+  const atualizarStatus = useAtualizarStatusAula()
+  const salvarPresencas = useSalvarPresencas()
 
   const dataObj = new Date(data + 'T12:00:00')
   const label = format(dataObj, "EEEE, d 'de' MMMM", { locale: ptBR })
@@ -27,13 +47,63 @@ export function AulasCoordenador() {
     setData(format(d, 'yyyy-MM-dd'))
   }
 
-  async function handleConfirmar(aulaId, confirmada) {
-    setLoadingId(aulaId)
+  function abrirAula(aula) {
+    if (aulaAberta === aula.id) { setAulaAberta(null); return }
+    setAulaAberta(aula.id)
+    // Inicializa presençasLocal com os dados já salvos
+    const inicial = {}
+    aula.presencas?.forEach(p => {
+      inicial[p.aluno_id] = {
+        aluno_id: p.aluno_id,
+        nome: p.alunos?.nome,
+        status_presenca: p.status_presenca || (p.presente ? 'presente' : 'falta'),
+        tipo_participacao: p.tipo_participacao || 'mensalista',
+      }
+    })
+    setPresencasLocal(prev => ({ ...prev, [aula.id]: inicial }))
+  }
+
+  function updatePresenca(aulaId, alunoId, campo, valor) {
+    setPresencasLocal(prev => ({
+      ...prev,
+      [aulaId]: {
+        ...prev[aulaId],
+        [alunoId]: { ...prev[aulaId]?.[alunoId], [campo]: valor }
+      }
+    }))
+  }
+
+  function adicionarAluno(aulaId, aluno) {
+    setPresencasLocal(prev => ({
+      ...prev,
+      [aulaId]: {
+        ...prev[aulaId],
+        [aluno.id]: {
+          aluno_id: aluno.id,
+          nome: aluno.nome,
+          status_presenca: 'presente',
+          tipo_participacao: 'experimental',
+        }
+      }
+    }))
+    setAdicionandoAluno(null)
+  }
+
+  async function handleSalvarPresencas(aulaId) {
+    const lista = Object.values(presencasLocal[aulaId] || {})
+    if (!lista.length) return toast.error('Nenhum aluno na lista')
     try {
-      await confirmar.mutateAsync({ aulaId, confirmada })
-    } finally {
-      setLoadingId(null)
-    }
+      await salvarPresencas.mutateAsync({ aulaId, presencas: lista })
+      toast.success('Presenças salvas!')
+    } catch (err) { toast.error(err.message) }
+  }
+
+  async function handleStatusAula(aulaId, statusAula) {
+    const pagaProfessor = STATUS_AULA.find(s => s.value === statusAula)?.paga ?? true
+    try {
+      await atualizarStatus.mutateAsync({ aulaId, statusAula, pagaProfessor })
+      toast.success('Status atualizado!')
+    } catch (err) { toast.error(err.message) }
   }
 
   const aulasFiltradas = modalidadeSelecionada
@@ -42,26 +112,14 @@ export function AulasCoordenador() {
 
   return (
     <div className="fade-in">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
-          Confirmação de Aulas
-        </h2>
-        {modalidadeSelecionada && (
-          <span style={{ fontSize: '13px', color: '#fcc825' }}>
-            {modalidadeSelecionada.icone_emoji} {modalidadeSelecionada.nome}
-          </span>
-        )}
-      </div>
-
       {/* Navegador de data */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)',
         borderRadius: '12px', padding: '12px 16px', marginBottom: '16px',
+        boxSizing: 'border-box', width: '100%',
       }}>
-        <button onClick={() => navData(-1)} style={{
-          background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px',
-        }}>
+        <button onClick={() => navData(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px' }}>
           <ChevronLeft size={20} />
         </button>
         <div style={{ textAlign: 'center' }}>
@@ -75,92 +133,211 @@ export function AulasCoordenador() {
             {isHoje ? 'Hoje' : 'Ir para hoje'}
           </button>
         </div>
-        <button onClick={() => navData(1)} style={{
-          background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px',
-        }}>
+        <button onClick={() => navData(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px' }}>
           <ChevronRight size={20} />
         </button>
       </div>
 
       {isLoading ? <Loading /> : !aulasFiltradas?.length ? (
-        <EmptyState
-          iconImg="/images/totaldeaulas.png"
-          title="Nenhuma aula encontrada"
-        />
+        <EmptyState iconImg="/images/totaldeaulas.png" title="Nenhuma aula neste dia" />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {aulasFiltradas.map(aula => {
-            const podeConfirmar = !['match', 'nao_dada'].includes(aula.status)
-            const carregando = loadingId === aula.id
-            const isDivergencia = aula.status === 'divergencia'
+            const aberta = aulaAberta === aula.id
+            const presencas = presencasLocal[aula.id] || {}
+            const qtdAlunos = aula.presencas?.length || 0
+            const statusAtual = aula.status_aula || 'dada'
+            const alunosNaAula = Object.values(presencas)
+
+            // Alunos disponíveis para adicionar
+            const idsNaAula = Object.keys(presencas)
+            const alunosDisponiveis = todosAlunos?.filter(a => !idsNaAula.includes(a.id)) || []
 
             return (
               <div key={aula.id} style={{
-                backgroundColor: '#1a1a1a',
-                borderRadius: '14px',
-                border: isDivergencia
-                  ? '1px solid rgba(239,68,68,0.4)'
-                  : '1px solid rgba(255,255,255,0.06)',
-                padding: '14px 16px',
+                backgroundColor: '#1a1a1a', borderRadius: '14px',
+                border: '1px solid rgba(255,255,255,0.06)',
+                overflow: 'hidden', boxSizing: 'border-box', width: '100%',
               }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                {/* Cabeçalho da aula */}
+                <button
+                  onClick={() => abrirAula(aula)}
+                  style={{
+                    width: '100%', padding: '14px 16px', background: 'none', border: 'none',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
                       <span>{aula.turmas?.modalidades?.icone_emoji}</span>
                       <span style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '14px' }}>
                         {aula.turmas?.nome}
                       </span>
                     </div>
                     <div style={{ fontSize: '12px', color: '#555' }}>
-                      Prof: {aula.professores?.nome} • {aula.turmas?.horario_inicio?.slice(0, 5)}–{aula.turmas?.horario_fim?.slice(0, 5)}
+                      {aula.turmas?.horario_inicio?.slice(0, 5)}–{aula.turmas?.horario_fim?.slice(0, 5)} •
+                      Prof: {aula.professores?.nome} •
+                      <span style={{ color: '#fcc825' }}> {qtdAlunos} aluno{qtdAlunos !== 1 ? 's' : ''}</span>
                     </div>
                   </div>
-                  <StatusBadge status={aula.status} />
-                </div>
-
-                {isDivergencia && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    padding: '8px 12px', borderRadius: '8px',
-                    backgroundColor: 'rgba(239,68,68,0.1)', marginBottom: '10px',
-                  }}>
-                    <AlertTriangle size={14} color="#EF4444" />
-                    <span style={{ fontSize: '12px', color: '#EF4444' }}>
-                      Divergência detectada — requer atenção
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      fontSize: '11px', padding: '3px 8px', borderRadius: '6px',
+                      backgroundColor: statusAtual === 'dada' ? 'rgba(34,197,94,0.15)'
+                        : statusAtual === 'cancelada' ? 'rgba(59,130,246,0.15)'
+                        : 'rgba(239,68,68,0.15)',
+                      color: statusAtual === 'dada' ? '#22c55e'
+                        : statusAtual === 'cancelada' ? '#3b82f6'
+                        : '#EF4444',
+                    }}>
+                      {STATUS_AULA.find(s => s.value === statusAtual)?.label}
                     </span>
+                    {aberta ? <ChevronUp size={16} color="#555" /> : <ChevronDown size={16} color="#555" />}
                   </div>
-                )}
+                </button>
 
-                {podeConfirmar && (
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                {/* Painel expandido */}
+                {aberta && (
+                  <div style={{ padding: '0 16px 16px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+
+                    {/* Status da aula */}
+                    <div style={{ marginTop: '14px', marginBottom: '14px' }}>
+                      <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Status da Aula
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {STATUS_AULA.map(s => (
+                          <button
+                            key={s.value}
+                            onClick={() => handleStatusAula(aula.id, s.value)}
+                            style={{
+                              flex: 1, padding: '8px 4px', borderRadius: '8px', border: 'none',
+                              fontSize: '11px', fontWeight: '500', cursor: 'pointer',
+                              background: statusAtual === s.value
+                                ? 'linear-gradient(135deg, #fcc825, #cf1b9b)'
+                                : '#111',
+                              color: statusAtual === s.value ? 'white' : '#555',
+                              boxSizing: 'border-box',
+                            }}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#555', marginTop: '6px' }}>
+                        💰 Professor: <span style={{ color: aula.paga_professor ? '#22c55e' : '#EF4444' }}>
+                          {aula.paga_professor ? 'Aula paga' : 'Aula não paga'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Lista de alunos */}
+                    <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Presenças ({alunosNaAula.length})
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {alunosNaAula.map(aluno => (
+                        <div key={aluno.aluno_id} style={{
+                          backgroundColor: '#111', borderRadius: '10px',
+                          padding: '10px 12px', boxSizing: 'border-box',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: '500', color: '#F0F2F5' }}>{aluno.nome}</span>
+                            <select
+                              value={aluno.tipo_participacao}
+                              onChange={e => updatePresenca(aula.id, aluno.aluno_id, 'tipo_participacao', e.target.value)}
+                              style={{
+                                fontSize: '11px', padding: '2px 6px', borderRadius: '6px',
+                                backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+                                color: '#888', cursor: 'pointer', outline: 'none',
+                              }}
+                            >
+                              {TIPO_PARTICIPACAO.map(t => (
+                                <option key={t.value} value={t.value}>{t.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            {STATUS_PRESENCA.map(sp => (
+                              <button
+                                key={sp.value}
+                                onClick={() => updatePresenca(aula.id, aluno.aluno_id, 'status_presenca', sp.value)}
+                                style={{
+                                  flex: 1, padding: '6px 4px', borderRadius: '6px', border: 'none',
+                                  fontSize: '11px', fontWeight: '500', cursor: 'pointer',
+                                  backgroundColor: aluno.status_presenca === sp.value
+                                    ? sp.color + '30' : '#1a1a1a',
+                                  color: aluno.status_presenca === sp.value ? sp.color : '#444',
+                                  boxSizing: 'border-box',
+                                  outline: aluno.status_presenca === sp.value ? `1px solid ${sp.color}` : 'none',
+                                }}
+                              >
+                                {sp.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Adicionar aluno */}
+                    {adicionandoAluno === aula.id ? (
+                      <div style={{ marginTop: '10px' }}>
+                        <select
+                          onChange={e => {
+                            const aluno = todosAlunos?.find(a => a.id === e.target.value)
+                            if (aluno) adicionarAluno(aula.id, aluno)
+                          }}
+                          defaultValue=""
+                          style={{
+                            width: '100%', padding: '10px 12px', borderRadius: '10px',
+                            backgroundColor: '#111', border: '1px solid #2a2a2a',
+                            color: '#F0F2F5', fontSize: '13px', outline: 'none',
+                            boxSizing: 'border-box',
+                          }}
+                        >
+                          <option value="">Selecione o aluno...</option>
+                          {alunosDisponiveis.map(a => (
+                            <option key={a.id} value={a.id}>{a.nome}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => setAdicionandoAluno(null)}
+                          style={{ marginTop: '6px', fontSize: '12px', color: '#555', background: 'none', border: 'none', cursor: 'pointer' }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setAdicionandoAluno(aula.id)}
+                        style={{
+                          marginTop: '10px', width: '100%', padding: '8px',
+                          borderRadius: '8px', border: '1px dashed #2a2a2a',
+                          background: 'none', color: '#555', fontSize: '12px',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', gap: '6px', boxSizing: 'border-box',
+                        }}
+                      >
+                        <UserPlus size={13} /> Adicionar aluno
+                      </button>
+                    )}
+
+                    {/* Botão salvar */}
                     <button
-                      onClick={() => handleConfirmar(aula.id, true)}
-                      disabled={carregando}
+                      onClick={() => handleSalvarPresencas(aula.id)}
+                      disabled={salvarPresencas.isPending}
                       style={{
-                        flex: 1, padding: '10px', borderRadius: '10px', border: 'none',
+                        marginTop: '12px', width: '100%', padding: '12px',
+                        borderRadius: '10px', border: 'none',
                         background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-                        color: 'white', fontSize: '13px', fontWeight: '600',
-                        cursor: carregando ? 'not-allowed' : 'pointer',
-                        opacity: carregando ? 0.7 : 1,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        color: 'white', fontSize: '14px', fontWeight: '600',
+                        cursor: 'pointer', boxSizing: 'border-box',
                       }}
                     >
-                      <CheckCircle size={14} />
-                      {carregando ? 'Aguarde...' : 'Confirmar'}
-                    </button>
-                    <button
-                      onClick={() => handleConfirmar(aula.id, false)}
-                      disabled={carregando}
-                      style={{
-                        padding: '10px 14px', borderRadius: '10px', border: 'none',
-                        backgroundColor: 'rgba(239,68,68,0.15)',
-                        color: '#EF4444', fontSize: '13px', fontWeight: '600',
-                        cursor: carregando ? 'not-allowed' : 'pointer',
-                        display: 'flex', alignItems: 'center', gap: '6px',
-                      }}
-                    >
-                      <AlertTriangle size={14} />
-                      Divergência
+                      {salvarPresencas.isPending ? 'Salvando...' : '💾 Salvar Presenças'}
                     </button>
                   </div>
                 )}

@@ -14,7 +14,7 @@ export function useAulas({ data, professorId, modalidadeId, status } = {}) {
           turmas(nome, horario_inicio, horario_fim, horario_dia_semana, modalidades(nome, icone_emoji, cor_hex)),
           professores!professor_executou_id(id, nome),
           prof_titular:professores!professor_titular_id(id, nome),
-          presencas(id, aluno_id, presente, alunos(id, nome))
+          presencas(id, aluno_id, presente, status_presenca, tipo_participacao, alunos(id, nome))
         `)
         .order('data_aula', { ascending: false })
 
@@ -56,7 +56,6 @@ export function useConfirmarAulaProfessor() {
   return useMutation({
     mutationFn: async ({ aulaId, presencas, ehSubstituicao, professorTitularId, observacoes }) => {
       const { data: anterior } = await supabase.from('aulas').select('*').eq('id', aulaId).single()
-
       const novoStatus = anterior.status === 'confirmada_coord' ? 'match' : 'confirmada_professor'
 
       const { data, error } = await supabase
@@ -74,7 +73,6 @@ export function useConfirmarAulaProfessor() {
 
       if (error) throw error
 
-      // Upsert presencas
       if (presencas?.length > 0) {
         const rows = presencas.map(p => ({
           aula_id: aulaId,
@@ -142,6 +140,60 @@ export function useMarcarNaoDada() {
   })
 }
 
+// NOVA — atualiza status da aula e flag de pagamento
+export function useAtualizarStatusAula() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ aulaId, statusAula, pagaProfessor }) => {
+      const { data, error } = await supabase
+        .from('aulas')
+        .update({
+          status_aula: statusAula,
+          paga_professor: pagaProfessor,
+          atualizado_em: new Date().toISOString()
+        })
+        .eq('id', aulaId)
+        .select()
+        .single()
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['aulas'] })
+  })
+}
+
+// NOVA — salva presença com tipo e status
+export function useSalvarPresencas() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ aulaId, presencas }) => {
+      const rows = presencas.map(p => ({
+        aula_id: aulaId,
+        aluno_id: p.aluno_id,
+        presente: p.status_presenca === 'presente',
+        status_presenca: p.status_presenca,
+        tipo_participacao: p.tipo_participacao || 'mensalista',
+      }))
+      const { error } = await supabase
+        .from('presencas')
+        .upsert(rows, { onConflict: 'aula_id,aluno_id' })
+      if (error) throw error
+
+      // Cria reposições para faltas justificadas
+      const faltasJustificadas = presencas.filter(p => p.status_presenca === 'falta_justificada')
+      if (faltasJustificadas.length > 0) {
+        const repos = faltasJustificadas.map(p => ({
+          aluno_id: p.aluno_id,
+          aula_origem_id: aulaId,
+          status: 'pendente'
+        }))
+        await supabase.from('reposicoes').upsert(repos, { onConflict: 'aluno_id,aula_origem_id' })
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['aulas'] })
+  })
+}
+
 export function useGerarAulas() {
   const qc = useQueryClient()
   return useMutation({
@@ -168,6 +220,8 @@ export function useGerarAulas() {
             professor_executou_id: turma.professores?.id || turma.professor_titular_id,
             data_aula: format(new Date(d), 'yyyy-MM-dd'),
             status: 'pendente',
+            status_aula: 'dada',
+            paga_professor: true,
             eh_substituicao: false
           })
         }
