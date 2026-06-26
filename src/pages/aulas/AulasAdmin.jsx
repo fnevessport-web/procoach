@@ -222,7 +222,7 @@ function ModalAulaAvulsa({ open, onClose }) {
   const [modalidadeId, setModalidadeId] = useState('')
   const { professores } = useProfessores(modalidadeId || null)
   const { data: quadras } = useQuadras(modalidadeId || null)
-  const { data: niveis } = useNiveis(modalidadeId || null)
+  const { data: niveis } = useNiveis(null) // busca todos os níveis independente da modalidade
 
   const [form, setForm] = useState({
     data: format(new Date(), 'yyyy-MM-dd'),
