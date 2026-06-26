@@ -22,7 +22,8 @@ const STATUS_PRESENCA = [
 
 const TIPO_PARTICIPACAO = [
   { value: 'mensalista', label: 'Mensalista' },
-  { value: 'experimental', label: 'Experimental' },
+  { value: 'avulso', label: 'Avulso' },
+  { value: 'cortesia', label: 'Cortesia' },
   { value: 'reposicao', label: 'Reposição' },
 ]
 
@@ -32,6 +33,7 @@ export function AulasCoordenador() {
   const [aulaAberta, setAulaAberta] = useState(null)
   const [presencasLocal, setPresencasLocal] = useState({})
   const [adicionandoAluno, setAdicionandoAluno] = useState(null)
+  const [buscaAdicionando, setBuscaAdicionando] = useState('')
 
   const { data: aulas, isLoading } = useAulas({ data, modalidadeId: modalidadeSelecionada?.id })
   const { data: todosAlunos } = useAlunos()
@@ -50,7 +52,6 @@ export function AulasCoordenador() {
   function abrirAula(aula) {
     if (aulaAberta === aula.id) { setAulaAberta(null); return }
     setAulaAberta(aula.id)
-    // Inicializa presençasLocal com os dados já salvos
     const inicial = {}
     aula.presencas?.forEach(p => {
       inicial[p.aluno_id] = {
@@ -82,11 +83,12 @@ export function AulasCoordenador() {
           aluno_id: aluno.id,
           nome: aluno.nome,
           status_presenca: 'presente',
-          tipo_participacao: 'experimental',
+          tipo_participacao: 'avulso',
         }
       }
     }))
     setAdicionandoAluno(null)
+    setBuscaAdicionando('')
   }
 
   async function handleSalvarPresencas(aulaId) {
@@ -106,9 +108,12 @@ export function AulasCoordenador() {
     } catch (err) { toast.error(err.message) }
   }
 
-  const aulasFiltradas = modalidadeSelecionada
-    ? aulas?.filter(a => a.turmas?.modalidades?.nome === modalidadeSelecionada.nome)
-    : aulas
+  // Filtra aulas: inclui aulas sem turma (avulsas) + filtra por modalidade se selecionada
+  const aulasFiltradas = aulas?.filter(a => {
+    if (!modalidadeSelecionada) return true
+    if (!a.turma_id) return true // aulas avulsas sempre aparecem
+    return a.turmas?.modalidades?.nome === modalidadeSelecionada.nome
+  })
 
   return (
     <div className="fade-in">
@@ -148,18 +153,29 @@ export function AulasCoordenador() {
             const qtdAlunos = aula.presencas?.length || 0
             const statusAtual = aula.status_aula || 'dada'
             const alunosNaAula = Object.values(presencas)
-
-            // Alunos disponíveis para adicionar
             const idsNaAula = Object.keys(presencas)
-            const alunosDisponiveis = todosAlunos?.filter(a => !idsNaAula.includes(a.id)) || []
+
+            // Nome da aula — turma ou avulsa
+            const nomeAula = aula.turmas?.nome || aula.observacoes || 'Aula Avulsa'
+            const isAvulsa = !aula.turma_id
+
+            // Busca aluno para adicionar
+            const alunosBusca = buscaAdicionando.length >= 1
+              ? todosAlunos?.filter(a =>
+                  a.nome.toLowerCase().includes(buscaAdicionando.toLowerCase()) &&
+                  !idsNaAula.includes(a.id)
+                )
+              : []
 
             return (
               <div key={aula.id} style={{
                 backgroundColor: '#1a1a1a', borderRadius: '14px',
-                border: '1px solid rgba(255,255,255,0.06)',
+                border: isAvulsa
+                  ? '1px solid rgba(252,200,37,0.2)'
+                  : '1px solid rgba(255,255,255,0.06)',
                 overflow: 'hidden', boxSizing: 'border-box', width: '100%',
               }}>
-                {/* Cabeçalho da aula */}
+                {/* Cabeçalho */}
                 <button
                   onClick={() => abrirAula(aula)}
                   style={{
@@ -170,13 +186,21 @@ export function AulasCoordenador() {
                 >
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                      {isAvulsa && (
+                        <span style={{
+                          fontSize: '10px', padding: '1px 6px', borderRadius: '4px',
+                          backgroundColor: 'rgba(252,200,37,0.15)', color: '#fcc825',
+                        }}>avulsa</span>
+                      )}
                       <span>{aula.turmas?.modalidades?.icone_emoji}</span>
                       <span style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '14px' }}>
-                        {aula.turmas?.nome}
+                        {nomeAula}
                       </span>
                     </div>
                     <div style={{ fontSize: '12px', color: '#555' }}>
-                      {aula.turmas?.horario_inicio?.slice(0, 5)}–{aula.turmas?.horario_fim?.slice(0, 5)} •
+                      {aula.turmas?.horario_inicio
+                        ? `${aula.turmas.horario_inicio.slice(0, 5)}–${aula.turmas.horario_fim?.slice(0, 5)} • `
+                        : ''}
                       Prof: {aula.professores?.nome} •
                       <span style={{ color: '#fcc825' }}> {qtdAlunos} aluno{qtdAlunos !== 1 ? 's' : ''}</span>
                     </div>
@@ -208,21 +232,13 @@ export function AulasCoordenador() {
                       </div>
                       <div style={{ display: 'flex', gap: '6px' }}>
                         {STATUS_AULA.map(s => (
-                          <button
-                            key={s.value}
-                            onClick={() => handleStatusAula(aula.id, s.value)}
-                            style={{
-                              flex: 1, padding: '8px 4px', borderRadius: '8px', border: 'none',
-                              fontSize: '11px', fontWeight: '500', cursor: 'pointer',
-                              background: statusAtual === s.value
-                                ? 'linear-gradient(135deg, #fcc825, #cf1b9b)'
-                                : '#111',
-                              color: statusAtual === s.value ? 'white' : '#555',
-                              boxSizing: 'border-box',
-                            }}
-                          >
-                            {s.label}
-                          </button>
+                          <button key={s.value} onClick={() => handleStatusAula(aula.id, s.value)} style={{
+                            flex: 1, padding: '8px 4px', borderRadius: '8px', border: 'none',
+                            fontSize: '11px', fontWeight: '500', cursor: 'pointer',
+                            background: statusAtual === s.value ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#111',
+                            color: statusAtual === s.value ? 'white' : '#555',
+                            boxSizing: 'border-box',
+                          }}>{s.label}</button>
                         ))}
                       </div>
                       <div style={{ fontSize: '11px', color: '#555', marginTop: '6px' }}>
@@ -232,7 +248,7 @@ export function AulasCoordenador() {
                       </div>
                     </div>
 
-                    {/* Lista de alunos */}
+                    {/* Presenças */}
                     <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       Presenças ({alunosNaAula.length})
                     </div>
@@ -261,71 +277,74 @@ export function AulasCoordenador() {
                           </div>
                           <div style={{ display: 'flex', gap: '6px' }}>
                             {STATUS_PRESENCA.map(sp => (
-                              <button
-                                key={sp.value}
+                              <button key={sp.value}
                                 onClick={() => updatePresenca(aula.id, aluno.aluno_id, 'status_presenca', sp.value)}
                                 style={{
                                   flex: 1, padding: '6px 4px', borderRadius: '6px', border: 'none',
                                   fontSize: '11px', fontWeight: '500', cursor: 'pointer',
-                                  backgroundColor: aluno.status_presenca === sp.value
-                                    ? sp.color + '30' : '#1a1a1a',
+                                  backgroundColor: aluno.status_presenca === sp.value ? sp.color + '30' : '#1a1a1a',
                                   color: aluno.status_presenca === sp.value ? sp.color : '#444',
                                   boxSizing: 'border-box',
                                   outline: aluno.status_presenca === sp.value ? `1px solid ${sp.color}` : 'none',
                                 }}
-                              >
-                                {sp.label}
-                              </button>
+                              >{sp.label}</button>
                             ))}
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    {/* Adicionar aluno */}
+                    {/* Adicionar aluno com busca */}
                     {adicionandoAluno === aula.id ? (
-                      <div style={{ marginTop: '10px' }}>
-                        <select
-                          onChange={e => {
-                            const aluno = todosAlunos?.find(a => a.id === e.target.value)
-                            if (aluno) adicionarAluno(aula.id, aluno)
-                          }}
-                          defaultValue=""
+                      <div style={{ marginTop: '10px', position: 'relative' }}>
+                        <input
+                          placeholder="Buscar aluno..."
+                          value={buscaAdicionando}
+                          onChange={e => setBuscaAdicionando(e.target.value)}
+                          autoFocus
                           style={{
                             width: '100%', padding: '10px 12px', borderRadius: '10px',
-                            backgroundColor: '#111', border: '1px solid #2a2a2a',
+                            backgroundColor: '#111', border: '1px solid #fcc825',
                             color: '#F0F2F5', fontSize: '13px', outline: 'none',
                             boxSizing: 'border-box',
                           }}
-                        >
-                          <option value="">Selecione o aluno...</option>
-                          {alunosDisponiveis.map(a => (
-                            <option key={a.id} value={a.id}>{a.nome}</option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => setAdicionandoAluno(null)}
-                          style={{ marginTop: '6px', fontSize: '12px', color: '#555', background: 'none', border: 'none', cursor: 'pointer' }}
-                        >
-                          Cancelar
-                        </button>
+                        />
+                        {alunosBusca.length > 0 && (
+                          <div style={{
+                            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+                            backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+                            borderRadius: '10px', marginTop: '4px', maxHeight: '160px', overflowY: 'auto',
+                          }}>
+                            {alunosBusca.map(a => (
+                              <button key={a.id} onClick={() => adicionarAluno(aula.id, a)} style={{
+                                width: '100%', padding: '10px 12px', border: 'none', background: 'none',
+                                color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer',
+                                borderBottom: '1px solid #2a2a2a',
+                              }}
+                                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2a2a2a'}
+                                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >{a.nome}</button>
+                            ))}
+                          </div>
+                        )}
+                        <button onClick={() => { setAdicionandoAluno(null); setBuscaAdicionando('') }} style={{
+                          marginTop: '6px', fontSize: '12px', color: '#555',
+                          background: 'none', border: 'none', cursor: 'pointer',
+                        }}>Cancelar</button>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => setAdicionandoAluno(aula.id)}
-                        style={{
-                          marginTop: '10px', width: '100%', padding: '8px',
-                          borderRadius: '8px', border: '1px dashed #2a2a2a',
-                          background: 'none', color: '#555', fontSize: '12px',
-                          cursor: 'pointer', display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', gap: '6px', boxSizing: 'border-box',
-                        }}
-                      >
+                      <button onClick={() => setAdicionandoAluno(aula.id)} style={{
+                        marginTop: '10px', width: '100%', padding: '8px',
+                        borderRadius: '8px', border: '1px dashed #2a2a2a',
+                        background: 'none', color: '#555', fontSize: '12px',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', gap: '6px', boxSizing: 'border-box',
+                      }}>
                         <UserPlus size={13} /> Adicionar aluno
                       </button>
                     )}
 
-                    {/* Botão salvar */}
+                    {/* Salvar */}
                     <button
                       onClick={() => handleSalvarPresencas(aula.id)}
                       disabled={salvarPresencas.isPending}

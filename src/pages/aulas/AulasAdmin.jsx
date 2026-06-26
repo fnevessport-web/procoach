@@ -39,7 +39,7 @@ const inputInline = {
 
 export function AulasAdmin() {
   const [tab, setTab] = useState('hoje')
-  const [modalGerar, setModalGerar] = useState(null) // null | 'menu' | 'mensal' | 'avulsa'
+  const [modalGerar, setModalGerar] = useState(null)
 
   return (
     <div className="fade-in">
@@ -74,14 +74,13 @@ export function AulasAdmin() {
 
       {tab === 'hoje' ? <AulasCoordenador /> : <AulasDivergencias />}
 
-      {/* Modal menu */}
       <Modal open={modalGerar === 'menu'} onClose={() => setModalGerar(null)} title="Gerar Aulas" size="sm">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <button onClick={() => setModalGerar('avulsa')} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '16px', borderRadius: '12px', border: 'none',
             backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
-            cursor: 'pointer', textAlign: 'left',
+            cursor: 'pointer', textAlign: 'left', width: '100%',
           }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>
@@ -98,7 +97,7 @@ export function AulasAdmin() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '16px', borderRadius: '12px', border: 'none',
             backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
-            cursor: 'pointer', textAlign: 'left',
+            cursor: 'pointer', textAlign: 'left', width: '100%',
           }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>
@@ -233,7 +232,7 @@ function ModalAulaAvulsa({ open, onClose }) {
 
   const [form, setForm] = useState({
     data: format(new Date(), 'yyyy-MM-dd'),
-    horario: '07:00', professor_id: '', quadra_id: '',
+    horario: '07:00', professor_id: '', quadra_id: '', nivel: '',
   })
 
   const [alunos, setAlunos] = useState([])
@@ -277,6 +276,14 @@ function ModalAulaAvulsa({ open, onClose }) {
 
   function resetNovoAluno() {
     setNovoAluno({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '', modalidades_ids: [] })
+  }
+
+  function resetForm() {
+    setAlunos([])
+    setModalidadeId('')
+    setBuscaAluno('')
+    setForm({ data: format(new Date(), 'yyyy-MM-dd'), horario: '07:00', professor_id: '', quadra_id: '', nivel: '' })
+    resetNovoAluno()
   }
 
   async function handleCadastrarAluno() {
@@ -325,7 +332,7 @@ function ModalAulaAvulsa({ open, onClose }) {
           status_aula: 'dada',
           paga_professor: true,
           eh_substituicao: false,
-          observacoes: `Aula avulsa · ${quadraNome} · ${form.horario}`,
+          observacoes: `⚡ Avulsa · ${quadraNome} · ${form.horario}${form.nivel ? ' · ' + form.nivel : ''}`,
         })
         .select().single()
 
@@ -343,13 +350,8 @@ function ModalAulaAvulsa({ open, onClose }) {
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
       toast.success('Aula avulsa criada!')
+      resetForm()
       onClose()
-      setAlunos([])
-      setModalidadeId('')
-      setForm({
-        data: format(new Date(), 'yyyy-MM-dd'),
-        horario: '07:00', professor_id: '', quadra_id: '',
-      })
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -358,7 +360,7 @@ function ModalAulaAvulsa({ open, onClose }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="⚡ Aula Avulsa" size="md">
+    <Modal open={open} onClose={() => { resetForm(); onClose() }} title="⚡ Aula Avulsa" size="md">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
         <Select label="Modalidade" value={modalidadeId} onChange={e => setModalidadeId(e.target.value)}>
@@ -382,6 +384,21 @@ function ModalAulaAvulsa({ open, onClose }) {
           <option value="">Selecione...</option>
           {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
         </Select>
+
+        {/* Nível da aula */}
+        <div>
+          <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Nível da Aula (opcional)</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {NIVEIS.map(n => (
+              <button key={n} onClick={() => setForm(f => ({ ...f, nivel: f.nivel === n ? '' : n }))} style={{
+                padding: '6px 12px', borderRadius: '8px', border: 'none', fontSize: '12px',
+                background: form.nivel === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#110f0f',
+                outline: form.nivel === n ? 'none' : '1px solid #2a2a2a',
+                color: form.nivel === n ? 'white' : '#888', cursor: 'pointer',
+              }}>{n}</button>
+            ))}
+          </div>
+        </div>
 
         {/* Alunos */}
         <div>
@@ -446,7 +463,6 @@ function ModalAulaAvulsa({ open, onClose }) {
             )}
           </div>
 
-          {/* Cadastrar novo aluno completo */}
           {!novoAluno.show ? (
             <button onClick={() => setNovoAluno(n => ({ ...n, show: true }))} style={{
               width: '100%', padding: '8px', borderRadius: '8px',
@@ -472,7 +488,6 @@ function ModalAulaAvulsa({ open, onClose }) {
                 onChange={e => setNovoAluno(n => ({ ...n, telefone: e.target.value }))}
                 style={inputInline} />
 
-              {/* Nível */}
               <div>
                 <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Nível (opcional)</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
@@ -487,7 +502,6 @@ function ModalAulaAvulsa({ open, onClose }) {
                 </div>
               </div>
 
-              {/* Menor de idade */}
               <button onClick={() => setNovoAluno(n => ({ ...n, menor_idade: !n.menor_idade }))} style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '8px 10px', borderRadius: '8px', border: 'none',
@@ -506,7 +520,6 @@ function ModalAulaAvulsa({ open, onClose }) {
                   style={inputInline} />
               )}
 
-              {/* Modalidades */}
               <div>
                 <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Modalidades</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
