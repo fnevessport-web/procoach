@@ -25,7 +25,10 @@ export function AlunosPage() {
   const [busca, setBusca] = useState('')
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
-  const [form, setForm] = useState({ nome: '', telefone: '', multiclubes_id: '' })
+  const [form, setForm] = useState({
+    nome: '', telefone: '', multiclubes_id: '',
+    menor_idade: false, nome_responsavel: ''
+  })
   const [modalidadesSelecionadas, setModalidadesSelecionadas] = useState([])
   const [salvandoMods, setSalvandoMods] = useState(false)
 
@@ -39,7 +42,7 @@ export function AlunosPage() {
 
   function abrirCriar() {
     setEditando(null)
-    setForm({ nome: '', telefone: '', multiclubes_id: '' })
+    setForm({ nome: '', telefone: '', multiclubes_id: '', menor_idade: false, nome_responsavel: '' })
     setModalidadesSelecionadas([])
     setModal(true)
   }
@@ -49,9 +52,10 @@ export function AlunosPage() {
     setForm({
       nome: aluno.nome || '',
       telefone: aluno.telefone || '',
-      multiclubes_id: aluno.multiclubes_id || ''
+      multiclubes_id: aluno.multiclubes_id || '',
+      menor_idade: aluno.menor_idade || false,
+      nome_responsavel: aluno.nome_responsavel || '',
     })
-    // Buscar modalidades do aluno
     const { data } = await supabase
       .from('alunos_modalidades')
       .select('modalidade_id')
@@ -62,24 +66,23 @@ export function AlunosPage() {
 
   async function handleSalvar() {
     if (!form.nome.trim()) return toast.error('Nome é obrigatório')
+    if (form.menor_idade && !form.nome_responsavel.trim()) return toast.error('Nome do responsável é obrigatório')
     setSalvandoMods(true)
     try {
-      // Salva aluno principal (mantém modalidade_id com a primeira selecionada para compatibilidade)
       const result = await salvar.mutateAsync({
         id: editando?.id,
         nome: form.nome,
         telefone: form.telefone,
         multiclubes_id: form.multiclubes_id,
+        menor_idade: form.menor_idade,
+        nome_responsavel: form.menor_idade ? form.nome_responsavel : null,
         modalidade_id: modalidadesSelecionadas[0] || null,
       })
 
       const alunoId = result?.id || editando?.id
 
-      // Salva múltiplas modalidades
       if (alunoId && modalidadesSelecionadas.length > 0) {
-        // Remove as antigas
         await supabase.from('alunos_modalidades').delete().eq('aluno_id', alunoId)
-        // Insere as novas
         await supabase.from('alunos_modalidades').insert(
           modalidadesSelecionadas.map(mid => ({ aluno_id: alunoId, modalidade_id: mid }))
         )
@@ -113,7 +116,6 @@ export function AlunosPage() {
 
   return (
     <div>
-      {/* Busca + botão novo */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
         <div style={{ flex: 1, position: 'relative' }}>
           <input
@@ -131,7 +133,6 @@ export function AlunosPage() {
         }}>+ Novo</button>
       </div>
 
-      {/* Lista */}
       {isLoading ? <Loading /> : !filtrados?.length ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <div style={{ fontSize: '40px', marginBottom: '8px' }}>👥</div>
@@ -151,11 +152,18 @@ export function AlunosPage() {
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <div onClick={() => abrirEditar(aluno)} style={{ flex: 1, cursor: 'pointer' }}>
-                <div style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '14px' }}>{aluno.nome}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '14px' }}>{aluno.nome}</span>
+                  {aluno.menor_idade && (
+                    <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(252,200,37,0.15)', color: '#fcc825' }}>
+                      menor
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>
                   {aluno.modalidades?.icone_emoji} {aluno.modalidades?.nome || '—'}
-                  {aluno.telefone && (
-                    <span style={{ marginLeft: '8px' }}>📱 {aluno.telefone}</span>
+                  {aluno.menor_idade && aluno.nome_responsavel && (
+                    <span style={{ marginLeft: '6px' }}>👤 {aluno.nome_responsavel}</span>
                   )}
                 </div>
               </div>
@@ -186,21 +194,23 @@ export function AlunosPage() {
         </div>
       )}
 
-      {/* Modal */}
       <Modal open={modal} onClose={() => setModal(false)} title={editando ? 'Editar Aluno' : 'Novo Aluno'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
           <Input
             label="Nome completo *"
             placeholder="Nome do aluno"
             value={form.nome}
             onChange={e => update('nome', e.target.value)}
           />
+
           <Input
             label="Telefone (WhatsApp)"
             placeholder="(11) 99999-9999"
             value={form.telefone}
             onChange={e => update('telefone', e.target.value)}
           />
+
           <Input
             label="ID MultiClubes (opcional)"
             placeholder="ID da plataforma"
@@ -208,7 +218,32 @@ export function AlunosPage() {
             onChange={e => update('multiclubes_id', e.target.value)}
           />
 
-          {/* Modalidades múltiplas */}
+          {/* Menor de idade */}
+          <button
+            onClick={() => update('menor_idade', !form.menor_idade)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '10px 12px', borderRadius: '10px', border: 'none',
+              background: form.menor_idade ? 'rgba(252,200,37,0.1)' : '#110f0f',
+              outline: form.menor_idade ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+              color: form.menor_idade ? '#fcc825' : '#888',
+              cursor: 'pointer', width: '100%', boxSizing: 'border-box', textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>{form.menor_idade ? '✓' : '○'}</span>
+            <span style={{ fontSize: '13px' }}>Menor de idade</span>
+          </button>
+
+          {form.menor_idade && (
+            <Input
+              label="Nome do responsável *"
+              placeholder="Nome do pai/mãe/responsável"
+              value={form.nome_responsavel}
+              onChange={e => update('nome_responsavel', e.target.value)}
+            />
+          )}
+
+          {/* Modalidades */}
           <div>
             <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
               Modalidades ({modalidadesSelecionadas.length} selecionadas)
@@ -221,18 +256,14 @@ export function AlunosPage() {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '10px 12px', borderRadius: '10px', border: 'none',
-                    background: modalidadesSelecionadas.includes(m.id)
-                      ? 'rgba(252,200,37,0.1)' : '#110f0f',
-                    outline: modalidadesSelecionadas.includes(m.id)
-                      ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+                    background: modalidadesSelecionadas.includes(m.id) ? 'rgba(252,200,37,0.1)' : '#110f0f',
+                    outline: modalidadesSelecionadas.includes(m.id) ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
                     color: modalidadesSelecionadas.includes(m.id) ? '#fcc825' : '#888',
                     cursor: 'pointer', textAlign: 'left', width: '100%', boxSizing: 'border-box',
                   }}
                 >
                   <span style={{ fontSize: '13px' }}>{m.icone_emoji} {m.nome}</span>
-                  <span style={{ fontSize: '16px' }}>
-                    {modalidadesSelecionadas.includes(m.id) ? '✓' : '+'}
-                  </span>
+                  <span style={{ fontSize: '16px' }}>{modalidadesSelecionadas.includes(m.id) ? '✓' : '+'}</span>
                 </button>
               ))}
             </div>
