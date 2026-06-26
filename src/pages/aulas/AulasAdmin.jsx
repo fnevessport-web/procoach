@@ -222,7 +222,7 @@ function ModalAulaAvulsa({ open, onClose }) {
   const [modalidadeId, setModalidadeId] = useState('')
   const { professores } = useProfessores(modalidadeId || null)
   const { data: quadras } = useQuadras(modalidadeId || null)
-  const { data: niveis } = useNiveis(null) // busca todos os níveis independente da modalidade
+  const { data: niveis } = useNiveis(null)
 
   const [form, setForm] = useState({
     data: format(new Date(), 'yyyy-MM-dd'),
@@ -313,6 +313,20 @@ function ModalAulaAvulsa({ open, onClose }) {
     setSalvando(true)
     try {
       const quadraNome = quadras?.find(q => q.id === form.quadra_id)?.nome || ''
+
+      const { data: aulasExistentes } = await supabase
+        .from('aulas')
+        .select('id')
+        .eq('data_aula', form.data)
+        .ilike('observacoes', `%${quadraNome}%`)
+        .ilike('observacoes', `%${form.horario}%`)
+
+      if (aulasExistentes && aulasExistentes.length > 0) {
+        toast.error(`⚠️ Já existe uma aula em ${quadraNome} às ${form.horario} neste dia!`)
+        setSalvando(false)
+        return
+      }
+
       const nivelNome = niveis?.find(n => n.id === form.nivel_id)?.nome || ''
 
       const { data: aulaData, error: aulaError } = await supabase
@@ -375,7 +389,6 @@ function ModalAulaAvulsa({ open, onClose }) {
           {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
         </Select>
 
-        {/* Nível — vem do banco, igual ao cadastro de níveis */}
         <div>
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Nível da Aula (opcional)</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -392,7 +405,6 @@ function ModalAulaAvulsa({ open, onClose }) {
           </div>
         </div>
 
-        {/* Alunos */}
         <div>
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Alunos ({alunos.length})</div>
 
@@ -478,7 +490,6 @@ function ModalAulaAvulsa({ open, onClose }) {
                 onChange={e => setNovoAluno(n => ({ ...n, telefone: e.target.value }))}
                 style={inputInline} />
 
-              {/* Nível do ALUNO — array fixo */}
               <div>
                 <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Nível do Aluno (opcional)</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
