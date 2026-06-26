@@ -20,7 +20,7 @@ const NIVEIS_ALUNO = [
   'Intermediário 1', 'Intermediário 2',
   'Avançado',
   'Kids Iniciante', 'Kids Intermediário', 'Kids Avançado',
-]]
+]
 
 export function AlunosPage() {
   const { modalidadeSelecionada } = useAppStore()
@@ -210,42 +210,29 @@ export function AlunosPage() {
           <Input label="ID MultiClubes (opcional)" placeholder="ID da plataforma"
             value={form.multiclubes_id} onChange={e => update('multiclubes_id', e.target.value)} />
 
-          {/* Nível */}
           <div>
-            <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
-              Nível (opcional)
-            </div>
+            <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Nível (opcional)</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {NIVEIS.map(n => (
-                <button
-                  key={n}
-                  onClick={() => update('nivel', form.nivel === n ? '' : n)}
-                  style={{
-                    padding: '6px 12px', borderRadius: '8px', border: 'none',
-                    background: form.nivel === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#110f0f',
-                    outline: form.nivel === n ? 'none' : '1px solid #2a2a2a',
-                    color: form.nivel === n ? 'white' : '#888',
-                    fontSize: '12px', cursor: 'pointer', fontWeight: form.nivel === n ? '600' : '400',
-                  }}
-                >
-                  {n}
-                </button>
+              {NIVEIS_ALUNO.map(n => (
+                <button key={n} onClick={() => update('nivel', form.nivel === n ? '' : n)} style={{
+                  padding: '6px 12px', borderRadius: '8px', border: 'none',
+                  background: form.nivel === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#110f0f',
+                  outline: form.nivel === n ? 'none' : '1px solid #2a2a2a',
+                  color: form.nivel === n ? 'white' : '#888',
+                  fontSize: '12px', cursor: 'pointer', fontWeight: form.nivel === n ? '600' : '400',
+                }}>{n}</button>
               ))}
             </div>
           </div>
 
-          {/* Menor de idade */}
-          <button
-            onClick={() => update('menor_idade', !form.menor_idade)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '10px',
-              padding: '10px 12px', borderRadius: '10px', border: 'none',
-              background: form.menor_idade ? 'rgba(252,200,37,0.1)' : '#110f0f',
-              outline: form.menor_idade ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-              color: form.menor_idade ? '#fcc825' : '#888',
-              cursor: 'pointer', width: '100%', boxSizing: 'border-box', textAlign: 'left',
-            }}
-          >
+          <button onClick={() => update('menor_idade', !form.menor_idade)} style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '10px 12px', borderRadius: '10px', border: 'none',
+            background: form.menor_idade ? 'rgba(252,200,37,0.1)' : '#110f0f',
+            outline: form.menor_idade ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+            color: form.menor_idade ? '#fcc825' : '#888',
+            cursor: 'pointer', width: '100%', boxSizing: 'border-box', textAlign: 'left',
+          }}>
             <span style={{ fontSize: '16px' }}>{form.menor_idade ? '✓' : '○'}</span>
             <span style={{ fontSize: '13px' }}>Menor de idade</span>
           </button>
@@ -255,25 +242,20 @@ export function AlunosPage() {
               value={form.nome_responsavel} onChange={e => update('nome_responsavel', e.target.value)} />
           )}
 
-          {/* Modalidades */}
           <div>
             <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
               Modalidades ({modalidadesSelecionadas.length} selecionadas)
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {modalidades?.map(m => (
-                <button
-                  key={m.id}
-                  onClick={() => toggleModalidade(m.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 12px', borderRadius: '10px', border: 'none',
-                    background: modalidadesSelecionadas.includes(m.id) ? 'rgba(252,200,37,0.1)' : '#110f0f',
-                    outline: modalidadesSelecionadas.includes(m.id) ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-                    color: modalidadesSelecionadas.includes(m.id) ? '#fcc825' : '#888',
-                    cursor: 'pointer', textAlign: 'left', width: '100%', boxSizing: 'border-box',
-                  }}
-                >
+                <button key={m.id} onClick={() => toggleModalidade(m.id)} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 12px', borderRadius: '10px', border: 'none',
+                  background: modalidadesSelecionadas.includes(m.id) ? 'rgba(252,200,37,0.1)' : '#110f0f',
+                  outline: modalidadesSelecionadas.includes(m.id) ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+                  color: modalidadesSelecionadas.includes(m.id) ? '#fcc825' : '#888',
+                  cursor: 'pointer', textAlign: 'left', width: '100%', boxSizing: 'border-box',
+                }}>
                   <span style={{ fontSize: '13px' }}>{m.icone_emoji} {m.nome}</span>
                   <span style={{ fontSize: '16px' }}>{modalidadesSelecionadas.includes(m.id) ? '✓' : '+'}</span>
                 </button>
