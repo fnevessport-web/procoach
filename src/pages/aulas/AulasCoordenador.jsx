@@ -163,6 +163,14 @@ export function AulasCoordenador() {
     if (!modalidadeSelecionada) return true
     if (!a.turma_id) return true
     return a.turmas?.modalidades?.nome === modalidadeSelecionada.nome
+  }).sort((a, b) => {
+    const horarioA = a.turma_id
+      ? (a.turmas?.horario_inicio || '99:99')
+      : (parseObservacoes(a.observacoes).horario || '99:99')
+    const horarioB = b.turma_id
+      ? (b.turmas?.horario_inicio || '99:99')
+      : (parseObservacoes(b.observacoes).horario || '99:99')
+    return horarioA.localeCompare(horarioB)
   })
 
   const totalAulas = aulasFiltradas?.length || 0
