@@ -10,31 +10,52 @@ export function Modal({ open, onClose, title, children, size = 'md' }) {
 
   if (!open) return null
 
-  const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' }
+  const maxWidths = { sm: '400px', md: '520px', lg: '600px', xl: '720px' }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      padding: 0,
+    }}>
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
+        style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
       />
-      <div className={`
-        relative w-full ${sizes[size]}
-        bg-[#1A1D27] border border-[#2A2D3E]
-        rounded-t-3xl sm:rounded-2xl
-        shadow-2xl slide-up
-        max-h-[90vh] flex flex-col
-      `}>
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#2A2D3E] flex-shrink-0">
-          <h2 className="text-lg font-semibold text-[#F0F2F5]">{title}</h2>
+      <div style={{
+        position: 'relative',
+        width: '100%',
+        maxWidth: maxWidths[size],
+        backgroundColor: '#1a1a1a',
+        border: '1px solid #2a2a2a',
+        borderRadius: '24px 24px 0 0',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.6)',
+        maxHeight: '90vh',
+        display: 'flex',
+        flexDirection: 'column',
+        animation: 'slideUp 0.3s ease-out',
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '20px 24px', borderBottom: '1px solid #2a2a2a', flexShrink: 0,
+        }}>
+          <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#F0F2F5', margin: 0 }}>
+            {title}
+          </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#8B8FA8] hover:text-[#F0F2F5] hover:bg-[#2A2D3E] transition-colors"
+            style={{
+              padding: '6px', borderRadius: '8px', border: 'none',
+              backgroundColor: 'rgba(255,255,255,0.05)', color: '#888',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
           >
             <X size={18} />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 px-6 py-5">
+        {/* Body */}
+        <div style={{ overflowY: 'auto', flex: 1, padding: '20px 24px' }}>
           {children}
         </div>
       </div>
