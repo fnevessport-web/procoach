@@ -24,11 +24,28 @@ const TIPOS_PARTICIPACAO = [
   { value: 'reposicao', label: 'Reposição', color: '#3b82f6' },
 ]
 
-const NIVEIS = [
+const NIVEIS_ALUNO = [
   'Iniciante 1', 'Iniciante 2',
   'Intermediário 1', 'Intermediário 2',
   'Avançado',
   'Kids Iniciante', 'Kids Intermediário', 'Kids Avançado',
+]
+
+const NIVEIS_TURMA = [
+  'Iniciante',
+  'Iniciante 1',
+  'Iniciante 2',
+  'Intermediário',
+  'Intermediário 1',
+  'Intermediário 2',
+  'Avançado',
+  'Kids 1 - 4 a 6 anos',
+  'Kids 2 - 7 a 10 anos',
+  'Kids Iniciante - 11 a 13 anos',
+  'Kids Intermediário - 11 a 13 anos',
+  'Kids Competitivo',
+  'Damas',
+  'Sênior 60+',
 ]
 
 const inputInline = {
@@ -83,12 +100,8 @@ export function AulasAdmin() {
             cursor: 'pointer', textAlign: 'left', width: '100%',
           }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>
-                ⚡ Aula Avulsa
-              </div>
-              <div style={{ fontSize: '12px', color: '#555' }}>
-                Uma única aula — sem data de término
-              </div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>⚡ Aula Avulsa</div>
+              <div style={{ fontSize: '12px', color: '#555' }}>Uma única aula — sem data de término</div>
             </div>
             <ChevronRight size={16} color="#555" />
           </button>
@@ -100,12 +113,8 @@ export function AulasAdmin() {
             cursor: 'pointer', textAlign: 'left', width: '100%',
           }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>
-                📅 Aula Mensal / Recorrente
-              </div>
-              <div style={{ fontSize: '12px', color: '#555' }}>
-                Gera aulas de uma turma por período
-              </div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>📅 Aula Mensal / Recorrente</div>
+              <div style={{ fontSize: '12px', color: '#555' }}>Gera aulas de uma turma por período</div>
             </div>
             <ChevronRight size={16} color="#555" />
           </button>
@@ -299,13 +308,11 @@ function ModalAulaAvulsa({ open, onClose }) {
         modalidade_id: novoAluno.modalidades_ids[0] || modalidadeId || null,
         ativo: true,
       })
-
       if (result?.id && novoAluno.modalidades_ids.length > 0) {
         await supabase.from('alunos_modalidades').insert(
           novoAluno.modalidades_ids.map(mid => ({ aluno_id: result.id, modalidade_id: mid }))
         )
       }
-
       await refetchAlunos()
       adicionarAluno({ id: result.id, nome: result.nome }, 'avulso')
       resetNovoAluno()
@@ -318,11 +325,9 @@ function ModalAulaAvulsa({ open, onClose }) {
     if (!form.quadra_id) return toast.error('Selecione uma quadra')
     if (!form.data) return toast.error('Selecione uma data')
     if (alunos.length === 0) return toast.error('Adicione pelo menos um aluno')
-
     setSalvando(true)
     try {
       const quadraNome = quadras?.find(q => q.id === form.quadra_id)?.nome || ''
-
       const { data: aulaData, error: aulaError } = await supabase
         .from('aulas')
         .insert({
@@ -335,7 +340,6 @@ function ModalAulaAvulsa({ open, onClose }) {
           observacoes: `⚡ Avulsa · ${quadraNome} · ${form.horario}${form.nivel ? ' · ' + form.nivel : ''}`,
         })
         .select().single()
-
       if (aulaError) throw aulaError
 
       await supabase.from('presencas').insert(
@@ -347,7 +351,6 @@ function ModalAulaAvulsa({ open, onClose }) {
           tipo_participacao: al.tipo,
         }))
       )
-
       qc.invalidateQueries({ queryKey: ['aulas'] })
       toast.success('Aula avulsa criada!')
       resetForm()
@@ -385,11 +388,11 @@ function ModalAulaAvulsa({ open, onClose }) {
           {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
         </Select>
 
-        {/* Nível da aula */}
+        {/* Nível da TURMA */}
         <div>
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Nível da Aula (opcional)</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {NIVEIS.map(n => (
+            {NIVEIS_TURMA.map(n => (
               <button key={n} onClick={() => setForm(f => ({ ...f, nivel: f.nivel === n ? '' : n }))} style={{
                 padding: '6px 12px', borderRadius: '8px', border: 'none', fontSize: '12px',
                 background: form.nivel === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#110f0f',
@@ -431,9 +434,7 @@ function ModalAulaAvulsa({ open, onClose }) {
           )}
 
           <div style={{ position: 'relative', marginBottom: '8px' }}>
-            <input
-              placeholder="Buscar aluno para adicionar..."
-              value={buscaAluno}
+            <input placeholder="Buscar aluno para adicionar..." value={buscaAluno}
               onChange={e => setBuscaAluno(e.target.value)}
               style={{
                 width: '100%', padding: '10px 12px', borderRadius: '10px',
@@ -488,10 +489,11 @@ function ModalAulaAvulsa({ open, onClose }) {
                 onChange={e => setNovoAluno(n => ({ ...n, telefone: e.target.value }))}
                 style={inputInline} />
 
+              {/* Nível do ALUNO */}
               <div>
-                <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Nível (opcional)</div>
+                <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Nível do Aluno (opcional)</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                  {NIVEIS.map(n => (
+                  {NIVEIS_ALUNO.map(n => (
                     <button key={n} onClick={() => setNovoAluno(na => ({ ...na, nivel: na.nivel === n ? '' : n }))} style={{
                       padding: '4px 10px', borderRadius: '6px', border: 'none', fontSize: '11px',
                       background: novoAluno.nivel === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',

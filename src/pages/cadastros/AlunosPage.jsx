@@ -15,12 +15,12 @@ const inputStyle = {
   color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
 }
 
-const NIVEIS = [
+const NIVEIS_ALUNO = [
   'Iniciante 1', 'Iniciante 2',
   'Intermediário 1', 'Intermediário 2',
   'Avançado',
   'Kids Iniciante', 'Kids Intermediário', 'Kids Avançado',
-]
+]]
 
 export function AlunosPage() {
   const { modalidadeSelecionada } = useAppStore()
