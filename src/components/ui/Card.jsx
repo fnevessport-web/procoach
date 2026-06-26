@@ -1,12 +1,16 @@
 export function Card({ children, className = '', onClick, ...props }) {
   return (
     <div
-      className={`
-        bg-[#1A1D27] rounded-2xl border border-[#2A2D3E]
-        ${onClick ? 'cursor-pointer hover:bg-[#1E2235] hover:border-[#3A3D4E] transition-all active:scale-[0.98]' : ''}
-        ${className}
-      `}
       onClick={onClick}
+      style={{
+        backgroundColor: '#1a1a1a',
+        borderRadius: '16px',
+        border: '1px solid rgba(255,255,255,0.06)',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.15s',
+        boxSizing: 'border-box',
+      }}
+      className={className}
       {...props}
     >
       {children}
@@ -16,7 +20,7 @@ export function Card({ children, className = '', onClick, ...props }) {
 
 export function CardHeader({ children, className = '' }) {
   return (
-    <div className={`px-5 pt-5 pb-0 flex items-center justify-between ${className}`}>
+    <div style={{ padding: '20px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} className={className}>
       {children}
     </div>
   )
@@ -24,7 +28,7 @@ export function CardHeader({ children, className = '' }) {
 
 export function CardBody({ children, className = '' }) {
   return (
-    <div className={`px-5 py-4 ${className}`}>
+    <div style={{ padding: '16px 20px' }} className={className}>
       {children}
     </div>
   )
@@ -32,7 +36,7 @@ export function CardBody({ children, className = '' }) {
 
 export function CardFooter({ children, className = '' }) {
   return (
-    <div className={`px-5 pb-5 pt-0 flex items-center gap-2 ${className}`}>
+    <div style={{ padding: '0 20px 20px', display: 'flex', alignItems: 'center', gap: '8px' }} className={className}>
       {children}
     </div>
   )
