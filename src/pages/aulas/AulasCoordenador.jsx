@@ -169,12 +169,11 @@ export function AulasCoordenador() {
   const aulasDadas = aulasFiltradas?.filter(a => (a.status_aula || 'dada') === 'dada').length || 0
   const aulasNaoDadas = aulasFiltradas?.filter(a => a.status_aula === 'nao_dada').length || 0
   const aulasCanceladas = aulasFiltradas?.filter(a => a.status_aula === 'cancelada').length || 0
-  let totalPresentes = 0, totalFaltas = 0, totalReposicoes = 0
+  let totalPresentes = 0, totalFaltas = 0
   aulasFiltradas?.forEach(aula => {
     aula.presencas?.forEach(p => {
       if (p.status_presenca === 'presente' || p.presente) totalPresentes++
       else if (p.status_presenca === 'falta' || p.status_presenca === 'falta_justificada') totalFaltas++
-      if (p.tipo_participacao === 'reposicao') totalReposicoes++
     })
   })
 
@@ -182,6 +181,8 @@ export function AulasCoordenador() {
 
   return (
     <div className="fade-in">
+
+      {/* Navegador de data */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)',
@@ -207,64 +208,30 @@ export function AulasCoordenador() {
         </button>
       </div>
 
+      {/* Resumo do dia */}
       {totalAulas > 0 && (
-  <div style={{
-    backgroundColor: '#151515', border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: '10px', padding: '8px 14px', marginBottom: '14px',
-    display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap',
-  }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <span style={{ fontSize: '11px', color: '#555' }}>Aulas</span>
-      <span style={{ fontSize: '11px', color: '#888', fontWeight: '600' }}>{totalAulas}</span>
-      <span style={{ fontSize: '11px', color: '#333' }}>·</span>
-      <span style={{ fontSize: '11px', color: '#22c55e', fontWeight: '600' }}>{aulasDadas}</span>
-      <span style={{ fontSize: '11px', color: '#555' }}>/</span>
-      <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>{aulasNaoDadas + aulasCanceladas}</span>
-    </div>
-    <span style={{ fontSize: '11px', color: '#2a2a2a' }}>·</span>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <span style={{ fontSize: '11px', color: '#555' }}>Alunos</span>
-      <span style={{ fontSize: '11px', color: '#888', fontWeight: '600' }}>{totalPresentes + totalFaltas}</span>
-      <span style={{ fontSize: '11px', color: '#333' }}>·</span>
-      <span style={{ fontSize: '11px', color: '#22c55e', fontWeight: '600' }}>{totalPresentes}</span>
-      <span style={{ fontSize: '11px', color: '#555' }}>/</span>
-      <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>{totalFaltas}</span>
-    </div>
-  </div>
-)}
-          <span style={{ fontSize: '11px', color: '#555' }}>
-            <span style={{ color: '#F0F2F5', fontWeight: '600' }}>{totalAulas}</span> aulas
-          </span>
-          <span style={{ color: '#2a2a2a' }}>·</span>
-          <span style={{ fontSize: '11px', color: '#555' }}>
-            <span style={{ color: '#22c55e', fontWeight: '600' }}>{aulasDadas}</span> dadas
-          </span>
-          {aulasNaoDadas > 0 && <>
-            <span style={{ color: '#2a2a2a' }}>·</span>
-            <span style={{ fontSize: '11px', color: '#555' }}>
-              <span style={{ color: '#EF4444', fontWeight: '600' }}>{aulasNaoDadas}</span> não dadas
-            </span>
-          </>}
-          {aulasCanceladas > 0 && <>
-            <span style={{ color: '#2a2a2a' }}>·</span>
-            <span style={{ fontSize: '11px', color: '#555' }}>
-              <span style={{ color: '#3b82f6', fontWeight: '600' }}>{aulasCanceladas}</span> canceladas
-            </span>
-          </>}
-          <span style={{ width: '100%', height: '1px', backgroundColor: '#1e1e1e', margin: '2px 0' }} />
-          <span style={{ fontSize: '11px', color: '#555' }}>
-            <span style={{ color: '#22c55e', fontWeight: '600' }}>{totalPresentes}</span> presentes
-          </span>
-          <span style={{ color: '#2a2a2a' }}>·</span>
-          <span style={{ fontSize: '11px', color: '#555' }}>
-            <span style={{ color: '#EF4444', fontWeight: '600' }}>{totalFaltas}</span> faltas
-          </span>
-          {totalReposicoes > 0 && <>
-            <span style={{ color: '#2a2a2a' }}>·</span>
-            <span style={{ fontSize: '11px', color: '#555' }}>
-              <span style={{ color: '#3b82f6', fontWeight: '600' }}>{totalReposicoes}</span> reposições
-            </span>
-          </>}
+        <div style={{
+          backgroundColor: '#151515', border: '1px solid rgba(255,255,255,0.05)',
+          borderRadius: '10px', padding: '8px 14px', marginBottom: '14px',
+          display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '11px', color: '#555' }}>Aulas</span>
+            <span style={{ fontSize: '11px', color: '#888', fontWeight: '600' }}>{totalAulas}</span>
+            <span style={{ fontSize: '11px', color: '#333' }}>·</span>
+            <span style={{ fontSize: '11px', color: '#22c55e', fontWeight: '600' }}>{aulasDadas}</span>
+            <span style={{ fontSize: '11px', color: '#555' }}>/</span>
+            <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>{aulasNaoDadas + aulasCanceladas}</span>
+          </div>
+          <span style={{ fontSize: '11px', color: '#2a2a2a' }}>·</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '11px', color: '#555' }}>Alunos</span>
+            <span style={{ fontSize: '11px', color: '#888', fontWeight: '600' }}>{totalPresentes + totalFaltas}</span>
+            <span style={{ fontSize: '11px', color: '#333' }}>·</span>
+            <span style={{ fontSize: '11px', color: '#22c55e', fontWeight: '600' }}>{totalPresentes}</span>
+            <span style={{ fontSize: '11px', color: '#555' }}>/</span>
+            <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>{totalFaltas}</span>
+          </div>
         </div>
       )}
 
@@ -316,9 +283,7 @@ export function AulasCoordenador() {
                       )}
                       <span style={{ fontSize: '12px', color: '#fcc825' }}>⚡</span>
                       <span style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '13px' }}>
-                        {nivelNome
-                          ? nivelNome
-                          : (isAvulsa ? 'Avulsa' : aula.turmas?.nome || 'Aula')}
+                        {nivelNome ? nivelNome : (isAvulsa ? 'Avulsa' : aula.turmas?.nome || 'Aula')}
                         {quadraNome ? ` · ${quadraNome}` : ''}
                         {horarioNome ? ` · ${horarioNome}` : ''}
                       </span>
@@ -361,14 +326,12 @@ export function AulasCoordenador() {
                             display: 'flex', flexDirection: 'column', gap: '10px',
                           }}>
                             <div style={{ fontSize: '12px', color: '#fcc825', fontWeight: '600' }}>✏️ Editar Aula</div>
-
                             <div>
                               <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Data</div>
                               <input type="date" value={editForm.data_aula}
                                 onChange={e => setEditForm(f => ({ ...f, data_aula: e.target.value }))}
                                 style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', color: '#F0F2F5', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
                             </div>
-
                             <div>
                               <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Horário</div>
                               <select value={editForm.horario} onChange={e => setEditForm(f => ({ ...f, horario: e.target.value }))}
@@ -376,7 +339,6 @@ export function AulasCoordenador() {
                                 {horarios.map(h => <option key={h} value={h}>{h}</option>)}
                               </select>
                             </div>
-
                             <div>
                               <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Quadra</div>
                               <select value={editForm.quadra_nome} onChange={e => setEditForm(f => ({ ...f, quadra_nome: e.target.value }))}
@@ -385,7 +347,6 @@ export function AulasCoordenador() {
                                 {todasQuadras?.map(q => <option key={q.id} value={q.nome}>{q.nome}</option>)}
                               </select>
                             </div>
-
                             <div>
                               <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Nível</div>
                               <select value={editForm.nivel} onChange={e => setEditForm(f => ({ ...f, nivel: e.target.value }))}
@@ -394,7 +355,6 @@ export function AulasCoordenador() {
                                 {todosNiveis?.map(n => <option key={n.id} value={n.nome}>{n.nome}</option>)}
                               </select>
                             </div>
-
                             <div>
                               <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Professor</div>
                               <select value={editForm.professor_id} onChange={e => setEditForm(f => ({ ...f, professor_id: e.target.value }))}
@@ -403,7 +363,6 @@ export function AulasCoordenador() {
                                 {todoProfessores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                               </select>
                             </div>
-
                             <div style={{ display: 'flex', gap: '8px' }}>
                               <button onClick={() => setEditandoAula(null)} style={{
                                 flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #2a2a2a',
