@@ -7,6 +7,7 @@ import { useTurmas } from '../../hooks/useTurmas'
 import { useProfessores } from '../../hooks/useProfessores'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useQuadras } from '../../hooks/useQuadras'
+import { useNiveis } from '../../hooks/useNiveis'
 import { useModalidades } from '../../hooks/useModalidades'
 import { StatusBadge } from '../../components/ui/Badge'
 import { Modal } from '../../components/ui/Modal'
@@ -29,23 +30,6 @@ const NIVEIS_ALUNO = [
   'Intermediário 1', 'Intermediário 2',
   'Avançado',
   'Kids Iniciante', 'Kids Intermediário', 'Kids Avançado',
-]
-
-const NIVEIS_TURMA = [
-  'Iniciante',
-  'Iniciante 1',
-  'Iniciante 2',
-  'Intermediário',
-  'Intermediário 1',
-  'Intermediário 2',
-  'Avançado',
-  'Kids 1 - 4 a 6 anos',
-  'Kids 2 - 7 a 10 anos',
-  'Kids Iniciante - 11 a 13 anos',
-  'Kids Intermediário - 11 a 13 anos',
-  'Kids Competitivo',
-  'Damas',
-  'Sênior 60+',
 ]
 
 const inputInline = {
@@ -238,10 +222,11 @@ function ModalAulaAvulsa({ open, onClose }) {
   const [modalidadeId, setModalidadeId] = useState('')
   const { professores } = useProfessores(modalidadeId || null)
   const { data: quadras } = useQuadras(modalidadeId || null)
+  const { data: niveis } = useNiveis(modalidadeId || null)
 
   const [form, setForm] = useState({
     data: format(new Date(), 'yyyy-MM-dd'),
-    horario: '07:00', professor_id: '', quadra_id: '', nivel: '',
+    horario: '07:00', professor_id: '', quadra_id: '', nivel_id: '',
   })
 
   const [alunos, setAlunos] = useState([])
@@ -291,7 +276,7 @@ function ModalAulaAvulsa({ open, onClose }) {
     setAlunos([])
     setModalidadeId('')
     setBuscaAluno('')
-    setForm({ data: format(new Date(), 'yyyy-MM-dd'), horario: '07:00', professor_id: '', quadra_id: '', nivel: '' })
+    setForm({ data: format(new Date(), 'yyyy-MM-dd'), horario: '07:00', professor_id: '', quadra_id: '', nivel_id: '' })
     resetNovoAluno()
   }
 
@@ -328,6 +313,8 @@ function ModalAulaAvulsa({ open, onClose }) {
     setSalvando(true)
     try {
       const quadraNome = quadras?.find(q => q.id === form.quadra_id)?.nome || ''
+      const nivelNome = niveis?.find(n => n.id === form.nivel_id)?.nome || ''
+
       const { data: aulaData, error: aulaError } = await supabase
         .from('aulas')
         .insert({
@@ -337,7 +324,7 @@ function ModalAulaAvulsa({ open, onClose }) {
           status_aula: 'dada',
           paga_professor: true,
           eh_substituicao: false,
-          observacoes: `⚡ Avulsa · ${quadraNome} · ${form.horario}${form.nivel ? ' · ' + form.nivel : ''}`,
+          observacoes: `⚡ Avulsa · ${quadraNome} · ${form.horario}${nivelNome ? ' · ' + nivelNome : ''}`,
         })
         .select().single()
       if (aulaError) throw aulaError
@@ -366,7 +353,7 @@ function ModalAulaAvulsa({ open, onClose }) {
     <Modal open={open} onClose={() => { resetForm(); onClose() }} title="⚡ Aula Avulsa" size="md">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-        <Select label="Modalidade" value={modalidadeId} onChange={e => setModalidadeId(e.target.value)}>
+        <Select label="Modalidade" value={modalidadeId} onChange={e => { setModalidadeId(e.target.value); setForm(f => ({ ...f, professor_id: '', quadra_id: '', nivel_id: '' })) }}>
           <option value="">Selecione...</option>
           {modalidades?.map(m => <option key={m.id} value={m.id}>{m.icone_emoji} {m.nome}</option>)}
         </Select>
@@ -388,17 +375,19 @@ function ModalAulaAvulsa({ open, onClose }) {
           {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
         </Select>
 
-        {/* Nível da TURMA */}
+        {/* Nível — vem do banco, igual ao cadastro de níveis */}
         <div>
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Nível da Aula (opcional)</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {NIVEIS_TURMA.map(n => (
-              <button key={n} onClick={() => setForm(f => ({ ...f, nivel: f.nivel === n ? '' : n }))} style={{
-                padding: '6px 12px', borderRadius: '8px', border: 'none', fontSize: '12px',
-                background: form.nivel === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#110f0f',
-                outline: form.nivel === n ? 'none' : '1px solid #2a2a2a',
-                color: form.nivel === n ? 'white' : '#888', cursor: 'pointer',
-              }}>{n}</button>
+            {niveis?.map(n => (
+              <button key={n.id}
+                onClick={() => setForm(f => ({ ...f, nivel_id: f.nivel_id === n.id ? '' : n.id }))}
+                style={{
+                  padding: '6px 12px', borderRadius: '8px', border: 'none', fontSize: '12px',
+                  background: form.nivel_id === n.id ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#110f0f',
+                  outline: form.nivel_id === n.id ? 'none' : '1px solid #2a2a2a',
+                  color: form.nivel_id === n.id ? 'white' : '#888', cursor: 'pointer',
+                }}>{n.nome}</button>
             ))}
           </div>
         </div>
@@ -489,7 +478,7 @@ function ModalAulaAvulsa({ open, onClose }) {
                 onChange={e => setNovoAluno(n => ({ ...n, telefone: e.target.value }))}
                 style={inputInline} />
 
-              {/* Nível do ALUNO */}
+              {/* Nível do ALUNO — array fixo */}
               <div>
                 <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Nível do Aluno (opcional)</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
