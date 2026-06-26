@@ -201,7 +201,7 @@ export function useGerarAulas() {
         .select(`
           *,
           professores!professor_titular_id(id),
-          turmas_alunos!inner(aluno_id, ativo)
+          turmas_alunos(aluno_id, ativo)
         `)
         .eq('id', turmaId)
         .single()
