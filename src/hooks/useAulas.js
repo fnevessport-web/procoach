@@ -140,7 +140,6 @@ export function useMarcarNaoDada() {
   })
 }
 
-// NOVA — atualiza status da aula e flag de pagamento
 export function useAtualizarStatusAula() {
   const qc = useQueryClient()
   return useMutation({
@@ -162,7 +161,6 @@ export function useAtualizarStatusAula() {
   })
 }
 
-// NOVA — salva presença com tipo e status
 export function useSalvarPresencas() {
   const qc = useQueryClient()
   return useMutation({
@@ -179,7 +177,6 @@ export function useSalvarPresencas() {
         .upsert(rows, { onConflict: 'aula_id,aluno_id' })
       if (error) throw error
 
-      // Cria reposições para faltas justificadas
       const faltasJustificadas = presencas.filter(p => p.status_presenca === 'falta_justificada')
       if (faltasJustificadas.length > 0) {
         const repos = faltasJustificadas.map(p => ({
@@ -198,24 +195,37 @@ export function useGerarAulas() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ turmaId, dataInicio, dataFim }) => {
+      // 1. Busca turma com professor e alunos ativos
       const { data: turma } = await supabase
         .from('turmas')
-        .select('*, professores!professor_titular_id(id)')
+        .select(`
+          *,
+          professores!professor_titular_id(id),
+          turmas_alunos!inner(aluno_id, ativo)
+        `)
         .eq('id', turmaId)
         .single()
 
       if (!turma) throw new Error('Turma não encontrada')
 
-      const diasSemana = { 'domingo': 0, 'segunda': 1, 'terca': 2, 'quarta': 3, 'quinta': 4, 'sexta': 5, 'sabado': 6 }
+      // Alunos fixos da turma (mensalistas)
+      const alunosFixos = turma.turmas_alunos
+        ?.filter(ta => ta.ativo)
+        .map(ta => ta.aluno_id) || []
+
+      const diasSemana = {
+        'domingo': 0, 'segunda': 1, 'terca': 2,
+        'quarta': 3, 'quinta': 4, 'sexta': 5, 'sabado': 6
+      }
       const diaSemanaNum = diasSemana[turma.horario_dia_semana?.toLowerCase()] ?? 1
 
-      const aulas = []
+      const aulasParaInserir = []
       const inicio = new Date(dataInicio)
       const fim = new Date(dataFim)
 
       for (let d = new Date(inicio); d <= fim; d.setDate(d.getDate() + 1)) {
         if (d.getDay() === diaSemanaNum) {
-          aulas.push({
+          aulasParaInserir.push({
             turma_id: turmaId,
             professor_executou_id: turma.professores?.id || turma.professor_titular_id,
             data_aula: format(new Date(d), 'yyyy-MM-dd'),
@@ -227,12 +237,33 @@ export function useGerarAulas() {
         }
       }
 
-      if (aulas.length > 0) {
-        const { error } = await supabase.from('aulas').insert(aulas)
-        if (error) throw error
+      if (aulasParaInserir.length === 0) return 0
+
+      // 2. Insere as aulas
+      const { data: aulasCriadas, error } = await supabase
+        .from('aulas')
+        .insert(aulasParaInserir)
+        .select('id')
+      if (error) throw error
+
+      // 3. Para cada aula criada, insere presenças dos alunos fixos
+      if (alunosFixos.length > 0 && aulasCriadas?.length > 0) {
+        const presencasParaInserir = []
+        for (const aula of aulasCriadas) {
+          for (const alunoId of alunosFixos) {
+            presencasParaInserir.push({
+              aula_id: aula.id,
+              aluno_id: alunoId,
+              presente: false,
+              status_presenca: 'presente',
+              tipo_participacao: 'mensalista',
+            })
+          }
+        }
+        await supabase.from('presencas').insert(presencasParaInserir)
       }
 
-      return aulas.length
+      return aulasCriadas.length
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['aulas'] })
   })
