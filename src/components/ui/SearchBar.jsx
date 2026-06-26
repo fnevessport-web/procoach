@@ -2,24 +2,25 @@ import { Search, X } from 'lucide-react'
 
 export function SearchBar({ value, onChange, placeholder = 'Buscar...' }) {
   return (
-    <div className="relative">
-      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#4A4D65]" />
+    <div style={{ position: 'relative' }}>
+      <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#555' }} />
       <input
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="
-          w-full pl-10 pr-10 py-2.5 rounded-xl
-          bg-[#1A1D27] border border-[#2A2D3E]
-          text-[#F0F2F5] placeholder-[#4A4D65]
-          focus:border-[#00D4AA] focus:ring-1 focus:ring-[#00D4AA]/20
-          transition-colors text-sm
-        "
+        style={{
+          width: '100%', padding: '10px 36px', borderRadius: '10px',
+          backgroundColor: '#110f0f', border: '1px solid #2a2a2a',
+          color: '#F0F2F5', fontSize: '13px', outline: 'none',
+          boxSizing: 'border-box',
+        }}
+        onFocus={e => e.target.style.borderColor = '#fcc825'}
+        onBlur={e => e.target.style.borderColor = '#2a2a2a'}
       />
       {value && (
         <button
           onClick={() => onChange('')}
-          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#4A4D65] hover:text-[#8B8FA8]"
+          style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#555' }}
         >
           <X size={16} />
         </button>

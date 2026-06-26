@@ -10,8 +10,7 @@ import useAppStore from '../../store/useAppStore'
 import { Card, CardBody } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
-import { Input, Select } from '../../components/ui/Input'
-import { SearchBar } from '../../components/ui/SearchBar'
+import { Select } from '../../components/ui/Input'
 import { Loading, EmptyState } from '../../components/ui/Loading'
 import toast from 'react-hot-toast'
 
@@ -51,6 +50,7 @@ export function TurmasPage({ onIrParaProfessores }) {
   const salvar = useSalvarTurma()
 
   const [busca, setBusca] = useState('')
+  const [buscaAluno, setBuscaAluno] = useState('')
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(formInicial())
@@ -71,6 +71,7 @@ export function TurmasPage({ onIrParaProfessores }) {
     setEditando(null)
     setForm(formInicial())
     setAlunosSelecionados([])
+    setBuscaAluno('')
     setModal(true)
   }
 
@@ -86,6 +87,7 @@ export function TurmasPage({ onIrParaProfessores }) {
     })
     const idsAtivos = turma.turmas_alunos?.filter(ta => ta.ativo).map(ta => ta.aluno_id) || []
     setAlunosSelecionados(idsAtivos)
+    setBuscaAluno('')
     setModal(true)
   }
 
@@ -124,11 +126,30 @@ export function TurmasPage({ onIrParaProfessores }) {
     ? alunos?.filter(a => a.modalidade_id === form.modalidade_id)
     : alunos
 
+  const alunosBusca = buscaAluno.length >= 1
+    ? alunosFiltradosMod?.filter(a =>
+        a.nome.toLowerCase().includes(buscaAluno.toLowerCase())
+      )
+    : alunosFiltradosMod
+
   return (
     <div className="fade-in">
       <div className="flex gap-3 mb-4">
         <div className="flex-1">
-          <SearchBar value={busca} onChange={setBusca} placeholder="Buscar turma..." />
+          <div style={{ position: 'relative' }}>
+            <input
+              placeholder="Buscar turma..."
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              style={{
+                width: '100%', padding: '10px 12px 10px 36px',
+                borderRadius: '10px', backgroundColor: '#110f0f',
+                border: '1px solid #2a2a2a', color: '#F0F2F5',
+                fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#555' }}>🔍</span>
+          </div>
         </div>
         <Button onClick={abrirCriar} size="sm">
           <Plus size={16} /> Nova
@@ -151,9 +172,7 @@ export function TurmasPage({ onIrParaProfessores }) {
                         <span className="font-semibold text-[#F0F2F5]">{turma.nome}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#8B8FA8]">
-                        {turma.professores?.nome && (
-                          <span>👨‍🏫 {turma.professores.nome}</span>
-                        )}
+                        {turma.professores?.nome && <span>👨‍🏫 {turma.professores.nome}</span>}
                         {turma.horario_dia_semana && (
                           <span className="flex items-center gap-1">
                             <Clock size={11} />
@@ -189,7 +208,7 @@ export function TurmasPage({ onIrParaProfessores }) {
         title={editando ? 'Editar Turma' : 'Nova Turma'}
         size="lg"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
           <Select label="Modalidade" value={form.modalidade_id} onChange={e => updateModalidade(e.target.value)}>
             <option value="">Selecione...</option>
@@ -235,35 +254,53 @@ export function TurmasPage({ onIrParaProfessores }) {
             )}
           </div>
 
-          {alunosFiltradosMod?.length > 0 && (
-            <div>
-              <h3 style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5', marginBottom: '8px' }}>
-                Alunos ({alunosSelecionados.length} selecionados)
-              </h3>
-              <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {alunosFiltradosMod.map(aluno => (
-                  <button
-                    key={aluno.id}
-                    onClick={() => toggleAluno(aluno.id)}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '10px 12px', borderRadius: '12px', border: 'none',
-                      background: alunosSelecionados.includes(aluno.id)
-                        ? 'rgba(252,200,37,0.1)' : '#0F1117',
-                      outline: alunosSelecionados.includes(aluno.id)
-                        ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2A2D3E',
-                      color: alunosSelecionados.includes(aluno.id) ? '#fcc825' : '#8B8FA8',
-                      cursor: 'pointer', textAlign: 'left',
-                      width: '100%', boxSizing: 'border-box',
-                    }}
-                  >
-                    <span style={{ fontSize: '14px' }}>{aluno.nome}</span>
-                    <span>{alunosSelecionados.includes(aluno.id) ? '✓' : '+'}</span>
-                  </button>
-                ))}
-              </div>
+          {/* Alunos com busca */}
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5', marginBottom: '8px' }}>
+              Alunos ({alunosSelecionados.length} selecionados)
             </div>
-          )}
+
+            {/* Campo de busca */}
+            <input
+              placeholder="Digite o nome do aluno..."
+              value={buscaAluno}
+              onChange={e => setBuscaAluno(e.target.value)}
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: '10px',
+                backgroundColor: '#110f0f', border: '1px solid #2a2a2a',
+                color: '#F0F2F5', fontSize: '13px', outline: 'none',
+                boxSizing: 'border-box', marginBottom: '8px',
+              }}
+              onFocus={e => e.target.style.borderColor = '#fcc825'}
+              onBlur={e => e.target.style.borderColor = '#2a2a2a'}
+            />
+
+            {/* Lista filtrada */}
+            <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {alunosBusca?.map(aluno => (
+                <button
+                  key={aluno.id}
+                  onClick={() => toggleAluno(aluno.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 12px', borderRadius: '10px', border: 'none',
+                    background: alunosSelecionados.includes(aluno.id) ? 'rgba(252,200,37,0.1)' : '#110f0f',
+                    outline: alunosSelecionados.includes(aluno.id) ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+                    color: alunosSelecionados.includes(aluno.id) ? '#fcc825' : '#888',
+                    cursor: 'pointer', textAlign: 'left', width: '100%', boxSizing: 'border-box',
+                  }}
+                >
+                  <span style={{ fontSize: '13px' }}>{aluno.nome}</span>
+                  <span>{alunosSelecionados.includes(aluno.id) ? '✓' : '+'}</span>
+                </button>
+              ))}
+              {buscaAluno && alunosBusca?.length === 0 && (
+                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', padding: '8px 0', margin: 0 }}>
+                  Nenhum aluno encontrado
+                </p>
+              )}
+            </div>
+          </div>
 
           <div style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}>
             <Button variant="secondary" onClick={() => setModal(false)} className="flex-1">
