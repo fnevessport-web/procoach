@@ -15,6 +15,13 @@ const inputStyle = {
   color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
 }
 
+const NIVEIS = [
+  'Iniciante 1', 'Iniciante 2',
+  'Intermediário 1', 'Intermediário 2',
+  'Avançado',
+  'Kids Iniciante', 'Kids Intermediário', 'Kids Avançado',
+]
+
 export function AlunosPage() {
   const { modalidadeSelecionada } = useAppStore()
   const { data: alunos, isLoading, refetch } = useAlunos(modalidadeSelecionada?.id)
@@ -27,7 +34,7 @@ export function AlunosPage() {
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState({
     nome: '', telefone: '', multiclubes_id: '',
-    menor_idade: false, nome_responsavel: ''
+    menor_idade: false, nome_responsavel: '', nivel: ''
   })
   const [modalidadesSelecionadas, setModalidadesSelecionadas] = useState([])
   const [salvandoMods, setSalvandoMods] = useState(false)
@@ -42,7 +49,7 @@ export function AlunosPage() {
 
   function abrirCriar() {
     setEditando(null)
-    setForm({ nome: '', telefone: '', multiclubes_id: '', menor_idade: false, nome_responsavel: '' })
+    setForm({ nome: '', telefone: '', multiclubes_id: '', menor_idade: false, nome_responsavel: '', nivel: '' })
     setModalidadesSelecionadas([])
     setModal(true)
   }
@@ -55,6 +62,7 @@ export function AlunosPage() {
       multiclubes_id: aluno.multiclubes_id || '',
       menor_idade: aluno.menor_idade || false,
       nome_responsavel: aluno.nome_responsavel || '',
+      nivel: aluno.nivel || '',
     })
     const { data } = await supabase
       .from('alunos_modalidades')
@@ -76,6 +84,7 @@ export function AlunosPage() {
         multiclubes_id: form.multiclubes_id,
         menor_idade: form.menor_idade,
         nome_responsavel: form.menor_idade ? form.nome_responsavel : null,
+        nivel: form.nivel || null,
         modalidade_id: modalidadesSelecionadas[0] || null,
       })
 
@@ -155,9 +164,10 @@ export function AlunosPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '14px' }}>{aluno.nome}</span>
                   {aluno.menor_idade && (
-                    <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(252,200,37,0.15)', color: '#fcc825' }}>
-                      menor
-                    </span>
+                    <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(252,200,37,0.15)', color: '#fcc825' }}>menor</span>
+                  )}
+                  {aluno.nivel && (
+                    <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(207,27,155,0.15)', color: '#cf1b9b' }}>{aluno.nivel}</span>
                   )}
                 </div>
                 <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>
@@ -169,23 +179,17 @@ export function AlunosPage() {
               </div>
               <div style={{ display: 'flex', gap: '6px' }}>
                 {aluno.telefone && (
-                  <button
-                    onClick={() => abrirWhatsApp(aluno.telefone)}
-                    style={{
-                      padding: '6px', borderRadius: '8px', border: 'none',
-                      backgroundColor: 'rgba(37,211,102,0.15)', color: '#25D166', cursor: 'pointer',
-                    }}
-                  >
+                  <button onClick={() => abrirWhatsApp(aluno.telefone)} style={{
+                    padding: '6px', borderRadius: '8px', border: 'none',
+                    backgroundColor: 'rgba(37,211,102,0.15)', color: '#25D166', cursor: 'pointer',
+                  }}>
                     <MessageCircle size={14} />
                   </button>
                 )}
-                <button
-                  onClick={() => handleExcluir(aluno.id)}
-                  style={{
-                    padding: '6px', borderRadius: '8px', border: 'none',
-                    backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer',
-                  }}
-                >
+                <button onClick={() => handleExcluir(aluno.id)} style={{
+                  padding: '6px', borderRadius: '8px', border: 'none',
+                  backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer',
+                }}>
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -197,26 +201,38 @@ export function AlunosPage() {
       <Modal open={modal} onClose={() => setModal(false)} title={editando ? 'Editar Aluno' : 'Novo Aluno'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-          <Input
-            label="Nome completo *"
-            placeholder="Nome do aluno"
-            value={form.nome}
-            onChange={e => update('nome', e.target.value)}
-          />
+          <Input label="Nome completo *" placeholder="Nome do aluno"
+            value={form.nome} onChange={e => update('nome', e.target.value)} />
 
-          <Input
-            label="Telefone (WhatsApp)"
-            placeholder="(11) 99999-9999"
-            value={form.telefone}
-            onChange={e => update('telefone', e.target.value)}
-          />
+          <Input label="Telefone (WhatsApp)" placeholder="(11) 99999-9999"
+            value={form.telefone} onChange={e => update('telefone', e.target.value)} />
 
-          <Input
-            label="ID MultiClubes (opcional)"
-            placeholder="ID da plataforma"
-            value={form.multiclubes_id}
-            onChange={e => update('multiclubes_id', e.target.value)}
-          />
+          <Input label="ID MultiClubes (opcional)" placeholder="ID da plataforma"
+            value={form.multiclubes_id} onChange={e => update('multiclubes_id', e.target.value)} />
+
+          {/* Nível */}
+          <div>
+            <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
+              Nível (opcional)
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {NIVEIS.map(n => (
+                <button
+                  key={n}
+                  onClick={() => update('nivel', form.nivel === n ? '' : n)}
+                  style={{
+                    padding: '6px 12px', borderRadius: '8px', border: 'none',
+                    background: form.nivel === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#110f0f',
+                    outline: form.nivel === n ? 'none' : '1px solid #2a2a2a',
+                    color: form.nivel === n ? 'white' : '#888',
+                    fontSize: '12px', cursor: 'pointer', fontWeight: form.nivel === n ? '600' : '400',
+                  }}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Menor de idade */}
           <button
@@ -235,12 +251,8 @@ export function AlunosPage() {
           </button>
 
           {form.menor_idade && (
-            <Input
-              label="Nome do responsável *"
-              placeholder="Nome do pai/mãe/responsável"
-              value={form.nome_responsavel}
-              onChange={e => update('nome_responsavel', e.target.value)}
-            />
+            <Input label="Nome do responsável *" placeholder="Nome do pai/mãe/responsável"
+              value={form.nome_responsavel} onChange={e => update('nome_responsavel', e.target.value)} />
           )}
 
           {/* Modalidades */}
@@ -270,27 +282,16 @@ export function AlunosPage() {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-            <button
-              onClick={() => setModal(false)}
-              style={{
-                flex: 1, padding: '12px', borderRadius: '10px',
-                border: '1px solid #2a2a2a', backgroundColor: 'transparent',
-                color: '#888', fontSize: '13px', cursor: 'pointer',
-              }}
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSalvar}
-              disabled={salvar.isPending || salvandoMods}
-              style={{
-                flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
-                background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-                color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-              }}
-            >
-              {salvar.isPending || salvandoMods ? 'Salvando...' : editando ? 'Salvar' : 'Cadastrar'}
-            </button>
+            <button onClick={() => setModal(false)} style={{
+              flex: 1, padding: '12px', borderRadius: '10px',
+              border: '1px solid #2a2a2a', backgroundColor: 'transparent',
+              color: '#888', fontSize: '13px', cursor: 'pointer',
+            }}>Cancelar</button>
+            <button onClick={handleSalvar} disabled={salvar.isPending || salvandoMods} style={{
+              flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
+              background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+              color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+            }}>{salvar.isPending || salvandoMods ? 'Salvando...' : editando ? 'Salvar' : 'Cadastrar'}</button>
           </div>
         </div>
       </Modal>

@@ -227,7 +227,7 @@ export function useGerarAulas() {
         if (d.getDay() === diaSemanaNum) {
           aulasParaInserir.push({
             turma_id: turmaId,
-            professor_executou_id: turma.professores?.id || turma.professor_titular_id,
+            professor_executou_id: professorOverrideId || turma.professores?.id || turma.professor_titular_id,
             data_aula: format(new Date(d), 'yyyy-MM-dd'),
             status: 'pendente',
             status_aula: 'dada',
