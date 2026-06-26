@@ -26,8 +26,11 @@ export function useAulas({ data, professorId, modalidadeId, status } = {}) {
       if (error) throw error
 
       if (modalidadeId) {
-        return aulas.filter(a => a.turmas?.modalidades?.id === modalidadeId ||
-          (typeof modalidadeId === 'string' && a.turmas?.modalidades?.nome))
+        return aulas.filter(a =>
+          !a.turma_id || // inclui aulas avulsas sempre
+          a.turmas?.modalidades?.id === modalidadeId ||
+          (typeof modalidadeId === 'string' && a.turmas?.modalidades?.nome)
+        )
       }
 
       return aulas
@@ -194,21 +197,15 @@ export function useSalvarPresencas() {
 export function useGerarAulas() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ turmaId, dataInicio, dataFim }) => {
-      // 1. Busca turma com professor e alunos ativos
+    mutationFn: async ({ turmaId, dataInicio, dataFim, professorOverrideId }) => {
       const { data: turma } = await supabase
         .from('turmas')
-        .select(`
-          *,
-          professores!professor_titular_id(id),
-          turmas_alunos(aluno_id, ativo)
-        `)
+        .select(`*, professores!professor_titular_id(id), turmas_alunos(aluno_id, ativo)`)
         .eq('id', turmaId)
         .single()
 
       if (!turma) throw new Error('Turma não encontrada')
 
-      // Alunos fixos da turma (mensalistas)
       const alunosFixos = turma.turmas_alunos
         ?.filter(ta => ta.ativo)
         .map(ta => ta.aluno_id) || []
@@ -239,14 +236,12 @@ export function useGerarAulas() {
 
       if (aulasParaInserir.length === 0) return 0
 
-      // 2. Insere as aulas
       const { data: aulasCriadas, error } = await supabase
         .from('aulas')
         .insert(aulasParaInserir)
         .select('id')
       if (error) throw error
 
-      // 3. Para cada aula criada, insere presenças dos alunos fixos
       if (alunosFixos.length > 0 && aulasCriadas?.length > 0) {
         const presencasParaInserir = []
         for (const aula of aulasCriadas) {

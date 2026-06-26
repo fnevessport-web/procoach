@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { format, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Plus, Calendar, UserPlus, X } from 'lucide-react'
+import { Plus, Calendar, UserPlus, X, ChevronRight } from 'lucide-react'
 import { useAulas, useGerarAulas } from '../../hooks/useAulas'
 import { useTurmas } from '../../hooks/useTurmas'
 import { useProfessores } from '../../hooks/useProfessores'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useQuadras } from '../../hooks/useQuadras'
-import { useNiveis } from '../../hooks/useNiveis'
 import { useModalidades } from '../../hooks/useModalidades'
 import { StatusBadge } from '../../components/ui/Badge'
 import { Modal } from '../../components/ui/Modal'
@@ -40,8 +39,7 @@ const inputInline = {
 
 export function AulasAdmin() {
   const [tab, setTab] = useState('hoje')
-  const [modalGerar, setModalGerar] = useState(false)
-  const [modalAvulsa, setModalAvulsa] = useState(false)
+  const [modalGerar, setModalGerar] = useState(null) // null | 'menu' | 'mensal' | 'avulsa'
 
   return (
     <div className="fade-in">
@@ -49,23 +47,14 @@ export function AulasAdmin() {
         <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
           Gestão de Aulas
         </h1>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => setModalAvulsa(true)} style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '8px 14px', borderRadius: '10px', border: '1px solid #2a2a2a',
-            backgroundColor: '#1a1a1a', color: '#F0F2F5', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-          }}>
-            <Plus size={14} /> Aula Avulsa
-          </button>
-          <button onClick={() => setModalGerar(true)} style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '8px 14px', borderRadius: '10px', border: 'none',
-            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-            color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-          }}>
-            <Calendar size={14} /> Gerar Aulas
-          </button>
-        </div>
+        <button onClick={() => setModalGerar('menu')} style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          padding: '8px 14px', borderRadius: '10px', border: 'none',
+          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+          color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+        }}>
+          <Calendar size={14} /> Gerar Aulas
+        </button>
       </div>
 
       <div style={{
@@ -84,8 +73,48 @@ export function AulasAdmin() {
       </div>
 
       {tab === 'hoje' ? <AulasCoordenador /> : <AulasDivergencias />}
-      <ModalGerarAulas open={modalGerar} onClose={() => setModalGerar(false)} />
-      <ModalAulaAvulsa open={modalAvulsa} onClose={() => setModalAvulsa(false)} />
+
+      {/* Modal menu */}
+      <Modal open={modalGerar === 'menu'} onClose={() => setModalGerar(null)} title="Gerar Aulas" size="sm">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button onClick={() => setModalGerar('avulsa')} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px', borderRadius: '12px', border: 'none',
+            backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
+            cursor: 'pointer', textAlign: 'left',
+          }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>
+                ⚡ Aula Avulsa
+              </div>
+              <div style={{ fontSize: '12px', color: '#555' }}>
+                Uma única aula — sem data de término
+              </div>
+            </div>
+            <ChevronRight size={16} color="#555" />
+          </button>
+
+          <button onClick={() => setModalGerar('mensal')} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px', borderRadius: '12px', border: 'none',
+            backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
+            cursor: 'pointer', textAlign: 'left',
+          }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>
+                📅 Aula Mensal / Recorrente
+              </div>
+              <div style={{ fontSize: '12px', color: '#555' }}>
+                Gera aulas de uma turma por período
+              </div>
+            </div>
+            <ChevronRight size={16} color="#555" />
+          </button>
+        </div>
+      </Modal>
+
+      <ModalGerarAulas open={modalGerar === 'mensal'} onClose={() => setModalGerar(null)} />
+      <ModalAulaAvulsa open={modalGerar === 'avulsa'} onClose={() => setModalGerar(null)} />
     </div>
   )
 }
@@ -147,7 +176,7 @@ function ModalGerarAulas({ open, onClose }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Gerar Aulas" size="sm">
+    <Modal open={open} onClose={onClose} title="📅 Aula Mensal / Recorrente" size="sm">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {resultado !== null ? (
           <div style={{ textAlign: 'center', padding: '16px 0' }}>
@@ -205,19 +234,14 @@ function ModalAulaAvulsa({ open, onClose }) {
   const [form, setForm] = useState({
     data: format(new Date(), 'yyyy-MM-dd'),
     horario: '07:00', professor_id: '', quadra_id: '',
-    tipo_aula: 'avulsa',
-    data_fim: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
   })
 
   const [alunos, setAlunos] = useState([])
   const [buscaAluno, setBuscaAluno] = useState('')
   const [salvando, setSalvando] = useState(false)
-
-  // Formulário completo de novo aluno
   const [novoAluno, setNovoAluno] = useState({
     show: false, nome: '', telefone: '', nivel: '',
-    menor_idade: false, nome_responsavel: '',
-    modalidades_ids: [],
+    menor_idade: false, nome_responsavel: '', modalidades_ids: [],
   })
 
   const horarios = Array.from({ length: 18 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
@@ -269,7 +293,6 @@ function ModalAulaAvulsa({ open, onClose }) {
         ativo: true,
       })
 
-      // Salvar múltiplas modalidades
       if (result?.id && novoAluno.modalidades_ids.length > 0) {
         await supabase.from('alunos_modalidades').insert(
           novoAluno.modalidades_ids.map(mid => ({ aluno_id: result.id, modalidade_id: mid }))
@@ -322,10 +345,10 @@ function ModalAulaAvulsa({ open, onClose }) {
       toast.success('Aula avulsa criada!')
       onClose()
       setAlunos([])
+      setModalidadeId('')
       setForm({
         data: format(new Date(), 'yyyy-MM-dd'),
         horario: '07:00', professor_id: '', quadra_id: '',
-        tipo_aula: 'avulsa', data_fim: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
       })
     } catch (err) {
       toast.error(err.message)
@@ -335,24 +358,8 @@ function ModalAulaAvulsa({ open, onClose }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Incluir Aula Avulsa" size="md">
+    <Modal open={open} onClose={onClose} title="⚡ Aula Avulsa" size="md">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-
-        {/* Tipo */}
-        <div>
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Tipo de Aula</div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {[{ value: 'avulsa', label: '⚡ Aula Avulsa' }, { value: 'mensal', label: '📅 Mensal' }].map(t => (
-              <button key={t.value} onClick={() => setForm(f => ({ ...f, tipo_aula: t.value }))} style={{
-                flex: 1, padding: '10px', borderRadius: '10px', border: 'none',
-                background: form.tipo_aula === t.value ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#110f0f',
-                outline: form.tipo_aula === t.value ? 'none' : '1px solid #2a2a2a',
-                color: form.tipo_aula === t.value ? 'white' : '#888',
-                fontSize: '13px', fontWeight: '500', cursor: 'pointer',
-              }}>{t.label}</button>
-            ))}
-          </div>
-        </div>
 
         <Select label="Modalidade" value={modalidadeId} onChange={e => setModalidadeId(e.target.value)}>
           <option value="">Selecione...</option>
@@ -361,11 +368,6 @@ function ModalAulaAvulsa({ open, onClose }) {
 
         <Input label="Data da Aula" type="date" value={form.data}
           onChange={e => setForm(f => ({ ...f, data: e.target.value }))} />
-
-        {form.tipo_aula === 'mensal' && (
-          <Input label="Data Fim" type="date" value={form.data_fim}
-            onChange={e => setForm(f => ({ ...f, data_fim: e.target.value }))} />
-        )}
 
         <Select label="Horário" value={form.horario} onChange={e => setForm(f => ({ ...f, horario: e.target.value }))}>
           {horarios.map(h => <option key={h} value={h}>{h}</option>)}
@@ -411,7 +413,6 @@ function ModalAulaAvulsa({ open, onClose }) {
             </div>
           )}
 
-          {/* Busca aluno */}
           <div style={{ position: 'relative', marginBottom: '8px' }}>
             <input
               placeholder="Buscar aluno para adicionar..."
@@ -445,7 +446,7 @@ function ModalAulaAvulsa({ open, onClose }) {
             )}
           </div>
 
-          {/* Cadastrar novo aluno — formulário completo */}
+          {/* Cadastrar novo aluno completo */}
           {!novoAluno.show ? (
             <button onClick={() => setNovoAluno(n => ({ ...n, show: true }))} style={{
               width: '100%', padding: '8px', borderRadius: '8px',
@@ -461,9 +462,7 @@ function ModalAulaAvulsa({ open, onClose }) {
               backgroundColor: '#110f0f', border: '1px solid rgba(252,200,37,0.2)',
               display: 'flex', flexDirection: 'column', gap: '10px',
             }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#fcc825' }}>
-                👤 Novo Aluno
-              </div>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#fcc825' }}>👤 Novo Aluno</div>
 
               <input placeholder="Nome completo *" value={novoAluno.nome}
                 onChange={e => setNovoAluno(n => ({ ...n, nome: e.target.value }))}
