@@ -57,7 +57,7 @@ export function TurmasPage({ onIrParaProfessores }) {
   const [alunosSelecionados, setAlunosSelecionados] = useState([])
 
   const modalidadeId = form.modalidade_id || null
-  const { data: professores } = useProfessores(modalidadeId)
+  const { professores } = useProfessores(modalidadeId)
   const { data: niveis } = useNiveis(modalidadeId)
   const { data: quadras } = useQuadras(modalidadeId)
 
