@@ -208,11 +208,30 @@ export function AulasCoordenador() {
       </div>
 
       {totalAulas > 0 && (
-        <div style={{
-          backgroundColor: '#151515', border: '1px solid rgba(255,255,255,0.05)',
-          borderRadius: '10px', padding: '10px 14px', marginBottom: '14px',
-          display: 'flex', flexWrap: 'wrap', gap: '6px 12px', alignItems: 'center',
-        }}>
+  <div style={{
+    backgroundColor: '#151515', border: '1px solid rgba(255,255,255,0.05)',
+    borderRadius: '10px', padding: '8px 14px', marginBottom: '14px',
+    display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap',
+  }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <span style={{ fontSize: '11px', color: '#555' }}>Aulas</span>
+      <span style={{ fontSize: '11px', color: '#888', fontWeight: '600' }}>{totalAulas}</span>
+      <span style={{ fontSize: '11px', color: '#333' }}>·</span>
+      <span style={{ fontSize: '11px', color: '#22c55e', fontWeight: '600' }}>{aulasDadas}</span>
+      <span style={{ fontSize: '11px', color: '#555' }}>/</span>
+      <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>{aulasNaoDadas + aulasCanceladas}</span>
+    </div>
+    <span style={{ fontSize: '11px', color: '#2a2a2a' }}>·</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <span style={{ fontSize: '11px', color: '#555' }}>Alunos</span>
+      <span style={{ fontSize: '11px', color: '#888', fontWeight: '600' }}>{totalPresentes + totalFaltas}</span>
+      <span style={{ fontSize: '11px', color: '#333' }}>·</span>
+      <span style={{ fontSize: '11px', color: '#22c55e', fontWeight: '600' }}>{totalPresentes}</span>
+      <span style={{ fontSize: '11px', color: '#555' }}>/</span>
+      <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>{totalFaltas}</span>
+    </div>
+  </div>
+)}
           <span style={{ fontSize: '11px', color: '#555' }}>
             <span style={{ color: '#F0F2F5', fontWeight: '600' }}>{totalAulas}</span> aulas
           </span>
