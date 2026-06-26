@@ -169,7 +169,10 @@ export function TurmasPage({ onIrParaProfessores }) {
                         </span>
                       </div>
                     </div>
-                    <button onClick={() => abrirEditar(turma)} className="p-1.5 rounded-lg text-[#8B8FA8] hover:text-[#F0F2F5] hover:bg-[#2A2D3E]">
+                    <button
+                      onClick={() => abrirEditar(turma)}
+                      className="p-1.5 rounded-lg text-[#8B8FA8] hover:text-[#F0F2F5] hover:bg-[#2A2D3E]"
+                    >
                       <Edit2 size={14} />
                     </button>
                   </div>
@@ -180,82 +183,78 @@ export function TurmasPage({ onIrParaProfessores }) {
         </div>
       )}
 
-      <Modal open={modal} onClose={() => setModal(false)} title={editando ? 'Editar Turma' : 'Nova Turma'} size="lg">
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select label="Modalidade" value={form.modalidade_id} onChange={e => updateModalidade(e.target.value)}>
-              <option value="">Selecione...</option>
-              {modalidades?.map(m => <option key={m.id} value={m.id}>{m.icone_emoji} {m.nome}</option>)}
-            </Select>
+      <Modal
+        open={modal}
+        onClose={() => setModal(false)}
+        title={editando ? 'Editar Turma' : 'Nova Turma'}
+        size="lg"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-            <Select label="Dia da Semana" value={form.horario_dia_semana} onChange={e => update('horario_dia_semana', e.target.value)}>
-              <option value="">Selecione...</option>
-              {diasSemana.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-            </Select>
+          <Select label="Modalidade" value={form.modalidade_id} onChange={e => updateModalidade(e.target.value)}>
+            <option value="">Selecione...</option>
+            {modalidades?.map(m => <option key={m.id} value={m.id}>{m.icone_emoji} {m.nome}</option>)}
+          </Select>
 
-            <Select label="Horário" value={form.horario_inicio} onChange={e => update('horario_inicio', e.target.value)}>
-              <option value="">Selecione...</option>
-              {horarios.map(h => <option key={h} value={h}>{h}</option>)}
-            </Select>
+          <Select label="Dia da Semana" value={form.horario_dia_semana} onChange={e => update('horario_dia_semana', e.target.value)}>
+            <option value="">Selecione...</option>
+            {diasSemana.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+          </Select>
 
-            <Select label="Nível" value={form.nivel_id} onChange={e => update('nivel_id', e.target.value)}>
-              <option value="">Selecione...</option>
-              {niveis?.map(n => <option key={n.id} value={n.id}>{n.nome}</option>)}
-            </Select>
+          <Select label="Horário" value={form.horario_inicio} onChange={e => update('horario_inicio', e.target.value)}>
+            <option value="">Selecione...</option>
+            {horarios.map(h => <option key={h} value={h}>{h}</option>)}
+          </Select>
 
-            <Select label="Quadra" value={form.quadra_id} onChange={e => update('quadra_id', e.target.value)}>
-              <option value="">Selecione...</option>
-              {quadras?.map(q => <option key={q.id} value={q.id}>{q.nome}</option>)}
-            </Select>
+          <Select label="Nível" value={form.nivel_id} onChange={e => update('nivel_id', e.target.value)}>
+            <option value="">Selecione...</option>
+            {niveis?.map(n => <option key={n.id} value={n.id}>{n.nome}</option>)}
+          </Select>
 
-            <div className="flex flex-col gap-1.5">
-              <Select label="Professor Titular" value={form.professor_titular_id} onChange={e => update('professor_titular_id', e.target.value)}>
-                <option value="">Selecione...</option>
-                {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-              </Select>
-              {!professores?.length && (
-                <p className="text-xs text-[#8B8FA8]">
-                  Nenhum professor cadastrado.{' '}
-                  <button
-                    type="button"
-                    onClick={() => { setModal(false); onIrParaProfessores?.() }}
-                    style={{ color: '#fcc825' }}
-                  >
-                    Cadastrar professor
-                  </button>
-                </p>
-              )}
-            </div>
+          <Select label="Quadra" value={form.quadra_id} onChange={e => update('quadra_id', e.target.value)}>
+            <option value="">Selecione...</option>
+            {quadras?.map(q => <option key={q.id} value={q.id}>{q.nome}</option>)}
+          </Select>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <Select label="Professor Titular" value={form.professor_titular_id} onChange={e => update('professor_titular_id', e.target.value)}>
+              <option value="">Selecione...</option>
+              {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </Select>
+            {!professores?.length && form.modalidade_id && (
+              <p style={{ fontSize: '12px', color: '#8B8FA8', margin: 0 }}>
+                Nenhum professor cadastrado.{' '}
+                <button
+                  type="button"
+                  onClick={() => { setModal(false); onIrParaProfessores?.() }}
+                  style={{ color: '#fcc825', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}
+                >
+                  Cadastrar professor
+                </button>
+              </p>
+            )}
           </div>
 
           {alunosFiltradosMod?.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-[#F0F2F5] mb-2">
+              <h3 style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5', marginBottom: '8px' }}>
                 Alunos ({alunosSelecionados.length} selecionados)
               </h3>
-              <div className="max-h-48 overflow-y-auto flex flex-col gap-1.5">
+              <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {alunosFiltradosMod.map(aluno => (
                   <button
                     key={aluno.id}
                     onClick={() => toggleAluno(aluno.id)}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '10px 12px',
-                      borderRadius: '12px',
-                      border: alunosSelecionados.includes(aluno.id)
-                        ? '1px solid rgba(252,200,37,0.4)'
-                        : '1px solid #2A2D3E',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '10px 12px', borderRadius: '12px', border: 'none',
                       background: alunosSelecionados.includes(aluno.id)
-                        ? 'rgba(252,200,37,0.1)'
-                        : '#0F1117',
+                        ? 'rgba(252,200,37,0.1)' : '#0F1117',
+                      outline: alunosSelecionados.includes(aluno.id)
+                        ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2A2D3E',
                       color: alunosSelecionados.includes(aluno.id) ? '#fcc825' : '#8B8FA8',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      width: '100%',
-                      boxSizing: 'border-box',
+                      cursor: 'pointer', textAlign: 'left',
+                      width: '100%', boxSizing: 'border-box',
                     }}
                   >
                     <span style={{ fontSize: '14px' }}>{aluno.nome}</span>
@@ -266,8 +265,10 @@ export function TurmasPage({ onIrParaProfessores }) {
             </div>
           )}
 
-          <div className="flex gap-3 pt-2">
-            <Button variant="secondary" onClick={() => setModal(false)} className="flex-1">Cancelar</Button>
+          <div style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}>
+            <Button variant="secondary" onClick={() => setModal(false)} className="flex-1">
+              Cancelar
+            </Button>
             <Button onClick={handleSalvar} loading={salvar.isPending} className="flex-1">
               {editando ? 'Salvar' : 'Criar Turma'}
             </Button>
