@@ -407,8 +407,7 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
     if (!form.professor_id) return toast.error('Selecione um professor')
     if (!form.quadra_id) return toast.error('Selecione uma quadra')
     if (!form.data) return toast.error('Selecione uma data')
-    if (alunos.length === 0) return toast.error('Adicione pelo menos um aluno')
-    setSalvando(true)
+        setSalvando(true)
     try {
       const quadraNome = quadras?.find(q => q.id === form.quadra_id)?.nome
         || todasQuadras?.find(q => q.id === form.quadra_id)?.nome || ''
