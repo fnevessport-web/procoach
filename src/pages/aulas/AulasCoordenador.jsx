@@ -244,8 +244,8 @@ export function AulasCoordenador({ onCelulaVazia }) {
     return a.turmas?.modalidades?.nome === modalidadeSelecionada.nome
   }) || []
 
-  // Quadras únicas das aulas do dia — ordem Quadra 4, 3, 2, 1
-  const quadrasParaGrade = [...new Set(aulasFiltradas.map(a => getQuadraNome(a)).filter(Boolean))]
+  // Sempre mostra TODAS as quadras cadastradas, ordenadas — Quadra 4, 3, 2, 1
+  const quadrasParaGrade = (todasQuadras?.map(q => q.nome) || [])
     .sort((a, b) => {
       const ordem = ['Quadra 4', 'Quadra 3', 'Quadra 2', 'Quadra 1']
       const ia = ordem.indexOf(a), ib = ordem.indexOf(b)
@@ -254,21 +254,6 @@ export function AulasCoordenador({ onCelulaVazia }) {
       if (ib === -1) return -1
       return ia - ib
     })
-
-  // Se não houver aulas no dia, usa quadras padrão para mostrar grade clicável
-  // Sempre mostra TODAS as quadras cadastradas, ordenadas
-const todasQuadrasNomes = todasQuadras
-  ?.map(q => q.nome)
-  .sort((a, b) => {
-    const ordem = ['Quadra 4', 'Quadra 3', 'Quadra 2', 'Quadra 1']
-    const ia = ordem.indexOf(a), ib = ordem.indexOf(b)
-    if (ia === -1 && ib === -1) return a.localeCompare(b)
-    if (ia === -1) return 1
-    if (ib === -1) return -1
-    return ia - ib
-  }) || []
-
-const quadrasParaGrade = todasQuadrasNomes
 
   const horariosGrade = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
 
