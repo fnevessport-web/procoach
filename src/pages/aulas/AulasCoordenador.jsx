@@ -185,7 +185,7 @@ export function AulasCoordenador() {
     })
 
   // Horários que têm aula
-  const horariosComAula = [...new Set(aulasFiltradas.map(a => getHorario(a)).filter(Boolean))].sort()
+  const horariosComAula = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
 
   // Totais
   const totalAulas = aulasFiltradas.length
