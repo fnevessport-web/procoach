@@ -65,14 +65,13 @@ function getNivel(aula) {
   return aula.turmas?.niveis?.nome || ''
 }
 
-// Verifica se a data da aula é futura (depois de hoje)
 function isAulaFutura(dataAula) {
   const hoje = startOfDay(new Date())
   const diaAula = startOfDay(new Date(dataAula + 'T12:00:00'))
   return isAfter(diaAula, hoje)
 }
 
-export function AulasCoordenador() {
+export function AulasCoordenador({ onCelulaVazia }) {
   const { modalidadeSelecionada } = useAppStore()
   const qc = useQueryClient()
   const [data, setData] = useState(format(new Date(), 'yyyy-MM-dd'))
@@ -83,7 +82,6 @@ export function AulasCoordenador() {
   const [editandoAula, setEditandoAula] = useState(null)
   const [editForm, setEditForm] = useState({})
   const [statusLocal, setStatusLocal] = useState({})
-  // Alerta de nível: { [alunoId]: { open, nivel, obs } }
   const [alertaNivel, setAlertaNivel] = useState({})
 
   const { data: aulas, isLoading } = useAulas({ data, modalidadeId: modalidadeSelecionada?.id })
@@ -165,14 +163,9 @@ export function AulasCoordenador() {
     try {
       const { error } = await supabase
         .from('alunos')
-        .update({
-          alerta_nivel: true,
-          nivel_avaliado_prof: alerta.nivel,
-          obs_nivel_prof: alerta.obs,
-        })
+        .update({ alerta_nivel: true, nivel_avaliado_prof: alerta.nivel, obs_nivel_prof: alerta.obs })
         .eq('id', alunoId)
       if (error) throw error
-      // Atualiza local
       updatePresenca(aulaId, alunoId, 'alerta_nivel', true)
       updatePresenca(aulaId, alunoId, 'nivel_avaliado_prof', alerta.nivel)
       updatePresenca(aulaId, alunoId, 'obs_nivel_prof', alerta.obs)
@@ -251,16 +244,21 @@ export function AulasCoordenador() {
     return a.turmas?.modalidades?.nome === modalidadeSelecionada.nome
   }) || []
 
+  // Quadras únicas das aulas do dia — ordem Quadra 4, 3, 2, 1
   const quadrasUnicas = [...new Set(aulasFiltradas.map(a => getQuadraNome(a)).filter(Boolean))]
     .sort((a, b) => {
       const ordem = ['Quadra 4', 'Quadra 3', 'Quadra 2', 'Quadra 1']
-      const ia = ordem.indexOf(a)
-      const ib = ordem.indexOf(b)
+      const ia = ordem.indexOf(a), ib = ordem.indexOf(b)
       if (ia === -1 && ib === -1) return a.localeCompare(b)
       if (ia === -1) return 1
       if (ib === -1) return -1
       return ia - ib
     })
+
+  // Se não houver aulas no dia, usa quadras padrão para mostrar grade clicável
+  const quadrasParaGrade = quadrasUnicas.length > 0
+    ? quadrasUnicas
+    : (todasQuadras?.map(q => q.nome).slice(0, 2) || [])
 
   const horariosGrade = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
 
@@ -281,16 +279,13 @@ export function AulasCoordenador() {
   const alunosNaAula = Object.values(presencas)
   const idsNaAula = Object.keys(presencas)
   const aulaFutura = aula ? isAulaFutura(aula.data_aula) : false
-  const statusAtual = aula
-    ? (aulaFutura ? 'futura' : (statusLocal[aula.id] || aula.status_aula || 'dada'))
-    : 'dada'
+  const statusAtual = aula ? (aulaFutura ? 'futura' : (statusLocal[aula.id] || aula.status_aula || 'dada')) : 'dada'
   const isAvulsa = aula ? !aula.turma_id : false
   const estaEditando = aula ? editandoAula === aula.id : false
   const alunosBusca = buscaAdicionando.length >= 1
     ? todosAlunos?.filter(a => a.nome.toLowerCase().includes(buscaAdicionando.toLowerCase()) && !idsNaAula.includes(a.id))
     : []
 
-  // Verifica se há aluno com alerta na aula
   function temAlertaNivel(aulaCelula) {
     return aulaCelula.presencas?.some(p => p.alunos?.alerta_nivel)
   }
@@ -360,16 +355,14 @@ export function AulasCoordenador() {
         </div>
       )}
 
-      {isLoading ? <Loading /> : !aulasFiltradas.length ? (
-        <EmptyState iconImg="/images/totaldeaulas.png" title="Nenhuma aula neste dia" />
-      ) : (
+      {isLoading ? <Loading /> : (
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <div style={{ minWidth: `${50 + quadrasUnicas.length * 140}px` }}>
+          <div style={{ minWidth: `${50 + quadrasParaGrade.length * 140}px` }}>
 
             {/* Cabeçalho quadras */}
             <div style={{ display: 'flex', marginBottom: '4px' }}>
               <div style={{ width: '50px', flexShrink: 0 }} />
-              {quadrasUnicas.map(q => (
+              {quadrasParaGrade.map(q => (
                 <div key={q} style={{
                   width: '140px', flexShrink: 0, textAlign: 'center',
                   fontSize: '11px', fontWeight: '700', color: '#fcc825',
@@ -390,18 +383,35 @@ export function AulasCoordenador() {
                   backgroundColor: '#151515', borderRadius: '8px', marginRight: '4px',
                 }}>{horario}</div>
 
-                {quadrasUnicas.map(quadra => {
+                {quadrasParaGrade.map(quadra => {
                   const aulaCelula = aulasFiltradas.find(a =>
                     getHorario(a) === horario && getQuadraNome(a) === quadra
                   )
 
+                  // Célula vazia — clicável para atalho
                   if (!aulaCelula) {
                     return (
-                      <div key={quadra} style={{
-                        width: '140px', flexShrink: 0, marginRight: '4px',
-                        backgroundColor: '#111', borderRadius: '10px',
-                        border: '1px solid #1e1e1e', minHeight: '72px',
-                      }} />
+                      <button key={quadra}
+                        onClick={() => onCelulaVazia?.({ horario, quadraNome: quadra, data })}
+                        style={{
+                          width: '140px', flexShrink: 0, marginRight: '4px',
+                          backgroundColor: '#111', borderRadius: '10px',
+                          border: '1px solid #1e1e1e', minHeight: '72px',
+                          cursor: onCelulaVazia ? 'pointer' : 'default',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                        onMouseEnter={e => {
+                          if (!onCelulaVazia) return
+                          e.currentTarget.style.borderColor = 'rgba(252,200,37,0.2)'
+                          e.currentTarget.style.backgroundColor = '#151515'
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.borderColor = '#1e1e1e'
+                          e.currentTarget.style.backgroundColor = '#111'
+                        }}
+                      >
+                        {onCelulaVazia && <span style={{ fontSize: '20px', color: '#2a2a2a' }}>+</span>}
+                      </button>
                     )
                   }
 
@@ -424,18 +434,14 @@ export function AulasCoordenador() {
                     : '#3b82f6'
 
                   return (
-                    <button key={quadra}
-                      onClick={() => abrirAula(aulaCelula)}
-                      style={{
-                        width: '140px', flexShrink: 0, marginRight: '4px',
-                        backgroundColor: aulaEhFutura ? '#131313' : '#1a1a1a',
-                        borderRadius: '10px', border: `1px solid ${borderColor}`,
-                        padding: '8px 10px', cursor: 'pointer', textAlign: 'left',
-                        minHeight: '72px', boxSizing: 'border-box',
-                        display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-                      }}
-                    >
-                      {/* Topo: badge + dot + alerta */}
+                    <button key={quadra} onClick={() => abrirAula(aulaCelula)} style={{
+                      width: '140px', flexShrink: 0, marginRight: '4px',
+                      backgroundColor: aulaEhFutura ? '#131313' : '#1a1a1a',
+                      borderRadius: '10px', border: `1px solid ${borderColor}`,
+                      padding: '8px 10px', cursor: 'pointer', textAlign: 'left',
+                      minHeight: '72px', boxSizing: 'border-box',
+                      display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                    }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                         {isAv
                           ? <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', backgroundColor: 'rgba(252,200,37,0.15)', color: '#fcc825' }}>avulsa</span>
@@ -446,7 +452,6 @@ export function AulasCoordenador() {
                           {hasAlerta && <span style={{ fontSize: '9px' }}>⚠️</span>}
                         </div>
                       </div>
-
                       <div style={{ fontSize: '11px', fontWeight: '600', color: aulaEhFutura ? '#444' : '#F0F2F5', lineHeight: '1.3', marginBottom: '4px' }}>
                         {nivel || (isAv ? 'Avulsa' : aulaCelula.turmas?.nome || '—')}
                       </div>
@@ -500,7 +505,6 @@ export function AulasCoordenador() {
               </button>
             </div>
 
-            {/* Aviso aula futura no modal */}
             {aulaFutura && (
               <div style={{
                 backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.2)',
@@ -566,7 +570,6 @@ export function AulasCoordenador() {
               </div>
             )}
 
-            {/* Status — bloqueado se futuro */}
             {!aulaFutura && (
               <div style={{ marginBottom: '14px' }}>
                 <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status da Aula</div>
@@ -589,7 +592,6 @@ export function AulasCoordenador() {
               </div>
             )}
 
-            {/* Presenças */}
             <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Presenças ({alunosNaAula.length})
             </div>
@@ -602,29 +604,23 @@ export function AulasCoordenador() {
                     backgroundColor: '#111', borderRadius: '10px', padding: '10px 12px', boxSizing: 'border-box',
                     border: temAlerta ? '1px solid rgba(252,200,37,0.25)' : '1px solid transparent',
                   }}>
-                    {/* Nome + tipo + botão alerta */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
                         <span style={{
-                          fontSize: '13px', fontWeight: '500',
-                          color: '#F0F2F5',
+                          fontSize: '13px', fontWeight: '500', color: '#F0F2F5',
                           backgroundColor: temAlerta ? 'rgba(252,200,37,0.12)' : 'transparent',
                           borderRadius: '4px', padding: temAlerta ? '1px 6px' : '0',
                           textDecoration: temAlerta ? 'underline' : 'none',
-                          textDecorationColor: '#fcc825',
-                          textDecorationStyle: 'dotted',
+                          textDecorationColor: '#fcc825', textDecorationStyle: 'dotted',
                         }}>{aluno.nome}</span>
                         {temAlerta && <span style={{ fontSize: '11px' }}>⚠️</span>}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <button
-                          onClick={() => toggleAlertaNivel(aluno.aluno_id, aluno)}
-                          title="Alerta de nível"
-                          style={{
-                            padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '11px',
-                            backgroundColor: temAlerta ? 'rgba(252,200,37,0.15)' : '#1a1a1a',
-                            color: temAlerta ? '#fcc825' : '#555',
-                          }}>
+                        <button onClick={() => toggleAlertaNivel(aluno.aluno_id, aluno)} title="Alerta de nível" style={{
+                          padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                          backgroundColor: temAlerta ? 'rgba(252,200,37,0.15)' : '#1a1a1a',
+                          color: temAlerta ? '#fcc825' : '#555',
+                        }}>
                           <AlertTriangle size={12} />
                         </button>
                         <select value={aluno.tipo_participacao} onChange={e => updatePresenca(aula.id, aluno.aluno_id, 'tipo_participacao', e.target.value)}
@@ -634,7 +630,6 @@ export function AulasCoordenador() {
                       </div>
                     </div>
 
-                    {/* Painel alerta de nível */}
                     {alertaAberto && (
                       <div style={{
                         backgroundColor: '#1a1a1a', borderRadius: '8px',
@@ -644,8 +639,7 @@ export function AulasCoordenador() {
                         <div style={{ fontSize: '11px', color: '#fcc825', fontWeight: '600' }}>⚠️ Avaliação de Nível pelo Professor</div>
                         <div>
                           <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px' }}>Nível real avaliado</div>
-                          <select
-                            value={alertaAberto.nivel}
+                          <select value={alertaAberto.nivel}
                             onChange={e => setAlertaNivel(prev => ({ ...prev, [aluno.aluno_id]: { ...prev[aluno.aluno_id], nivel: e.target.value } }))}
                             style={{ ...inputStyle, fontSize: '12px' }}>
                             <option value="">Selecione o nível real...</option>
@@ -658,9 +652,7 @@ export function AulasCoordenador() {
                             placeholder="Ex: Aluno está abaixo do nível da turma, recomendo turma Iniciante 1..."
                             value={alertaAberto.obs}
                             onChange={e => setAlertaNivel(prev => ({ ...prev, [aluno.aluno_id]: { ...prev[aluno.aluno_id], obs: e.target.value } }))}
-                            rows={3}
-                            style={{ ...inputStyle, resize: 'none', fontSize: '12px' }}
-                          />
+                            rows={3} style={{ ...inputStyle, resize: 'none', fontSize: '12px' }} />
                         </div>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           {temAlerta && (
@@ -684,7 +676,6 @@ export function AulasCoordenador() {
                       </div>
                     )}
 
-                    {/* Presença já salva — exibe obs se tiver */}
                     {temAlerta && !alertaAberto && aluno.obs_nivel_prof && (
                       <div style={{ fontSize: '10px', color: '#888', marginBottom: '6px', fontStyle: 'italic' }}>
                         📝 {aluno.nivel_avaliado_prof && <span style={{ color: '#fcc825' }}>{aluno.nivel_avaliado_prof} · </span>}
@@ -692,7 +683,6 @@ export function AulasCoordenador() {
                       </div>
                     )}
 
-                    {/* Botões presença — bloqueados se futuro */}
                     {!aulaFutura && (
                       <div style={{ display: 'flex', gap: '6px' }}>
                         {STATUS_PRESENCA.map(sp => (
@@ -712,7 +702,6 @@ export function AulasCoordenador() {
               })}
             </div>
 
-            {/* Adicionar aluno */}
             {adicionandoAluno === aula.id ? (
               <div style={{ marginTop: '10px', position: 'relative' }}>
                 <input placeholder="Buscar aluno..." value={buscaAdicionando}
@@ -740,7 +729,6 @@ export function AulasCoordenador() {
               </button>
             )}
 
-            {/* Salvar — bloqueado se futuro */}
             {!aulaFutura && (
               <button onClick={() => handleSalvarPresencas(aula.id)} disabled={salvarPresencas.isPending} style={{
                 marginTop: '12px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none',

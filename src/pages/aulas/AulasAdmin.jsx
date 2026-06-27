@@ -41,6 +41,18 @@ const inputInline = {
 export function AulasAdmin() {
   const [tab, setTab] = useState('hoje')
   const [modalGerar, setModalGerar] = useState(null)
+  // Atalho da grade: { horario, quadraNome, data }
+  const [atalho, setAtalho] = useState(null)
+
+  function handleCelulaVazia({ horario, quadraNome, data }) {
+    setAtalho({ horario, quadraNome, data })
+    setModalGerar('menu_atalho')
+  }
+
+  function fecharTudo() {
+    setModalGerar(null)
+    setAtalho(null)
+  }
 
   return (
     <div className="fade-in">
@@ -73,8 +85,12 @@ export function AulasAdmin() {
         ))}
       </div>
 
-      {tab === 'hoje' ? <AulasCoordenador /> : <AulasDivergencias />}
+      {tab === 'hoje'
+        ? <AulasCoordenador onCelulaVazia={handleCelulaVazia} />
+        : <AulasDivergencias />
+      }
 
+      {/* Menu normal — Gerar Aulas */}
       <Modal open={modalGerar === 'menu'} onClose={() => setModalGerar(null)} title="Gerar Aulas" size="sm">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <button onClick={() => setModalGerar('avulsa')} style={{
@@ -89,7 +105,6 @@ export function AulasAdmin() {
             </div>
             <ChevronRight size={16} color="#555" />
           </button>
-
           <button onClick={() => setModalGerar('mensal')} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '16px', borderRadius: '12px', border: 'none',
@@ -105,8 +120,51 @@ export function AulasAdmin() {
         </div>
       </Modal>
 
-      <ModalGerarAulas open={modalGerar === 'mensal'} onClose={() => setModalGerar(null)} />
-      <ModalAulaAvulsa open={modalGerar === 'avulsa'} onClose={() => setModalGerar(null)} />
+      {/* Menu atalho — clicou numa célula vazia */}
+      <Modal open={modalGerar === 'menu_atalho'} onClose={fecharTudo} title="Nova Aula" size="sm">
+        <div style={{ marginBottom: '14px', padding: '10px 12px', backgroundColor: '#111', borderRadius: '10px', border: '1px solid rgba(252,200,37,0.2)' }}>
+          <div style={{ fontSize: '11px', color: '#fcc825', marginBottom: '4px' }}>⚡ Atalho selecionado</div>
+          <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>
+            {atalho?.quadraNome} · {atalho?.horario}
+          </div>
+          <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
+            {atalho?.data && format(new Date(atalho.data + 'T12:00'), "dd/MM/yyyy", { locale: ptBR })}
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button onClick={() => setModalGerar('avulsa_atalho')} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px', borderRadius: '12px', border: 'none',
+            backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
+            cursor: 'pointer', textAlign: 'left', width: '100%',
+          }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>⚡ Aula Avulsa</div>
+              <div style={{ fontSize: '12px', color: '#555' }}>Quadra e horário já preenchidos</div>
+            </div>
+            <ChevronRight size={16} color="#555" />
+          </button>
+          <button onClick={() => setModalGerar('mensal')} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px', borderRadius: '12px', border: 'none',
+            backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
+            cursor: 'pointer', textAlign: 'left', width: '100%',
+          }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>📅 Aula Mensal / Recorrente</div>
+              <div style={{ fontSize: '12px', color: '#555' }}>Gera aulas de uma turma por período</div>
+            </div>
+            <ChevronRight size={16} color="#555" />
+          </button>
+        </div>
+      </Modal>
+
+      <ModalGerarAulas open={modalGerar === 'mensal'} onClose={fecharTudo} />
+      <ModalAulaAvulsa
+        open={modalGerar === 'avulsa' || modalGerar === 'avulsa_atalho'}
+        onClose={fecharTudo}
+        atalho={modalGerar === 'avulsa_atalho' ? atalho : null}
+      />
     </div>
   )
 }
@@ -213,20 +271,38 @@ function ModalGerarAulas({ open, onClose }) {
   )
 }
 
-function ModalAulaAvulsa({ open, onClose }) {
+function ModalAulaAvulsa({ open, onClose, atalho }) {
   const qc = useQueryClient()
   const { data: modalidades } = useModalidades()
   const { data: todosAlunos, refetch: refetchAlunos } = useAlunos()
   const salvarAluno = useSalvarAluno()
+  const { data: todasQuadras } = useQuadras(null)
 
   const [modalidadeId, setModalidadeId] = useState('')
   const { professores } = useProfessores(modalidadeId || null)
   const { data: quadras } = useQuadras(modalidadeId || null)
   const { data: niveis } = useNiveis(null)
 
+  // Resolve quadra_id a partir do nome do atalho
+  const quadraIdAtalho = atalho?.quadraNome
+    ? todasQuadras?.find(q => q.nome === atalho.quadraNome)?.id || ''
+    : ''
+
   const [form, setForm] = useState({
     data: format(new Date(), 'yyyy-MM-dd'),
     horario: '07:00', professor_id: '', quadra_id: '', nivel_id: '',
+  })
+
+  // Quando atalho muda, preenche form
+  useState(() => {
+    if (atalho) {
+      setForm(f => ({
+        ...f,
+        data: atalho.data || format(new Date(), 'yyyy-MM-dd'),
+        horario: atalho.horario || '07:00',
+        quadra_id: quadraIdAtalho,
+      }))
+    }
   })
 
   const [alunos, setAlunos] = useState([])
@@ -246,7 +322,6 @@ function ModalAulaAvulsa({ open, onClose }) {
       )
     : []
 
-  // Sugestões de alunos já cadastrados ao digitar nome no formulário novo aluno
   const sugestoesNome = novoAluno.nome.length >= 2
     ? todosAlunos?.filter(a =>
         a.nome.toLowerCase().includes(novoAluno.nome.toLowerCase()) &&
@@ -288,6 +363,21 @@ function ModalAulaAvulsa({ open, onClose }) {
     resetNovoAluno()
   }
 
+  // Preenche form quando atalho está disponível e quadras carregam
+  const quadraIdResolvida = atalho?.quadraNome
+    ? todasQuadras?.find(q => q.nome === atalho.quadraNome)?.id || ''
+    : ''
+
+  // Efeito de preencher via open+atalho
+  if (open && atalho && form.horario !== atalho.horario) {
+    setForm(f => ({
+      ...f,
+      data: atalho.data || f.data,
+      horario: atalho.horario || f.horario,
+      quadra_id: quadraIdResolvida || f.quadra_id,
+    }))
+  }
+
   async function handleCadastrarAluno() {
     if (!novoAluno.nome.trim()) return toast.error('Nome obrigatório')
     if (novoAluno.menor_idade && !novoAluno.nome_responsavel.trim()) return toast.error('Nome do responsável obrigatório')
@@ -320,7 +410,8 @@ function ModalAulaAvulsa({ open, onClose }) {
     if (alunos.length === 0) return toast.error('Adicione pelo menos um aluno')
     setSalvando(true)
     try {
-      const quadraNome = quadras?.find(q => q.id === form.quadra_id)?.nome || ''
+      const quadraNome = quadras?.find(q => q.id === form.quadra_id)?.nome
+        || todasQuadras?.find(q => q.id === form.quadra_id)?.nome || ''
 
       const { data: aulasExistentes } = await supabase
         .from('aulas')
@@ -375,7 +466,18 @@ function ModalAulaAvulsa({ open, onClose }) {
     <Modal open={open} onClose={() => { resetForm(); onClose() }} title="⚡ Aula Avulsa" size="md">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-        <Select label="Modalidade" value={modalidadeId} onChange={e => { setModalidadeId(e.target.value); setForm(f => ({ ...f, professor_id: '', quadra_id: '', nivel_id: '' })) }}>
+        {/* Indicador de atalho */}
+        {atalho && (
+          <div style={{
+            padding: '8px 12px', backgroundColor: 'rgba(252,200,37,0.08)',
+            border: '1px solid rgba(252,200,37,0.2)', borderRadius: '8px',
+            fontSize: '12px', color: '#fcc825',
+          }}>
+            ⚡ Atalho: <strong>{atalho.quadraNome}</strong> · <strong>{atalho.horario}</strong>
+          </div>
+        )}
+
+        <Select label="Modalidade" value={modalidadeId} onChange={e => { setModalidadeId(e.target.value); setForm(f => ({ ...f, professor_id: '', nivel_id: '' })) }}>
           <option value="">Selecione...</option>
           {modalidades?.map(m => <option key={m.id} value={m.id}>{m.icone_emoji} {m.nome}</option>)}
         </Select>
@@ -389,7 +491,7 @@ function ModalAulaAvulsa({ open, onClose }) {
 
         <Select label="Quadra" value={form.quadra_id} onChange={e => setForm(f => ({ ...f, quadra_id: e.target.value }))}>
           <option value="">Selecione...</option>
-          {quadras?.map(q => <option key={q.id} value={q.id}>{q.nome}</option>)}
+          {(todasQuadras || quadras)?.map(q => <option key={q.id} value={q.id}>{q.nome}</option>)}
         </Select>
 
         <Select label="Professor" value={form.professor_id} onChange={e => setForm(f => ({ ...f, professor_id: e.target.value }))}>
@@ -490,35 +592,26 @@ function ModalAulaAvulsa({ open, onClose }) {
             }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#fcc825' }}>👤 Novo Aluno</div>
 
-              {/* Campo nome com autocomplete anti-duplicata */}
               <div style={{ position: 'relative' }}>
-                <input
-                  placeholder="Nome completo *"
-                  value={novoAluno.nome}
+                <input placeholder="Nome completo *" value={novoAluno.nome}
                   onChange={e => setNovoAluno(n => ({ ...n, nome: e.target.value }))}
-                  style={inputInline}
-                />
+                  style={inputInline} />
                 {sugestoesNome.length > 0 && (
                   <div style={{
                     position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
                     backgroundColor: '#1a1a1a', border: '1px solid rgba(252,200,37,0.4)',
                     borderRadius: '10px', marginTop: '4px', maxHeight: '150px', overflowY: 'auto',
                   }}>
-                    <div style={{
-                      fontSize: '10px', color: '#fcc825', padding: '6px 12px 4px',
-                      letterSpacing: '0.5px', borderBottom: '1px solid #2a2a2a',
-                    }}>
+                    <div style={{ fontSize: '10px', color: '#fcc825', padding: '6px 12px 4px', letterSpacing: '0.5px', borderBottom: '1px solid #2a2a2a' }}>
                       ⚠️ Já cadastrado — clique para adicionar direto
                     </div>
                     {sugestoesNome.map(a => (
-                      <button key={a.id}
-                        onClick={() => { adicionarAluno(a, 'avulso'); resetNovoAluno() }}
-                        style={{
-                          width: '100%', padding: '8px 12px', border: 'none', background: 'none',
-                          color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer',
-                          borderBottom: '1px solid #2a2a2a',
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        }}
+                      <button key={a.id} onClick={() => { adicionarAluno(a, 'avulso'); resetNovoAluno() }} style={{
+                        width: '100%', padding: '8px 12px', border: 'none', background: 'none',
+                        color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer',
+                        borderBottom: '1px solid #2a2a2a',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      }}
                         onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2a2a2a'}
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                       >
