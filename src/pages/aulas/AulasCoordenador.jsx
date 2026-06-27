@@ -3,10 +3,11 @@ import { format, addDays, subDays, isAfter, startOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle } from 'lucide-react'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas } from '../../hooks/useAulas'
-import { useAlunos } from '../../hooks/useAlunos'
+import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useProfessores } from '../../hooks/useProfessores'
 import { useQuadras } from '../../hooks/useQuadras'
 import { useNiveis } from '../../hooks/useNiveis'
+import { useModalidades } from '../../hooks/useModalidades'
 import useAppStore from '../../store/useAppStore'
 import { Loading, EmptyState } from '../../components/ui/Loading'
 import { supabase } from '../../lib/supabase'
@@ -32,7 +33,12 @@ const TIPO_PARTICIPACAO = [
   { value: 'reposicao', label: 'Reposição' },
 ]
 
-const COR_REPOSICAO = '#3b82f6' // azul
+const NIVEIS_ALUNO = [
+  'Iniciante 1', 'Iniciante 2', 'Intermediário 1', 'Intermediário 2',
+  'Avançado', 'Kids Iniciante', 'Kids Intermediário', 'Kids Avançado',
+]
+
+const COR_REPOSICAO = '#3b82f6'
 
 const toastStyle = {
   background: '#1a1a1a', color: '#F0F2F5',
@@ -85,12 +91,19 @@ export function AulasCoordenador({ onCelulaVazia }) {
   const [editForm, setEditForm] = useState({})
   const [statusLocal, setStatusLocal] = useState({})
   const [alertaNivel, setAlertaNivel] = useState({})
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
+  const [novoAlunoModal, setNovoAlunoModal] = useState({
+    show: false, nome: '', telefone: '', nivel: '',
+    menor_idade: false, nome_responsavel: '',
+  })
 
   const { data: aulas, isLoading } = useAulas({ data, modalidadeId: modalidadeSelecionada?.id })
-  const { data: todosAlunos } = useAlunos()
+  const { data: todosAlunos, refetch: refetchAlunos } = useAlunos()
   const { professores: todoProfessores } = useProfessores(null)
   const { data: todasQuadras } = useQuadras(null)
   const { data: todosNiveis } = useNiveis(null)
+  const { data: modalidades } = useModalidades()
+  const salvarAluno = useSalvarAluno()
   const atualizarStatus = useAtualizarStatusAula()
   const salvarPresencas = useSalvarPresencas()
 
@@ -129,6 +142,8 @@ export function AulasCoordenador({ onCelulaVazia }) {
     setAdicionandoAluno(null)
     setBuscaAdicionando('')
     setAlertaNivel({})
+    setConfirmandoExclusao(false)
+    setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '' })
   }
 
   function updatePresenca(aulaId, alunoId, campo, valor) {
@@ -138,7 +153,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
     }))
   }
 
-  function adicionarAluno(aulaId, aluno) {
+  function adicionarAlunoNaLista(aulaId, aluno) {
     setPresencasLocal(prev => ({
       ...prev,
       [aulaId]: {
@@ -241,13 +256,42 @@ export function AulasCoordenador({ onCelulaVazia }) {
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
+  async function handleExcluirAula(aulaId) {
+    try {
+      await supabase.from('presencas').delete().eq('aula_id', aulaId)
+      await supabase.from('reposicoes').delete().eq('aula_origem_id', aulaId)
+      const { error } = await supabase.from('aulas').delete().eq('id', aulaId)
+      if (error) throw error
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      toast.success('Aula excluída!', { style: toastStyle })
+      fecharModal()
+    } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
+
+  async function handleCadastrarNovoAluno(aulaId) {
+    if (!novoAlunoModal.nome.trim()) return toast.error('Nome obrigatório', { style: toastStyle })
+    try {
+      const result = await salvarAluno.mutateAsync({
+        nome: novoAlunoModal.nome,
+        telefone: novoAlunoModal.telefone,
+        nivel: novoAlunoModal.nivel || null,
+        menor_idade: novoAlunoModal.menor_idade,
+        nome_responsavel: novoAlunoModal.menor_idade ? novoAlunoModal.nome_responsavel : null,
+        ativo: true,
+      })
+      await refetchAlunos()
+      adicionarAlunoNaLista(aulaId, { id: result.id, nome: result.nome })
+      setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '' })
+      toast.success('Aluno cadastrado e adicionado!', { style: toastStyle })
+    } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
+
   const aulasFiltradas = aulas?.filter(a => {
     if (!modalidadeSelecionada) return true
     if (!a.turma_id) return true
     return a.turmas?.modalidades?.nome === modalidadeSelecionada.nome
   }) || []
 
-  // Sempre mostra TODAS as quadras cadastradas, ordenadas — Quadra 4, 3, 2, 1
   const quadrasParaGrade = (todasQuadras?.map(q => q.nome) || [])
     .sort((a, b) => {
       const ordem = ['Quadra 4', 'Quadra 3', 'Quadra 2', 'Quadra 1']
@@ -330,6 +374,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
         </div>
       )}
 
+      {/* Resumo do dia */}
       {totalAulas > 0 && (
         <div style={{
           backgroundColor: '#151515', border: '1px solid rgba(255,255,255,0.05)',
@@ -463,7 +508,6 @@ export function AulasCoordenador({ onCelulaVazia }) {
                           ? <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', backgroundColor: 'rgba(252,200,37,0.15)', color: '#fcc825' }}>avulsa</span>
                           : <span />
                         }
-                        {/* Coluna de indicadores: status + alerta + reposição */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                           <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dotColor, flexShrink: 0 }} />
                           {hasAlerta && <span style={{ fontSize: '9px' }}>⚠️</span>}
@@ -581,9 +625,22 @@ export function AulasCoordenador({ onCelulaVazia }) {
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => iniciarEdicao(aula)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#888', fontSize: '12px', cursor: 'pointer' }}>
-                    <Pencil size={12} /> Editar aula
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button onClick={() => iniciarEdicao(aula)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#888', fontSize: '12px', cursor: 'pointer' }}>
+                      <Pencil size={12} /> Editar aula
+                    </button>
+                    {!confirmandoExclusao ? (
+                      <button onClick={() => setConfirmandoExclusao(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.3)', background: 'none', color: '#EF4444', fontSize: '12px', cursor: 'pointer' }}>
+                        🗑️ Excluir
+                      </button>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '6px 10px', borderRadius: '8px', backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
+                        <span style={{ fontSize: '11px', color: '#EF4444' }}>Confirmar?</span>
+                        <button onClick={() => handleExcluirAula(aula.id)} style={{ padding: '3px 8px', borderRadius: '6px', border: 'none', backgroundColor: '#EF4444', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Sim</button>
+                        <button onClick={() => setConfirmandoExclusao(false)} style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>Não</button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -618,15 +675,10 @@ export function AulasCoordenador({ onCelulaVazia }) {
                 const temAlerta = aluno.alerta_nivel
                 const alertaAberto = alertaNivel[aluno.aluno_id]
                 const isReposicao = aluno.tipo_participacao === 'reposicao'
-
                 return (
                   <div key={aluno.aluno_id} style={{
-                    backgroundColor: '#111', borderRadius: '10px', padding: '10px 12px', boxSizing: 'border-box',
-                    border: isReposicao
-                      ? `1px solid rgba(59,130,246,0.3)`
-                      : temAlerta
-                        ? '1px solid rgba(252,200,37,0.25)'
-                        : '1px solid transparent',
+                    borderRadius: '10px', padding: '10px 12px', boxSizing: 'border-box',
+                    border: isReposicao ? `1px solid rgba(59,130,246,0.3)` : temAlerta ? '1px solid rgba(252,200,37,0.25)' : '1px solid transparent',
                     backgroundColor: isReposicao ? 'rgba(59,130,246,0.05)' : '#111',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -639,77 +691,41 @@ export function AulasCoordenador({ onCelulaVazia }) {
                           textDecorationColor: '#fcc825', textDecorationStyle: 'dotted',
                         }}>{aluno.nome}</span>
                         {temAlerta && <span style={{ fontSize: '11px' }}>⚠️</span>}
-                        {/* Badge reposição */}
                         {isReposicao && (
-                          <span style={{
-                            fontSize: '9px', padding: '1px 6px', borderRadius: '4px',
-                            backgroundColor: 'rgba(59,130,246,0.15)', color: COR_REPOSICAO,
-                            fontWeight: '600', letterSpacing: '0.3px',
-                          }}>reposição</span>
+                          <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(59,130,246,0.15)', color: COR_REPOSICAO, fontWeight: '600' }}>reposição</span>
                         )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <button onClick={() => toggleAlertaNivel(aluno.aluno_id, aluno)} title="Alerta de nível" style={{
-                          padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                          backgroundColor: temAlerta ? 'rgba(252,200,37,0.15)' : '#1a1a1a',
-                          color: temAlerta ? '#fcc825' : '#555',
-                        }}>
+                        <button onClick={() => toggleAlertaNivel(aluno.aluno_id, aluno)} title="Alerta de nível" style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: temAlerta ? 'rgba(252,200,37,0.15)' : '#1a1a1a', color: temAlerta ? '#fcc825' : '#555' }}>
                           <AlertTriangle size={12} />
                         </button>
                         <select value={aluno.tipo_participacao} onChange={e => updatePresenca(aula.id, aluno.aluno_id, 'tipo_participacao', e.target.value)}
-                          style={{
-                            fontSize: '11px', padding: '2px 6px', borderRadius: '6px',
-                            backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
-                            color: isReposicao ? COR_REPOSICAO : '#888',
-                            cursor: 'pointer', outline: 'none',
-                          }}>
+                          style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', color: isReposicao ? COR_REPOSICAO : '#888', cursor: 'pointer', outline: 'none' }}>
                           {TIPO_PARTICIPACAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                         </select>
                       </div>
                     </div>
 
                     {alertaAberto && (
-                      <div style={{
-                        backgroundColor: '#1a1a1a', borderRadius: '8px',
-                        border: '1px solid rgba(252,200,37,0.2)', padding: '10px',
-                        marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '8px',
-                      }}>
+                      <div style={{ backgroundColor: '#1a1a1a', borderRadius: '8px', border: '1px solid rgba(252,200,37,0.2)', padding: '10px', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ fontSize: '11px', color: '#fcc825', fontWeight: '600' }}>⚠️ Avaliação de Nível pelo Professor</div>
                         <div>
                           <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px' }}>Nível real avaliado</div>
-                          <select value={alertaAberto.nivel}
-                            onChange={e => setAlertaNivel(prev => ({ ...prev, [aluno.aluno_id]: { ...prev[aluno.aluno_id], nivel: e.target.value } }))}
-                            style={{ ...inputStyle, fontSize: '12px' }}>
+                          <select value={alertaAberto.nivel} onChange={e => setAlertaNivel(prev => ({ ...prev, [aluno.aluno_id]: { ...prev[aluno.aluno_id], nivel: e.target.value } }))} style={{ ...inputStyle, fontSize: '12px' }}>
                             <option value="">Selecione o nível real...</option>
                             {todosNiveis?.map(n => <option key={n.id} value={n.nome}>{n.nome}</option>)}
                           </select>
                         </div>
                         <div>
                           <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px' }}>Observação do professor</div>
-                          <textarea
-                            placeholder="Ex: Aluno está abaixo do nível da turma, recomendo turma Iniciante 1..."
-                            value={alertaAberto.obs}
-                            onChange={e => setAlertaNivel(prev => ({ ...prev, [aluno.aluno_id]: { ...prev[aluno.aluno_id], obs: e.target.value } }))}
-                            rows={3} style={{ ...inputStyle, resize: 'none', fontSize: '12px' }} />
+                          <textarea placeholder="Ex: Aluno está abaixo do nível da turma..." value={alertaAberto.obs} onChange={e => setAlertaNivel(prev => ({ ...prev, [aluno.aluno_id]: { ...prev[aluno.aluno_id], obs: e.target.value } }))} rows={3} style={{ ...inputStyle, resize: 'none', fontSize: '12px' }} />
                         </div>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           {temAlerta && (
-                            <button onClick={() => handleRemoverAlertaNivel(aula.id, aluno.aluno_id)} style={{
-                              flex: 1, padding: '7px', borderRadius: '8px',
-                              border: '1px solid rgba(239,68,68,0.3)', background: 'none',
-                              color: '#EF4444', fontSize: '11px', cursor: 'pointer',
-                            }}>Remover alerta</button>
+                            <button onClick={() => handleRemoverAlertaNivel(aula.id, aluno.aluno_id)} style={{ flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.3)', background: 'none', color: '#EF4444', fontSize: '11px', cursor: 'pointer' }}>Remover alerta</button>
                           )}
-                          <button onClick={() => setAlertaNivel(prev => ({ ...prev, [aluno.aluno_id]: null }))} style={{
-                            flex: 1, padding: '7px', borderRadius: '8px',
-                            border: '1px solid #2a2a2a', background: 'none',
-                            color: '#555', fontSize: '11px', cursor: 'pointer',
-                          }}>Cancelar</button>
-                          <button onClick={() => handleSalvarAlertaNivel(aula.id, aluno.aluno_id)} style={{
-                            flex: 2, padding: '7px', borderRadius: '8px', border: 'none',
-                            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-                            color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
-                          }}>Salvar alerta</button>
+                          <button onClick={() => setAlertaNivel(prev => ({ ...prev, [aluno.aluno_id]: null }))} style={{ flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>Cancelar</button>
+                          <button onClick={() => handleSalvarAlertaNivel(aula.id, aluno.aluno_id)} style={{ flex: 2, padding: '7px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Salvar alerta</button>
                         </div>
                       </div>
                     )}
@@ -725,8 +741,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
                       <div style={{ display: 'flex', gap: '6px' }}>
                         {STATUS_PRESENCA.map(sp => (
                           <button key={sp.value} onClick={() => updatePresenca(aula.id, aluno.aluno_id, 'status_presenca', sp.value)} style={{
-                            flex: 1, padding: '6px 4px', borderRadius: '6px', border: 'none',
-                            fontSize: '11px', fontWeight: '500', cursor: 'pointer',
+                            flex: 1, padding: '6px 4px', borderRadius: '6px', border: 'none', fontSize: '11px', fontWeight: '500', cursor: 'pointer',
                             backgroundColor: aluno.status_presenca === sp.value ? sp.color + '30' : '#1a1a1a',
                             color: aluno.status_presenca === sp.value ? sp.color : '#444',
                             boxSizing: 'border-box',
@@ -740,22 +755,65 @@ export function AulasCoordenador({ onCelulaVazia }) {
               })}
             </div>
 
+            {/* Adicionar aluno existente ou cadastrar novo */}
             {adicionandoAluno === aula.id ? (
-              <div style={{ marginTop: '10px', position: 'relative' }}>
-                <input placeholder="Buscar aluno..." value={buscaAdicionando}
-                  onChange={e => setBuscaAdicionando(e.target.value)} autoFocus
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#111', border: '1px solid #fcc825', color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-                {alunosBusca.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '10px', marginTop: '4px', maxHeight: '160px', overflowY: 'auto' }}>
-                    {alunosBusca.map(a => (
-                      <button key={a.id} onClick={() => adicionarAluno(aula.id, a)} style={{ width: '100%', padding: '10px 12px', border: 'none', background: 'none', color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer', borderBottom: '1px solid #2a2a2a' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2a2a2a'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >{a.nome}</button>
-                    ))}
+              <div style={{ marginTop: '10px' }}>
+                <div style={{ position: 'relative', marginBottom: '8px' }}>
+                  <input placeholder="Buscar aluno cadastrado..." value={buscaAdicionando}
+                    onChange={e => setBuscaAdicionando(e.target.value)} autoFocus
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#111', border: '1px solid #fcc825', color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                  {alunosBusca.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '10px', marginTop: '4px', maxHeight: '160px', overflowY: 'auto' }}>
+                      {alunosBusca.map(a => (
+                        <button key={a.id} onClick={() => adicionarAlunoNaLista(aula.id, a)} style={{ width: '100%', padding: '10px 12px', border: 'none', background: 'none', color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer', borderBottom: '1px solid #2a2a2a' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2a2a2a'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >{a.nome}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Cadastrar novo aluno inline */}
+                {!novoAlunoModal.show ? (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => setNovoAlunoModal(n => ({ ...n, show: true }))} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px dashed #2a2a2a', background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      <UserPlus size={13} /> Cadastrar novo aluno
+                    </button>
+                    <button onClick={() => { setAdicionandoAluno(null); setBuscaAdicionando('') }} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer' }}>Cancelar</button>
+                  </div>
+                ) : (
+                  <div style={{ padding: '12px', borderRadius: '12px', backgroundColor: '#111', border: '1px solid rgba(252,200,37,0.2)', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                    <div style={{ fontSize: '12px', color: '#fcc825', fontWeight: '600' }}>👤 Novo Aluno</div>
+                    <input placeholder="Nome completo *" value={novoAlunoModal.nome} onChange={e => setNovoAlunoModal(n => ({ ...n, nome: e.target.value }))} style={inputStyle} />
+                    <input placeholder="Telefone (WhatsApp)" value={novoAlunoModal.telefone} onChange={e => setNovoAlunoModal(n => ({ ...n, telefone: e.target.value }))} style={inputStyle} />
+                    <div>
+                      <div style={{ fontSize: '10px', color: '#888', marginBottom: '5px' }}>Nível (opcional)</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {NIVEIS_ALUNO.map(n => (
+                          <button key={n} onClick={() => setNovoAlunoModal(na => ({ ...na, nivel: na.nivel === n ? '' : n }))} style={{
+                            padding: '3px 8px', borderRadius: '6px', border: 'none', fontSize: '10px',
+                            background: novoAlunoModal.nivel === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
+                            outline: novoAlunoModal.nivel === n ? 'none' : '1px solid #2a2a2a',
+                            color: novoAlunoModal.nivel === n ? 'white' : '#888', cursor: 'pointer',
+                          }}>{n}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <button onClick={() => setNovoAlunoModal(n => ({ ...n, menor_idade: !n.menor_idade }))} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', borderRadius: '8px', border: 'none', background: novoAlunoModal.menor_idade ? 'rgba(252,200,37,0.1)' : '#1a1a1a', outline: novoAlunoModal.menor_idade ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a', color: novoAlunoModal.menor_idade ? '#fcc825' : '#888', cursor: 'pointer', fontSize: '11px' }}>
+                      <span>{novoAlunoModal.menor_idade ? '✓' : '○'}</span> Menor de idade
+                    </button>
+                    {novoAlunoModal.menor_idade && (
+                      <input placeholder="Nome do responsável *" value={novoAlunoModal.nome_responsavel} onChange={e => setNovoAlunoModal(n => ({ ...n, nome_responsavel: e.target.value }))} style={inputStyle} />
+                    )}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => setNovoAlunoModal(n => ({ ...n, show: false }))} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>Cancelar</button>
+                      <button onClick={() => handleCadastrarNovoAluno(aula.id)} disabled={salvarAluno.isPending} style={{ flex: 2, padding: '8px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
+                        {salvarAluno.isPending ? 'Salvando...' : '✓ Cadastrar e Adicionar'}
+                      </button>
+                    </div>
                   </div>
                 )}
-                <button onClick={() => { setAdicionandoAluno(null); setBuscaAdicionando('') }} style={{ marginTop: '6px', fontSize: '12px', color: '#555', background: 'none', border: 'none', cursor: 'pointer' }}>Cancelar</button>
               </div>
             ) : (
               <button onClick={() => setAdicionandoAluno(aula.id)} style={{
