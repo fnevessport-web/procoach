@@ -32,6 +32,8 @@ const TIPO_PARTICIPACAO = [
   { value: 'reposicao', label: 'Reposição' },
 ]
 
+const COR_REPOSICAO = '#3b82f6' // azul
+
 const toastStyle = {
   background: '#1a1a1a', color: '#F0F2F5',
   border: '1px solid rgba(252,200,37,0.3)',
@@ -195,6 +197,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
     try {
       await salvarPresencas.mutateAsync({ aulaId, presencas: lista })
       toast.success('✅ Presenças salvas!', { style: toastStyle })
+      fecharModal()
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
@@ -283,6 +286,10 @@ export function AulasCoordenador({ onCelulaVazia }) {
 
   function temAlertaNivel(aulaCelula) {
     return aulaCelula.presencas?.some(p => p.alunos?.alerta_nivel)
+  }
+
+  function temReposicao(aulaCelula) {
+    return aulaCelula.presencas?.some(p => p.tipo_participacao === 'reposicao')
   }
 
   return (
@@ -383,7 +390,6 @@ export function AulasCoordenador({ onCelulaVazia }) {
                     getHorario(a) === horario && getQuadraNome(a) === quadra
                   )
 
-                  // Célula vazia — clicável para atalho
                   if (!aulaCelula) {
                     return (
                       <button key={quadra}
@@ -418,6 +424,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
                   const qtdF = aulaCelula.presencas?.filter(p => p.status_presenca === 'falta' || p.status_presenca === 'falta_justificada').length || 0
                   const isAv = !aulaCelula.turma_id
                   const hasAlerta = temAlertaNivel(aulaCelula)
+                  const hasReposicao = temReposicao(aulaCelula)
 
                   const borderColor = st === 'futura' ? 'rgba(255,255,255,0.06)'
                     : st === 'dada' ? 'rgba(34,197,94,0.3)'
@@ -442,9 +449,11 @@ export function AulasCoordenador({ onCelulaVazia }) {
                           ? <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', backgroundColor: 'rgba(252,200,37,0.15)', color: '#fcc825' }}>avulsa</span>
                           : <span />
                         }
+                        {/* Coluna de indicadores: status + alerta + reposição */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                           <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dotColor, flexShrink: 0 }} />
                           {hasAlerta && <span style={{ fontSize: '9px' }}>⚠️</span>}
+                          {hasReposicao && <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: COR_REPOSICAO, flexShrink: 0 }} />}
                         </div>
                       </div>
                       <div style={{ fontSize: '11px', fontWeight: '600', color: aulaEhFutura ? '#444' : '#F0F2F5', lineHeight: '1.3', marginBottom: '4px' }}>
@@ -594,10 +603,17 @@ export function AulasCoordenador({ onCelulaVazia }) {
               {alunosNaAula.map(aluno => {
                 const temAlerta = aluno.alerta_nivel
                 const alertaAberto = alertaNivel[aluno.aluno_id]
+                const isReposicao = aluno.tipo_participacao === 'reposicao'
+
                 return (
                   <div key={aluno.aluno_id} style={{
                     backgroundColor: '#111', borderRadius: '10px', padding: '10px 12px', boxSizing: 'border-box',
-                    border: temAlerta ? '1px solid rgba(252,200,37,0.25)' : '1px solid transparent',
+                    border: isReposicao
+                      ? `1px solid rgba(59,130,246,0.3)`
+                      : temAlerta
+                        ? '1px solid rgba(252,200,37,0.25)'
+                        : '1px solid transparent',
+                    backgroundColor: isReposicao ? 'rgba(59,130,246,0.05)' : '#111',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
@@ -609,6 +625,14 @@ export function AulasCoordenador({ onCelulaVazia }) {
                           textDecorationColor: '#fcc825', textDecorationStyle: 'dotted',
                         }}>{aluno.nome}</span>
                         {temAlerta && <span style={{ fontSize: '11px' }}>⚠️</span>}
+                        {/* Badge reposição */}
+                        {isReposicao && (
+                          <span style={{
+                            fontSize: '9px', padding: '1px 6px', borderRadius: '4px',
+                            backgroundColor: 'rgba(59,130,246,0.15)', color: COR_REPOSICAO,
+                            fontWeight: '600', letterSpacing: '0.3px',
+                          }}>reposição</span>
+                        )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <button onClick={() => toggleAlertaNivel(aluno.aluno_id, aluno)} title="Alerta de nível" style={{
@@ -619,7 +643,12 @@ export function AulasCoordenador({ onCelulaVazia }) {
                           <AlertTriangle size={12} />
                         </button>
                         <select value={aluno.tipo_participacao} onChange={e => updatePresenca(aula.id, aluno.aluno_id, 'tipo_participacao', e.target.value)}
-                          style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', color: '#888', cursor: 'pointer', outline: 'none' }}>
+                          style={{
+                            fontSize: '11px', padding: '2px 6px', borderRadius: '6px',
+                            backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+                            color: isReposicao ? COR_REPOSICAO : '#888',
+                            cursor: 'pointer', outline: 'none',
+                          }}>
                           {TIPO_PARTICIPACAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                         </select>
                       </div>
