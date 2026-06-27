@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { format, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Plus, Calendar, UserPlus, X, ChevronRight } from 'lucide-react'
+import { Plus, Calendar, UserPlus, X, ChevronRight, Copy } from 'lucide-react'
 import { useAulas, useGerarAulas } from '../../hooks/useAulas'
 import { useTurmas } from '../../hooks/useTurmas'
 import { useProfessores } from '../../hooks/useProfessores'
@@ -38,10 +38,15 @@ const inputInline = {
   color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
 }
 
+const toastStyle = {
+  background: '#1a1a1a', color: '#F0F2F5',
+  border: '1px solid rgba(252,200,37,0.3)',
+  borderRadius: '10px', fontSize: '13px',
+}
+
 export function AulasAdmin() {
   const [tab, setTab] = useState('hoje')
   const [modalGerar, setModalGerar] = useState(null)
-  // Atalho da grade: { horario, quadraNome, data }
   const [atalho, setAtalho] = useState(null)
 
   function handleCelulaVazia({ horario, quadraNome, data }) {
@@ -60,14 +65,23 @@ export function AulasAdmin() {
         <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
           Gestão de Aulas
         </h1>
-        <button onClick={() => setModalGerar('menu')} style={{
-          display: 'flex', alignItems: 'center', gap: '6px',
-          padding: '8px 14px', borderRadius: '10px', border: 'none',
-          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-          color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-        }}>
-          <Calendar size={14} /> Gerar Aulas
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={() => setModalGerar('copiar')} style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '8px 14px', borderRadius: '10px', border: '1px solid #2a2a2a',
+            background: 'none', color: '#888', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+          }}>
+            <Copy size={14} /> Copiar Grade
+          </button>
+          <button onClick={() => setModalGerar('menu')} style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '8px 14px', borderRadius: '10px', border: 'none',
+            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+            color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+          }}>
+            <Calendar size={14} /> Gerar Aulas
+          </button>
+        </div>
       </div>
 
       <div style={{
@@ -90,7 +104,7 @@ export function AulasAdmin() {
         : <AulasDivergencias />
       }
 
-      {/* Menu normal — Gerar Aulas */}
+      {/* Menu normal */}
       <Modal open={modalGerar === 'menu'} onClose={() => setModalGerar(null)} title="Gerar Aulas" size="sm">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <button onClick={() => setModalGerar('avulsa')} style={{
@@ -120,7 +134,7 @@ export function AulasAdmin() {
         </div>
       </Modal>
 
-      {/* Menu atalho — clicou numa célula vazia */}
+      {/* Menu atalho */}
       <Modal open={modalGerar === 'menu_atalho'} onClose={fecharTudo} title="Nova Aula" size="sm">
         <div style={{ marginBottom: '14px', padding: '10px 12px', backgroundColor: '#111', borderRadius: '10px', border: '1px solid rgba(252,200,37,0.2)' }}>
           <div style={{ fontSize: '11px', color: '#fcc825', marginBottom: '4px' }}>⚡ Atalho selecionado</div>
@@ -159,6 +173,7 @@ export function AulasAdmin() {
         </div>
       </Modal>
 
+      <ModalCopiarGrade open={modalGerar === 'copiar'} onClose={fecharTudo} />
       <ModalGerarAulas open={modalGerar === 'mensal'} onClose={fecharTudo} />
       <ModalAulaAvulsa
         open={modalGerar === 'avulsa' || modalGerar === 'avulsa_atalho'}
@@ -166,6 +181,162 @@ export function AulasAdmin() {
         atalho={modalGerar === 'avulsa_atalho' ? atalho : null}
       />
     </div>
+  )
+}
+
+function ModalCopiarGrade({ open, onClose }) {
+  const qc = useQueryClient()
+  const [dataOrigem, setDataOrigem] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [dataDestino, setDataDestino] = useState('')
+  const [copiando, setCopiando] = useState(false)
+  const [resultado, setResultado] = useState(null)
+
+  function resetar() {
+    setDataOrigem(format(new Date(), 'yyyy-MM-dd'))
+    setDataDestino('')
+    setResultado(null)
+  }
+
+  async function handleCopiar() {
+    if (!dataDestino) return toast.error('Selecione o dia de destino', { style: toastStyle })
+    if (dataOrigem === dataDestino) return toast.error('Origem e destino não podem ser iguais', { style: toastStyle })
+    setCopiando(true)
+    try {
+      // Busca aulas avulsas do dia origem
+      const { data: aulasOrigem, error: errBusca } = await supabase
+        .from('aulas')
+        .select('*')
+        .eq('data_aula', dataOrigem)
+        .not('observacoes', 'is', null)
+        .ilike('observacoes', '⚡ Avulsa%')
+
+      if (errBusca) throw errBusca
+      if (!aulasOrigem || aulasOrigem.length === 0) {
+        toast.error('Nenhuma aula avulsa encontrada no dia de origem', { style: toastStyle })
+        setCopiando(false)
+        return
+      }
+
+      // Verifica quais já existem no destino (por observacoes com mesma quadra+horario)
+      const { data: aulasDestino } = await supabase
+        .from('aulas')
+        .select('observacoes')
+        .eq('data_aula', dataDestino)
+
+      const obsDestino = aulasDestino?.map(a => a.observacoes) || []
+
+      // Filtra aulas que ainda não existem no destino
+      const aulasParaCopiar = aulasOrigem.filter(a => {
+        // Extrai quadra+horário da observação
+        const partes = (a.observacoes || '').split('·').map(s => s.trim())
+        const quadra = partes[1] || ''
+        const horario = partes[2] || ''
+        // Verifica se já existe no destino
+        return !obsDestino.some(obs => obs?.includes(quadra) && obs?.includes(horario))
+      })
+
+      if (aulasParaCopiar.length === 0) {
+        toast.error('Todas as aulas já existem no dia de destino', { style: toastStyle })
+        setCopiando(false)
+        return
+      }
+
+      // Cria as aulas no destino
+      const novasAulas = aulasParaCopiar.map(a => ({
+        professor_executou_id: a.professor_executou_id,
+        data_aula: dataDestino,
+        status: 'confirmada_coord',
+        status_aula: 'dada',
+        paga_professor: true,
+        eh_substituicao: false,
+        observacoes: a.observacoes,
+      }))
+
+      const { error: errInsert } = await supabase.from('aulas').insert(novasAulas)
+      if (errInsert) throw errInsert
+
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      setResultado(aulasParaCopiar.length)
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    } finally {
+      setCopiando(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={() => { resetar(); onClose() }} title="📋 Copiar Grade" size="sm">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {resultado !== null ? (
+          <div style={{ textAlign: 'center', padding: '16px 0' }}>
+            <div style={{ fontSize: '40px', marginBottom: '8px' }}>✅</div>
+            <div style={{ fontWeight: '600', color: '#F0F2F5', marginBottom: '6px' }}>{resultado} aulas copiadas!</div>
+            <div style={{ fontSize: '12px', color: '#555' }}>
+              Grade de {format(new Date(dataOrigem + 'T12:00'), "dd/MM", { locale: ptBR })} → {format(new Date(dataDestino + 'T12:00'), "dd/MM", { locale: ptBR })}
+            </div>
+            <div style={{ fontSize: '11px', color: '#888', marginTop: '8px' }}>
+              As aulas foram criadas sem presenças. Adicione os alunos clicando em cada aula.
+            </div>
+            <button onClick={() => { resetar(); onClose() }} style={{
+              marginTop: '16px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
+              background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+              color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+            }}>Fechar</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ padding: '12px', backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', fontSize: '12px', color: '#555' }}>
+              💡 Copia a estrutura das aulas avulsas (quadra, horário, professor, nível) sem as presenças.
+            </div>
+
+            <div>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>Dia de origem (copiar DE)</div>
+              <input type="date" value={dataOrigem} onChange={e => setDataOrigem(e.target.value)} style={{
+                width: '100%', padding: '10px 12px', borderRadius: '10px',
+                backgroundColor: '#111', border: '1px solid #2a2a2a',
+                color: '#F0F2F5', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+              }} />
+              {dataOrigem && (
+                <div style={{ fontSize: '11px', color: '#fcc825', marginTop: '4px', textTransform: 'capitalize' }}>
+                  {format(new Date(dataOrigem + 'T12:00'), "EEEE, d 'de' MMMM", { locale: ptBR })}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: '20px', color: '#333' }}>↓</span>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>Dia de destino (colar EM)</div>
+              <input type="date" value={dataDestino} onChange={e => setDataDestino(e.target.value)} style={{
+                width: '100%', padding: '10px 12px', borderRadius: '10px',
+                backgroundColor: '#111', border: '1px solid rgba(252,200,37,0.3)',
+                color: '#F0F2F5', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+              }} />
+              {dataDestino && (
+                <div style={{ fontSize: '11px', color: '#fcc825', marginTop: '4px', textTransform: 'capitalize' }}>
+                  {format(new Date(dataDestino + 'T12:00'), "EEEE, d 'de' MMMM", { locale: ptBR })}
+                </div>
+              )}
+            </div>
+
+            <button onClick={handleCopiar} disabled={copiando || !dataDestino} style={{
+              width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
+              background: !dataDestino ? '#1a1a1a' : 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+              color: !dataDestino ? '#555' : 'white',
+              fontSize: '14px', fontWeight: '600',
+              cursor: !dataDestino || copiando ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              outline: !dataDestino ? '1px solid #2a2a2a' : 'none',
+            }}>
+              <Copy size={16} />
+              {copiando ? 'Copiando...' : 'Copiar Grade'}
+            </button>
+          </>
+        )}
+      </div>
+    </Modal>
   )
 }
 
@@ -283,7 +454,6 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
   const { data: quadras } = useQuadras(modalidadeId || null)
   const { data: niveis } = useNiveis(null)
 
-  // Resolve quadra_id a partir do nome do atalho
   const quadraIdAtalho = atalho?.quadraNome
     ? todasQuadras?.find(q => q.nome === atalho.quadraNome)?.id || ''
     : ''
@@ -293,7 +463,6 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
     horario: '07:00', professor_id: '', quadra_id: '', nivel_id: '',
   })
 
-  // Quando atalho muda, preenche form
   useState(() => {
     if (atalho) {
       setForm(f => ({
@@ -363,12 +532,10 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
     resetNovoAluno()
   }
 
-  // Preenche form quando atalho está disponível e quadras carregam
   const quadraIdResolvida = atalho?.quadraNome
     ? todasQuadras?.find(q => q.nome === atalho.quadraNome)?.id || ''
     : ''
 
-  // Efeito de preencher via open+atalho
   if (open && atalho && form.horario !== atalho.horario) {
     setForm(f => ({
       ...f,
@@ -383,13 +550,10 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
     if (novoAluno.menor_idade && !novoAluno.nome_responsavel.trim()) return toast.error('Nome do responsável obrigatório')
     try {
       const result = await salvarAluno.mutateAsync({
-        nome: novoAluno.nome,
-        telefone: novoAluno.telefone,
-        nivel: novoAluno.nivel || null,
-        menor_idade: novoAluno.menor_idade,
+        nome: novoAluno.nome, telefone: novoAluno.telefone,
+        nivel: novoAluno.nivel || null, menor_idade: novoAluno.menor_idade,
         nome_responsavel: novoAluno.menor_idade ? novoAluno.nome_responsavel : null,
-        modalidade_id: novoAluno.modalidades_ids[0] || modalidadeId || null,
-        ativo: true,
+        modalidade_id: novoAluno.modalidades_ids[0] || modalidadeId || null, ativo: true,
       })
       if (result?.id && novoAluno.modalidades_ids.length > 0) {
         await supabase.from('alunos_modalidades').insert(
@@ -407,17 +571,14 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
     if (!form.professor_id) return toast.error('Selecione um professor')
     if (!form.quadra_id) return toast.error('Selecione uma quadra')
     if (!form.data) return toast.error('Selecione uma data')
-        setSalvando(true)
+    setSalvando(true)
     try {
       const quadraNome = quadras?.find(q => q.id === form.quadra_id)?.nome
         || todasQuadras?.find(q => q.id === form.quadra_id)?.nome || ''
 
       const { data: aulasExistentes } = await supabase
-        .from('aulas')
-        .select('id')
-        .eq('data_aula', form.data)
-        .ilike('observacoes', `%${quadraNome}%`)
-        .ilike('observacoes', `%${form.horario}%`)
+        .from('aulas').select('id').eq('data_aula', form.data)
+        .ilike('observacoes', `%${quadraNome}%`).ilike('observacoes', `%${form.horario}%`)
 
       if (aulasExistentes && aulasExistentes.length > 0) {
         toast.error(`⚠️ Já existe uma aula em ${quadraNome} às ${form.horario} neste dia!`)
@@ -427,29 +588,22 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
 
       const nivelNome = niveis?.find(n => n.id === form.nivel_id)?.nome || ''
 
-      const { data: aulaData, error: aulaError } = await supabase
-        .from('aulas')
-        .insert({
-          professor_executou_id: form.professor_id,
-          data_aula: form.data,
-          status: 'confirmada_coord',
-          status_aula: 'dada',
-          paga_professor: true,
-          eh_substituicao: false,
-          observacoes: `⚡ Avulsa · ${quadraNome} · ${form.horario}${nivelNome ? ' · ' + nivelNome : ''}`,
-        })
-        .select().single()
+      const { data: aulaData, error: aulaError } = await supabase.from('aulas').insert({
+        professor_executou_id: form.professor_id,
+        data_aula: form.data, status: 'confirmada_coord', status_aula: 'dada',
+        paga_professor: true, eh_substituicao: false,
+        observacoes: `⚡ Avulsa · ${quadraNome} · ${form.horario}${nivelNome ? ' · ' + nivelNome : ''}`,
+      }).select().single()
       if (aulaError) throw aulaError
 
-      await supabase.from('presencas').insert(
-        alunos.map(al => ({
-          aula_id: aulaData.id,
-          aluno_id: al.aluno_id,
-          presente: true,
-          status_presenca: 'presente',
-          tipo_participacao: al.tipo,
-        }))
-      )
+      if (alunos.length > 0) {
+        await supabase.from('presencas').insert(
+          alunos.map(al => ({
+            aula_id: aulaData.id, aluno_id: al.aluno_id,
+            presente: true, status_presenca: 'presente', tipo_participacao: al.tipo,
+          }))
+        )
+      }
       qc.invalidateQueries({ queryKey: ['aulas'] })
       toast.success('Aula avulsa criada!')
       resetForm()
@@ -465,13 +619,8 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
     <Modal open={open} onClose={() => { resetForm(); onClose() }} title="⚡ Aula Avulsa" size="md">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-        {/* Indicador de atalho */}
         {atalho && (
-          <div style={{
-            padding: '8px 12px', backgroundColor: 'rgba(252,200,37,0.08)',
-            border: '1px solid rgba(252,200,37,0.2)', borderRadius: '8px',
-            fontSize: '12px', color: '#fcc825',
-          }}>
+          <div style={{ padding: '8px 12px', backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.2)', borderRadius: '8px', fontSize: '12px', color: '#fcc825' }}>
             ⚡ Atalho: <strong>{atalho.quadraNome}</strong> · <strong>{atalho.horario}</strong>
           </div>
         )}
@@ -481,8 +630,7 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
           {modalidades?.map(m => <option key={m.id} value={m.id}>{m.icone_emoji} {m.nome}</option>)}
         </Select>
 
-        <Input label="Data da Aula" type="date" value={form.data}
-          onChange={e => setForm(f => ({ ...f, data: e.target.value }))} />
+        <Input label="Data da Aula" type="date" value={form.data} onChange={e => setForm(f => ({ ...f, data: e.target.value }))} />
 
         <Select label="Horário" value={form.horario} onChange={e => setForm(f => ({ ...f, horario: e.target.value }))}>
           {horarios.map(h => <option key={h} value={h}>{h}</option>)}
@@ -502,70 +650,41 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Nível da Aula (opcional)</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {niveis?.map(n => (
-              <button key={n.id}
-                onClick={() => setForm(f => ({ ...f, nivel_id: f.nivel_id === n.id ? '' : n.id }))}
-                style={{
-                  padding: '6px 12px', borderRadius: '8px', border: 'none', fontSize: '12px',
-                  background: form.nivel_id === n.id ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#110f0f',
-                  outline: form.nivel_id === n.id ? 'none' : '1px solid #2a2a2a',
-                  color: form.nivel_id === n.id ? 'white' : '#888', cursor: 'pointer',
-                }}>{n.nome}</button>
+              <button key={n.id} onClick={() => setForm(f => ({ ...f, nivel_id: f.nivel_id === n.id ? '' : n.id }))} style={{
+                padding: '6px 12px', borderRadius: '8px', border: 'none', fontSize: '12px',
+                background: form.nivel_id === n.id ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#110f0f',
+                outline: form.nivel_id === n.id ? 'none' : '1px solid #2a2a2a',
+                color: form.nivel_id === n.id ? 'white' : '#888', cursor: 'pointer',
+              }}>{n.nome}</button>
             ))}
           </div>
         </div>
 
         <div>
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Alunos ({alunos.length})</div>
-
           {alunos.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
               {alunos.map(al => (
-                <div key={al.aluno_id} style={{
-                  backgroundColor: '#110f0f', borderRadius: '10px',
-                  padding: '10px 12px', border: '1px solid #2a2a2a',
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                }}>
+                <div key={al.aluno_id} style={{ backgroundColor: '#110f0f', borderRadius: '10px', padding: '10px 12px', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '13px', color: '#F0F2F5', flex: 1 }}>{al.nome}</span>
-                  <select value={al.tipo} onChange={e => updateTipoAluno(al.aluno_id, e.target.value)} style={{
-                    fontSize: '11px', padding: '3px 6px', borderRadius: '6px',
-                    backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
-                    color: TIPOS_PARTICIPACAO.find(t => t.value === al.tipo)?.color || '#888',
-                    cursor: 'pointer', outline: 'none',
-                  }}>
+                  <select value={al.tipo} onChange={e => updateTipoAluno(al.aluno_id, e.target.value)} style={{ fontSize: '11px', padding: '3px 6px', borderRadius: '6px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', color: TIPOS_PARTICIPACAO.find(t => t.value === al.tipo)?.color || '#888', cursor: 'pointer', outline: 'none' }}>
                     {TIPOS_PARTICIPACAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
-                  <button onClick={() => removerAluno(al.aluno_id)} style={{
-                    padding: '4px', borderRadius: '6px', border: 'none',
-                    backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer',
-                  }}><X size={12} /></button>
+                  <button onClick={() => removerAluno(al.aluno_id)} style={{ padding: '4px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer' }}><X size={12} /></button>
                 </div>
               ))}
             </div>
           )}
 
           <div style={{ position: 'relative', marginBottom: '8px' }}>
-            <input placeholder="Buscar aluno para adicionar..." value={buscaAluno}
-              onChange={e => setBuscaAluno(e.target.value)}
-              style={{
-                width: '100%', padding: '10px 12px', borderRadius: '10px',
-                backgroundColor: '#110f0f', border: '1px solid #2a2a2a',
-                color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
-              }}
+            <input placeholder="Buscar aluno para adicionar..." value={buscaAluno} onChange={e => setBuscaAluno(e.target.value)}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#110f0f', border: '1px solid #2a2a2a', color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
               onFocus={e => e.target.style.borderColor = '#fcc825'}
-              onBlur={e => e.target.style.borderColor = '#2a2a2a'}
-            />
+              onBlur={e => e.target.style.borderColor = '#2a2a2a'} />
             {alunosFiltrados.length > 0 && (
-              <div style={{
-                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
-                backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
-                borderRadius: '10px', marginTop: '4px', maxHeight: '160px', overflowY: 'auto',
-              }}>
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '10px', marginTop: '4px', maxHeight: '160px', overflowY: 'auto' }}>
                 {alunosFiltrados.map(a => (
-                  <button key={a.id} onClick={() => adicionarAluno(a)} style={{
-                    width: '100%', padding: '10px 12px', border: 'none', background: 'none',
-                    color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer',
-                    borderBottom: '1px solid #2a2a2a',
-                  }}
+                  <button key={a.id} onClick={() => adicionarAluno(a)} style={{ width: '100%', padding: '10px 12px', border: 'none', background: 'none', color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer', borderBottom: '1px solid #2a2a2a' }}
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2a2a2a'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                   >{a.nome}</button>
@@ -575,45 +694,21 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
           </div>
 
           {!novoAluno.show ? (
-            <button onClick={() => setNovoAluno(n => ({ ...n, show: true }))} style={{
-              width: '100%', padding: '8px', borderRadius: '8px',
-              border: '1px dashed #2a2a2a', background: 'none',
-              color: '#555', fontSize: '12px', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-            }}>
+            <button onClick={() => setNovoAluno(n => ({ ...n, show: true }))} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px dashed #2a2a2a', background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
               <UserPlus size={13} /> Cadastrar novo aluno
             </button>
           ) : (
-            <div style={{
-              padding: '14px', borderRadius: '12px',
-              backgroundColor: '#110f0f', border: '1px solid rgba(252,200,37,0.2)',
-              display: 'flex', flexDirection: 'column', gap: '10px',
-            }}>
+            <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#110f0f', border: '1px solid rgba(252,200,37,0.2)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#fcc825' }}>👤 Novo Aluno</div>
-
               <div style={{ position: 'relative' }}>
-                <input placeholder="Nome completo *" value={novoAluno.nome}
-                  onChange={e => setNovoAluno(n => ({ ...n, nome: e.target.value }))}
-                  style={inputInline} />
+                <input placeholder="Nome completo *" value={novoAluno.nome} onChange={e => setNovoAluno(n => ({ ...n, nome: e.target.value }))} style={inputInline} />
                 {sugestoesNome.length > 0 && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
-                    backgroundColor: '#1a1a1a', border: '1px solid rgba(252,200,37,0.4)',
-                    borderRadius: '10px', marginTop: '4px', maxHeight: '150px', overflowY: 'auto',
-                  }}>
-                    <div style={{ fontSize: '10px', color: '#fcc825', padding: '6px 12px 4px', letterSpacing: '0.5px', borderBottom: '1px solid #2a2a2a' }}>
-                      ⚠️ Já cadastrado — clique para adicionar direto
-                    </div>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, backgroundColor: '#1a1a1a', border: '1px solid rgba(252,200,37,0.4)', borderRadius: '10px', marginTop: '4px', maxHeight: '150px', overflowY: 'auto' }}>
+                    <div style={{ fontSize: '10px', color: '#fcc825', padding: '6px 12px 4px', borderBottom: '1px solid #2a2a2a' }}>⚠️ Já cadastrado — clique para adicionar direto</div>
                     {sugestoesNome.map(a => (
-                      <button key={a.id} onClick={() => { adicionarAluno(a, 'avulso'); resetNovoAluno() }} style={{
-                        width: '100%', padding: '8px 12px', border: 'none', background: 'none',
-                        color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer',
-                        borderBottom: '1px solid #2a2a2a',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      }}
+                      <button key={a.id} onClick={() => { adicionarAluno(a, 'avulso'); resetNovoAluno() }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                         onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2a2a2a'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                         <span>{a.nome}</span>
                         {a.nivel && <span style={{ fontSize: '10px', color: '#cf1b9b' }}>{a.nivel}</span>}
                       </button>
@@ -621,72 +716,35 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
                   </div>
                 )}
               </div>
-
-              <input placeholder="Telefone (WhatsApp)" value={novoAluno.telefone}
-                onChange={e => setNovoAluno(n => ({ ...n, telefone: e.target.value }))}
-                style={inputInline} />
-
+              <input placeholder="Telefone (WhatsApp)" value={novoAluno.telefone} onChange={e => setNovoAluno(n => ({ ...n, telefone: e.target.value }))} style={inputInline} />
               <div>
                 <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Nível do Aluno (opcional)</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                   {NIVEIS_ALUNO.map(n => (
-                    <button key={n} onClick={() => setNovoAluno(na => ({ ...na, nivel: na.nivel === n ? '' : n }))} style={{
-                      padding: '4px 10px', borderRadius: '6px', border: 'none', fontSize: '11px',
-                      background: novoAluno.nivel === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
-                      outline: novoAluno.nivel === n ? 'none' : '1px solid #2a2a2a',
-                      color: novoAluno.nivel === n ? 'white' : '#888', cursor: 'pointer',
-                    }}>{n}</button>
+                    <button key={n} onClick={() => setNovoAluno(na => ({ ...na, nivel: na.nivel === n ? '' : n }))} style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', fontSize: '11px', background: novoAluno.nivel === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a', outline: novoAluno.nivel === n ? 'none' : '1px solid #2a2a2a', color: novoAluno.nivel === n ? 'white' : '#888', cursor: 'pointer' }}>{n}</button>
                   ))}
                 </div>
               </div>
-
-              <button onClick={() => setNovoAluno(n => ({ ...n, menor_idade: !n.menor_idade }))} style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '8px 10px', borderRadius: '8px', border: 'none',
-                background: novoAluno.menor_idade ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
-                outline: novoAluno.menor_idade ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-                color: novoAluno.menor_idade ? '#fcc825' : '#888',
-                cursor: 'pointer', width: '100%', textAlign: 'left', fontSize: '12px',
-              }}>
-                <span>{novoAluno.menor_idade ? '✓' : '○'}</span>
-                <span>Menor de idade</span>
+              <button onClick={() => setNovoAluno(n => ({ ...n, menor_idade: !n.menor_idade }))} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '8px', border: 'none', background: novoAluno.menor_idade ? 'rgba(252,200,37,0.1)' : '#1a1a1a', outline: novoAluno.menor_idade ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a', color: novoAluno.menor_idade ? '#fcc825' : '#888', cursor: 'pointer', width: '100%', textAlign: 'left', fontSize: '12px' }}>
+                <span>{novoAluno.menor_idade ? '✓' : '○'}</span><span>Menor de idade</span>
               </button>
-
               {novoAluno.menor_idade && (
-                <input placeholder="Nome do responsável *" value={novoAluno.nome_responsavel}
-                  onChange={e => setNovoAluno(n => ({ ...n, nome_responsavel: e.target.value }))}
-                  style={inputInline} />
+                <input placeholder="Nome do responsável *" value={novoAluno.nome_responsavel} onChange={e => setNovoAluno(n => ({ ...n, nome_responsavel: e.target.value }))} style={inputInline} />
               )}
-
               <div>
                 <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Modalidades</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                   {modalidades?.map(m => (
-                    <button key={m.id} onClick={() => toggleModalidadeNovoAluno(m.id)} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '7px 10px', borderRadius: '8px', border: 'none',
-                      background: novoAluno.modalidades_ids.includes(m.id) ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
-                      outline: novoAluno.modalidades_ids.includes(m.id) ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-                      color: novoAluno.modalidades_ids.includes(m.id) ? '#fcc825' : '#888',
-                      cursor: 'pointer', fontSize: '12px', width: '100%',
-                    }}>
+                    <button key={m.id} onClick={() => toggleModalidadeNovoAluno(m.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', borderRadius: '8px', border: 'none', background: novoAluno.modalidades_ids.includes(m.id) ? 'rgba(252,200,37,0.1)' : '#1a1a1a', outline: novoAluno.modalidades_ids.includes(m.id) ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a', color: novoAluno.modalidades_ids.includes(m.id) ? '#fcc825' : '#888', cursor: 'pointer', fontSize: '12px', width: '100%' }}>
                       <span>{m.icone_emoji} {m.nome}</span>
                       <span>{novoAluno.modalidades_ids.includes(m.id) ? '✓' : '+'}</span>
                     </button>
                   ))}
                 </div>
               </div>
-
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={resetNovoAluno} style={{
-                  flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #2a2a2a',
-                  background: 'none', color: '#888', fontSize: '12px', cursor: 'pointer',
-                }}>Cancelar</button>
-                <button onClick={handleCadastrarAluno} disabled={salvarAluno.isPending} style={{
-                  flex: 2, padding: '8px', borderRadius: '8px', border: 'none',
-                  background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-                  color: 'white', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-                }}>
+                <button onClick={resetNovoAluno} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#888', fontSize: '12px', cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={handleCadastrarAluno} disabled={salvarAluno.isPending} style={{ flex: 2, padding: '8px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
                   {salvarAluno.isPending ? 'Salvando...' : '✓ Cadastrar e Adicionar'}
                 </button>
               </div>
@@ -694,13 +752,7 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
           )}
         </div>
 
-        <button onClick={handleSalvar} disabled={salvando} style={{
-          width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
-          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-          color: 'white', fontSize: '14px', fontWeight: '600',
-          cursor: salvando ? 'not-allowed' : 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-        }}>
+        <button onClick={handleSalvar} disabled={salvando} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '14px', fontWeight: '600', cursor: salvando ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
           <Plus size={16} />
           {salvando ? 'Salvando...' : 'Criar Aula Avulsa'}
         </button>
