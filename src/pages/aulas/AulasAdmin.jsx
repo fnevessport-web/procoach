@@ -66,12 +66,12 @@ export function AulasAdmin() {
           Gestão de Aulas
         </h1>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => setModalGerar('copiar')} style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '8px 14px', borderRadius: '10px', border: '1px solid #2a2a2a',
-            background: 'none', color: '#888', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+          <button onClick={() => setModalGerar('copiar')} title="Copiar Grade" style={{
+            padding: '8px', borderRadius: '10px', border: 'none',
+            background: 'none', color: '#333', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <Copy size={14} /> Copiar Grade
+            <Copy size={18} />
           </button>
           <button onClick={() => setModalGerar('menu')} style={{
             display: 'flex', alignItems: 'center', gap: '6px',
@@ -241,6 +241,13 @@ function ModalCopiarGrade({ open, onClose }) {
         return
       }
 
+      // Busca as presenças das aulas de origem (apenas alunos, sem status)
+      const idsOrigem = aulasParaCopiar.map(a => a.id)
+      const { data: presencasOrigem } = await supabase
+        .from('presencas')
+        .select('aula_id, aluno_id, tipo_participacao')
+        .in('aula_id', idsOrigem)
+
       // Cria as aulas no destino
       const novasAulas = aulasParaCopiar.map(a => ({
         professor_executou_id: a.professor_executou_id,
@@ -252,8 +259,35 @@ function ModalCopiarGrade({ open, onClose }) {
         observacoes: a.observacoes,
       }))
 
-      const { error: errInsert } = await supabase.from('aulas').insert(novasAulas)
+      const { data: aulasCriadas, error: errInsert } = await supabase
+        .from('aulas')
+        .insert(novasAulas)
+        .select('id, observacoes')
       if (errInsert) throw errInsert
+
+      // Copia as presenças (sem marcar presente/falta — status neutro)
+      if (presencasOrigem && presencasOrigem.length > 0 && aulasCriadas) {
+        const presencasNovas = []
+        for (const aulaOrigemId of idsOrigem) {
+          // Acha a aula origem e a aula nova correspondente pela observação
+          const aulaOrig = aulasParaCopiar.find(a => a.id === aulaOrigemId)
+          const aulaNova = aulasCriadas.find(a => a.observacoes === aulaOrig?.observacoes)
+          if (!aulaNova) continue
+          const presencasDaAula = presencasOrigem.filter(p => p.aula_id === aulaOrigemId)
+          for (const p of presencasDaAula) {
+            presencasNovas.push({
+              aula_id: aulaNova.id,
+              aluno_id: p.aluno_id,
+              presente: false,
+              status_presenca: 'falta',
+              tipo_participacao: p.tipo_participacao || 'mensalista',
+            })
+          }
+        }
+        if (presencasNovas.length > 0) {
+          await supabase.from('presencas').insert(presencasNovas)
+        }
+      }
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
       setResultado(aulasParaCopiar.length)
