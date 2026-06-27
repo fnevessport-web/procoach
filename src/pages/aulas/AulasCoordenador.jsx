@@ -335,25 +335,44 @@ export function AulasCoordenador({ onCelulaVazia }) {
         <div style={{
           backgroundColor: '#151515', border: '1px solid rgba(255,255,255,0.05)',
           borderRadius: '10px', padding: '8px 14px', marginBottom: '14px',
-          display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '11px', color: '#555' }}>Aulas</span>
-            <span style={{ fontSize: '11px', color: '#888', fontWeight: '600' }}>{totalAulas}</span>
-            <span style={{ fontSize: '11px', color: '#333' }}>·</span>
-            <span style={{ fontSize: '11px', color: '#22c55e', fontWeight: '600' }}>{aulasDadas}</span>
-            <span style={{ fontSize: '11px', color: '#555' }}>/</span>
-            <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>{aulasNaoDadas + aulasCanceladas}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '11px', color: '#555' }}>Aulas</span>
+              <span style={{ fontSize: '11px', color: '#888', fontWeight: '600' }}>{totalAulas}</span>
+              <span style={{ fontSize: '11px', color: '#333' }}>·</span>
+              <span style={{ fontSize: '11px', color: '#22c55e', fontWeight: '600' }}>{aulasDadas}</span>
+              <span style={{ fontSize: '11px', color: '#555' }}>/</span>
+              <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>{aulasNaoDadas + aulasCanceladas}</span>
+            </div>
+            <span style={{ fontSize: '11px', color: '#2a2a2a' }}>·</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '11px', color: '#555' }}>Alunos</span>
+              <span style={{ fontSize: '11px', color: '#888', fontWeight: '600' }}>{totalPresentes + totalFaltas}</span>
+              <span style={{ fontSize: '11px', color: '#333' }}>·</span>
+              <span style={{ fontSize: '11px', color: '#22c55e', fontWeight: '600' }}>{totalPresentes}</span>
+              <span style={{ fontSize: '11px', color: '#555' }}>/</span>
+              <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>{totalFaltas}</span>
+            </div>
           </div>
-          <span style={{ fontSize: '11px', color: '#2a2a2a' }}>·</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '11px', color: '#555' }}>Alunos</span>
-            <span style={{ fontSize: '11px', color: '#888', fontWeight: '600' }}>{totalPresentes + totalFaltas}</span>
-            <span style={{ fontSize: '11px', color: '#333' }}>·</span>
-            <span style={{ fontSize: '11px', color: '#22c55e', fontWeight: '600' }}>{totalPresentes}</span>
-            <span style={{ fontSize: '11px', color: '#555' }}>/</span>
-            <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>{totalFaltas}</span>
-          </div>
+          {(() => {
+            const total = totalPresentes + totalFaltas
+            const pct = total > 0 ? Math.round((totalPresentes / total) * 100) : 0
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ flex: 1, height: '3px', borderRadius: '2px', backgroundColor: '#2a2a2a', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${pct}%`, height: '100%', borderRadius: '2px',
+                    backgroundColor: pct >= 75 ? '#22c55e' : pct >= 50 ? '#fcc825' : '#EF4444',
+                    transition: 'width 0.3s ease',
+                  }} />
+                </div>
+                <span style={{ fontSize: '10px', color: '#444', fontWeight: '500', minWidth: '28px', textAlign: 'right' }}>
+                  {pct}%
+                </span>
+              </div>
+            )
+          })()}
         </div>
       )}
 
