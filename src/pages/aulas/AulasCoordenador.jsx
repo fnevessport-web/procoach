@@ -32,6 +32,15 @@ const TIPO_PARTICIPACAO = [
   { value: 'reposicao', label: 'Reposição' },
 ]
 
+// Toast no estilo ProCoach
+const toastStyle = {
+  background: '#1a1a1a',
+  color: '#F0F2F5',
+  border: '1px solid rgba(252,200,37,0.3)',
+  borderRadius: '10px',
+  fontSize: '13px',
+}
+
 function parseObservacoes(obs) {
   if (!obs) return { quadra: '', horario: '', nivel: '' }
   const partes = obs.split('·').map(s => s.trim())
@@ -63,6 +72,7 @@ export function AulasCoordenador() {
   const [buscaAdicionando, setBuscaAdicionando] = useState('')
   const [editandoAula, setEditandoAula] = useState(null)
   const [editForm, setEditForm] = useState({})
+  const [statusLocal, setStatusLocal] = useState({}) // status visual imediato
 
   const { data: aulas, isLoading } = useAulas({ data, modalidadeId: modalidadeSelecionada?.id })
   const { data: todosAlunos } = useAlunos()
@@ -75,11 +85,12 @@ export function AulasCoordenador() {
   const dataObj = new Date(data + 'T12:00:00')
   const label = format(dataObj, "EEEE, d 'de' MMMM", { locale: ptBR })
   const isHoje = data === format(new Date(), 'yyyy-MM-dd')
-  const horarios = Array.from({ length: 18 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
+  const horarios = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
 
   function navData(dir) {
     const d = dir > 0 ? addDays(dataObj, 1) : subDays(dataObj, 1)
     setData(format(d, 'yyyy-MM-dd'))
+    setStatusLocal({})
   }
 
   function abrirAula(aula) {
@@ -124,19 +135,25 @@ export function AulasCoordenador() {
 
   async function handleSalvarPresencas(aulaId) {
     const lista = Object.values(presencasLocal[aulaId] || {})
-    if (!lista.length) return toast.error('Nenhum aluno na lista')
+    if (!lista.length) return toast.error('Nenhum aluno na lista', { style: toastStyle })
     try {
       await salvarPresencas.mutateAsync({ aulaId, presencas: lista })
-      toast.success('Presenças salvas!')
-    } catch (err) { toast.error(err.message) }
+      toast.success('✅ Presenças salvas!', { style: toastStyle })
+    } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
   async function handleStatusAula(aulaId, statusAula) {
     const pagaProfessor = STATUS_AULA.find(s => s.value === statusAula)?.paga ?? true
+    // Atualiza visualmente na hora
+    setStatusLocal(prev => ({ ...prev, [aulaId]: statusAula }))
     try {
       await atualizarStatus.mutateAsync({ aulaId, statusAula, pagaProfessor })
-      toast.success('Status atualizado!')
-    } catch (err) { toast.error(err.message) }
+      toast.success('Status atualizado!', { style: toastStyle })
+    } catch (err) {
+      // Reverte se der erro
+      setStatusLocal(prev => ({ ...prev, [aulaId]: undefined }))
+      toast.error(err.message, { style: toastStyle })
+    }
   }
 
   function iniciarEdicao(aula) {
@@ -161,9 +178,9 @@ export function AulasCoordenador() {
       }).eq('id', aula.id)
       if (error) throw error
       qc.invalidateQueries({ queryKey: ['aulas'] })
-      toast.success('Aula atualizada!')
+      toast.success('Aula atualizada!', { style: toastStyle })
       setEditandoAula(null)
-    } catch (err) { toast.error(err.message) }
+    } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
   const aulasFiltradas = aulas?.filter(a => {
@@ -172,7 +189,6 @@ export function AulasCoordenador() {
     return a.turmas?.modalidades?.nome === modalidadeSelecionada.nome
   }) || []
 
-  // Monta lista de quadras únicas ordenando Quadra 4, Quadra 3 primeiro
   const quadrasUnicas = [...new Set(aulasFiltradas.map(a => getQuadraNome(a)).filter(Boolean))]
     .sort((a, b) => {
       const ordem = ['Quadra 4', 'Quadra 3', 'Quadra 2', 'Quadra 1']
@@ -184,14 +200,12 @@ export function AulasCoordenador() {
       return ia - ib
     })
 
-  // Horários que têm aula
-  const horariosComAula = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
+  const horariosGrade = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
 
-  // Totais
   const totalAulas = aulasFiltradas.length
-  const aulasDadas = aulasFiltradas.filter(a => (a.status_aula || 'dada') === 'dada').length
-  const aulasNaoDadas = aulasFiltradas.filter(a => a.status_aula === 'nao_dada').length
-  const aulasCanceladas = aulasFiltradas.filter(a => a.status_aula === 'cancelada').length
+  const aulasDadas = aulasFiltradas.filter(a => (statusLocal[a.id] || a.status_aula || 'dada') === 'dada').length
+  const aulasNaoDadas = aulasFiltradas.filter(a => (statusLocal[a.id] || a.status_aula) === 'nao_dada').length
+  const aulasCanceladas = aulasFiltradas.filter(a => (statusLocal[a.id] || a.status_aula) === 'cancelada').length
   let totalPresentes = 0, totalFaltas = 0
   aulasFiltradas.forEach(aula => {
     aula.presencas?.forEach(p => {
@@ -200,12 +214,11 @@ export function AulasCoordenador() {
     })
   })
 
-  // Aula do modal
   const aula = aulaModal
   const presencas = aula ? (presencasLocal[aula.id] || {}) : {}
   const alunosNaAula = Object.values(presencas)
   const idsNaAula = Object.keys(presencas)
-  const statusAtual = aula ? (aula.status_aula || 'dada') : 'dada'
+  const statusAtual = aula ? (statusLocal[aula.id] || aula.status_aula || 'dada') : 'dada'
   const isAvulsa = aula ? !aula.turma_id : false
   const estaEditando = aula ? editandoAula === aula.id : false
   const alunosBusca = buscaAdicionando.length >= 1
@@ -269,7 +282,6 @@ export function AulasCoordenador() {
       {isLoading ? <Loading /> : !aulasFiltradas.length ? (
         <EmptyState iconImg="/images/totaldeaulas.png" title="Nenhuma aula neste dia" />
       ) : (
-        /* Grade de horários */
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ minWidth: `${50 + quadrasUnicas.length * 140}px` }}>
 
@@ -288,10 +300,8 @@ export function AulasCoordenador() {
             </div>
 
             {/* Linhas por horário */}
-            {horariosComAula.map(horario => (
+            {horariosGrade.map(horario => (
               <div key={horario} style={{ display: 'flex', marginBottom: '4px', alignItems: 'stretch' }}>
-
-                {/* Coluna horário — travada visualmente */}
                 <div style={{
                   width: '50px', flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -299,7 +309,6 @@ export function AulasCoordenador() {
                   backgroundColor: '#151515', borderRadius: '8px', marginRight: '4px',
                 }}>{horario}</div>
 
-                {/* Células por quadra */}
                 {quadrasUnicas.map(quadra => {
                   const aulaCelula = aulasFiltradas.find(a =>
                     getHorario(a) === horario && getQuadraNome(a) === quadra
@@ -315,7 +324,7 @@ export function AulasCoordenador() {
                     )
                   }
 
-                  const st = aulaCelula.status_aula || 'dada'
+                  const st = statusLocal[aulaCelula.id] || aulaCelula.status_aula || 'dada'
                   const nivel = getNivel(aulaCelula)
                   const qtdTotal = aulaCelula.presencas?.length || 0
                   const qtdP = aulaCelula.presencas?.filter(p => p.status_presenca === 'presente' || p.presente).length || 0
@@ -339,7 +348,6 @@ export function AulasCoordenador() {
                         display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
                       }}
                     >
-                      {/* Linha topo: badge avulsa + status dot */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                         {isAv
                           ? <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', backgroundColor: 'rgba(252,200,37,0.15)', color: '#fcc825' }}>avulsa</span>
@@ -347,18 +355,12 @@ export function AulasCoordenador() {
                         }
                         <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dotColor, flexShrink: 0 }} />
                       </div>
-
-                      {/* Nível */}
                       <div style={{ fontSize: '11px', fontWeight: '600', color: '#F0F2F5', lineHeight: '1.3', marginBottom: '4px' }}>
                         {nivel || (isAv ? 'Avulsa' : aulaCelula.turmas?.nome || '—')}
                       </div>
-
-                      {/* Professor */}
                       <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {aulaCelula.professores?.nome?.split(' ')[0]}
                       </div>
-
-                      {/* Contadores */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{ fontSize: '10px', color: '#888' }}><b>T</b>{qtdTotal}</span>
                         {qtdP > 0 && <span style={{ fontSize: '10px', color: '#22c55e' }}>✓{qtdP}</span>}
@@ -380,18 +382,13 @@ export function AulasCoordenador() {
           backgroundColor: 'rgba(0,0,0,0.7)',
           display: 'flex', alignItems: 'flex-end',
         }} onClick={fecharModal}>
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              width: '100%', maxHeight: '90vh', overflowY: 'auto',
-              backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0',
-              padding: '20px 16px', boxSizing: 'border-box',
-            }}
-          >
-            {/* Handle */}
+          <div onClick={e => e.stopPropagation()} style={{
+            width: '100%', maxHeight: '90vh', overflowY: 'auto',
+            backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0',
+            padding: '20px 16px', boxSizing: 'border-box',
+          }}>
             <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
 
-            {/* Título */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div>
                 <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>
@@ -406,7 +403,6 @@ export function AulasCoordenador() {
               </button>
             </div>
 
-            {/* Botão editar (só avulsas) */}
             {isAvulsa && (
               <div style={{ marginBottom: '12px' }}>
                 {estaEditando ? (
@@ -478,6 +474,7 @@ export function AulasCoordenador() {
                     fontSize: '11px', fontWeight: '500', cursor: 'pointer',
                     background: statusAtual === s.value ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#111',
                     color: statusAtual === s.value ? 'white' : '#555', boxSizing: 'border-box',
+                    transition: 'all 0.15s',
                   }}>{s.label}</button>
                 ))}
               </div>
@@ -488,7 +485,6 @@ export function AulasCoordenador() {
               </div>
             </div>
 
-            {/* Presenças */}
             <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Presenças ({alunosNaAula.length})
             </div>
@@ -518,7 +514,6 @@ export function AulasCoordenador() {
               ))}
             </div>
 
-            {/* Adicionar aluno */}
             {adicionandoAluno === aula.id ? (
               <div style={{ marginTop: '10px', position: 'relative' }}>
                 <input placeholder="Buscar aluno..." value={buscaAdicionando}
@@ -546,7 +541,6 @@ export function AulasCoordenador() {
               </button>
             )}
 
-            {/* Salvar */}
             <button onClick={() => handleSalvarPresencas(aula.id)} disabled={salvarPresencas.isPending} style={{
               marginTop: '12px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
               background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
