@@ -360,7 +360,7 @@ export function AulasCoordenador() {
 
                       {/* Contadores */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '10px', color: '#888' }}>{qtdTotal}🧑</span>
+                        <span style={{ fontSize: '10px', color: '#888' }}><b>T</b>{qtdTotal}</span>
                         {qtdP > 0 && <span style={{ fontSize: '10px', color: '#22c55e' }}>✓{qtdP}</span>}
                         {qtdF > 0 && <span style={{ fontSize: '10px', color: '#EF4444' }}>✗{qtdF}</span>}
                       </div>
