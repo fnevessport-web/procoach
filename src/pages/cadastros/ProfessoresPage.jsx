@@ -37,7 +37,7 @@ const labelStyle = {
 }
 
 const FORM_VAZIO = {
-  id: null, nome: '', email: '', telefone: '', instagram: '',
+  id: null, nome: '', email: '', telefone: '', instagram: '', apelido: '',
   modalidade_id: '', valor_aula: '', ativo: true,
   nascimento: '', cidade_nascimento: '', estado_nascimento: '',
   cpf: '', cep: '', endereco: '', numero: '', complemento: '',
@@ -233,6 +233,7 @@ export default function ProfessoresPage() {
       data_inicio: prof.data_inicio || '', banco: prof.banco || '',
       agencia: prof.agencia || '', conta: prof.conta || '',
       tipo_pagamento: prof.tipo_pagamento || 'pix', chave_pix: prof.chave_pix || '',
+      apelido: prof.apelido || '',
     })
   }
 
@@ -262,6 +263,7 @@ export default function ProfessoresPage() {
       data_inicio: form.data_inicio || null, banco: form.banco || null,
       agencia: form.agencia || null, conta: form.conta || null,
       tipo_pagamento: form.tipo_pagamento || 'pix', chave_pix: form.chave_pix || null,
+      apelido: form.apelido || null,
     }
     try {
       if (form.id) {
@@ -467,7 +469,7 @@ export default function ProfessoresPage() {
                 </div>
               </div>
               <div style={{ fontSize: '11px', fontWeight: '600', color: '#F0F2F5', lineHeight: 1.3 }}>
-                {prof.nome?.split(' ')[0]}
+                {prof.apelido || prof.nome?.split(' ')[0]}
               </div>
               <div style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>
                 {prof.modalidades?.nome?.split(' ')[0] || '—'}
@@ -517,7 +519,10 @@ export default function ProfessoresPage() {
               </div>
 
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '18px', fontWeight: '800', color: '#F0F2F5', lineHeight: 1.2 }}>{cardAberto.nome}</div>
+                <div style={{ fontSize: '18px', fontWeight: '800', color: '#F0F2F5', lineHeight: 1.2 }}>
+                  {cardAberto.apelido || cardAberto.nome}
+                  {cardAberto.apelido && <div style={{ fontSize: '11px', color: '#555', fontWeight: '400', marginTop: '2px' }}>{cardAberto.nome}</div>}
+                </div>
                 <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>
                   {cardAberto.nascimento && `${format(new Date(cardAberto.nascimento + 'T12:00'), 'dd/MM/yyyy')} · `}
                   {cardAberto.cidade_nascimento && `${cardAberto.cidade_nascimento}/`}
@@ -684,6 +689,7 @@ export default function ProfessoresPage() {
                   <div><div style={labelStyle}>Instagram</div><input style={inputStyle} placeholder="@usuario" value={form.instagram} onChange={e => set('instagram', e.target.value)} /></div>
                 </div>
                 <div><div style={labelStyle}>E-mail</div><input style={inputStyle} placeholder="email@exemplo.com" value={form.email} onChange={e => set('email', e.target.value)} /></div>
+                <div><div style={labelStyle}>Apelido (opcional)</div><input style={inputStyle} placeholder="Ex: Cigano, Borges, Nunes..." value={form.apelido || ''} onChange={e => set('apelido', e.target.value)} /></div>
 
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Dados Pessoais</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
