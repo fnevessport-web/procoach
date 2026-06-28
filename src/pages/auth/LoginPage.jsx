@@ -3,11 +3,10 @@ import { useAuth } from '../../hooks/useAuth'
 import { Input } from '../../components/ui/Input'
 
 export function LoginPage() {
-  const { signIn, signUp } = useAuth()
-  const [modo, setModo] = useState('login')
+  const { signIn } = useAuth()
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
-  const [form, setForm] = useState({ email: '', senha: '', nome: '' })
+  const [form, setForm] = useState({ email: '', senha: '' })
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -16,11 +15,7 @@ export function LoginPage() {
     setErro('')
     setLoading(true)
     try {
-      if (modo === 'login') {
-        await signIn(form.email, form.senha)
-      } else {
-        await signUp(form.email, form.senha, form.nome)
-      }
+      await signIn(form.email, form.senha)
     } catch (err) {
       setErro(err.message || 'Erro ao autenticar')
     } finally {
@@ -30,117 +25,40 @@ export function LoginPage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
-      width: '100%',
+      minHeight: '100vh', width: '100%',
       backgroundColor: '#110f0f',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
       padding: '0 16px',
     }}>
       <div style={{ width: '100%', maxWidth: '400px' }}>
 
-        {/* Logo — posicionado mais alto */}
         <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <img
-            src="/images/logoprocoach.png"
-            alt="ProCoach"
-            style={{
-              height: '60px',
-              objectFit: 'contain',
-              margin: '0 auto 14px',
-              display: 'block'
-            }}
-          />
+          <img src="/images/logoprocoach.png" alt="ProCoach" style={{ height: '60px', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
           <p style={{ color: '#444', fontSize: '13px', margin: 0, letterSpacing: '1px' }}>
             Gestão esportiva inteligente
           </p>
         </div>
 
-        {/* Card */}
-        <div style={{
-          backgroundColor: '#1a1a1a',
-          borderRadius: '20px',
-          border: '1px solid #222',
-          padding: '24px'
-        }}>
-          {/* Tabs */}
-          <div style={{
-            display: 'flex', gap: '4px', marginBottom: '24px',
-            padding: '4px', backgroundColor: '#110f0f', borderRadius: '12px'
-          }}>
-            {['login', 'cadastro'].map(m => (
-              <button
-                key={m}
-                onClick={() => { setModo(m); setErro('') }}
-                style={{
-                  flex: 1, padding: '10px', borderRadius: '8px',
-                  fontSize: '13px', fontWeight: '500', cursor: 'pointer', border: 'none',
-                  background: modo === m
-                    ? 'linear-gradient(135deg, #fcc825, #cf1b9b)'
-                    : 'transparent',
-                  color: modo === m ? 'white' : '#555',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {m === 'login' ? 'Entrar' : 'Criar Conta'}
-              </button>
-            ))}
-          </div>
-
+        <div style={{ backgroundColor: '#1a1a1a', borderRadius: '20px', border: '1px solid #222', padding: '24px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {modo === 'cadastro' && (
-              <Input
-                label="Nome completo"
-                placeholder="Seu nome"
-                value={form.nome}
-                onChange={e => update('nome', e.target.value)}
-                required
-              />
-            )}
-            <Input
-              label="E-mail"
-              type="email"
-              placeholder="seu@email.com"
-              value={form.email}
-              onChange={e => update('email', e.target.value)}
-              required
-            />
-            <Input
-              label="Senha"
-              type="password"
-              placeholder="••••••••"
-              value={form.senha}
-              onChange={e => update('senha', e.target.value)}
-              required
-            />
+            <Input label="E-mail" type="email" placeholder="seu@email.com" value={form.email} onChange={e => update('email', e.target.value)} required />
+            <Input label="Senha" type="password" placeholder="••••••••" value={form.senha} onChange={e => update('senha', e.target.value)} required />
 
             {erro && (
-              <div style={{
-                padding: '12px', borderRadius: '10px',
-                backgroundColor: 'rgba(239,68,68,0.1)',
-                border: '1px solid rgba(239,68,68,0.3)',
-                fontSize: '13px', color: '#EF4444'
-              }}>
+              <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', fontSize: '13px', color: '#EF4444' }}>
                 {erro}
               </div>
             )}
 
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              style={{
-                width: '100%', padding: '14px',
-                borderRadius: '12px', border: 'none',
-                background: 'linear-gradient(135deg, #fcc825, #d28c3c, #cf1b9b)',
-                color: 'white', fontSize: '15px', fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.7 : 1,
-                marginTop: '8px'
-              }}
-            >
-              {loading ? 'Aguarde...' : modo === 'login' ? 'Entrar' : 'Criar conta'}
+            <button onClick={handleSubmit} disabled={loading} style={{
+              width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+              background: 'linear-gradient(135deg, #fcc825, #d28c3c, #cf1b9b)',
+              color: 'white', fontSize: '15px', fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1, marginTop: '8px'
+            }}>
+              {loading ? 'Aguarde...' : 'Entrar'}
             </button>
           </div>
         </div>
