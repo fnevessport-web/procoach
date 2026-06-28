@@ -496,7 +496,9 @@ export default function ProfessoresPage() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     {cardAberto.foto_url
-                      ? <img src={cardAberto.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ? <a href={cardAberto.foto_url} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
+                          <img src={cardAberto.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </a>
                       : <span style={{ fontSize: '22px', fontWeight: '700', color: '#fcc825' }}>
                           {cardAberto.nome?.split(' ').map(p => p[0]).slice(0, 2).join('')}
                         </span>
