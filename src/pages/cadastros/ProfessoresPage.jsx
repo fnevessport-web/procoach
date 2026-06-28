@@ -255,6 +255,7 @@ export default function ProfessoresPage() {
         const { data } = await supabase.from('professores').update(payload).eq('id', form.id).select('*, modalidades(nome)').single()
         setCardAberto(data)
         qc.invalidateQueries({ queryKey: ['professores'] })
+        setCardAberto(null)
       } else {
         await supabase.from('professores').insert(payload)
         qc.invalidateQueries({ queryKey: ['professores'] })
@@ -483,6 +484,11 @@ export default function ProfessoresPage() {
             <input ref={contratoInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadContrato} />
 
             {/* Header do card */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
+              <button onClick={() => setCardAberto(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '20px' }}>
               <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
                 <div style={{
