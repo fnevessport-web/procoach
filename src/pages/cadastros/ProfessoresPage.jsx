@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { MessageCircle, FileText, Star, Upload, Copy, Check, Instagram, Camera, X } from 'lucide-react'
+import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -488,7 +488,7 @@ export default function ProfessoresPage() {
                       backgroundColor: 'rgba(207,27,155,0.15)', border: '1px solid rgba(207,27,155,0.3)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                     }}>
-                      <Instagram size={14} color="#cf1b9b" />
+                      <span style={{ fontSize: '14px' }}>📷</span>
                     </button>
                   )}
                   {cardAberto.data_inicio && (
