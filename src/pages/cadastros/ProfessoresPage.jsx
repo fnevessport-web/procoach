@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { MessageCircle, FileText, Star, ChevronRight, Upload, Copy, Check } from 'lucide-react'
+import { MessageCircle, FileText, Star, Upload, Copy, Check, Instagram, Camera, ChevronRight, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -15,9 +15,19 @@ const ESTADOS = [
   'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
 ]
 
+const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']
+
+const CRITERIOS = [
+  { key: 'nota_a', label: 'Qualidade no Atendimento' },
+  { key: 'nota_b', label: 'Didática de Aula' },
+  { key: 'nota_c', label: 'Pontualidade' },
+  { key: 'nota_d', label: 'Comprometimento e Flexibilidade' },
+  { key: 'nota_e', label: 'Aparência em Geral' },
+]
+
 const inputStyle = {
   width: '100%', padding: '10px 14px', borderRadius: '10px',
-  backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+  backgroundColor: '#111', border: '1px solid #2a2a2a',
   color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
 }
 
@@ -27,7 +37,7 @@ const labelStyle = {
 }
 
 const FORM_VAZIO = {
-  id: null, nome: '', email: '', telefone: '',
+  id: null, nome: '', email: '', telefone: '', instagram: '',
   modalidade_id: '', valor_aula: '', ativo: true,
   nascimento: '', cidade_nascimento: '', estado_nascimento: '',
   cpf: '', cep: '', endereco: '', numero: '', complemento: '',
@@ -35,23 +45,13 @@ const FORM_VAZIO = {
   banco: '', agencia: '', conta: '', tipo_pagamento: 'pix', chave_pix: '',
 }
 
-const CRITERIOS_AVALIACAO = [
-  { key: 'nota_a', label: 'Qualidade no Atendimento' },
-  { key: 'nota_b', label: 'Didática de Aula' },
-  { key: 'nota_c', label: 'Pontualidade' },
-  { key: 'nota_d', label: 'Comprometimento e Flexibilidade' },
-  { key: 'nota_e', label: 'Aparência em Geral' },
-]
-
 function StarRating({ value, onChange, disabled }) {
   return (
     <div style={{ display: 'flex', gap: '4px' }}>
-      {[1, 2, 3, 4, 5].map(n => (
+      {[1,2,3,4,5].map(n => (
         <button key={n} onClick={() => !disabled && onChange(n)}
           style={{ background: 'none', border: 'none', cursor: disabled ? 'default' : 'pointer', padding: '2px' }}>
-          <Star size={18}
-            fill={n <= value ? '#fcc825' : 'none'}
-            color={n <= value ? '#fcc825' : '#333'} />
+          <Star size={20} fill={n <= value ? '#fcc825' : 'none'} color={n <= value ? '#fcc825' : '#333'} />
         </button>
       ))}
     </div>
@@ -68,12 +68,15 @@ function PixCopiavel({ pix }) {
   return (
     <button onClick={copiar} style={{
       display: 'flex', alignItems: 'center', gap: '6px',
-      padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(252,200,37,0.3)',
-      backgroundColor: 'rgba(252,200,37,0.08)', cursor: 'pointer',
-      fontSize: '12px', color: '#fcc825',
+      padding: '8px 14px', borderRadius: '8px',
+      border: '1px solid rgba(252,200,37,0.3)',
+      backgroundColor: 'rgba(252,200,37,0.08)',
+      cursor: 'pointer', fontSize: '12px', color: '#fcc825', width: '100%',
     }}>
-      {copiado ? <Check size={12} /> : <Copy size={12} />}
-      {copiado ? 'Copiado!' : pix}
+      {copiado ? <Check size={13} /> : <Copy size={13} />}
+      <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {copiado ? 'Copiado!' : pix}
+      </span>
     </button>
   )
 }
@@ -97,15 +100,28 @@ async function buscarCep(cep, setForm) {
 }
 
 export default function ProfessoresPage() {
-  const queryClient = useQueryClient()
+  const qc = useQueryClient()
   const [cardAberto, setCardAberto] = useState(null)
-  const [aba, setAba] = useState('dados')
+  const [aba, setAba] = useState('perfil')
   const [modalCriar, setModalCriar] = useState(false)
-  const [salvando, setSalvando] = useState(false)
   const [form, setForm] = useState(FORM_VAZIO)
+  const [salvando, setSalvando] = useState(false)
   const [novasNotas, setNovasNotas] = useState({ nota_a: 0, nota_b: 0, nota_c: 0, nota_d: 0, nota_e: 0, observacao: '' })
   const [salvandoAval, setSalvandoAval] = useState(false)
-  const [pixCopiado, setPixCopiado] = useState(false)
+  const [uploadandoFoto, setUploadandoFoto] = useState(false)
+  const [mesSelecionado, setMesSelecionado] = useState(null)
+  const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear())
+  const fotoInputRef = useRef()
+  const boletoInputRef = useRef()
+  const nfInputRef = useRef()
+  const contratoInputRef = useRef()
+
+  const hoje = new Date()
+  const mesAtual = hoje.getMonth() + 1
+  const anoAtual = hoje.getFullYear()
+  const diasNoMes = new Date(anoAtual, mesAtual, 0).getDate()
+  const diaAtual = hoje.getDate()
+  const progressoMes = Math.round((diaAtual / diasNoMes) * 100)
 
   const { data: professores = [], isLoading } = useQuery({
     queryKey: ['professores'],
@@ -149,7 +165,21 @@ export default function ProfessoresPage() {
         .select('data_aula, status_aula, paga_professor')
         .eq('professor_executou_id', cardAberto.id)
         .eq('status_aula', 'dada')
-        .order('data_aula', { ascending: false })
+        .order('data_aula', { ascending: true })
+      if (error) throw error
+      return data || []
+    },
+  })
+
+  const { data: boletos = [] } = useQuery({
+    queryKey: ['boletos', cardAberto?.id],
+    enabled: !!cardAberto?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('boletos_professor')
+        .select('*')
+        .eq('professor_id', cardAberto.id)
+        .order('ano', { ascending: false })
       if (error) throw error
       return data || []
     },
@@ -157,15 +187,30 @@ export default function ProfessoresPage() {
 
   function set(campo, valor) { setForm(f => ({ ...f, [campo]: valor })) }
 
-  function abrirCard(prof) {
-    setCardAberto(prof)
-    setAba('dados')
-    setNovasNotas({ nota_a: 0, nota_b: 0, nota_c: 0, nota_d: 0, nota_e: 0, observacao: '' })
+  function iniciarEdicao(prof) {
+    setForm({
+      id: prof.id, nome: prof.nome || '', email: prof.email || '',
+      telefone: prof.telefone || '', instagram: prof.instagram || '',
+      modalidade_id: prof.modalidade_id || '', valor_aula: prof.valor_aula || '',
+      ativo: prof.ativo !== false, nascimento: prof.nascimento || '',
+      cidade_nascimento: prof.cidade_nascimento || '',
+      estado_nascimento: prof.estado_nascimento || '',
+      cpf: prof.cpf || '', cep: prof.cep || '',
+      endereco: prof.endereco || '', numero: prof.numero || '',
+      complemento: prof.complemento || '', bairro: prof.bairro || '',
+      cidade: prof.cidade || '', estado: prof.estado || '',
+      data_inicio: prof.data_inicio || '', banco: prof.banco || '',
+      agencia: prof.agencia || '', conta: prof.conta || '',
+      tipo_pagamento: prof.tipo_pagamento || 'pix', chave_pix: prof.chave_pix || '',
+    })
   }
 
-  function abrirCriar() {
-    setForm({ ...FORM_VAZIO })
-    setModalCriar(true)
+  function abrirCard(prof) {
+    setCardAberto(prof)
+    iniciarEdicao(prof)
+    setAba('perfil')
+    setMesSelecionado(null)
+    setNovasNotas({ nota_a: 0, nota_b: 0, nota_c: 0, nota_d: 0, nota_e: 0, observacao: '' })
   }
 
   async function handleSalvar() {
@@ -173,223 +218,432 @@ export default function ProfessoresPage() {
     setSalvando(true)
     const payload = {
       nome: form.nome.trim(), email: form.email || null,
-      telefone: form.telefone || null, modalidade_id: form.modalidade_id || null,
+      telefone: form.telefone || null, instagram: form.instagram || null,
+      modalidade_id: form.modalidade_id || null,
       valor_aula: form.valor_aula ? parseFloat(String(form.valor_aula).replace(',', '.')) : null,
-      ativo: form.ativo,
-      nascimento: form.nascimento || null,
+      ativo: form.ativo, nascimento: form.nascimento || null,
       cidade_nascimento: form.cidade_nascimento || null,
       estado_nascimento: form.estado_nascimento || null,
       cpf: form.cpf || null, cep: form.cep || null,
       endereco: form.endereco || null, numero: form.numero || null,
       complemento: form.complemento || null, bairro: form.bairro || null,
       cidade: form.cidade || null, estado: form.estado || null,
-      data_inicio: form.data_inicio || null,
-      banco: form.banco || null, agencia: form.agencia || null,
-      conta: form.conta || null, tipo_pagamento: form.tipo_pagamento || 'pix',
-      chave_pix: form.chave_pix || null,
+      data_inicio: form.data_inicio || null, banco: form.banco || null,
+      agencia: form.agencia || null, conta: form.conta || null,
+      tipo_pagamento: form.tipo_pagamento || 'pix', chave_pix: form.chave_pix || null,
     }
     try {
       if (form.id) {
-        await supabase.from('professores').update(payload).eq('id', form.id)
-        setCardAberto(prev => ({ ...prev, ...payload, id: form.id }))
+        const { data } = await supabase.from('professores').update(payload).eq('id', form.id).select('*, modalidades(nome)').single()
+        setCardAberto(data)
+        qc.invalidateQueries({ queryKey: ['professores'] })
       } else {
         await supabase.from('professores').insert(payload)
+        qc.invalidateQueries({ queryKey: ['professores'] })
         setModalCriar(false)
+        setForm(FORM_VAZIO)
       }
-      queryClient.invalidateQueries({ queryKey: ['professores'] })
     } catch (err) { alert('Erro: ' + err.message) }
     finally { setSalvando(false) }
   }
 
+  async function handleUploadFoto(e) {
+    const file = e.target.files?.[0]
+    if (!file || !cardAberto?.id) return
+    setUploadandoFoto(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `professores/${cardAberto.id}/foto.${ext}`
+      const { error: upErr } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
+      await supabase.from('professores').update({ foto_url: publicUrl }).eq('id', cardAberto.id)
+      setCardAberto(prev => ({ ...prev, foto_url: publicUrl }))
+      qc.invalidateQueries({ queryKey: ['professores'] })
+    } catch (err) { alert('Erro upload: ' + err.message) }
+    finally { setUploadandoFoto(false) }
+  }
+
+  async function handleUploadContrato(e) {
+    const file = e.target.files?.[0]
+    if (!file || !cardAberto?.id) return
+    try {
+      const path = `professores/${cardAberto.id}/contrato.pdf`
+      const { error: upErr } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
+      await supabase.from('professores').update({ contrato_url: publicUrl }).eq('id', cardAberto.id)
+      setCardAberto(prev => ({ ...prev, contrato_url: publicUrl }))
+      qc.invalidateQueries({ queryKey: ['professores'] })
+    } catch (err) { alert('Erro upload contrato: ' + err.message) }
+  }
+
+  async function handleUploadBoleto(e, mes, ano) {
+    const file = e.target.files?.[0]
+    if (!file || !cardAberto?.id) return
+    try {
+      const path = `professores/${cardAberto.id}/boleto_${ano}_${mes}.pdf`
+      const { error: upErr } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
+      await supabase.from('boletos_professor').upsert({
+        professor_id: cardAberto.id, mes, ano, boleto_url: publicUrl, status: 'pendente'
+      }, { onConflict: 'professor_id,mes,ano' })
+      qc.invalidateQueries({ queryKey: ['boletos', cardAberto.id] })
+    } catch (err) { alert('Erro upload boleto: ' + err.message) }
+  }
+
+  async function handleUploadNF(e, mes, ano) {
+    const file = e.target.files?.[0]
+    if (!file || !cardAberto?.id) return
+    try {
+      const path = `professores/${cardAberto.id}/nf_${ano}_${mes}.pdf`
+      const { error: upErr } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
+      await supabase.from('boletos_professor').upsert({
+        professor_id: cardAberto.id, mes, ano, nf_url: publicUrl,
+      }, { onConflict: 'professor_id,mes,ano' })
+      qc.invalidateQueries({ queryKey: ['boletos', cardAberto.id] })
+    } catch (err) { alert('Erro upload NF: ' + err.message) }
+  }
+
   async function handleSalvarAvaliacao() {
-    const media = (
-      (novasNotas.nota_a + novasNotas.nota_b + novasNotas.nota_c + novasNotas.nota_d + novasNotas.nota_e) / 5
-    ).toFixed(2)
+    const total = novasNotas.nota_a + novasNotas.nota_b + novasNotas.nota_c + novasNotas.nota_d + novasNotas.nota_e
+    if (total === 0) return alert('Preencha pelo menos uma nota')
+    const media = (total / 5).toFixed(2)
     setSalvandoAval(true)
     try {
       await supabase.from('avaliacoes_professor').insert({
-        professor_id: cardAberto.id,
-        ...novasNotas,
+        professor_id: cardAberto.id, ...novasNotas,
         media: parseFloat(media),
         data_avaliacao: format(new Date(), 'yyyy-MM-dd'),
       })
-      queryClient.invalidateQueries({ queryKey: ['avaliacoes', cardAberto.id] })
+      qc.invalidateQueries({ queryKey: ['avaliacoes', cardAberto.id] })
       setNovasNotas({ nota_a: 0, nota_b: 0, nota_c: 0, nota_d: 0, nota_e: 0, observacao: '' })
     } catch (err) { alert('Erro: ' + err.message) }
     finally { setSalvandoAval(false) }
   }
 
-  // Financeiro
-  const hoje = new Date()
-  const anoAtual = hoje.getFullYear()
-  const mesAtual = hoje.getMonth() + 1
-  const diasNoMes = new Date(anoAtual, mesAtual, 0).getDate()
-  const diaAtual = hoje.getDate()
-  const progressoMes = Math.round((diaAtual / diasNoMes) * 100)
-
-  function calcularGanhosMes(mes, ano, valorAula) {
-    return aulasProf.filter(a => {
+  function calcularGanhosMes(mes, ano) {
+    const qtd = aulasProf.filter(a => {
       const d = new Date(a.data_aula + 'T12:00')
       return d.getMonth() + 1 === mes && d.getFullYear() === ano
-    }).length * (valorAula || 0)
+    }).length
+    return { qtd, valor: qtd * (cardAberto?.valor_aula || 0) }
   }
 
-  const ganhosMesAtual = calcularGanhosMes(mesAtual, anoAtual, cardAberto?.valor_aula)
-  const ganhosMesAnterior = calcularGanhosMes(mesAtual === 1 ? 12 : mesAtual - 1, mesAtual === 1 ? anoAtual - 1 : anoAtual, cardAberto?.valor_aula)
+  function getAulasDoDia(mes, ano) {
+    const diasMap = {}
+    aulasProf.filter(a => {
+      const d = new Date(a.data_aula + 'T12:00')
+      return d.getMonth() + 1 === mes && d.getFullYear() === ano
+    }).forEach(a => {
+      const dia = new Date(a.data_aula + 'T12:00').getDate()
+      diasMap[dia] = (diasMap[dia] || 0) + 1
+    })
+    return diasMap
+  }
+
+  const ganhosMesAtual = calcularGanhosMes(mesAtual, anoAtual)
+  const ganhosMesAnterior = calcularGanhosMes(mesAtual === 1 ? 12 : mesAtual - 1, mesAtual === 1 ? anoAtual - 1 : anoAtual)
   const totalAulas = aulasProf.length
+  const totalGeral = aulasProf.length * (cardAberto?.valor_aula || 0)
 
-  const meses = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']
+  // Grafico simples — ultimos 6 meses
+  const dadosGrafico = Array.from({ length: 6 }, (_, i) => {
+    const m = mesAtual - 5 + i
+    const mes = m <= 0 ? m + 12 : m
+    const ano = m <= 0 ? anoAtual - 1 : anoAtual
+    return { mes, ano, label: MESES[mes - 1], qtd: calcularGanhosMes(mes, ano).qtd }
+  })
+  const maxGrafico = Math.max(...dadosGrafico.map(d => d.qtd), 1)
 
-  function abrirWhatsApp(telefone) {
-    window.open(`https://wa.me/55${telefone.replace(/\D/g, '')}`, '_blank')
+  function FotoAvatar({ prof, size = 56, editable = false }) {
+    return (
+      <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+        <div style={{
+          width: size, height: size, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+          padding: '2px', boxSizing: 'border-box',
+        }}>
+          <div style={{
+            width: '100%', height: '100%', borderRadius: '50%',
+            backgroundColor: '#1a1a1a', overflow: 'hidden',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {prof.foto_url
+              ? <img src={prof.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontSize: size * 0.3, fontWeight: '700', color: '#fcc825' }}>
+                  {prof.nome?.split(' ').map(p => p[0]).slice(0, 2).join('')}
+                </span>
+            }
+          </div>
+        </div>
+        {editable && (
+          <button onClick={() => fotoInputRef.current?.click()} style={{
+            position: 'absolute', bottom: 0, right: 0,
+            width: 22, height: 22, borderRadius: '50%', border: 'none',
+            backgroundColor: '#fcc825', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Camera size={11} color="#110f0f" />
+          </button>
+        )}
+      </div>
+    )
   }
 
   return (
     <div>
+      {/* Header lista */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>Professores</h2>
-        <button onClick={abrirCriar} style={{
+        <button onClick={() => { setForm(FORM_VAZIO); setModalCriar(true) }} style={{
           padding: '8px 16px', borderRadius: '10px', border: 'none',
           background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
           color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
         }}>+ Novo</button>
       </div>
 
-      {isLoading ? (
-        <p style={{ color: '#555' }}>Carregando...</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {professores.map(prof => {
-            const ultimaAval = avaliacoes?.[0]
-            const temAlerta = ultimaAval?.media <= 2
-            return (
-              <div key={prof.id} onClick={() => abrirCard(prof)} style={{
-                backgroundColor: 'rgba(26,26,26,0.92)', borderRadius: '14px',
-                border: `1px solid ${temAlerta ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.06)'}`,
-                padding: '14px 16px', cursor: 'pointer',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                backdropFilter: 'blur(8px)',
+      {/* Grid de professores */}
+      {isLoading ? <p style={{ color: '#555' }}>Carregando...</p> : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          {professores.map(prof => (
+            <div key={prof.id} onClick={() => abrirCard(prof)} style={{ cursor: 'pointer', textAlign: 'center' }}>
+              <div style={{
+                width: '80px', height: '80px', margin: '0 auto 8px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                padding: '2px', boxSizing: 'border-box',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0,
-                    background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '14px', fontWeight: '700', color: 'white',
-                  }}>
-                    {prof.foto_url
-                      ? <img src={prof.foto_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                      : prof.nome.split(' ').map(p => p[0]).slice(0, 2).join('')
-                    }
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5' }}>{prof.nome}</div>
-                    <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
-                      {prof.modalidades?.nome || '—'} {prof.banco === 'Itaú' && <span style={{ color: '#f97316', marginLeft: '4px' }}>● Itaú</span>}
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {prof.telefone && (
-                    <button onClick={e => { e.stopPropagation(); abrirWhatsApp(prof.telefone) }} style={{
-                      width: '30px', height: '30px', borderRadius: '8px',
-                      backgroundColor: 'rgba(37,211,102,0.15)', border: '1px solid rgba(37,211,102,0.3)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                    }}>
-                      <MessageCircle size={13} color="#25D166" />
-                    </button>
-                  )}
-                  <ChevronRight size={16} color="#333" />
+                <div style={{
+                  width: '100%', height: '100%', borderRadius: '50%',
+                  backgroundColor: '#1a1a1a', overflow: 'hidden',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {prof.foto_url
+                    ? <img src={prof.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <span style={{ fontSize: '20px', fontWeight: '700', color: '#fcc825' }}>
+                        {prof.nome?.split(' ').map(p => p[0]).slice(0, 2).join('')}
+                      </span>
+                  }
                 </div>
               </div>
-            )
-          })}
+              <div style={{ fontSize: '11px', fontWeight: '600', color: '#F0F2F5', lineHeight: 1.3 }}>
+                {prof.nome?.split(' ')[0]}
+              </div>
+              <div style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>
+                {prof.modalidades?.nome?.split(' ')[0] || '—'}
+              </div>
+              <div style={{
+                display: 'inline-block', marginTop: '4px',
+                width: '6px', height: '6px', borderRadius: '50%',
+                backgroundColor: prof.ativo ? '#22c55e' : '#EF4444',
+              }} />
+            </div>
+          ))}
         </div>
       )}
 
       {/* CARD PROFESSOR */}
       {cardAberto && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'flex-end' }}
-          onClick={() => setCardAberto(null)}>
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 50,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          display: 'flex', alignItems: 'flex-end',
+        }} onClick={() => setCardAberto(null)}>
           <div onClick={e => e.stopPropagation()} style={{
-            width: '100%', maxHeight: '92vh', overflowY: 'auto',
-            backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0',
-            padding: '20px 16px', boxSizing: 'border-box',
+            width: '100%', maxHeight: '94vh', overflowY: 'auto',
+            backgroundColor: '#151515', borderRadius: '20px 20px 0 0',
+            padding: '20px 16px 32px', boxSizing: 'border-box',
           }}>
-            <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
+            <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 20px' }} />
+
+            {/* Input foto oculto */}
+            <input ref={fotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadFoto} />
+            <input ref={contratoInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadContrato} />
 
             {/* Header do card */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
-              <div style={{
-                width: '56px', height: '56px', borderRadius: '50%', flexShrink: 0,
-                background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '18px', fontWeight: '700', color: 'white', overflow: 'hidden',
-              }}>
-                {cardAberto.foto_url
-                  ? <img src={cardAberto.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : cardAberto.nome.split(' ').map(p => p[0]).slice(0, 2).join('')
-                }
-              </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '20px' }}>
+              <FotoAvatar prof={cardAberto} size={72} editable />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '16px', fontWeight: '700', color: '#F0F2F5' }}>{cardAberto.nome}</div>
-                <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>
-                  {cardAberto.modalidades?.nome || '—'} · desde {cardAberto.data_inicio ? format(new Date(cardAberto.data_inicio + 'T12:00'), "MMM/yyyy", { locale: ptBR }) : '—'}
+                <div style={{ fontSize: '18px', fontWeight: '800', color: '#F0F2F5', lineHeight: 1.2 }}>
+                  {cardAberto.nome}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                  <span style={{ fontSize: '11px', color: '#fcc825', fontWeight: '700' }}>{totalAulas}</span>
-                  <span style={{ fontSize: '10px', color: '#444' }}>aulas no total</span>
+                <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>
+                  {cardAberto.nascimento && `${format(new Date(cardAberto.nascimento + 'T12:00'), 'dd/MM/yyyy')} · `}
+                  {cardAberto.cidade_nascimento && `${cardAberto.cidade_nascimento}/`}
+                  {cardAberto.estado_nascimento} {cardAberto.estado_nascimento && '🇧🇷'}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                  {cardAberto.telefone && (
+                    <button onClick={() => window.open(`https://wa.me/55${cardAberto.telefone.replace(/\D/g,'')}`, '_blank')} style={{
+                      width: '30px', height: '30px', borderRadius: '8px',
+                      backgroundColor: 'rgba(37,211,102,0.15)', border: '1px solid rgba(37,211,102,0.3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                    }}>
+                      <MessageCircle size={14} color="#25D166" />
+                    </button>
+                  )}
+                  {cardAberto.instagram && (
+                    <button onClick={() => window.open(`https://instagram.com/${cardAberto.instagram.replace('@','')}`, '_blank')} style={{
+                      width: '30px', height: '30px', borderRadius: '8px',
+                      backgroundColor: 'rgba(207,27,155,0.15)', border: '1px solid rgba(207,27,155,0.3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                    }}>
+                      <Instagram size={14} color="#cf1b9b" />
+                    </button>
+                  )}
+                  {cardAberto.data_inicio && (
+                    <span style={{ fontSize: '10px', color: '#444' }}>
+                      desde {format(new Date(cardAberto.data_inicio + 'T12:00'), "MMM/yyyy", { locale: ptBR })}
+                    </span>
+                  )}
                 </div>
               </div>
-              {cardAberto.telefone && (
-                <button onClick={() => abrirWhatsApp(cardAberto.telefone)} style={{
-                  width: '36px', height: '36px', borderRadius: '10px',
-                  backgroundColor: 'rgba(37,211,102,0.15)', border: '1px solid rgba(37,211,102,0.3)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                }}>
-                  <MessageCircle size={16} color="#25D166" />
-                </button>
-              )}
+              {/* Total aulas */}
+              <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                <div style={{ fontSize: '32px', fontWeight: '900', color: '#fcc825', lineHeight: 1 }}>{totalAulas}</div>
+                <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>aulas</div>
+              </div>
             </div>
 
-            {/* Financeiro resumo */}
+            {/* Financeiro resumo topo */}
             <div style={{
-              backgroundColor: '#111', borderRadius: '14px', padding: '14px 16px',
+              backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '14px 16px',
               border: '1px solid rgba(252,200,37,0.15)', marginBottom: '16px',
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '10px' }}>
                 <div>
                   <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    {meses[mesAtual - 1]} {anoAtual}
+                    {MESES[mesAtual - 1]} {anoAtual} · {ganhosMesAtual.qtd} aulas
                   </div>
-                  <div style={{ fontSize: '22px', fontWeight: '700', color: '#fcc825' }}>
-                    R$ {ganhosMesAtual.toFixed(2).replace('.', ',')}
+                  <div style={{ fontSize: '24px', fontWeight: '800', color: '#fcc825' }}>
+                    R$ {ganhosMesAtual.valor.toFixed(2).replace('.', ',')}
                   </div>
                 </div>
-                {ganhosMesAnterior > 0 && (
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      {meses[mesAtual === 1 ? 11 : mesAtual - 2]}
+                {ganhosMesAnterior.valor > 0 && (
+                  <div style={{ textAlign: 'right', opacity: 0.4 }}>
+                    <div style={{ fontSize: '9px', color: '#888', marginBottom: '2px' }}>
+                      {MESES[mesAtual === 1 ? 11 : mesAtual - 2]}
                     </div>
                     <div style={{ fontSize: '16px', fontWeight: '600', color: '#888' }}>
-                      R$ {ganhosMesAnterior.toFixed(2).replace('.', ',')}
+                      R$ {ganhosMesAnterior.valor.toFixed(2).replace('.', ',')}
                     </div>
                   </div>
                 )}
               </div>
-              {/* Barra de progresso do mês */}
-              <div style={{ marginBottom: '4px' }}>
-                <div style={{ height: '3px', borderRadius: '2px', backgroundColor: '#222', overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%', borderRadius: '2px', width: `${progressoMes}%`,
-                    background: 'linear-gradient(90deg, #fcc825, #cf1b9b)',
-                    transition: 'width 1s ease',
-                  }} />
+              {/* Barra progresso mês */}
+              <div style={{ height: '3px', borderRadius: '2px', backgroundColor: '#222', overflow: 'hidden', marginBottom: '4px' }}>
+                <div style={{
+                  height: '100%', width: `${progressoMes}%`,
+                  background: 'linear-gradient(90deg, #fcc825, #cf1b9b)',
+                  borderRadius: '2px', transition: 'width 1s ease',
+                }} />
+              </div>
+              <div style={{ fontSize: '10px', color: '#333', textAlign: 'right' }}>
+                Dia {diaAtual} de {diasNoMes} · {progressoMes}% do mês
+              </div>
+            </div>
+
+            {/* Gráfico evolução */}
+            <div style={{
+              backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '14px 16px',
+              border: '1px solid #222', marginBottom: '16px',
+            }}>
+              <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
+                Evolução — últimos 6 meses
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', height: '60px' }}>
+                {dadosGrafico.map((d, i) => (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                    <div style={{
+                      width: '100%', borderRadius: '4px 4px 0 0',
+                      height: `${Math.max((d.qtd / maxGrafico) * 48, d.qtd > 0 ? 4 : 0)}px`,
+                      background: i === 5 ? 'linear-gradient(180deg, #fcc825, #cf1b9b)' : '#2a2a2a',
+                      transition: 'height 0.5s ease',
+                    }} />
+                    <div style={{ fontSize: '9px', color: i === 5 ? '#fcc825' : '#444' }}>{d.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Grid de meses */}
+            <div style={{
+              backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '14px 16px',
+              border: '1px solid #222', marginBottom: '16px',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Aulas por mês
                 </div>
-                <div style={{ fontSize: '10px', color: '#444', marginTop: '4px', textAlign: 'right' }}>
-                  Dia {diaAtual} de {diasNoMes} · {progressoMes}% do mês
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {[anoAtual - 1, anoAtual].map(a => (
+                    <button key={a} onClick={() => setAnoSelecionado(a)} style={{
+                      padding: '3px 8px', borderRadius: '6px', border: 'none', fontSize: '11px',
+                      background: anoSelecionado === a ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#111',
+                      color: anoSelecionado === a ? 'white' : '#555', cursor: 'pointer',
+                    }}>{a}</button>
+                  ))}
                 </div>
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                {MESES.map((m, i) => {
+                  const { qtd, valor } = calcularGanhosMes(i + 1, anoSelecionado)
+                  const isAtual = i + 1 === mesAtual && anoSelecionado === anoAtual
+                  return (
+                    <button key={m} onClick={() => setMesSelecionado(mesSelecionado?.mes === i + 1 && mesSelecionado?.ano === anoSelecionado ? null : { mes: i + 1, ano: anoSelecionado })} style={{
+                      backgroundColor: isAtual ? 'rgba(252,200,37,0.1)' : '#111',
+                      borderRadius: '10px', padding: '8px 6px',
+                      border: isAtual ? '1px solid rgba(252,200,37,0.3)' : mesSelecionado?.mes === i+1 && mesSelecionado?.ano === anoSelecionado ? '1px solid rgba(207,27,155,0.4)' : '1px solid #1e1e1e',
+                      cursor: 'pointer', textAlign: 'center',
+                    }}>
+                      <div style={{ fontSize: '10px', color: isAtual ? '#fcc825' : '#555', fontWeight: '600' }}>{m}</div>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#F0F2F5', margin: '2px 0' }}>
+                        {qtd > 0 ? qtd : '—'}
+                      </div>
+                      {valor > 0 && <div style={{ fontSize: '9px', color: '#22c55e' }}>R${valor.toFixed(0)}</div>}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Detalhe do mês selecionado */}
+              {mesSelecionado && (() => {
+                const diasMap = getAulasDoDia(mesSelecionado.mes, mesSelecionado.ano)
+                const diasComAula = Object.keys(diasMap).sort((a, b) => a - b)
+                const { qtd, valor } = calcularGanhosMes(mesSelecionado.mes, mesSelecionado.ano)
+                return (
+                  <div style={{ marginTop: '12px', backgroundColor: '#0d0d0d', borderRadius: '10px', padding: '12px', border: '1px solid rgba(207,27,155,0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#cf1b9b' }}>
+                        {MESES[mesSelecionado.mes - 1]}/{mesSelecionado.ano} · {qtd} aulas · R${valor.toFixed(2).replace('.', ',')}
+                      </div>
+                      <button onClick={() => setMesSelecionado(null)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>
+                        <X size={14} />
+                      </button>
+                    </div>
+                    {diasComAula.length === 0 ? (
+                      <div style={{ fontSize: '12px', color: '#444', textAlign: 'center' }}>Nenhuma aula confirmada</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {diasComAula.map(dia => (
+                          <div key={dia} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', backgroundColor: '#111', borderRadius: '8px' }}>
+                            <span style={{ fontSize: '12px', color: '#888' }}>
+                              Dia {String(dia).padStart(2, '0')}/{String(mesSelecionado.mes).padStart(2, '0')}
+                            </span>
+                            <span style={{ fontSize: '12px', fontWeight: '600', color: '#22c55e' }}>
+                              {diasMap[dia]} {diasMap[dia] === 1 ? 'aula' : 'aulas'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Abas */}
@@ -398,13 +652,13 @@ export default function ProfessoresPage() {
               backgroundColor: '#111', borderRadius: '10px', padding: '4px',
             }}>
               {[
-                { key: 'dados', label: 'Dados' },
+                { key: 'perfil', label: 'Dados' },
                 { key: 'financeiro', label: 'Financeiro' },
                 { key: 'avaliacoes', label: 'Avaliações' },
               ].map(a => (
                 <button key={a.key} onClick={() => setAba(a.key)} style={{
-                  flex: 1, padding: '7px', borderRadius: '7px', border: 'none', fontSize: '12px',
-                  fontWeight: '500', cursor: 'pointer',
+                  flex: 1, padding: '8px', borderRadius: '7px', border: 'none',
+                  fontSize: '12px', fontWeight: '500', cursor: 'pointer',
                   background: aba === a.key ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : 'transparent',
                   color: aba === a.key ? 'white' : '#555',
                 }}>{a.label}</button>
@@ -412,155 +666,92 @@ export default function ProfessoresPage() {
             </div>
 
             {/* ABA DADOS */}
-            {aba === 'dados' && (
+            {aba === 'perfil' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dados Pessoais</div>
-
+                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Contato</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div>
-                    <div style={labelStyle}>Nascimento</div>
-                    <input type="date" style={inputStyle} value={form.id === cardAberto.id ? form.nascimento : cardAberto.nascimento || ''}
-                      onChange={e => { if (form.id !== cardAberto.id) setForm({ ...FORM_VAZIO, ...cardAberto, id: cardAberto.id }); set('nascimento', e.target.value) }} />
-                  </div>
-                  <div>
-                    <div style={labelStyle}>CPF</div>
-                    <input style={inputStyle} placeholder="000.000.000-00"
-                      value={form.id === cardAberto.id ? form.cpf : cardAberto.cpf || ''}
-                      onChange={e => { if (form.id !== cardAberto.id) setForm({ ...FORM_VAZIO, ...cardAberto, id: cardAberto.id }); set('cpf', e.target.value) }} />
-                  </div>
+                  <div><div style={labelStyle}>Telefone</div>
+                    <input style={inputStyle} placeholder="(11) 99999-9999" value={form.telefone} onChange={e => set('telefone', e.target.value)} /></div>
+                  <div><div style={labelStyle}>Instagram</div>
+                    <input style={inputStyle} placeholder="@usuario" value={form.instagram} onChange={e => set('instagram', e.target.value)} /></div>
                 </div>
+                <div><div style={labelStyle}>E-mail</div>
+                  <input style={inputStyle} placeholder="email@exemplo.com" value={form.email} onChange={e => set('email', e.target.value)} /></div>
 
+                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Dados Pessoais</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div>
-                    <div style={labelStyle}>Cidade Nasc.</div>
-                    <input style={inputStyle} placeholder="Cidade"
-                      value={form.id === cardAberto.id ? form.cidade_nascimento : cardAberto.cidade_nascimento || ''}
-                      onChange={e => { if (form.id !== cardAberto.id) setForm({ ...FORM_VAZIO, ...cardAberto, id: cardAberto.id }); set('cidade_nascimento', e.target.value) }} />
-                  </div>
-                  <div>
-                    <div style={labelStyle}>Estado Nasc.</div>
-                    <select style={inputStyle}
-                      value={form.id === cardAberto.id ? form.estado_nascimento : cardAberto.estado_nascimento || ''}
-                      onChange={e => { if (form.id !== cardAberto.id) setForm({ ...FORM_VAZIO, ...cardAberto, id: cardAberto.id }); set('estado_nascimento', e.target.value) }}>
+                  <div><div style={labelStyle}>Nascimento</div>
+                    <input type="date" style={inputStyle} value={form.nascimento} onChange={e => set('nascimento', e.target.value)} /></div>
+                  <div><div style={labelStyle}>CPF</div>
+                    <input style={inputStyle} placeholder="000.000.000-00" value={form.cpf} onChange={e => set('cpf', e.target.value)} /></div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div><div style={labelStyle}>Cidade Nasc.</div>
+                    <input style={inputStyle} placeholder="Cidade" value={form.cidade_nascimento} onChange={e => set('cidade_nascimento', e.target.value)} /></div>
+                  <div><div style={labelStyle}>Estado Nasc.</div>
+                    <select style={inputStyle} value={form.estado_nascimento} onChange={e => set('estado_nascimento', e.target.value)}>
                       <option value="">UF</option>
                       {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
-                    </select>
-                  </div>
+                    </select></div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div><div style={labelStyle}>Início na empresa</div>
+                    <input type="date" style={inputStyle} value={form.data_inicio} onChange={e => set('data_inicio', e.target.value)} /></div>
+                  <div><div style={labelStyle}>Modalidade</div>
+                    <select style={inputStyle} value={form.modalidade_id} onChange={e => set('modalidade_id', e.target.value)}>
+                      <option value="">Selecione</option>
+                      {modalidades.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                    </select></div>
                 </div>
 
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Endereço</div>
-
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div>
-                    <div style={labelStyle}>CEP</div>
-                    <input style={inputStyle} placeholder="00000-000"
-                      value={form.id === cardAberto.id ? form.cep : cardAberto.cep || ''}
-                      onChange={e => {
-                        if (form.id !== cardAberto.id) setForm({ ...FORM_VAZIO, ...cardAberto, id: cardAberto.id })
-                        set('cep', e.target.value)
-                        buscarCep(e.target.value, setForm)
-                      }} />
-                  </div>
-                  <div>
-                    <div style={labelStyle}>Número</div>
-                    <input style={inputStyle} placeholder="Nº"
-                      value={form.id === cardAberto.id ? form.numero : cardAberto.numero || ''}
-                      onChange={e => { if (form.id !== cardAberto.id) setForm({ ...FORM_VAZIO, ...cardAberto, id: cardAberto.id }); set('numero', e.target.value) }} />
-                  </div>
+                  <div><div style={labelStyle}>CEP</div>
+                    <input style={inputStyle} placeholder="00000-000" value={form.cep}
+                      onChange={e => { set('cep', e.target.value); buscarCep(e.target.value, setForm) }} /></div>
+                  <div><div style={labelStyle}>Número</div>
+                    <input style={inputStyle} placeholder="Nº" value={form.numero} onChange={e => set('numero', e.target.value)} /></div>
                 </div>
-
-                <div>
-                  <div style={labelStyle}>Endereço</div>
-                  <input style={inputStyle} placeholder="Rua / Avenida"
-                    value={form.id === cardAberto.id ? form.endereco : cardAberto.endereco || ''}
-                    onChange={e => { if (form.id !== cardAberto.id) setForm({ ...FORM_VAZIO, ...cardAberto, id: cardAberto.id }); set('endereco', e.target.value) }} />
-                </div>
-
+                <div><div style={labelStyle}>Endereço</div>
+                  <input style={inputStyle} placeholder="Rua / Avenida" value={form.endereco} onChange={e => set('endereco', e.target.value)} /></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div>
-                    <div style={labelStyle}>Bairro</div>
-                    <input style={inputStyle} placeholder="Bairro"
-                      value={form.id === cardAberto.id ? form.bairro : cardAberto.bairro || ''}
-                      onChange={e => { if (form.id !== cardAberto.id) setForm({ ...FORM_VAZIO, ...cardAberto, id: cardAberto.id }); set('bairro', e.target.value) }} />
-                  </div>
-                  <div>
-                    <div style={labelStyle}>Complemento</div>
-                    <input style={inputStyle} placeholder="Apto, Bloco..."
-                      value={form.id === cardAberto.id ? form.complemento : cardAberto.complemento || ''}
-                      onChange={e => { if (form.id !== cardAberto.id) setForm({ ...FORM_VAZIO, ...cardAberto, id: cardAberto.id }); set('complemento', e.target.value) }} />
-                  </div>
+                  <div><div style={labelStyle}>Bairro</div>
+                    <input style={inputStyle} placeholder="Bairro" value={form.bairro} onChange={e => set('bairro', e.target.value)} /></div>
+                  <div><div style={labelStyle}>Complemento</div>
+                    <input style={inputStyle} placeholder="Apto..." value={form.complemento} onChange={e => set('complemento', e.target.value)} /></div>
                 </div>
 
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Dados Bancários</div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div>
-                    <div style={labelStyle}>Banco</div>
-                    <select style={inputStyle}
-                      value={form.id === cardAberto.id ? form.banco : cardAberto.banco || ''}
-                      onChange={e => { if (form.id !== cardAberto.id) setForm({ ...FORM_VAZIO, ...cardAberto, id: cardAberto.id }); set('banco', e.target.value) }}>
-                      <option value="">Selecione</option>
-                      {BANCOS.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <div style={labelStyle}>Tipo Pagamento</div>
-                    <select style={inputStyle}
-                      value={form.id === cardAberto.id ? form.tipo_pagamento : cardAberto.tipo_pagamento || 'pix'}
-                      onChange={e => { if (form.id !== cardAberto.id) setForm({ ...FORM_VAZIO, ...cardAberto, id: cardAberto.id }); set('tipo_pagamento', e.target.value) }}>
-                      <option value="pix">PIX</option>
-                      <option value="boleto">Boleto</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={labelStyle}>Chave PIX</div>
-                  <input style={inputStyle} placeholder="CPF, e-mail, telefone ou chave aleatória"
-                    value={form.id === cardAberto.id ? form.chave_pix : cardAberto.chave_pix || ''}
-                    onChange={e => { if (form.id !== cardAberto.id) setForm({ ...FORM_VAZIO, ...cardAberto, id: cardAberto.id }); set('chave_pix', e.target.value) }} />
-                </div>
-
-                {cardAberto.chave_pix && (
-                  <div>
-                    <div style={labelStyle}>PIX para copiar</div>
-                    <PixCopiavel pix={cardAberto.chave_pix} />
-                  </div>
-                )}
-
-                {cardAberto.banco === 'Itaú' && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px',
-                    backgroundColor: 'rgba(249,115,22,0.08)', borderRadius: '8px',
-                    border: '1px solid rgba(249,115,22,0.2)',
-                  }}>
-                    <span style={{ fontSize: '16px' }}>🧡</span>
-                    <span style={{ fontSize: '12px', color: '#f97316', fontWeight: '600' }}>Correntista Itaú — pagar via PIX</span>
-                  </div>
-                )}
-
-                {/* Contrato */}
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Contrato</div>
+                <input ref={contratoInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadContrato} />
                 {cardAberto.contrato_url ? (
-                  <a href={cardAberto.contrato_url} target="_blank" rel="noreferrer" style={{
-                    display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px',
-                    borderRadius: '10px', border: '1px solid rgba(252,200,37,0.3)',
-                    backgroundColor: 'rgba(252,200,37,0.06)', textDecoration: 'none',
-                    color: '#fcc825', fontSize: '13px',
-                  }}>
-                    <FileText size={14} /> Ver contrato assinado
-                  </a>
-                ) : (
-                  <div style={{ fontSize: '12px', color: '#444', padding: '10px', borderRadius: '10px', border: '1px dashed #2a2a2a', textAlign: 'center' }}>
-                    📄 Contrato pendente de upload
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <a href={cardAberto.contrato_url} target="_blank" rel="noreferrer" style={{
+                      flex: 1, display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px',
+                      borderRadius: '10px', border: '1px solid rgba(252,200,37,0.3)',
+                      backgroundColor: 'rgba(252,200,37,0.06)', textDecoration: 'none', color: '#fcc825', fontSize: '13px',
+                    }}>
+                      <FileText size={14} /> Ver contrato
+                    </a>
+                    <button onClick={() => contratoInputRef.current?.click()} style={{
+                      padding: '10px 14px', borderRadius: '10px', border: '1px solid #2a2a2a',
+                      background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer',
+                    }}>Substituir</button>
                   </div>
+                ) : (
+                  <button onClick={() => contratoInputRef.current?.click()} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    padding: '10px', borderRadius: '10px', border: '1px dashed #2a2a2a',
+                    background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer', width: '100%',
+                  }}>
+                    <Upload size={14} /> Upload do contrato (PDF)
+                  </button>
                 )}
 
                 <button onClick={handleSalvar} disabled={salvando} style={{
-                  marginTop: '8px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
+                  marginTop: '8px', width: '100%', padding: '13px', borderRadius: '10px', border: 'none',
                   background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-                  color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                  color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
                 }}>
                   {salvando ? 'Salvando...' : '💾 Salvar dados'}
                 </button>
@@ -570,52 +761,165 @@ export default function ProfessoresPage() {
             {/* ABA FINANCEIRO */}
             {aba === 'financeiro' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Histórico por mês</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-                  {meses.map((m, i) => {
-                    const ganho = calcularGanhosMes(i + 1, anoAtual, cardAberto?.valor_aula)
-                    const qtdAulas = aulasProf.filter(a => {
-                      const d = new Date(a.data_aula + 'T12:00')
-                      return d.getMonth() === i && d.getFullYear() === anoAtual
-                    }).length
-                    return (
-                      <div key={m} style={{
-                        backgroundColor: '#111', borderRadius: '10px', padding: '10px 8px',
-                        border: i + 1 === mesAtual ? '1px solid rgba(252,200,37,0.3)' : '1px solid #1e1e1e',
-                        textAlign: 'center',
-                      }}>
-                        <div style={{ fontSize: '10px', color: i + 1 === mesAtual ? '#fcc825' : '#555', fontWeight: '600', marginBottom: '4px' }}>{m}</div>
-                        <div style={{ fontSize: '11px', color: '#F0F2F5', fontWeight: '600' }}>
-                          {qtdAulas > 0 ? `${qtdAulas}aulas` : '—'}
-                        </div>
-                        <div style={{ fontSize: '10px', color: '#22c55e', marginTop: '2px' }}>
-                          {ganho > 0 ? `R$${ganho.toFixed(0)}` : ''}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
 
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Valor por aula</div>
-                <input type="number" style={inputStyle} placeholder="R$ 0,00"
-                  value={form.id === cardAberto.id ? form.valor_aula : cardAberto.valor_aula || ''}
-                  onChange={e => { if (form.id !== cardAberto.id) setForm({ ...FORM_VAZIO, ...cardAberto, id: cardAberto.id }); set('valor_aula', e.target.value) }} />
+                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dados Bancários</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div><div style={labelStyle}>Banco</div>
+                    <select style={inputStyle} value={form.banco} onChange={e => set('banco', e.target.value)}>
+                      <option value="">Selecione</option>
+                      {BANCOS.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select></div>
+                  <div><div style={labelStyle}>Tipo Pagamento</div>
+                    <select style={inputStyle} value={form.tipo_pagamento} onChange={e => set('tipo_pagamento', e.target.value)}>
+                      <option value="pix">PIX</option>
+                      <option value="boleto">Boleto</option>
+                    </select></div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div><div style={labelStyle}>Agência</div>
+                    <input style={inputStyle} placeholder="0000" value={form.agencia} onChange={e => set('agencia', e.target.value)} /></div>
+                  <div><div style={labelStyle}>Conta</div>
+                    <input style={inputStyle} placeholder="00000-0" value={form.conta} onChange={e => set('conta', e.target.value)} /></div>
+                </div>
+                <div><div style={labelStyle}>Chave PIX</div>
+                  <input style={inputStyle} placeholder="CPF, e-mail, telefone..." value={form.chave_pix} onChange={e => set('chave_pix', e.target.value)} /></div>
+
+                {cardAberto.chave_pix && <PixCopiavel pix={cardAberto.chave_pix} />}
+
+                {cardAberto.banco === 'Itaú' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: 'rgba(249,115,22,0.08)', borderRadius: '8px', border: '1px solid rgba(249,115,22,0.2)' }}>
+                    <span style={{ fontSize: '16px' }}>🧡</span>
+                    <span style={{ fontSize: '12px', color: '#f97316', fontWeight: '600' }}>Correntista Itaú — pagar via PIX</span>
+                  </div>
+                )}
+
+                <div><div style={labelStyle}>Valor por aula (R$)</div>
+                  <input type="number" style={inputStyle} placeholder="0,00" value={form.valor_aula} onChange={e => set('valor_aula', e.target.value)} /></div>
+
                 <button onClick={handleSalvar} disabled={salvando} style={{
                   width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
                   background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
                   color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
                 }}>
-                  {salvando ? 'Salvando...' : '💾 Salvar valor'}
+                  {salvando ? 'Salvando...' : '💾 Salvar dados bancários'}
                 </button>
+
+                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '8px' }}>
+                  Histórico de pagamentos
+                </div>
+
+                {/* Lista de meses com boleto/NF */}
+                {Array.from({ length: 12 }, (_, i) => {
+                  const mes = mesAtual - i <= 0 ? mesAtual - i + 12 : mesAtual - i
+                  const ano = mesAtual - i <= 0 ? anoAtual - 1 : anoAtual
+                  const { qtd, valor } = calcularGanhosMes(mes, ano)
+                  if (qtd === 0 && i > 2) return null
+                  const boleto = boletos.find(b => b.mes === mes && b.ano === ano)
+                  const boletoRef = useRef()
+                  const nfRef = useRef()
+                  return (
+                    <div key={`${mes}-${ano}`} style={{
+                      backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '12px 14px',
+                      border: mes === mesAtual && ano === anoAtual ? '1px solid rgba(252,200,37,0.2)' : '1px solid #222',
+                    }}>
+                      <input ref={boletoRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadBoleto(e, mes, ano)} />
+                      <input ref={nfRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadNF(e, mes, ano)} />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: mes === mesAtual && ano === anoAtual ? '#fcc825' : '#F0F2F5' }}>
+                          {MESES[mes - 1]}/{ano}
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '14px', fontWeight: '700', color: '#22c55e' }}>
+                            R$ {valor.toFixed(2).replace('.', ',')}
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#555' }}>{qtd} aulas</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button onClick={() => boleto?.boleto_url ? window.open(boleto.boleto_url, '_blank') : boletoRef.current?.click()} style={{
+                          flex: 1, padding: '6px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', border: 'none',
+                          backgroundColor: boleto?.boleto_url ? 'rgba(34,197,94,0.1)' : '#111',
+                          color: boleto?.boleto_url ? '#22c55e' : '#555',
+                          outline: boleto?.boleto_url ? '1px solid rgba(34,197,94,0.3)' : '1px dashed #2a2a2a',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                        }}>
+                          <Upload size={11} />
+                          {boleto?.boleto_url ? 'Boleto ✓' : 'Boleto'}
+                        </button>
+                        <button onClick={() => boleto?.nf_url ? window.open(boleto.nf_url, '_blank') : nfRef.current?.click()} style={{
+                          flex: 1, padding: '6px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', border: 'none',
+                          backgroundColor: boleto?.nf_url ? 'rgba(34,197,94,0.1)' : '#111',
+                          color: boleto?.nf_url ? '#22c55e' : '#555',
+                          outline: boleto?.nf_url ? '1px solid rgba(34,197,94,0.3)' : '1px dashed #2a2a2a',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                        }}>
+                          <FileText size={11} />
+                          {boleto?.nf_url ? 'NF ✓' : 'NF'}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {/* Total geral */}
+                <div style={{
+                  backgroundColor: 'rgba(252,200,37,0.08)', borderRadius: '12px', padding: '14px',
+                  border: '1px solid rgba(252,200,37,0.2)', textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                    Total acumulado ({totalAulas} aulas)
+                  </div>
+                  <div style={{ fontSize: '22px', fontWeight: '800', color: '#fcc825' }}>
+                    R$ {totalGeral.toFixed(2).replace('.', ',')}
+                  </div>
+                </div>
               </div>
             )}
 
             {/* ABA AVALIAÇÕES */}
             {aba === 'avaliacoes' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+                {/* Histórico visual — quadradinhos */}
+                {avaliacoes.length > 0 && (
+                  <>
+                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Histórico</div>
+                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                      {avaliacoes.map((av, i) => {
+                        const tomarAcao = av.media <= 2
+                        return (
+                          <div key={av.id} style={{
+                            flexShrink: 0, width: '72px', textAlign: 'center',
+                            backgroundColor: '#1a1a1a', borderRadius: '10px', padding: '10px 8px',
+                            border: tomarAcao ? '1px solid rgba(239,68,68,0.5)' : '1px solid #222',
+                          }}>
+                            <div style={{ fontSize: '16px', fontWeight: '800', color: tomarAcao ? '#EF4444' : '#fcc825' }}>
+                              {avaliacoes.length - i}ª
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', margin: '4px 0' }}>
+                              <Star size={10} fill="#fcc825" color="#fcc825" />
+                              <span style={{ fontSize: '12px', fontWeight: '700', color: '#F0F2F5' }}>{av.media}</span>
+                            </div>
+                            <div style={{ fontSize: '9px', color: '#444' }}>
+                              {format(new Date(av.data_avaliacao + 'T12:00'), 'dd/MM/yy')}
+                            </div>
+                            {tomarAcao && (
+                              <div style={{ fontSize: '8px', color: '#EF4444', fontWeight: '600', marginTop: '4px' }}>⚠️ AÇÃO</div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {/* Nova avaliação */}
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nova Avaliação</div>
-                <div style={{ backgroundColor: '#111', borderRadius: '12px', padding: '14px', border: '1px solid #1e1e1e', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {CRITERIOS_AVALIACAO.map(c => (
+                <div style={{
+                  backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '16px',
+                  border: '1px solid #222', display: 'flex', flexDirection: 'column', gap: '14px',
+                }}>
+                  {CRITERIOS.map(c => (
                     <div key={c.key}>
                       <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>{c.label}</div>
                       <StarRating value={novasNotas[c.key]} onChange={v => setNovasNotas(n => ({ ...n, [c.key]: v }))} />
@@ -623,11 +927,13 @@ export default function ProfessoresPage() {
                   ))}
                   <div>
                     <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>Observação (opcional)</div>
-                    <textarea rows={3} style={{ ...inputStyle, resize: 'none' }} placeholder="Pontos fortes, pontos de melhoria..."
-                      value={novasNotas.observacao} onChange={e => setNovasNotas(n => ({ ...n, observacao: e.target.value }))} />
+                    <textarea rows={3} style={{ ...inputStyle, resize: 'none' }}
+                      placeholder="Pontos fortes, pontos de melhoria..."
+                      value={novasNotas.observacao}
+                      onChange={e => setNovasNotas(n => ({ ...n, observacao: e.target.value }))} />
                   </div>
                   <button onClick={handleSalvarAvaliacao} disabled={salvandoAval} style={{
-                    width: '100%', padding: '10px', borderRadius: '10px', border: 'none',
+                    width: '100%', padding: '11px', borderRadius: '10px', border: 'none',
                     background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
                     color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
                   }}>
@@ -635,48 +941,38 @@ export default function ProfessoresPage() {
                   </button>
                 </div>
 
-                {avaliacoes.length > 0 && (
-                  <>
-                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Histórico</div>
-                    {avaliacoes.map(av => {
-                      const tomarAcao = av.media <= 2
-                      return (
-                        <div key={av.id} style={{
-                          backgroundColor: '#111', borderRadius: '12px', padding: '14px',
-                          border: tomarAcao ? '1px solid rgba(239,68,68,0.4)' : '1px solid #1e1e1e',
-                        }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                            <div style={{ fontSize: '12px', color: '#555' }}>
-                              {format(new Date(av.data_avaliacao + 'T12:00'), "dd/MM/yyyy")}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <Star size={12} fill="#fcc825" color="#fcc825" />
-                              <span style={{ fontSize: '13px', fontWeight: '700', color: tomarAcao ? '#EF4444' : '#fcc825' }}>
-                                {av.media}
-                              </span>
-                              {tomarAcao && (
-                                <span style={{ fontSize: '10px', color: '#EF4444', fontWeight: '600', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(239,68,68,0.1)' }}>
-                                  ⚠️ TOMAR AÇÃO
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {CRITERIOS_AVALIACAO.map(c => (
-                            <div key={c.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                              <span style={{ fontSize: '11px', color: '#555' }}>{c.label}</span>
-                              <StarRating value={av[c.key]} disabled />
-                            </div>
-                          ))}
-                          {av.observacao && (
-                            <div style={{ fontSize: '11px', color: '#888', marginTop: '8px', fontStyle: 'italic', borderTop: '1px solid #1e1e1e', paddingTop: '8px' }}>
-                              {av.observacao}
-                            </div>
-                          )}
+                {/* Detalhe avaliações */}
+                {avaliacoes.map((av, i) => {
+                  const tomarAcao = av.media <= 2
+                  return (
+                    <div key={av.id} style={{
+                      backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '14px',
+                      border: tomarAcao ? '1px solid rgba(239,68,68,0.4)' : '1px solid #222',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                        <div style={{ fontSize: '12px', color: '#555' }}>
+                          {avaliacoes.length - i}ª avaliação · {format(new Date(av.data_avaliacao + 'T12:00'), 'dd/MM/yyyy')}
                         </div>
-                      )
-                    })}
-                  </>
-                )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Star size={12} fill="#fcc825" color="#fcc825" />
+                          <span style={{ fontSize: '13px', fontWeight: '700', color: tomarAcao ? '#EF4444' : '#fcc825' }}>{av.media}</span>
+                          {tomarAcao && <span style={{ fontSize: '10px', color: '#EF4444', fontWeight: '600', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(239,68,68,0.1)' }}>⚠️ TOMAR AÇÃO</span>}
+                        </div>
+                      </div>
+                      {CRITERIOS.map(c => (
+                        <div key={c.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '11px', color: '#555' }}>{c.label}</span>
+                          <StarRating value={av[c.key]} disabled />
+                        </div>
+                      ))}
+                      {av.observacao && (
+                        <div style={{ fontSize: '11px', color: '#888', marginTop: '8px', fontStyle: 'italic', borderTop: '1px solid #1e1e1e', paddingTop: '8px' }}>
+                          {av.observacao}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -685,11 +981,11 @@ export default function ProfessoresPage() {
 
       {/* MODAL CRIAR */}
       {modalCriar && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'flex-end' }}
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }}
           onClick={() => setModalCriar(false)}>
           <div onClick={e => e.stopPropagation()} style={{
-            width: '100%', backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0',
-            padding: '20px 16px', boxSizing: 'border-box', maxHeight: '80vh', overflowY: 'auto',
+            width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0',
+            padding: '20px 16px', boxSizing: 'border-box', maxHeight: '70vh', overflowY: 'auto',
           }}>
             <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
             <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '16px' }}>Novo Professor</div>
