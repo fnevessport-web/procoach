@@ -5,9 +5,7 @@ export function AppLayout({ children }) {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', minHeight: '100vh',
-      backgroundImage: 'url(/images/bg-texture.png)',
-      backgroundSize: 'cover', backgroundAttachment: 'fixed',
-      backgroundPosition: 'center',
+      backgroundColor: '#110f0f',
     }}>
       <Header />
       <main style={{
