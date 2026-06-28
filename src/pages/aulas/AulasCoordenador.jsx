@@ -127,14 +127,19 @@ export function AulasCoordenador({ onCelulaVazia }) {
     setEditandoNotas(false)
     const inicial = {}
     aula.presencas?.forEach(p => {
+      // alerta_nivel lê da PRESENÇA (histórico fixo por aula)
+      // se presença não tiver ainda, cai no aluno (retrocompatibilidade)
+      const alertaPresenca = p.alerta_nivel ?? p.alunos?.alerta_nivel ?? false
+      const nivelPresenca = p.nivel_avaliado_prof || p.alunos?.nivel_avaliado_prof || ''
+      const obsPresenca = p.obs_nivel_prof || p.alunos?.obs_nivel_prof || ''
       inicial[p.aluno_id] = {
         aluno_id: p.aluno_id,
         nome: p.alunos?.nome,
         status_presenca: p.status_presenca || (p.presente ? 'presente' : 'falta'),
         tipo_participacao: p.tipo_participacao || 'mensalista',
-        alerta_nivel: p.alunos?.alerta_nivel || false,
-        nivel_avaliado_prof: p.alunos?.nivel_avaliado_prof || '',
-        obs_nivel_prof: p.alunos?.obs_nivel_prof || '',
+        alerta_nivel: alertaPresenca,
+        nivel_avaliado_prof: nivelPresenca,
+        obs_nivel_prof: obsPresenca,
       }
     })
     setPresencasLocal(prev => ({ ...prev, [aula.id]: inicial }))
@@ -196,11 +201,21 @@ export function AulasCoordenador({ onCelulaVazia }) {
     const alerta = alertaNivel[alunoId]
     if (!alerta) return
     try {
-      const { error } = await supabase
+      // Salva no aluno (estado atual — para relatório)
+      const { error: errAluno } = await supabase
         .from('alunos')
         .update({ alerta_nivel: true, nivel_avaliado_prof: alerta.nivel, obs_nivel_prof: alerta.obs })
         .eq('id', alunoId)
-      if (error) throw error
+      if (errAluno) throw errAluno
+
+      // Salva na presença (histórico fixo por aula)
+      const { error: errPresenca } = await supabase
+        .from('presencas')
+        .update({ alerta_nivel: true, nivel_avaliado_prof: alerta.nivel, obs_nivel_prof: alerta.obs })
+        .eq('aula_id', aulaId)
+        .eq('aluno_id', alunoId)
+      if (errPresenca) throw errPresenca
+
       updatePresenca(aulaId, alunoId, 'alerta_nivel', true)
       updatePresenca(aulaId, alunoId, 'nivel_avaliado_prof', alerta.nivel)
       updatePresenca(aulaId, alunoId, 'obs_nivel_prof', alerta.obs)
@@ -211,16 +226,19 @@ export function AulasCoordenador({ onCelulaVazia }) {
 
   async function handleRemoverAlertaNivel(aulaId, alunoId) {
     try {
+      // Remove só do aluno (estado atual) — presença mantém o histórico
       const { error } = await supabase
         .from('alunos')
         .update({ alerta_nivel: false, nivel_avaliado_prof: null, obs_nivel_prof: null })
         .eq('id', alunoId)
       if (error) throw error
+      // Atualiza visual local (esta aula específica some o alerta)
       updatePresenca(aulaId, alunoId, 'alerta_nivel', false)
       updatePresenca(aulaId, alunoId, 'nivel_avaliado_prof', '')
       updatePresenca(aulaId, alunoId, 'obs_nivel_prof', '')
       setAlertaNivel(prev => ({ ...prev, [alunoId]: null }))
-      toast.success('Alerta removido!', { style: toastStyle })
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      toast.success('Alerta removido do aluno. Histórico das aulas preservado!', { style: toastStyle })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
@@ -355,7 +373,8 @@ export function AulasCoordenador({ onCelulaVazia }) {
     : []
 
   function temAlertaNivel(aulaCelula) {
-    return aulaCelula.presencas?.some(p => p.alunos?.alerta_nivel)
+    // Lê da presença primeiro (histórico), depois do aluno (retrocompatibilidade)
+    return aulaCelula.presencas?.some(p => p.alerta_nivel ?? p.alunos?.alerta_nivel)
   }
 
   function temReposicao(aulaCelula) {
