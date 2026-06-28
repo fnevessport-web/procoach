@@ -208,9 +208,31 @@ export function AulasCoordenador({ onCelulaVazia }) {
 
   async function handleSalvarPresencas(aulaId) {
     const lista = Object.values(presencasLocal[aulaId] || {})
-    if (!lista.length) return toast.error('Nenhum aluno na lista', { style: toastStyle })
     try {
-      await salvarPresencas.mutateAsync({ aulaId, presencas: lista })
+      // Busca IDs que estavam no banco antes
+      const { data: presencasAnteriores } = await supabase
+        .from('presencas')
+        .select('aluno_id')
+        .eq('aula_id', aulaId)
+
+      const idsAnteriores = presencasAnteriores?.map(p => p.aluno_id) || []
+      const idsAtuais = lista.map(p => p.aluno_id)
+
+      // Deleta do banco os que foram removidos da lista
+      const idsRemovidos = idsAnteriores.filter(id => !idsAtuais.includes(id))
+      if (idsRemovidos.length > 0) {
+        await supabase
+          .from('presencas')
+          .delete()
+          .eq('aula_id', aulaId)
+          .in('aluno_id', idsRemovidos)
+      }
+
+      // Salva os que ficaram (upsert)
+      if (lista.length > 0) {
+        await salvarPresencas.mutateAsync({ aulaId, presencas: lista })
+      }
+
       toast.success('✅ Presenças salvas!', { style: toastStyle })
       fecharModal()
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
