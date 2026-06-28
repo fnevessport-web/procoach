@@ -38,6 +38,7 @@ const labelStyle = {
 
 const FORM_VAZIO = {
   id: null, nome: '', email: '', telefone: '', instagram: '', apelido: '',
+  tem_cref: false, numero_cref: '', cref_url: '',
   modalidade_id: '', valor_aula: '', ativo: true,
   nascimento: '', cidade_nascimento: '', estado_nascimento: '',
   cpf: '', cep: '', endereco: '', numero: '', complemento: '',
@@ -234,6 +235,9 @@ export default function ProfessoresPage() {
       agencia: prof.agencia || '', conta: prof.conta || '',
       tipo_pagamento: prof.tipo_pagamento || 'pix', chave_pix: prof.chave_pix || '',
       apelido: prof.apelido || '',
+      tem_cref: prof.tem_cref || false,
+      numero_cref: prof.numero_cref || '',
+      cref_url: prof.cref_url || '',
     })
   }
 
@@ -264,6 +268,9 @@ export default function ProfessoresPage() {
       agencia: form.agencia || null, conta: form.conta || null,
       tipo_pagamento: form.tipo_pagamento || 'pix', chave_pix: form.chave_pix || null,
       apelido: form.apelido || null,
+      tem_cref: form.tem_cref || false,
+      numero_cref: form.numero_cref || null,
+      cref_url: form.cref_url || null,
     }
     try {
       if (form.id) {
@@ -690,6 +697,74 @@ export default function ProfessoresPage() {
                 </div>
                 <div><div style={labelStyle}>E-mail</div><input style={inputStyle} placeholder="email@exemplo.com" value={form.email} onChange={e => set('email', e.target.value)} /></div>
                 <div><div style={labelStyle}>Apelido (opcional)</div><input style={inputStyle} placeholder="Ex: Cigano, Borges, Nunes..." value={form.apelido || ''} onChange={e => set('apelido', e.target.value)} /></div>
+
+                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>CREF</div>
+                <button onClick={() => set('tem_cref', !form.tem_cref)} style={{
+                  display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px',
+                  borderRadius: '10px', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left',
+                  background: form.tem_cref ? 'rgba(252,200,37,0.1)' : '#111',
+                  outline: form.tem_cref ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+                  color: form.tem_cref ? '#fcc825' : '#555', fontSize: '13px',
+                }}>
+                  <span>{form.tem_cref ? '✓' : '○'}</span>
+                  <span>{form.tem_cref ? 'Possui CREF' : 'Possui CREF ou Liminar?'}</span>
+                </button>
+
+                {form.tem_cref && (
+                  <>
+                    <input style={inputStyle} placeholder="Número do CREF (ex: 123456-G/SP)"
+                      value={form.numero_cref} onChange={e => set('numero_cref', e.target.value)} />
+                    {cardAberto?.cref_url ? (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <a href={cardAberto.cref_url} target="_blank" rel="noreferrer" style={{
+                          flex: 1, display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px',
+                          borderRadius: '10px', border: '1px solid rgba(252,200,37,0.3)',
+                          backgroundColor: 'rgba(252,200,37,0.06)', textDecoration: 'none', color: '#fcc825', fontSize: '13px',
+                        }}>
+                          <FileText size={14} /> Ver CREF
+                        </a>
+                        <label style={{
+                          padding: '10px 14px', borderRadius: '10px', border: '1px solid #2a2a2a',
+                          background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center',
+                        }}>
+                          <input type="file" accept="image/*,.pdf" style={{ display: 'none' }}
+                            onChange={async e => {
+                              const file = e.target.files?.[0]
+                              if (!file || !cardAberto?.id) return
+                              const path = `professores/${cardAberto.id}/cref.${file.name.split('.').pop()}`
+                              const { error } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
+                              if (error) return alert('Erro: ' + error.message)
+                              const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
+                              await supabase.from('professores').update({ cref_url: publicUrl }).eq('id', cardAberto.id)
+                              setCardAberto(prev => ({ ...prev, cref_url: publicUrl }))
+                            }} />
+                          Substituir
+                        </label>
+                      </div>
+                    ) : (
+                      <label style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                        padding: '10px', borderRadius: '10px', border: '1px dashed #2a2a2a',
+                        background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer', width: '100%',
+                        boxSizing: 'border-box',
+                      }}>
+                        <input type="file" accept="image/*,.pdf" style={{ display: 'none' }}
+                          onChange={async e => {
+                            const file = e.target.files?.[0]
+                            if (!file || !cardAberto?.id) return
+                            const path = `professores/${cardAberto.id}/cref.${file.name.split('.').pop()}`
+                            const { error } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
+                            if (error) return alert('Erro: ' + error.message)
+                            const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
+                            await supabase.from('professores').update({ cref_url: publicUrl }).eq('id', cardAberto.id)
+                            setCardAberto(prev => ({ ...prev, cref_url: publicUrl }))
+                          }} />
+                        <Upload size={14} /> Upload do CREF (foto ou PDF)
+                      </label>
+                    )}
+                  </>
+                )}
 
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Dados Pessoais</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
