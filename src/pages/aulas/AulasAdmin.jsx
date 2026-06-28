@@ -570,7 +570,7 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
     ? todasQuadras?.find(q => q.nome === atalho.quadraNome)?.id || ''
     : ''
 
-  if (open && atalho && form.horario !== atalho.horario) {
+  if (open && atalho && (form.horario !== atalho.horario || form.data !== atalho.data)) {
     setForm(f => ({
       ...f,
       data: atalho.data || f.data,
