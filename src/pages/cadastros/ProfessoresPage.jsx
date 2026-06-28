@@ -113,6 +113,9 @@ export default function ProfessoresPage() {
   const [dataAvaliacao, setDataAvaliacao] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [uploadandoFoto, setUploadandoFoto] = useState(false)
   const [mesSelecionado, setMesSelecionado] = useState(null)
+  const [modalExtra, setModalExtra] = useState(false)
+  const [formExtra, setFormExtra] = useState({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '' })
+  const [salvandoExtra, setSalvandoExtra] = useState(false)
   const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear())
   const fotoInputRef = useRef()
   const contratoInputRef = useRef()
@@ -181,6 +184,20 @@ export default function ProfessoresPage() {
         .select('*')
         .eq('professor_id', cardAberto.id)
         .order('ano', { ascending: false })
+      if (error) throw error
+      return data || []
+    },
+  })
+
+  const { data: pagamentosExtras = [] } = useQuery({
+    queryKey: ['pagamentos_extras', cardAberto?.id],
+    enabled: !!cardAberto?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pagamentos_extras')
+        .select('*')
+        .eq('professor_id', cardAberto.id)
+        .order('data_pagamento', { ascending: false })
       if (error) throw error
       return data || []
     },
@@ -337,7 +354,31 @@ export default function ProfessoresPage() {
       const d = new Date(a.data_aula + 'T12:00')
       return d.getMonth() + 1 === mes && d.getFullYear() === ano
     }).length
-    return { qtd, valor: qtd * (cardAberto?.valor_aula || 0) }
+    const valorAulas = qtd * (cardAberto?.valor_aula || 0)
+    const valorExtras = pagamentosExtras
+      .filter(p => p.mes === mes && p.ano === ano)
+      .reduce((acc, p) => acc + (p.valor || 0), 0)
+    return { qtd, valor: valorAulas + valorExtras, valorAulas, valorExtras }
+  }
+
+  async function handleSalvarExtra() {
+    if (!formExtra.descricao.trim() || !formExtra.valor) return alert('Preencha todos os campos')
+    setSalvandoExtra(true)
+    const d = new Date(formExtra.data_pagamento + 'T12:00')
+    try {
+      await supabase.from('pagamentos_extras').insert({
+        professor_id: cardAberto.id,
+        data_pagamento: formExtra.data_pagamento,
+        descricao: formExtra.descricao,
+        valor: parseFloat(String(formExtra.valor).replace(',', '.')),
+        mes: d.getMonth() + 1,
+        ano: d.getFullYear(),
+      })
+      qc.invalidateQueries({ queryKey: ['pagamentos_extras', cardAberto.id] })
+      setFormExtra({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '' })
+      setModalExtra(false)
+    } catch (err) { alert('Erro: ' + err.message) }
+    finally { setSalvandoExtra(false) }
   }
 
   function getAulasDoDia(mes, ano) {
@@ -523,25 +564,39 @@ export default function ProfessoresPage() {
               backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '14px 16px',
               border: '1px solid rgba(252,200,37,0.15)', marginBottom: '16px',
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '10px' }}>
-                <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     {MESES[mesAtual - 1]} {anoAtual} · {ganhosMesAtual.qtd} aulas
                   </div>
                   <div style={{ fontSize: '24px', fontWeight: '800', color: '#fcc825' }}>
                     R$ {ganhosMesAtual.valor.toFixed(2).replace('.', ',')}
                   </div>
+                  {ganhosMesAtual.valorExtras > 0 && (
+                    <div style={{ fontSize: '10px', color: '#cf1b9b', marginTop: '2px' }}>
+                      + R$ {ganhosMesAtual.valorExtras.toFixed(2).replace('.', ',')} em extras
+                    </div>
+                  )}
                 </div>
-                {ganhosMesAnterior.valor > 0 && (
-                  <div style={{ textAlign: 'right', opacity: 0.4 }}>
-                    <div style={{ fontSize: '9px', color: '#888', marginBottom: '2px' }}>
-                      {MESES[mesAtual === 1 ? 11 : mesAtual - 2]}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {ganhosMesAnterior.valor > 0 && (
+                    <div style={{ textAlign: 'right', opacity: 0.4 }}>
+                      <div style={{ fontSize: '9px', color: '#888', marginBottom: '2px' }}>
+                        {MESES[mesAtual === 1 ? 11 : mesAtual - 2]}
+                      </div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#888' }}>
+                        R$ {ganhosMesAnterior.valor.toFixed(2).replace('.', ',')}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#888' }}>
-                      R$ {ganhosMesAnterior.valor.toFixed(2).replace('.', ',')}
-                    </div>
-                  </div>
-                )}
+                  )}
+                  <button onClick={() => setModalExtra(true)} style={{
+                    width: '28px', height: '28px', borderRadius: '8px', border: '1px solid #2a2a2a',
+                    backgroundColor: '#111', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <Plus size={14} color="#555" />
+                  </button>
+                </div>
               </div>
               <div style={{ height: '3px', borderRadius: '2px', backgroundColor: '#222', overflow: 'hidden', marginBottom: '4px' }}>
                 <div style={{
@@ -554,6 +609,44 @@ export default function ProfessoresPage() {
                 Dia {diaAtual} de {diasNoMes} · {progressoMes}% do mês
               </div>
             </div>
+
+            {/* Modal pagamento extra */}
+            {modalExtra && (
+              <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }}
+                onClick={() => setModalExtra(false)}>
+                <div onClick={e => e.stopPropagation()} style={{
+                  width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0',
+                  padding: '20px 16px', boxSizing: 'border-box',
+                }}>
+                  <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '16px' }}>+ Pagamento Extra</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div><div style={labelStyle}>Data</div>
+                      <input type="date" style={inputStyle} value={formExtra.data_pagamento}
+                        onChange={e => setFormExtra(f => ({ ...f, data_pagamento: e.target.value }))} /></div>
+                    <div><div style={labelStyle}>Descrição</div>
+                      <input style={inputStyle} placeholder="Ex: Evento, Diária, Bônus..."
+                        value={formExtra.descricao} onChange={e => setFormExtra(f => ({ ...f, descricao: e.target.value }))} /></div>
+                    <div><div style={labelStyle}>Valor (R$)</div>
+                      <input type="number" style={inputStyle} placeholder="0,00"
+                        value={formExtra.valor} onChange={e => setFormExtra(f => ({ ...f, valor: e.target.value }))} /></div>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                      <button onClick={() => setModalExtra(false)} style={{
+                        flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #2a2a2a',
+                        background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer',
+                      }}>Cancelar</button>
+                      <button onClick={handleSalvarExtra} disabled={salvandoExtra} style={{
+                        flex: 2, padding: '12px', borderRadius: '10px', border: 'none',
+                        background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                        color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                      }}>
+                        {salvandoExtra ? 'Salvando...' : '💾 Salvar'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Gráfico evolução */}
             <div style={{
