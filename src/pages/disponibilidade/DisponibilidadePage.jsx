@@ -19,7 +19,7 @@ const STATUS = {
   indisponivel: { cor: '#EF4444', bg: 'rgba(239,68,68,0.15)', borda: 'rgba(239,68,68,0.4)', label: '❌ Indisponível' },
 }
 
-const CICLO = [null, 'disponivel', 'talvez', 'indisponivel']
+const CICLO = ['disponivel', 'talvez', 'indisponivel']
 
 const toastStyle = {
   background: '#1a1a1a', color: '#F0F2F5',
@@ -144,7 +144,7 @@ export function DisponibilidadePage() {
 
         <div style={{ marginBottom: '24px' }}>
           <div style={{ fontSize: '18px', fontWeight: '700', color: '#F0F2F5', marginBottom: '4px' }}>
-            Olá, {professor.nome.split(' ')[0]}! 👋
+            Olá, {professor.nome}! 👋
           </div>
           <div style={{ fontSize: '13px', color: '#555', lineHeight: '1.5' }}>
             Preencha sua disponibilidade semanal. Toque em cada horário para alternar entre as opções.
@@ -159,10 +159,6 @@ export function DisponibilidadePage() {
               <span style={{ fontSize: '11px', color: '#888' }}>{s.label}</span>
             </div>
           ))}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#111', border: '1px solid #2a2a2a' }} />
-            <span style={{ fontSize: '11px', color: '#888' }}>Não marcado</span>
-          </div>
         </div>
 
         {/* Grade por dia */}
