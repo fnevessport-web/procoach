@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { format, addDays, subDays, isAfter, startOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText } from 'lucide-react'
+import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap } from 'lucide-react'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas } from '../../hooks/useAulas'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useProfessores } from '../../hooks/useProfessores'
@@ -98,6 +98,41 @@ export function AulasCoordenador({ onCelulaVazia }) {
     show: false, nome: '', telefone: '', nivel: '',
     menor_idade: false, nome_responsavel: '',
   })
+
+  const [modalMassa, setModalMassa] = useState(null)
+  const [acaoMassa, setAcaoMassa] = useState(null)
+  const [executandoMassa, setExecutandoMassa] = useState(false)
+
+  async function handleAcaoMassa() {
+    if (!acaoMassa) return
+    setExecutandoMassa(true)
+    try {
+      for (const a of aulasFiltradas) {
+        const statusAula = acaoMassa === 'confirmar' ? 'dada' : acaoMassa === 'sem_aula' ? 'nao_dada' : 'cancelada'
+        const pagaProfessor = acaoMassa !== 'cancelar'
+        const statusPresenca = acaoMassa === 'confirmar' ? 'presente' : acaoMassa === 'sem_aula' ? 'falta' : 'falta_justificada'
+
+        await supabase.from('aulas').update({ status_aula: statusAula, paga_professor: pagaProfessor }).eq('id', a.id)
+
+        if (a.presencas && a.presencas.length > 0) {
+          await supabase.from('presencas').update({ status_presenca: statusPresenca, presente: acaoMassa === 'confirmar' }).eq('aula_id', a.id)
+        }
+      }
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      toast.success(
+        acaoMassa === 'confirmar' ? '✅ Todas as aulas confirmadas!' :
+        acaoMassa === 'sem_aula' ? '❌ Todas marcadas como Sem Aula!' :
+        '🌧️ Todas as aulas canceladas!',
+        { style: toastStyle }
+      )
+      setModalMassa(null)
+      setAcaoMassa(null)
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    } finally {
+      setExecutandoMassa(false)
+    }
+  }
 
   const { data: aulas, isLoading } = useAulas({ data, modalidadeId: modalidadeSelecionada?.id })
   const { data: todosAlunos, refetch: refetchAlunos } = useAlunos()
@@ -413,6 +448,99 @@ export function AulasCoordenador({ onCelulaVazia }) {
           <ChevronRight size={20} />
         </button>
       </div>
+
+      {/* Botão ação em massa */}
+      {totalAulas > 0 && !isFuturo && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+          <button
+            onClick={() => setModalMassa('menu')}
+            title="Ação em massa"
+            style={{
+              width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #2a2a2a',
+              backgroundColor: '#1a1a1a', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(252,200,37,0.4)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = '#2a2a2a'}
+          >
+            <Zap size={14} color="#555" />
+          </button>
+        </div>
+      )}
+
+      {/* Modal ação em massa */}
+      {modalMassa && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'flex-end' }}
+          onClick={() => { setModalMassa(null); setAcaoMassa(null) }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: '100%', backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0',
+            padding: '20px 16px', boxSizing: 'border-box',
+          }}>
+            <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
+
+            {modalMassa === 'menu' ? (
+              <>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: '#888', marginBottom: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Aplicar para todas as aulas do dia
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {[
+                    { key: 'confirmar', emoji: '✅', label: 'Confirmar todas as aulas', sub: 'Todos os alunos marcados como Presente', color: '#22c55e' },
+                    { key: 'sem_aula', emoji: '❌', label: 'Sem Aula', sub: 'Todos os alunos marcados como Falta', color: '#EF4444' },
+                    { key: 'cancelar', emoji: '🌧️', label: 'Cancelar todas', sub: 'Todos os alunos com Falta Justificada', color: '#3b82f6' },
+                  ].map(op => (
+                    <button key={op.key} onClick={() => { setAcaoMassa(op.key); setModalMassa('confirmar') }} style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      padding: '14px 16px', borderRadius: '12px', border: `1px solid #2a2a2a`,
+                      backgroundColor: '#111', cursor: 'pointer', textAlign: 'left', width: '100%',
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = op.color + '50'}
+                      onMouseLeave={e => e.currentTarget.style.borderColor = '#2a2a2a'}
+                    >
+                      <span style={{ fontSize: '20px' }}>{op.emoji}</span>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5' }}>{op.label}</div>
+                        <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{op.sub}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => setModalMassa(null)} style={{
+                  marginTop: '12px', width: '100%', padding: '10px', borderRadius: '10px',
+                  border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer',
+                }}>Cancelar</button>
+              </>
+            ) : (
+              <>
+                <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+                    {acaoMassa === 'confirmar' ? '✅' : acaoMassa === 'sem_aula' ? '❌' : '🌧️'}
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '6px' }}>
+                    {acaoMassa === 'confirmar' ? 'Confirmar todas as aulas?' : acaoMassa === 'sem_aula' ? 'Marcar todas como Sem Aula?' : 'Cancelar todas as aulas?'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#555' }}>
+                    {aulasFiltradas.length} aulas · {aulasFiltradas.reduce((acc, a) => acc + (a.presencas?.length || 0), 0)} alunos serão atualizados
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => setModalMassa('menu')} style={{
+                    flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #2a2a2a',
+                    background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer',
+                  }}>Voltar</button>
+                  <button onClick={handleAcaoMassa} disabled={executandoMassa} style={{
+                    flex: 2, padding: '12px', borderRadius: '10px', border: 'none',
+                    background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                    color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                  }}>
+                    {executandoMassa ? 'Aplicando...' : 'Confirmar'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Aviso dia futuro */}
       {isFuturo && (
