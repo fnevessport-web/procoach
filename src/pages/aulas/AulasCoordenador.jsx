@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { format, addDays, subDays, isAfter, startOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText } from 'lucide-react'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas } from '../../hooks/useAulas'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useProfessores } from '../../hooks/useProfessores'
@@ -92,6 +92,8 @@ export function AulasCoordenador({ onCelulaVazia }) {
   const [statusLocal, setStatusLocal] = useState({})
   const [alertaNivel, setAlertaNivel] = useState({})
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
+  const [notasLocal, setNotasLocal] = useState({})
+  const [editandoNotas, setEditandoNotas] = useState(false)
   const [novoAlunoModal, setNovoAlunoModal] = useState({
     show: false, nome: '', telefone: '', nivel: '',
     menor_idade: false, nome_responsavel: '',
@@ -121,6 +123,8 @@ export function AulasCoordenador({ onCelulaVazia }) {
 
   function abrirAula(aula) {
     setAulaModal(aula)
+    setNotasLocal(prev => ({ ...prev, [aula.id]: aula.notas || '' }))
+    setEditandoNotas(false)
     const inicial = {}
     aula.presencas?.forEach(p => {
       inicial[p.aluno_id] = {
@@ -143,6 +147,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
     setBuscaAdicionando('')
     setAlertaNivel({})
     setConfirmandoExclusao(false)
+    setEditandoNotas(false)
     setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '' })
   }
 
@@ -172,6 +177,19 @@ export function AulasCoordenador({ onCelulaVazia }) {
         ? null
         : { nivel: alunoData.nivel_avaliado_prof || '', obs: alunoData.obs_nivel_prof || '' }
     }))
+  }
+
+  async function handleSalvarNotas(aulaId) {
+    try {
+      const { error } = await supabase
+        .from('aulas')
+        .update({ notas: notasLocal[aulaId] || null })
+        .eq('id', aulaId)
+      if (error) throw error
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      setEditandoNotas(false)
+      toast.success('📋 Observação salva!', { style: toastStyle })
+    } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
   async function handleSalvarAlertaNivel(aulaId, alunoId) {
@@ -209,30 +227,17 @@ export function AulasCoordenador({ onCelulaVazia }) {
   async function handleSalvarPresencas(aulaId) {
     const lista = Object.values(presencasLocal[aulaId] || {})
     try {
-      // Busca IDs que estavam no banco antes
       const { data: presencasAnteriores } = await supabase
-        .from('presencas')
-        .select('aluno_id')
-        .eq('aula_id', aulaId)
-
+        .from('presencas').select('aluno_id').eq('aula_id', aulaId)
       const idsAnteriores = presencasAnteriores?.map(p => p.aluno_id) || []
       const idsAtuais = lista.map(p => p.aluno_id)
-
-      // Deleta do banco os que foram removidos da lista
       const idsRemovidos = idsAnteriores.filter(id => !idsAtuais.includes(id))
       if (idsRemovidos.length > 0) {
-        await supabase
-          .from('presencas')
-          .delete()
-          .eq('aula_id', aulaId)
-          .in('aluno_id', idsRemovidos)
+        await supabase.from('presencas').delete().eq('aula_id', aulaId).in('aluno_id', idsRemovidos)
       }
-
-      // Salva os que ficaram (upsert)
       if (lista.length > 0) {
         await salvarPresencas.mutateAsync({ aulaId, presencas: lista })
       }
-
       toast.success('✅ Presenças salvas!', { style: toastStyle })
       fecharModal()
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
@@ -294,10 +299,8 @@ export function AulasCoordenador({ onCelulaVazia }) {
     if (!novoAlunoModal.nome.trim()) return toast.error('Nome obrigatório', { style: toastStyle })
     try {
       const result = await salvarAluno.mutateAsync({
-        nome: novoAlunoModal.nome,
-        telefone: novoAlunoModal.telefone,
-        nivel: novoAlunoModal.nivel || null,
-        menor_idade: novoAlunoModal.menor_idade,
+        nome: novoAlunoModal.nome, telefone: novoAlunoModal.telefone,
+        nivel: novoAlunoModal.nivel || null, menor_idade: novoAlunoModal.menor_idade,
         nome_responsavel: novoAlunoModal.menor_idade ? novoAlunoModal.nome_responsavel : null,
         ativo: true,
       })
@@ -346,6 +349,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
   const statusAtual = aula ? (aulaFutura ? 'futura' : (statusLocal[aula.id] || aula.status_aula || 'dada')) : 'dada'
   const isAvulsa = aula ? !aula.turma_id : false
   const estaEditando = aula ? editandoAula === aula.id : false
+  const notasAula = aula ? (notasLocal[aula.id] ?? aula.notas ?? '') : ''
   const alunosBusca = buscaAdicionando.length >= 1
     ? todosAlunos?.filter(a => a.nome.toLowerCase().includes(buscaAdicionando.toLowerCase()) && !idsNaAula.includes(a.id))
     : []
@@ -420,6 +424,20 @@ export function AulasCoordenador({ onCelulaVazia }) {
             <span style={{ fontSize: '11px', color: '#555' }}>/</span>
             <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>{totalFaltas}</span>
           </div>
+          {/* Canceladas — só aparece se houver */}
+          {aulasCanceladas > 0 && (
+            <>
+              <span style={{ fontSize: '11px', color: '#2a2a2a' }}>·</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '11px' }}>🌧️</span>
+                <span style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600' }}>{aulasCanceladas}</span>
+                <span style={{ fontSize: '10px', color: '#3b82f6', opacity: 0.7 }}>
+                  · {Math.round((aulasCanceladas / totalAulas) * 100)}%
+                </span>
+              </div>
+            </>
+          )}
+          {/* Barra de ocupação */}
           {(() => {
             const total = totalPresentes + totalFaltas
             const pct = total > 0 ? Math.round((totalPresentes / total) * 100) : 0
@@ -506,6 +524,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
                   const isAv = !aulaCelula.turma_id
                   const hasAlerta = temAlertaNivel(aulaCelula)
                   const hasReposicao = temReposicao(aulaCelula)
+                  const hasNotas = !!(aulaCelula.notas && aulaCelula.notas.trim())
 
                   const borderColor = st === 'futura' ? 'rgba(255,255,255,0.06)'
                     : st === 'dada' ? 'rgba(34,197,94,0.3)'
@@ -534,6 +553,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
                           <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dotColor, flexShrink: 0 }} />
                           {hasAlerta && <span style={{ fontSize: '9px' }}>⚠️</span>}
                           {hasReposicao && <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: COR_REPOSICAO, flexShrink: 0 }} />}
+                          {hasNotas && <FileText size={8} color="#444" />}
                         </div>
                       </div>
                       <div style={{ fontSize: '11px', fontWeight: '600', color: aulaEhFutura ? '#444' : '#F0F2F5', lineHeight: '1.3', marginBottom: '4px' }}>
@@ -599,6 +619,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
               </div>
             )}
 
+            {/* Botões de ação — editar, excluir, observação */}
             {isAvulsa && !aulaFutura && (
               <div style={{ marginBottom: '12px' }}>
                 {estaEditando ? (
@@ -662,8 +683,63 @@ export function AulasCoordenador({ onCelulaVazia }) {
                         <button onClick={() => setConfirmandoExclusao(false)} style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>Não</button>
                       </div>
                     )}
+                    <button onClick={() => setEditandoNotas(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: notasAula ? '1px solid rgba(255,255,255,0.15)' : '1px solid #2a2a2a', background: 'none', color: notasAula ? '#aaa' : '#555', fontSize: '12px', cursor: 'pointer' }}>
+                      <FileText size={12} /> {notasAula ? 'Ver nota' : 'Observação'}
+                    </button>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Botão observação para aulas não avulsas também */}
+            {!isAvulsa && !aulaFutura && (
+              <div style={{ marginBottom: '12px' }}>
+                <button onClick={() => setEditandoNotas(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: notasAula ? '1px solid rgba(255,255,255,0.15)' : '1px solid #2a2a2a', background: 'none', color: notasAula ? '#aaa' : '#555', fontSize: '12px', cursor: 'pointer' }}>
+                  <FileText size={12} /> {notasAula ? 'Ver nota' : 'Observação'}
+                </button>
+              </div>
+            )}
+
+            {/* Painel de observação */}
+            {editandoNotas && (
+              <div style={{
+                backgroundColor: '#111', borderRadius: '12px',
+                border: '1px solid rgba(255,255,255,0.08)', padding: '12px',
+                marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FileText size={12} color="#555" />
+                  <span style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Observação da Aula</span>
+                </div>
+                <textarea
+                  placeholder="Ex: Prof faltou, aula cancelada por chuva, aluno lesionado..."
+                  value={notasAula}
+                  onChange={e => setNotasLocal(prev => ({ ...prev, [aula.id]: e.target.value }))}
+                  rows={3}
+                  autoFocus
+                  style={{ ...inputStyle, resize: 'none', fontSize: '13px' }}
+                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => setEditandoNotas(false)} style={{ flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>Cancelar</button>
+                  <button onClick={() => handleSalvarNotas(aula.id)} style={{ flex: 2, padding: '7px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
+                    💾 Salvar observação
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Exibe nota salva (leitura) se não estiver editando */}
+            {!editandoNotas && notasAula && (
+              <div style={{
+                backgroundColor: '#111', borderRadius: '10px',
+                border: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px',
+                marginBottom: '14px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                  <FileText size={11} color="#444" />
+                  <span style={{ fontSize: '10px', color: '#444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Observação</span>
+                </div>
+                <p style={{ fontSize: '12px', color: '#888', margin: 0, lineHeight: '1.5' }}>{notasAula}</p>
               </div>
             )}
 
@@ -786,7 +862,6 @@ export function AulasCoordenador({ onCelulaVazia }) {
               })}
             </div>
 
-            {/* Adicionar aluno existente ou cadastrar novo */}
             {adicionandoAluno === aula.id ? (
               <div style={{ marginTop: '10px' }}>
                 <div style={{ position: 'relative', marginBottom: '8px' }}>
@@ -804,8 +879,6 @@ export function AulasCoordenador({ onCelulaVazia }) {
                     </div>
                   )}
                 </div>
-
-                {/* Cadastrar novo aluno inline */}
                 {!novoAlunoModal.show ? (
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => setNovoAlunoModal(n => ({ ...n, show: true }))} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px dashed #2a2a2a', background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
