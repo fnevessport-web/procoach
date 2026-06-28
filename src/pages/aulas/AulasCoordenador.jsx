@@ -15,8 +15,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
 const STATUS_AULA = [
-  { value: 'dada', label: '✅ Aula Dada', paga: true },
-  { value: 'nao_dada', label: '❌ Não Dada', paga: true },
+  { value: 'dada', label: '✅ Confirmada', paga: true },
+  { value: 'nao_dada', label: '❌ Sem Aula', paga: true },
   { value: 'cancelada', label: '🌧️ Cancelada', paga: false },
 ]
 
@@ -127,8 +127,6 @@ export function AulasCoordenador({ onCelulaVazia }) {
     setEditandoNotas(false)
     const inicial = {}
     aula.presencas?.forEach(p => {
-      // alerta_nivel lê da PRESENÇA (histórico fixo por aula)
-      // se presença não tiver ainda, cai no aluno (retrocompatibilidade)
       const alertaPresenca = p.alerta_nivel ?? p.alunos?.alerta_nivel ?? false
       const nivelPresenca = p.nivel_avaliado_prof || p.alunos?.nivel_avaliado_prof || ''
       const obsPresenca = p.obs_nivel_prof || p.alunos?.obs_nivel_prof || ''
@@ -201,21 +199,17 @@ export function AulasCoordenador({ onCelulaVazia }) {
     const alerta = alertaNivel[alunoId]
     if (!alerta) return
     try {
-      // Salva no aluno (estado atual — para relatório)
       const { error: errAluno } = await supabase
         .from('alunos')
         .update({ alerta_nivel: true, nivel_avaliado_prof: alerta.nivel, obs_nivel_prof: alerta.obs })
         .eq('id', alunoId)
       if (errAluno) throw errAluno
-
-      // Salva na presença (histórico fixo por aula)
       const { error: errPresenca } = await supabase
         .from('presencas')
         .update({ alerta_nivel: true, nivel_avaliado_prof: alerta.nivel, obs_nivel_prof: alerta.obs })
         .eq('aula_id', aulaId)
         .eq('aluno_id', alunoId)
       if (errPresenca) throw errPresenca
-
       updatePresenca(aulaId, alunoId, 'alerta_nivel', true)
       updatePresenca(aulaId, alunoId, 'nivel_avaliado_prof', alerta.nivel)
       updatePresenca(aulaId, alunoId, 'obs_nivel_prof', alerta.obs)
@@ -226,13 +220,11 @@ export function AulasCoordenador({ onCelulaVazia }) {
 
   async function handleRemoverAlertaNivel(aulaId, alunoId) {
     try {
-      // Remove só do aluno (estado atual) — presença mantém o histórico
       const { error } = await supabase
         .from('alunos')
         .update({ alerta_nivel: false, nivel_avaliado_prof: null, obs_nivel_prof: null })
         .eq('id', alunoId)
       if (error) throw error
-      // Atualiza visual local (esta aula específica some o alerta)
       updatePresenca(aulaId, alunoId, 'alerta_nivel', false)
       updatePresenca(aulaId, alunoId, 'nivel_avaliado_prof', '')
       updatePresenca(aulaId, alunoId, 'obs_nivel_prof', '')
@@ -373,7 +365,6 @@ export function AulasCoordenador({ onCelulaVazia }) {
     : []
 
   function temAlertaNivel(aulaCelula) {
-    // Lê da presença primeiro (histórico), depois do aluno (retrocompatibilidade)
     return aulaCelula.presencas?.some(p => p.alerta_nivel ?? p.alunos?.alerta_nivel)
   }
 
@@ -439,9 +430,11 @@ export function AulasCoordenador({ onCelulaVazia }) {
         <div style={{
           backgroundColor: '#151515', border: '1px solid rgba(255,255,255,0.05)',
           borderRadius: '10px', padding: '8px 14px', marginBottom: '14px',
-          display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
+          display: 'flex', alignItems: 'center', gap: '10px',
+          flexWrap: 'nowrap', overflow: 'hidden',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Aulas */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
             <span style={{ fontSize: '11px', color: '#555' }}>Aulas</span>
             <span style={{ fontSize: '11px', color: '#888', fontWeight: '600' }}>{totalAulas}</span>
             <span style={{ fontSize: '11px', color: '#333' }}>·</span>
@@ -449,8 +442,11 @@ export function AulasCoordenador({ onCelulaVazia }) {
             <span style={{ fontSize: '11px', color: '#555' }}>/</span>
             <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>{aulasNaoDadas + aulasCanceladas}</span>
           </div>
-          <span style={{ fontSize: '11px', color: '#2a2a2a' }}>·</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+
+          <span style={{ fontSize: '11px', color: '#2a2a2a', flexShrink: 0 }}>·</span>
+
+          {/* Alunos */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
             <span style={{ fontSize: '11px', color: '#555' }}>Alunos</span>
             <span style={{ fontSize: '11px', color: '#888', fontWeight: '600' }}>{totalPresentes + totalFaltas}</span>
             <span style={{ fontSize: '11px', color: '#333' }}>·</span>
@@ -458,32 +454,35 @@ export function AulasCoordenador({ onCelulaVazia }) {
             <span style={{ fontSize: '11px', color: '#555' }}>/</span>
             <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: '600' }}>{totalFaltas}</span>
           </div>
-          {/* Canceladas — só aparece se houver */}
+
+          {/* Canceladas */}
           {aulasCanceladas > 0 && (
             <>
-              <span style={{ fontSize: '11px', color: '#2a2a2a' }}>·</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '11px', color: '#2a2a2a', flexShrink: 0 }}>·</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
                 <span style={{ fontSize: '11px' }}>🌧️</span>
                 <span style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '600' }}>{aulasCanceladas}</span>
-                <span style={{ fontSize: '10px', color: '#3b82f6', opacity: 0.7 }}>
-                  · {Math.round((aulasCanceladas / totalAulas) * 100)}%
-                </span>
               </div>
             </>
           )}
-          {/* Barra de ocupação */}
+
+          {/* Barra de ocupação — empurrada para direita, tamanho fixo */}
           {(() => {
             const total = totalPresentes + totalFaltas
             const pct = total > 0 ? Math.round((totalPresentes / total) * 100) : 0
             return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
-                <div style={{ width: '60px', height: '2px', borderRadius: '2px', backgroundColor: '#222', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto', flexShrink: 0 }}>
+                <div style={{ width: '44px', height: '3px', borderRadius: '2px', backgroundColor: '#222', overflow: 'hidden', flexShrink: 0 }}>
                   <div style={{
                     width: `${pct}%`, height: '100%', borderRadius: '2px',
-                    backgroundColor: pct >= 75 ? 'rgba(34,197,94,0.5)' : pct >= 50 ? 'rgba(252,200,37,0.5)' : 'rgba(239,68,68,0.4)',
+                    background: pct >= 75
+                      ? 'linear-gradient(90deg, #22c55e, #16a34a)'
+                      : pct >= 50
+                      ? 'linear-gradient(90deg, #fcc825, #f59e0b)'
+                      : 'linear-gradient(90deg, #ef4444, #dc2626)',
                   }} />
                 </div>
-                <span style={{ fontSize: '10px', color: '#3a3a3a', fontWeight: '500' }}>{pct}%</span>
+                <span style={{ fontSize: '10px', color: '#555', fontWeight: '600', minWidth: '26px', textAlign: 'right' }}>{pct}%</span>
               </div>
             )
           })()}
@@ -653,7 +652,6 @@ export function AulasCoordenador({ onCelulaVazia }) {
               </div>
             )}
 
-            {/* Botões de ação — editar, excluir, observação */}
             {isAvulsa && !aulaFutura && (
               <div style={{ marginBottom: '12px' }}>
                 {estaEditando ? (
@@ -725,7 +723,6 @@ export function AulasCoordenador({ onCelulaVazia }) {
               </div>
             )}
 
-            {/* Botão observação para aulas não avulsas também */}
             {!isAvulsa && !aulaFutura && (
               <div style={{ marginBottom: '12px' }}>
                 <button onClick={() => setEditandoNotas(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: notasAula ? '1px solid rgba(255,255,255,0.15)' : '1px solid #2a2a2a', background: 'none', color: notasAula ? '#aaa' : '#555', fontSize: '12px', cursor: 'pointer' }}>
@@ -734,7 +731,6 @@ export function AulasCoordenador({ onCelulaVazia }) {
               </div>
             )}
 
-            {/* Painel de observação */}
             {editandoNotas && (
               <div style={{
                 backgroundColor: '#111', borderRadius: '12px',
@@ -762,7 +758,6 @@ export function AulasCoordenador({ onCelulaVazia }) {
               </div>
             )}
 
-            {/* Exibe nota salva (leitura) se não estiver editando */}
             {!editandoNotas && notasAula && (
               <div style={{
                 backgroundColor: '#111', borderRadius: '10px',

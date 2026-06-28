@@ -4,11 +4,28 @@ import { useAuth } from '../../hooks/useAuth'
 import { useAulasPendentes } from '../../hooks/useAulas'
 import useAppStore from '../../store/useAppStore'
 
+function getIniciais(nome) {
+  if (!nome) return 'U'
+  const partes = nome.trim().split(' ').filter(Boolean)
+  if (partes.length === 1) return partes[0][0].toUpperCase()
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
+}
+
+function getSobrenome(nome) {
+  if (!nome) return 'Usuário'
+  const partes = nome.trim().split(' ').filter(Boolean)
+  if (partes.length === 1) return partes[0]
+  return partes[partes.length - 1]
+}
+
 export function Header() {
   const { perfil, signOut } = useAuth()
   const { data: pendentes = 0 } = useAulasPendentes()
   const [menuOpen, setMenuOpen] = useState(false)
   const { modalidadeSelecionada, setModalidadeSelecionada } = useAppStore()
+
+  const iniciais = getIniciais(perfil?.nome)
+  const sobrenome = getSobrenome(perfil?.nome)
 
   return (
     <header style={{
@@ -67,14 +84,15 @@ export function Header() {
               <div style={{
                 width: '24px', height: '24px', borderRadius: '50%',
                 background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
               }}>
-                <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'white' }}>
-                  {(perfil?.nome || 'U')[0].toUpperCase()}
+                <span style={{ fontSize: '10px', fontWeight: '700', color: 'white' }}>
+                  {iniciais}
                 </span>
               </div>
-              <span style={{ fontSize: '12px', color: '#555' }}>
-                {perfil?.nome?.split(' ')[0] || 'Usuário'}
+              <span style={{ fontSize: '12px', color: '#555', fontWeight: '400' }}>
+                {sobrenome}
               </span>
               <ChevronDown size={12} color="#333" />
             </button>
