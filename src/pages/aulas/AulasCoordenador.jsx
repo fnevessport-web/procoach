@@ -703,6 +703,15 @@ export function AulasCoordenador({ onCelulaVazia }) {
                           style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', color: isReposicao ? COR_REPOSICAO : '#888', cursor: 'pointer', outline: 'none' }}>
                           {TIPO_PARTICIPACAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                         </select>
+                        <button onClick={() => {
+                          setPresencasLocal(prev => {
+                            const novo = { ...prev[aula.id] }
+                            delete novo[aluno.aluno_id]
+                            return { ...prev, [aula.id]: novo }
+                          })
+                        }} title="Remover da lista" style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(239,68,68,0.08)', color: '#EF4444' }}>
+                          <X size={11} />
+                        </button>
                       </div>
                     </div>
 
