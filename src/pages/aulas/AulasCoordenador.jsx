@@ -918,7 +918,31 @@ export function AulasCoordenador({ onCelulaVazia }) {
                 ) : (
                   <div style={{ padding: '12px', borderRadius: '12px', backgroundColor: '#111', border: '1px solid rgba(252,200,37,0.2)', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
                     <div style={{ fontSize: '12px', color: '#fcc825', fontWeight: '600' }}>👤 Novo Aluno</div>
-                    <input placeholder="Nome completo *" value={novoAlunoModal.nome} onChange={e => setNovoAlunoModal(n => ({ ...n, nome: e.target.value }))} style={inputStyle} />
+                    <div style={{ position: 'relative' }}>
+                      <input placeholder="Nome completo *" value={novoAlunoModal.nome} onChange={e => setNovoAlunoModal(n => ({ ...n, nome: e.target.value }))} style={inputStyle} />
+                      {(() => {
+                        const sugestoes = novoAlunoModal.nome.length >= 2
+                          ? todosAlunos?.filter(a =>
+                              a.nome.toLowerCase().includes(novoAlunoModal.nome.toLowerCase()) &&
+                              !idsNaAula.includes(a.id)
+                            ) || []
+                          : []
+                        return sugestoes.length > 0 ? (
+                          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, backgroundColor: '#1a1a1a', border: '1px solid rgba(252,200,37,0.4)', borderRadius: '10px', marginTop: '4px', maxHeight: '150px', overflowY: 'auto' }}>
+                            <div style={{ fontSize: '10px', color: '#fcc825', padding: '6px 12px 4px', borderBottom: '1px solid #2a2a2a' }}>⚠️ Já cadastrado — clique para adicionar direto</div>
+                            {sugestoes.map(a => (
+                              <button key={a.id} onClick={() => { adicionarAlunoNaLista(aula.id, a); setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '' }) }}
+                                style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2a2a2a'}
+                                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                                <span>{a.nome}</span>
+                                {a.nivel && <span style={{ fontSize: '10px', color: '#cf1b9b' }}>{a.nivel}</span>}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null
+                      })()}
+                    </div>
                     <input placeholder="Telefone (WhatsApp)" value={novoAlunoModal.telefone} onChange={e => setNovoAlunoModal(n => ({ ...n, telefone: e.target.value }))} style={inputStyle} />
                     <div>
                       <div style={{ fontSize: '10px', color: '#888', marginBottom: '5px' }}>Nível (opcional)</div>
