@@ -375,8 +375,23 @@ export function AulasCoordenador({ onCelulaVazia }) {
         <button onClick={() => navData(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px' }}>
           <ChevronLeft size={20} />
         </button>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', textTransform: 'capitalize' }}>{label}</div>
+        <div style={{ textAlign: 'center', position: 'relative' }}>
+          <div
+            onClick={() => document.getElementById('datepicker-grade').showPicker()}
+            style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', textTransform: 'capitalize', cursor: 'pointer' }}
+          >
+            {label} <span style={{ fontSize: '11px', color: '#444' }}>📅</span>
+          </div>
+          <input
+            id="datepicker-grade"
+            type="date"
+            value={data}
+            onChange={e => { setData(e.target.value); setStatusLocal({}) }}
+            style={{
+              position: 'absolute', opacity: 0, pointerEvents: 'none',
+              width: '1px', height: '1px', top: 0, left: '50%',
+            }}
+          />
           <button onClick={() => setData(format(new Date(), 'yyyy-MM-dd'))} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             fontSize: '12px', color: isHoje ? '#fcc825' : '#555', marginTop: '2px',
