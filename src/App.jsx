@@ -11,13 +11,11 @@ import { CadastrosPage } from './pages/cadastros/CadastrosPage'
 import { FinanceiroPage } from './pages/financeiro/FinanceiroPage'
 import { KPIsPage } from './pages/kpis/KPIsPage'
 import { InstallBanner } from './components/ui/InstallBanner'
+import { DisponibilidadePage } from './pages/disponibilidade/DisponibilidadePage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: {
-      retry: 1,
-      staleTime: 30000,
-    }
+    queries: { retry: 1, staleTime: 30000 }
   }
 })
 
@@ -57,19 +55,24 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AppRouter />
+        <Routes>
+          {/* Rota pública — sem login */}
+          <Route path="/disponibilidade/:token" element={<DisponibilidadePage />} />
+          {/* App com autenticação */}
+          <Route path="/*" element={<AppRouter />} />
+        </Routes>
         <Toaster
           position="top-center"
           toastOptions={{
             style: {
-              background: '#1A1D27',
+              background: '#1a1a1a',
               color: '#F0F2F5',
-              border: '1px solid #2A2D3E',
-              borderRadius: '12px',
-              fontSize: '14px',
+              border: '1px solid rgba(252,200,37,0.3)',
+              borderRadius: '10px',
+              fontSize: '13px',
             },
-            success: { iconTheme: { primary: '#00D4AA', secondary: '#0F1117' } },
-            error: { iconTheme: { primary: '#EF4444', secondary: '#0F1117' } },
+            success: { iconTheme: { primary: '#22c55e', secondary: '#1a1a1a' } },
+            error: { iconTheme: { primary: '#EF4444', secondary: '#1a1a1a' } },
           }}
         />
       </BrowserRouter>
