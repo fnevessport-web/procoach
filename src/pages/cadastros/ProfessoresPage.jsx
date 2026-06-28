@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { MessageCircle, FileText, Star, Upload, Copy, Check, Instagram, Camera, ChevronRight, X } from 'lucide-react'
+import { MessageCircle, FileText, Star, Upload, Copy, Check, Instagram, Camera, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -112,8 +112,6 @@ export default function ProfessoresPage() {
   const [mesSelecionado, setMesSelecionado] = useState(null)
   const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear())
   const fotoInputRef = useRef()
-  const boletoInputRef = useRef()
-  const nfInputRef = useRef()
   const contratoInputRef = useRef()
 
   const hoje = new Date()
@@ -350,7 +348,6 @@ export default function ProfessoresPage() {
   const totalAulas = aulasProf.length
   const totalGeral = aulasProf.length * (cardAberto?.valor_aula || 0)
 
-  // Grafico simples — ultimos 6 meses
   const dadosGrafico = Array.from({ length: 6 }, (_, i) => {
     const m = mesAtual - 5 + i
     const mes = m <= 0 ? m + 12 : m
@@ -359,40 +356,11 @@ export default function ProfessoresPage() {
   })
   const maxGrafico = Math.max(...dadosGrafico.map(d => d.qtd), 1)
 
-  function FotoAvatar({ prof, size = 56, editable = false }) {
-    return (
-      <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
-        <div style={{
-          width: size, height: size, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-          padding: '2px', boxSizing: 'border-box',
-        }}>
-          <div style={{
-            width: '100%', height: '100%', borderRadius: '50%',
-            backgroundColor: '#1a1a1a', overflow: 'hidden',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            {prof.foto_url
-              ? <img src={prof.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <span style={{ fontSize: size * 0.3, fontWeight: '700', color: '#fcc825' }}>
-                  {prof.nome?.split(' ').map(p => p[0]).slice(0, 2).join('')}
-                </span>
-            }
-          </div>
-        </div>
-        {editable && (
-          <button onClick={() => fotoInputRef.current?.click()} style={{
-            position: 'absolute', bottom: 0, right: 0,
-            width: 22, height: 22, borderRadius: '50%', border: 'none',
-            backgroundColor: '#fcc825', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Camera size={11} color="#110f0f" />
-          </button>
-        )}
-      </div>
-    )
-  }
+  const mesesFinanceiro = Array.from({ length: 12 }, (_, i) => {
+    const m = mesAtual - i <= 0 ? mesAtual - i + 12 : mesAtual - i
+    const a = mesAtual - i <= 0 ? anoAtual - 1 : anoAtual
+    return { mes: m, ano: a }
+  })
 
   return (
     <div>
@@ -460,13 +428,41 @@ export default function ProfessoresPage() {
           }}>
             <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 20px' }} />
 
-            {/* Input foto oculto */}
+            {/* Inputs ocultos */}
             <input ref={fotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadFoto} />
             <input ref={contratoInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadContrato} />
 
             {/* Header do card */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '20px' }}>
-              <FotoAvatar prof={cardAberto} size={72} editable />
+              <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
+                <div style={{
+                  width: 72, height: 72, borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                  padding: '2px', boxSizing: 'border-box',
+                }}>
+                  <div style={{
+                    width: '100%', height: '100%', borderRadius: '50%',
+                    backgroundColor: '#1a1a1a', overflow: 'hidden',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {cardAberto.foto_url
+                      ? <img src={cardAberto.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <span style={{ fontSize: '22px', fontWeight: '700', color: '#fcc825' }}>
+                          {cardAberto.nome?.split(' ').map(p => p[0]).slice(0, 2).join('')}
+                        </span>
+                    }
+                  </div>
+                </div>
+                <button onClick={() => fotoInputRef.current?.click()} style={{
+                  position: 'absolute', bottom: 0, right: 0,
+                  width: 22, height: 22, borderRadius: '50%', border: 'none',
+                  backgroundColor: '#fcc825', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {uploadandoFoto ? '...' : <Camera size={11} color="#110f0f" />}
+                </button>
+              </div>
+
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '18px', fontWeight: '800', color: '#F0F2F5', lineHeight: 1.2 }}>
                   {cardAberto.nome}
@@ -502,7 +498,7 @@ export default function ProfessoresPage() {
                   )}
                 </div>
               </div>
-              {/* Total aulas */}
+
               <div style={{ textAlign: 'center', flexShrink: 0 }}>
                 <div style={{ fontSize: '32px', fontWeight: '900', color: '#fcc825', lineHeight: 1 }}>{totalAulas}</div>
                 <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>aulas</div>
@@ -534,12 +530,11 @@ export default function ProfessoresPage() {
                   </div>
                 )}
               </div>
-              {/* Barra progresso mês */}
               <div style={{ height: '3px', borderRadius: '2px', backgroundColor: '#222', overflow: 'hidden', marginBottom: '4px' }}>
                 <div style={{
                   height: '100%', width: `${progressoMes}%`,
                   background: 'linear-gradient(90deg, #fcc825, #cf1b9b)',
-                  borderRadius: '2px', transition: 'width 1s ease',
+                  borderRadius: '2px',
                 }} />
               </div>
               <div style={{ fontSize: '10px', color: '#333', textAlign: 'right' }}>
@@ -562,7 +557,6 @@ export default function ProfessoresPage() {
                       width: '100%', borderRadius: '4px 4px 0 0',
                       height: `${Math.max((d.qtd / maxGrafico) * 48, d.qtd > 0 ? 4 : 0)}px`,
                       background: i === 5 ? 'linear-gradient(180deg, #fcc825, #cf1b9b)' : '#2a2a2a',
-                      transition: 'height 0.5s ease',
                     }} />
                     <div style={{ fontSize: '9px', color: i === 5 ? '#fcc825' : '#444' }}>{d.label}</div>
                   </div>
@@ -593,11 +587,12 @@ export default function ProfessoresPage() {
                 {MESES.map((m, i) => {
                   const { qtd, valor } = calcularGanhosMes(i + 1, anoSelecionado)
                   const isAtual = i + 1 === mesAtual && anoSelecionado === anoAtual
+                  const isSelecionado = mesSelecionado?.mes === i + 1 && mesSelecionado?.ano === anoSelecionado
                   return (
-                    <button key={m} onClick={() => setMesSelecionado(mesSelecionado?.mes === i + 1 && mesSelecionado?.ano === anoSelecionado ? null : { mes: i + 1, ano: anoSelecionado })} style={{
+                    <button key={m} onClick={() => setMesSelecionado(isSelecionado ? null : { mes: i + 1, ano: anoSelecionado })} style={{
                       backgroundColor: isAtual ? 'rgba(252,200,37,0.1)' : '#111',
                       borderRadius: '10px', padding: '8px 6px',
-                      border: isAtual ? '1px solid rgba(252,200,37,0.3)' : mesSelecionado?.mes === i+1 && mesSelecionado?.ano === anoSelecionado ? '1px solid rgba(207,27,155,0.4)' : '1px solid #1e1e1e',
+                      border: isSelecionado ? '1px solid rgba(207,27,155,0.4)' : isAtual ? '1px solid rgba(252,200,37,0.3)' : '1px solid #1e1e1e',
                       cursor: 'pointer', textAlign: 'center',
                     }}>
                       <div style={{ fontSize: '10px', color: isAtual ? '#fcc825' : '#555', fontWeight: '600' }}>{m}</div>
@@ -610,10 +605,10 @@ export default function ProfessoresPage() {
                 })}
               </div>
 
-              {/* Detalhe do mês selecionado */}
+              {/* Detalhe mês selecionado */}
               {mesSelecionado && (() => {
                 const diasMap = getAulasDoDia(mesSelecionado.mes, mesSelecionado.ano)
-                const diasComAula = Object.keys(diasMap).sort((a, b) => a - b)
+                const diasComAula = Object.keys(diasMap).sort((a, b) => Number(a) - Number(b))
                 const { qtd, valor } = calcularGanhosMes(mesSelecionado.mes, mesSelecionado.ano)
                 return (
                   <div style={{ marginTop: '12px', backgroundColor: '#0d0d0d', borderRadius: '10px', padding: '12px', border: '1px solid rgba(207,27,155,0.2)' }}>
@@ -668,7 +663,6 @@ export default function ProfessoresPage() {
             {/* ABA DADOS */}
             {aba === 'perfil' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Contato</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div><div style={labelStyle}>Telefone</div>
@@ -723,7 +717,6 @@ export default function ProfessoresPage() {
                 </div>
 
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Contrato</div>
-                <input ref={contratoInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadContrato} />
                 {cardAberto.contrato_url ? (
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <a href={cardAberto.contrato_url} target="_blank" rel="noreferrer" style={{
@@ -761,7 +754,6 @@ export default function ProfessoresPage() {
             {/* ABA FINANCEIRO */}
             {aba === 'financeiro' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dados Bancários</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div><div style={labelStyle}>Banco</div>
@@ -808,22 +800,15 @@ export default function ProfessoresPage() {
                   Histórico de pagamentos
                 </div>
 
-                {/* Lista de meses com boleto/NF */}
-                {Array.from({ length: 12 }, (_, i) => {
-                  const mes = mesAtual - i <= 0 ? mesAtual - i + 12 : mesAtual - i
-                  const ano = mesAtual - i <= 0 ? anoAtual - 1 : anoAtual
+                {mesesFinanceiro.map(({ mes, ano }) => {
                   const { qtd, valor } = calcularGanhosMes(mes, ano)
-                  if (qtd === 0 && i > 2) return null
+                  if (qtd === 0) return null
                   const boleto = boletos.find(b => b.mes === mes && b.ano === ano)
-                  const boletoRef = useRef()
-                  const nfRef = useRef()
                   return (
                     <div key={`${mes}-${ano}`} style={{
                       backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '12px 14px',
                       border: mes === mesAtual && ano === anoAtual ? '1px solid rgba(252,200,37,0.2)' : '1px solid #222',
                     }}>
-                      <input ref={boletoRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadBoleto(e, mes, ano)} />
-                      <input ref={nfRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadNF(e, mes, ano)} />
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                         <div style={{ fontSize: '13px', fontWeight: '700', color: mes === mesAtual && ano === anoAtual ? '#fcc825' : '#F0F2F5' }}>
                           {MESES[mes - 1]}/{ano}
@@ -836,32 +821,35 @@ export default function ProfessoresPage() {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '6px' }}>
-                        <button onClick={() => boleto?.boleto_url ? window.open(boleto.boleto_url, '_blank') : boletoRef.current?.click()} style={{
-                          flex: 1, padding: '6px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', border: 'none',
+                        <label style={{
+                          flex: 1, padding: '6px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer',
                           backgroundColor: boleto?.boleto_url ? 'rgba(34,197,94,0.1)' : '#111',
                           color: boleto?.boleto_url ? '#22c55e' : '#555',
                           outline: boleto?.boleto_url ? '1px solid rgba(34,197,94,0.3)' : '1px dashed #2a2a2a',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
                         }}>
+                          <input type="file" accept=".pdf" style={{ display: 'none' }}
+                            onChange={e => handleUploadBoleto(e, mes, ano)} />
                           <Upload size={11} />
                           {boleto?.boleto_url ? 'Boleto ✓' : 'Boleto'}
-                        </button>
-                        <button onClick={() => boleto?.nf_url ? window.open(boleto.nf_url, '_blank') : nfRef.current?.click()} style={{
-                          flex: 1, padding: '6px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', border: 'none',
+                        </label>
+                        <label style={{
+                          flex: 1, padding: '6px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer',
                           backgroundColor: boleto?.nf_url ? 'rgba(34,197,94,0.1)' : '#111',
                           color: boleto?.nf_url ? '#22c55e' : '#555',
                           outline: boleto?.nf_url ? '1px solid rgba(34,197,94,0.3)' : '1px dashed #2a2a2a',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
                         }}>
+                          <input type="file" accept=".pdf" style={{ display: 'none' }}
+                            onChange={e => handleUploadNF(e, mes, ano)} />
                           <FileText size={11} />
                           {boleto?.nf_url ? 'NF ✓' : 'NF'}
-                        </button>
+                        </label>
                       </div>
                     </div>
                   )
                 })}
 
-                {/* Total geral */}
                 <div style={{
                   backgroundColor: 'rgba(252,200,37,0.08)', borderRadius: '12px', padding: '14px',
                   border: '1px solid rgba(252,200,37,0.2)', textAlign: 'center',
@@ -880,7 +868,6 @@ export default function ProfessoresPage() {
             {aba === 'avaliacoes' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-                {/* Histórico visual — quadradinhos */}
                 {avaliacoes.length > 0 && (
                   <>
                     <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Histórico</div>
@@ -913,7 +900,6 @@ export default function ProfessoresPage() {
                   </>
                 )}
 
-                {/* Nova avaliação */}
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nova Avaliação</div>
                 <div style={{
                   backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '16px',
@@ -941,7 +927,6 @@ export default function ProfessoresPage() {
                   </button>
                 </div>
 
-                {/* Detalhe avaliações */}
                 {avaliacoes.map((av, i) => {
                   const tomarAcao = av.media <= 2
                   return (
@@ -956,7 +941,11 @@ export default function ProfessoresPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Star size={12} fill="#fcc825" color="#fcc825" />
                           <span style={{ fontSize: '13px', fontWeight: '700', color: tomarAcao ? '#EF4444' : '#fcc825' }}>{av.media}</span>
-                          {tomarAcao && <span style={{ fontSize: '10px', color: '#EF4444', fontWeight: '600', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(239,68,68,0.1)' }}>⚠️ TOMAR AÇÃO</span>}
+                          {tomarAcao && (
+                            <span style={{ fontSize: '10px', color: '#EF4444', fontWeight: '600', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(239,68,68,0.1)' }}>
+                              ⚠️ TOMAR AÇÃO
+                            </span>
+                          )}
                         </div>
                       </div>
                       {CRITERIOS.map(c => (
