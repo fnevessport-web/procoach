@@ -92,7 +92,7 @@ export function Header() {
                 </span>
               </div>
               <span style={{ fontSize: '12px', color: '#555', fontWeight: '400' }}>
-                {sobrenome}
+                {perfil?.nome?.split(' ')[0] || 'Usuário'}
               </span>
               <ChevronDown size={12} color="#333" />
             </button>
