@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X } from 'lucide-react'
+import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -108,6 +108,9 @@ export default function ProfessoresPage() {
   const [salvando, setSalvando] = useState(false)
   const [novasNotas, setNovasNotas] = useState({ nota_a: 0, nota_b: 0, nota_c: 0, nota_d: 0, nota_e: 0, observacao: '' })
   const [salvandoAval, setSalvandoAval] = useState(false)
+  const [modalAval, setModalAval] = useState(false)
+  const [avaliadores, setAvaliadores] = useState([{ nome: '', cargo: '' }])
+  const [dataAvaliacao, setDataAvaliacao] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [uploadandoFoto, setUploadandoFoto] = useState(false)
   const [mesSelecionado, setMesSelecionado] = useState(null)
   const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear())
@@ -309,16 +312,22 @@ export default function ProfessoresPage() {
   async function handleSalvarAvaliacao() {
     const total = novasNotas.nota_a + novasNotas.nota_b + novasNotas.nota_c + novasNotas.nota_d + novasNotas.nota_e
     if (total === 0) return alert('Preencha pelo menos uma nota')
+    const avaliadoresValidos = avaliadores.filter(a => a.nome.trim())
+    if (avaliadoresValidos.length === 0) return alert('Adicione pelo menos um avaliador')
     const media = (total / 5).toFixed(2)
     setSalvandoAval(true)
     try {
       await supabase.from('avaliacoes_professor').insert({
         professor_id: cardAberto.id, ...novasNotas,
         media: parseFloat(media),
-        data_avaliacao: format(new Date(), 'yyyy-MM-dd'),
+        data_avaliacao: dataAvaliacao,
+        avaliadores: avaliadoresValidos,
       })
       qc.invalidateQueries({ queryKey: ['avaliacoes', cardAberto.id] })
       setNovasNotas({ nota_a: 0, nota_b: 0, nota_c: 0, nota_d: 0, nota_e: 0, observacao: '' })
+      setAvaliadores([{ nome: '', cargo: '' }])
+      setDataAvaliacao(format(new Date(), 'yyyy-MM-dd'))
+      setModalAval(false)
     } catch (err) { alert('Erro: ' + err.message) }
     finally { setSalvandoAval(false) }
   }
@@ -488,7 +497,11 @@ export default function ProfessoresPage() {
                       backgroundColor: 'rgba(207,27,155,0.15)', border: '1px solid rgba(207,27,155,0.3)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                     }}>
-                      <span style={{ fontSize: '14px' }}>📷</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                          <circle cx="12" cy="12" r="4"/>
+                          <circle cx="17.5" cy="6.5" r="1" fill="#555" stroke="none"/>
+                        </svg>
                     </button>
                   )}
                   {cardAberto.data_inicio && (
@@ -918,13 +931,78 @@ export default function ProfessoresPage() {
                       value={novasNotas.observacao}
                       onChange={e => setNovasNotas(n => ({ ...n, observacao: e.target.value }))} />
                   </div>
-                  <button onClick={handleSalvarAvaliacao} disabled={salvandoAval} style={{
+                  <button onClick={() => setModalAval(true)} style={{
                     width: '100%', padding: '11px', borderRadius: '10px', border: 'none',
                     background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
                     color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
                   }}>
-                    {salvandoAval ? 'Salvando...' : '⭐ Salvar Avaliação'}
+                    ⭐ Salvar Avaliação
                   </button>
+
+                  {/* Modal avaliadores */}
+                  {modalAval && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }}
+                      onClick={() => setModalAval(false)}>
+                      <div onClick={e => e.stopPropagation()} style={{
+                        width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0',
+                        padding: '20px 16px', boxSizing: 'border-box', maxHeight: '80vh', overflowY: 'auto',
+                      }}>
+                        <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
+                        <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '4px' }}>Confirmar avaliação</div>
+                        <div style={{ fontSize: '11px', color: '#555', marginBottom: '16px' }}>{cardAberto.nome}</div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div>
+                            <div style={labelStyle}>Data da avaliação</div>
+                            <input type="date" style={inputStyle} value={dataAvaliacao} onChange={e => setDataAvaliacao(e.target.value)} />
+                          </div>
+
+                          <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Avaliadores</div>
+
+                          {avaliadores.map((av, i) => (
+                            <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <input style={inputStyle} placeholder="Nome do avaliador *"
+                                  value={av.nome} onChange={e => setAvaliadores(prev => prev.map((a, j) => j === i ? { ...a, nome: e.target.value } : a))} />
+                                <input style={inputStyle} placeholder="Cargo (ex: Gestor, Coord. Técnico)"
+                                  value={av.cargo} onChange={e => setAvaliadores(prev => prev.map((a, j) => j === i ? { ...a, cargo: e.target.value } : a))} />
+                              </div>
+                              {avaliadores.length > 1 && (
+                                <button onClick={() => setAvaliadores(prev => prev.filter((_, j) => j !== i))} style={{
+                                  padding: '6px', borderRadius: '8px', border: 'none',
+                                  backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer', marginTop: '2px',
+                                }}>
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+
+                          <button onClick={() => setAvaliadores(prev => [...prev, { nome: '', cargo: '' }])} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                            padding: '8px', borderRadius: '8px', border: '1px dashed #2a2a2a',
+                            background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer',
+                          }}>
+                            <Plus size={13} /> Adicionar avaliador
+                          </button>
+
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                            <button onClick={() => setModalAval(false)} style={{
+                              flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #2a2a2a',
+                              background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer',
+                            }}>Cancelar</button>
+                            <button onClick={handleSalvarAvaliacao} disabled={salvandoAval} style={{
+                              flex: 2, padding: '12px', borderRadius: '10px', border: 'none',
+                              background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                              color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                            }}>
+                              {salvandoAval ? 'Salvando...' : '⭐ Confirmar'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {avaliacoes.map((av, i) => {
@@ -937,6 +1015,11 @@ export default function ProfessoresPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                         <div style={{ fontSize: '12px', color: '#555' }}>
                           {avaliacoes.length - i}ª avaliação · {format(new Date(av.data_avaliacao + 'T12:00'), 'dd/MM/yyyy')}
+                          {av.avaliadores?.length > 0 && (
+                            <div style={{ fontSize: '10px', color: '#444', marginTop: '2px' }}>
+                              {av.avaliadores.map(a => `${a.nome}${a.cargo ? ` (${a.cargo})` : ''}`).join(' · ')}
+                            </div>
+                          )}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Star size={12} fill="#fcc825" color="#fcc825" />
