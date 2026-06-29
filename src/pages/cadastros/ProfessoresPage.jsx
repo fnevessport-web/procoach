@@ -851,7 +851,7 @@ export default function ProfessoresPage() {
                   <div><div style={labelStyle}>Início na empresa</div><input type="date" style={inputStyle} value={form.data_inicio} onChange={e => set('data_inicio', e.target.value)} /></div>
                   <div>
                     <div style={labelStyle}>Modalidades</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
                       {modalidades.map(m => {
                         const selecionada = (form.modalidades_ids || []).includes(m.id)
                         return (
@@ -859,20 +859,13 @@ export default function ProfessoresPage() {
                             const atual = form.modalidades_ids || []
                             set('modalidades_ids', selecionada ? atual.filter(id => id !== m.id) : [...atual, m.id])
                           }} style={{
-                            display: 'flex', alignItems: 'center', gap: '6px',
-                            padding: '5px 10px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                            background: selecionada ? 'rgba(252,200,37,0.15)' : '#111',
-                            outline: selecionada ? '1px solid rgba(252,200,37,0.5)' : '1px solid #2a2a2a',
-                            color: selecionada ? '#fcc825' : '#555', fontSize: '11px',
+                            padding: '8px 4px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                            background: selecionada ? '#fcc825' : '#111',
+                            outline: selecionada ? 'none' : '1px solid #2a2a2a',
+                            color: selecionada ? '#110f0f' : '#555',
+                            fontSize: '11px', fontWeight: selecionada ? '700' : '400',
+                            textAlign: 'center', lineHeight: 1.3,
                           }}>
-                            <div style={{
-                              width: '10px', height: '10px', borderRadius: '2px', flexShrink: 0,
-                              backgroundColor: selecionada ? '#fcc825' : 'transparent',
-                              border: selecionada ? 'none' : '1px solid #444',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}>
-                              {selecionada && <span style={{ fontSize: '8px', color: '#110f0f', fontWeight: '900' }}>✓</span>}
-                            </div>
                             {m.nome}
                           </button>
                         )
