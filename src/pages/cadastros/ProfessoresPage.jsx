@@ -40,7 +40,7 @@ const FORM_VAZIO = {
   id: null, nome: '', email: '', telefone: '', instagram: '', apelido: '',
   tem_cref: false, numero_cref: '', cref_url: '',
   cnpj: '', razao_social: '',
-  modalidade_id: '', valor_aula: '', ativo: true,
+  modalidade_id: '', modalidades_ids: [], valor_aula: '', ativo: true,
   nascimento: '', cidade_nascimento: '', estado_nascimento: '',
   cpf: '', cep: '', endereco: '', numero: '', complemento: '',
   bairro: '', cidade: '', estado: '', data_inicio: '',
@@ -224,7 +224,7 @@ export default function ProfessoresPage() {
     setForm({
       id: prof.id, nome: prof.nome || '', email: prof.email || '',
       telefone: prof.telefone || '', instagram: prof.instagram || '',
-      modalidade_id: prof.modalidade_id || '', valor_aula: prof.valor_aula || '',
+      modalidade_id: prof.modalidade_id || '', modalidades_ids: prof.modalidades_ids || [], valor_aula: prof.valor_aula || '',
       ativo: prof.ativo !== false, nascimento: prof.nascimento || '',
       cidade_nascimento: prof.cidade_nascimento || '',
       estado_nascimento: prof.estado_nascimento || '',
@@ -258,7 +258,8 @@ export default function ProfessoresPage() {
     const payload = {
       nome: form.nome.trim(), email: form.email || null,
       telefone: form.telefone || null, instagram: form.instagram || null,
-      modalidade_id: form.modalidade_id || null,
+      modalidade_id: form.modalidades_ids?.[0] || form.modalidade_id || null,
+      modalidades_ids: form.modalidades_ids?.length > 0 ? form.modalidades_ids : null,
       valor_aula: form.valor_aula ? parseFloat(String(form.valor_aula).replace(',', '.')) : null,
       ativo: form.ativo, nascimento: form.nascimento || null,
       cidade_nascimento: form.cidade_nascimento || null,
@@ -443,6 +444,16 @@ export default function ProfessoresPage() {
   const DIAS_SEMANA = ['segunda','terca','quarta','quinta','sexta','sabado','domingo']
   const DIAS_LABEL = ['SEG','TER','QUA','QUI','SEX','SAB','DOM']
   const HORARIOS_GRADE = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
+  const MODALIDADES_PROCOPIO = ['Tênis', 'Padel', 'Squash', 'Pickleball']
+  const MODALIDADES_BEACH = ['Beach Tênis', 'Futevôlei', 'Vôlei de Praia']
+
+  function getLogosEmpresas(prof) {
+    const mods = prof.modalidades_ids || []
+    const nomesProf = modalidades.filter(m => mods.includes(m.id)).map(m => m.nome)
+    const temProcopio = nomesProf.some(n => MODALIDADES_PROCOPIO.some(p => n.toLowerCase().includes(p.toLowerCase())))
+    const temBeach = nomesProf.some(n => MODALIDADES_BEACH.some(b => n.toLowerCase().includes(b.toLowerCase())))
+    return { temProcopio, temBeach }
+  }
   const COR_DISP = { disponivel: '#22c55e', indisponivel: '#EF4444', talvez: '#fcc825' }
   const getStatusDisp = (dia, horario) => disponibilidades.find(d => d.dia_semana === dia && d.horario === horario)?.status || null
 
@@ -559,9 +570,21 @@ export default function ProfessoresPage() {
                 </div>
               </div>
 
-              <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                <div style={{ fontSize: '32px', fontWeight: '900', color: '#fcc825', lineHeight: 1 }}>{totalAulas}</div>
-                <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>aulas</div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '32px', fontWeight: '900', color: '#fcc825', lineHeight: 1 }}>{totalAulas}</div>
+                  <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>aulas</div>
+                </div>
+                {(() => {
+                  const { temProcopio, temBeach } = getLogosEmpresas(cardAberto)
+                  return (temProcopio || temBeach) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {temProcopio && <img src="/images/logoprocopio.png" alt="Procopio" style={{ height: '16px', objectFit: 'contain', opacity: 0.8 }} />}
+                      {temProcopio && temBeach && <span style={{ color: '#333', fontSize: '10px' }}>|</span>}
+                      {temBeach && <img src="/images/beacharena.png" alt="Beach Arena" style={{ height: '16px', objectFit: 'contain', opacity: 0.8 }} />}
+                    </div>
+                  )
+                })()}
               </div>
             </div>
 
@@ -813,11 +836,29 @@ export default function ProfessoresPage() {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div><div style={labelStyle}>Início na empresa</div><input type="date" style={inputStyle} value={form.data_inicio} onChange={e => set('data_inicio', e.target.value)} /></div>
-                  <div><div style={labelStyle}>Modalidade</div>
-                    <select style={inputStyle} value={form.modalidade_id} onChange={e => set('modalidade_id', e.target.value)}>
-                      <option value="">Selecione</option>
-                      {modalidades.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                    </select></div>
+                  <div>
+                    <div style={labelStyle}>Modalidades</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {modalidades.map(m => {
+                        const selecionada = (form.modalidades_ids || []).includes(m.id)
+                        return (
+                          <button key={m.id} onClick={() => {
+                            const atual = form.modalidades_ids || []
+                            set('modalidades_ids', selecionada ? atual.filter(id => id !== m.id) : [...atual, m.id])
+                          }} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '7px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                            background: selecionada ? 'rgba(252,200,37,0.1)' : '#111',
+                            outline: selecionada ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+                            color: selecionada ? '#fcc825' : '#888', fontSize: '12px', width: '100%',
+                          }}>
+                            <span>{m.icone_emoji} {m.nome}</span>
+                            <span>{selecionada ? '✓' : '+'}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
 
 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Dados do CNPJ</div>
