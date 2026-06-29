@@ -700,7 +700,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
           <div style={{ minWidth: `${50 + quadrasParaGrade.length * 140}px` }}>
 
             {/* Cabeçalho com grupos por empresa */}
-            <div style={{ display: 'flex', marginBottom: '2px' }}>
+            <div style={{ display: 'flex', marginBottom: '2px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#110f0f', paddingTop: '4px', paddingBottom: '4px' }}>
               <div style={{ width: '50px', flexShrink: 0 }} />
               {gruposParaGrade.map((grupo, gi) => (
                 <div key={grupo.empresa} style={{ display: 'flex', alignItems: 'center' }}>
