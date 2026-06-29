@@ -362,15 +362,52 @@ export function AulasCoordenador({ onCelulaVazia }) {
     return a.turmas?.modalidades?.nome === modalidadeSelecionada.nome
   }) || []
 
-  const quadrasParaGrade = (todasQuadras?.map(q => q.nome) || [])
-    .sort((a, b) => {
-      const ordem = ['Quadra 4', 'Quadra 3', 'Quadra 2', 'Quadra 1']
-      const ia = ordem.indexOf(a), ib = ordem.indexOf(b)
-      if (ia === -1 && ib === -1) return a.localeCompare(b)
-      if (ia === -1) return 1
-      if (ib === -1) return -1
-      return ia - ib
-    })
+  const [filtroModalidadeGrade, setFiltroModalidadeGrade] = useState('todas')
+  const [filtroGradeAberto, setFiltroGradeAberto] = useState(false)
+
+  const GRUPOS_EMPRESA = [
+    {
+      empresa: 'PROCOPIO',
+      cor: '#fcc825',
+      quadras: ['Quadra 4', 'Quadra 3', 'Quadra 2', 'Quadra 1', 'Quadra de Padel'],
+    },
+    {
+      empresa: 'BEACH ARENA',
+      cor: '#3b82f6',
+      quadras: ['Quadra 1 Areia', 'Quadra 3 Areia', 'Quadra 5 Areia'],
+    },
+  ]
+
+  const todasQuadrasNomes = (todasQuadras?.map(q => q.nome) || [])
+
+  const quadrasFiltradasPorModalidade = filtroModalidadeGrade === 'todas'
+    ? todasQuadrasNomes
+    : (() => {
+        const mod = todasQuadras?.find(q => {
+          const aula = aulasFiltradas.find(a => getQuadraNome(a) === q.nome)
+          return aula?.turmas?.modalidades?.nome === filtroModalidadeGrade ||
+            parseObservacoes(aula?.observacoes)?.nivel === filtroModalidadeGrade
+        })
+        const quadrasDasMod = aulasFiltradas
+          .filter(a => {
+            const nomeMod = a.turmas?.modalidades?.nome || ''
+            return nomeMod === filtroModalidadeGrade
+          })
+          .map(a => getQuadraNome(a))
+        return [...new Set(quadrasDasMod)]
+      })()
+
+  const gruposParaGrade = GRUPOS_EMPRESA.map(g => ({
+    ...g,
+    quadras: g.quadras.filter(q => todasQuadrasNomes.includes(q) &&
+      (filtroModalidadeGrade === 'todas' || quadrasFiltradasPorModalidade.includes(q)))
+  })).filter(g => g.quadras.length > 0)
+
+  const quadrasParaGrade = gruposParaGrade.flatMap(g => g.quadras)
+
+  const modalidadesNaGrade = [...new Set(
+    aulasFiltradas.map(a => a.turmas?.modalidades?.nome).filter(Boolean)
+  )]
 
   const horariosGrade = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
 
@@ -449,9 +486,50 @@ export function AulasCoordenador({ onCelulaVazia }) {
         </button>
       </div>
 
-      {/* Botão ação em massa */}
-      {totalAulas > 0 && !isFuturo && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+      {/* Botões filtro modalidade + ação em massa */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+        {/* Filtro modalidade */}
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => setFiltroGradeAberto(!filtroGradeAberto)} style={{
+            display: 'flex', alignItems: 'center', gap: '5px',
+            padding: '6px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+            background: filtroModalidadeGrade !== 'todas' ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
+            outline: filtroModalidadeGrade !== 'todas' ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+            color: filtroModalidadeGrade !== 'todas' ? '#fcc825' : '#555', fontSize: '11px',
+          }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+            {filtroModalidadeGrade === 'todas' ? 'Modalidade' : filtroModalidadeGrade}
+          </button>
+          {filtroGradeAberto && (
+            <>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 30 }} onClick={() => setFiltroGradeAberto(false)} />
+              <div style={{
+                position: 'absolute', right: 0, top: '100%', marginTop: '4px',
+                backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+                borderRadius: '10px', padding: '8px', zIndex: 40,
+                minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              }}>
+                {['todas', ...modalidadesNaGrade].map(m => (
+                  <button key={m} onClick={() => { setFiltroModalidadeGrade(m); setFiltroGradeAberto(false) }} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
+                    cursor: 'pointer', fontSize: '12px', marginBottom: '2px',
+                    background: filtroModalidadeGrade === m ? 'rgba(252,200,37,0.1)' : 'transparent',
+                    color: filtroModalidadeGrade === m ? '#fcc825' : '#888',
+                  }}>
+                    {m === 'todas' ? 'Todas' : m}
+                    {filtroModalidadeGrade === m && <span>✓</span>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Ação em massa */}
+        {totalAulas > 0 && !isFuturo && (
           <button
             onClick={() => setModalMassa('menu')}
             title="Ação em massa"
@@ -465,8 +543,8 @@ export function AulasCoordenador({ onCelulaVazia }) {
           >
             <Zap size={14} color="#555" />
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Modal ação em massa */}
       {modalMassa && (
@@ -621,17 +699,31 @@ export function AulasCoordenador({ onCelulaVazia }) {
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ minWidth: `${50 + quadrasParaGrade.length * 140}px` }}>
 
-            {/* Cabeçalho quadras */}
-            <div style={{ display: 'flex', marginBottom: '4px' }}>
+            {/* Cabeçalho com grupos por empresa */}
+            <div style={{ display: 'flex', marginBottom: '2px' }}>
               <div style={{ width: '50px', flexShrink: 0 }} />
-              {quadrasParaGrade.map(q => (
-                <div key={q} style={{
-                  width: '140px', flexShrink: 0, textAlign: 'center',
-                  fontSize: '11px', fontWeight: '700', color: '#fcc825',
-                  letterSpacing: '0.5px', textTransform: 'uppercase',
-                  padding: '6px 4px', backgroundColor: '#151515',
-                  borderRadius: '8px', marginRight: '4px',
-                }}>{q}</div>
+              {gruposParaGrade.map((grupo, gi) => (
+                <div key={grupo.empresa} style={{ display: 'flex', alignItems: 'center' }}>
+                  {gi > 0 && (
+                    <div style={{ width: '1px', backgroundColor: '#2a2a2a', margin: '0 6px', height: '28px', alignSelf: 'center' }} />
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div style={{ fontSize: '9px', color: grupo.cor, fontWeight: '700', letterSpacing: '1px', paddingLeft: '4px', opacity: 0.8 }}>
+                      {grupo.empresa}
+                    </div>
+                    <div style={{ display: 'flex' }}>
+                      {grupo.quadras.map(q => (
+                        <div key={q} style={{
+                          width: '140px', flexShrink: 0, textAlign: 'center',
+                          fontSize: '10px', fontWeight: '700', color: grupo.cor,
+                          letterSpacing: '0.5px', textTransform: 'uppercase',
+                          padding: '5px 4px', backgroundColor: '#151515',
+                          borderRadius: '8px', marginRight: '4px',
+                        }}>{q}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
 
