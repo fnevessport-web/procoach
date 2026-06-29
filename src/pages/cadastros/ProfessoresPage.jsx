@@ -547,7 +547,7 @@ export default function ProfessoresPage() {
                     </button>
                   )}
                   {cardAberto.instagram && (
-                    <button onClick={() => window.open(`https://instagram.com/${cardAberto.instagram.replace('@','')}`, '_blank')} style={{ width: '30px', height: '30px', borderRadius: '8px', backgroundColor: 'rgba(207,27,155,0.15)', border: '1px solid rgba(207,27,155,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <button onClick={() => window.open(`https://instagram.com/${cardAberto.instagram.replace('@','').replace(/.*instagram\.com\//,'')}`, '_blank')} style={{ width: '30px', height: '30px', borderRadius: '8px', backgroundColor: 'rgba(207,27,155,0.15)', border: '1px solid rgba(207,27,155,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#555" stroke="none"/>
                       </svg>
