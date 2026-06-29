@@ -780,7 +780,7 @@ export default function ProfessoresPage() {
                   <span>{form.tem_cref ? 'Possui CREF' : 'Possui CREF ou Liminar?'}</span>
                 </button>
 
-                {form.tem_cref && (
+                {(form.tem_cref || cardAberto?.cref_url) && (
                   <>
                     <input style={inputStyle} placeholder="Número do CREF (ex: 123456-G/SP)"
                       value={form.numero_cref} onChange={e => set('numero_cref', e.target.value)} />
