@@ -523,69 +523,73 @@ export default function ProfessoresPage() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '20px' }}>
-              <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
-                <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', padding: '2px', boxSizing: 'border-box' }}>
-                  <div style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: '#1a1a1a', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {cardAberto.foto_url
-                      ? <a href={cardAberto.foto_url} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
-                          <img src={cardAberto.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        </a>
-                      : <span style={{ fontSize: '22px', fontWeight: '700', color: '#fcc825' }}>
-                          {cardAberto.nome?.split(' ').map(p => p[0]).slice(0, 2).join('')}
-                        </span>
-                    }
+
+              {/* Foto maior + botão câmera + desde */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                <div style={{ position: 'relative', width: 84, height: 84 }}>
+                  <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', padding: '2px', boxSizing: 'border-box' }}>
+                    <div style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: '#1a1a1a', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {cardAberto.foto_url
+                        ? <a href={cardAberto.foto_url} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
+                            <img src={cardAberto.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </a>
+                        : <span style={{ fontSize: '26px', fontWeight: '700', color: '#fcc825' }}>
+                            {cardAberto.nome?.split(' ').map(p => p[0]).slice(0, 2).join('')}
+                          </span>
+                      }
+                    </div>
                   </div>
+                  <button onClick={() => fotoInputRef.current?.click()} style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: '50%', border: 'none', backgroundColor: '#fcc825', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {uploadandoFoto ? '...' : <Camera size={12} color="#110f0f" />}
+                  </button>
                 </div>
-                <button onClick={() => fotoInputRef.current?.click()} style={{ position: 'absolute', bottom: 0, right: 0, width: 22, height: 22, borderRadius: '50%', border: 'none', backgroundColor: '#fcc825', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {uploadandoFoto ? '...' : <Camera size={11} color="#110f0f" />}
-                </button>
+                {cardAberto.data_inicio && (
+                  <div style={{ fontSize: '9px', color: '#444', textAlign: 'center', textTransform: 'capitalize' }}>
+                    desde {format(new Date(cardAberto.data_inicio + 'T12:00'), "MMM/yyyy", { locale: ptBR })}
+                  </div>
+                )}
               </div>
 
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '18px', fontWeight: '800', color: '#F0F2F5', lineHeight: 1.2 }}>
+              {/* Nome + contatos */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '17px', fontWeight: '800', color: '#F0F2F5', lineHeight: 1.2 }}>
                   {cardAberto.apelido || cardAberto.nome}
                   {cardAberto.apelido && <div style={{ fontSize: '11px', color: '#555', fontWeight: '400', marginTop: '2px' }}>{cardAberto.nome}</div>}
                 </div>
-                <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>
-                  {cardAberto.nascimento && `${format(new Date(cardAberto.nascimento + 'T12:00'), 'dd/MM/yyyy')} · `}
-                  {cardAberto.cidade_nascimento && `${cardAberto.cidade_nascimento}/`}
-                  {cardAberto.estado_nascimento} {cardAberto.estado_nascimento && '🇧🇷'}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
                   {cardAberto.telefone && (
-                    <button onClick={() => window.open(`https://wa.me/55${cardAberto.telefone.replace(/\D/g,'')}`, '_blank')} style={{ width: '30px', height: '30px', borderRadius: '8px', backgroundColor: 'rgba(37,211,102,0.15)', border: '1px solid rgba(37,211,102,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                      <MessageCircle size={14} color="#25D166" />
+                    <button onClick={() => window.open(`https://wa.me/55${cardAberto.telefone.replace(/\D/g,'')}`, '_blank')} style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(37,211,102,0.15)', border: '1px solid rgba(37,211,102,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                      <MessageCircle size={15} color="#25D166" />
                     </button>
                   )}
                   {cardAberto.instagram && (
-                    <button onClick={() => window.open(`https://instagram.com/${cardAberto.instagram.replace('@','').replace(/.*instagram\.com\//,'')}`, '_blank')} style={{ width: '30px', height: '30px', borderRadius: '8px', backgroundColor: 'rgba(207,27,155,0.15)', border: '1px solid rgba(207,27,155,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <button onClick={() => window.open(`https://instagram.com/${cardAberto.instagram.replace('@','').replace(/.*instagram\.com\//,'')}`, '_blank')} style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(207,27,155,0.15)', border: '1px solid rgba(207,27,155,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#555" stroke="none"/>
                       </svg>
                     </button>
                   )}
-                  {cardAberto.data_inicio && (
-                    <span style={{ fontSize: '10px', color: '#444' }}>desde {format(new Date(cardAberto.data_inicio + 'T12:00'), "MMM/yyyy", { locale: ptBR })}</span>
-                  )}
                 </div>
               </div>
 
+              {/* Logo empresa + aulas */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '32px', fontWeight: '900', color: '#fcc825', lineHeight: 1 }}>{totalAulas}</div>
-                  <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>aulas</div>
-                </div>
                 {(() => {
                   const { temProcopio, temBeach } = getLogosEmpresas(cardAberto)
                   return (temProcopio || temBeach) && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {temProcopio && <img src="/images/logoprocopio.png" alt="Procopio" style={{ height: '16px', objectFit: 'contain', opacity: 0.8 }} />}
+                      {temProcopio && <img src="/images/logoprocopio.png" alt="Procopio" style={{ height: '22px', objectFit: 'contain', opacity: 0.9 }} />}
                       {temProcopio && temBeach && <span style={{ color: '#333', fontSize: '10px' }}>|</span>}
-                      {temBeach && <img src="/images/beacharena.png" alt="Beach Arena" style={{ height: '16px', objectFit: 'contain', opacity: 0.8 }} />}
+                      {temBeach && <img src="/images/beacharena.png" alt="Beach Arena" style={{ height: '22px', objectFit: 'contain', opacity: 0.9 }} />}
                     </div>
                   )
                 })()}
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '34px', fontWeight: '900', color: '#fcc825', lineHeight: 1 }}>{totalAulas}</div>
+                  <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>aulas</div>
+                </div>
               </div>
+
             </div>
 
             {/* Financeiro resumo topo */}
