@@ -837,10 +837,8 @@ export default function ProfessoresPage() {
                 )}
 
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Dados Pessoais</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div><div style={labelStyle}>Nascimento</div><input type="date" style={inputStyle} value={form.nascimento} onChange={e => set('nascimento', e.target.value)} /></div>
-                  <div><div style={labelStyle}>CPF</div><input style={inputStyle} placeholder="000.000.000-00" value={form.cpf} onChange={e => set('cpf', e.target.value)} /></div>
-                </div>
+                <div><div style={labelStyle}>Nascimento</div><input type="date" style={inputStyle} value={form.nascimento} onChange={e => set('nascimento', e.target.value)} /></div>
+                <div><div style={labelStyle}>CPF</div><input style={inputStyle} placeholder="000.000.000-00" value={form.cpf} onChange={e => set('cpf', e.target.value)} /></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div><div style={labelStyle}>Cidade Nasc.</div><input style={inputStyle} placeholder="Cidade" value={form.cidade_nascimento} onChange={e => set('cidade_nascimento', e.target.value)} /></div>
                   <div><div style={labelStyle}>Estado Nasc.</div>
@@ -853,7 +851,7 @@ export default function ProfessoresPage() {
                   <div><div style={labelStyle}>Início na empresa</div><input type="date" style={inputStyle} value={form.data_inicio} onChange={e => set('data_inicio', e.target.value)} /></div>
                   <div>
                     <div style={labelStyle}>Modalidades</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                       {modalidades.map(m => {
                         const selecionada = (form.modalidades_ids || []).includes(m.id)
                         return (
