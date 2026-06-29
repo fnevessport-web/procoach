@@ -723,7 +723,7 @@ export default function ProfessoresPage() {
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <span style={{ fontSize: '12px', fontWeight: '600', color: '#cf1b9b' }}>R${Number(ex.valor).toFixed(2).replace('.', ',')}</span>
-                                    <button onClick={() => setFormExtra({ id: ex.id, data_pagamento: ex.data_pagamento, descricao: ex.descricao, valor: ex.valor })} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(252,200,37,0.1)', color: '#fcc825', cursor: 'pointer' }}>
+                                    <button onClick={() => { setFormExtra({ id: ex.id, data_pagamento: ex.data_pagamento, descricao: ex.descricao, valor: ex.valor }); setModalExtra(true) }} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(252,200,37,0.1)', color: '#fcc825', cursor: 'pointer' }}>
                                       <Pencil size={11} />
                                     </button>
                                     <button onClick={async () => {
