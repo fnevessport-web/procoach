@@ -40,7 +40,7 @@ const FORM_VAZIO = {
   id: null, nome: '', email: '', telefone: '', instagram: '', apelido: '',
   tem_cref: false, numero_cref: '', cref_url: '',
   cnpj: '', razao_social: '',
-  modalidade_id: '', modalidades_ids: [], valor_aula: '', ativo: true,
+  modalidade_id: '', modalidades_ids: [], valor_aula: '', salario_fixo: '', funcao: 'professor', ativo: true,
   nascimento: '', cidade_nascimento: '', estado_nascimento: '',
   cpf: '', cep: '', endereco: '', numero: '', complemento: '',
   bairro: '', cidade: '', estado: '', data_inicio: '',
@@ -119,6 +119,8 @@ export default function ProfessoresPage() {
   const [formExtra, setFormExtra] = useState({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '' })
   const [salvandoExtra, setSalvandoExtra] = useState(false)
   const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear())
+  const [filtroFuncao, setFiltroFuncao] = useState('todos')
+  const [filtroEmpresa, setFiltroEmpresa] = useState('todas')
   const fotoInputRef = useRef()
   const contratoInputRef = useRef()
 
@@ -224,7 +226,7 @@ export default function ProfessoresPage() {
     setForm({
       id: prof.id, nome: prof.nome || '', email: prof.email || '',
       telefone: prof.telefone || '', instagram: prof.instagram || '',
-      modalidade_id: prof.modalidade_id || '', modalidades_ids: prof.modalidades_ids || [], valor_aula: prof.valor_aula || '',
+      modalidade_id: prof.modalidade_id || '', modalidades_ids: prof.modalidades_ids || [], valor_aula: prof.valor_aula || '', salario_fixo: prof.salario_fixo || '', funcao: prof.funcao || 'professor',
       ativo: prof.ativo !== false, nascimento: prof.nascimento || '',
       cidade_nascimento: prof.cidade_nascimento || '',
       estado_nascimento: prof.estado_nascimento || '',
@@ -260,6 +262,8 @@ export default function ProfessoresPage() {
       telefone: form.telefone || null, instagram: form.instagram || null,
       modalidade_id: form.modalidades_ids?.[0] || form.modalidade_id || null,
       modalidades_ids: form.modalidades_ids?.length > 0 ? form.modalidades_ids : null,
+      funcao: form.funcao || 'professor',
+      salario_fixo: form.salario_fixo ? parseFloat(String(form.salario_fixo).replace(',', '.')) : null,
       valor_aula: form.valor_aula ? parseFloat(String(form.valor_aula).replace(',', '.')) : null,
       ativo: form.ativo, nascimento: form.nascimento || null,
       cidade_nascimento: form.cidade_nascimento || null,
@@ -467,8 +471,8 @@ export default function ProfessoresPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>Professores</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>Colaboradores</h2>
         <button onClick={() => { setForm(FORM_VAZIO); setModalCriar(true) }} style={{
           padding: '8px 16px', borderRadius: '10px', border: 'none',
           background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
@@ -476,9 +480,56 @@ export default function ProfessoresPage() {
         }}>+ Novo</button>
       </div>
 
+      {/* Filtros */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        {[
+          { key: 'todos', label: 'Todos' },
+          { key: 'professor', label: 'Professores' },
+          { key: 'gerente', label: 'Gerentes' },
+          { key: 'auxiliar', label: 'Auxiliares' },
+        ].map(f => (
+          <button key={f.key} onClick={() => setFiltroFuncao(f.key)} style={{
+            padding: '4px 10px', borderRadius: '20px', border: 'none', fontSize: '11px',
+            cursor: 'pointer', fontWeight: filtroFuncao === f.key ? '600' : '400',
+            background: filtroFuncao === f.key ? 'rgba(252,200,37,0.15)' : '#1a1a1a',
+            color: filtroFuncao === f.key ? '#fcc825' : '#555',
+            outline: filtroFuncao === f.key ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+          }}>{f.label}</button>
+        ))}
+        <div style={{ width: '1px', backgroundColor: '#2a2a2a', margin: '0 2px' }} />
+        {[
+          { key: 'todas', label: 'Todas' },
+          { key: 'procopio', label: 'Procopio', logo: '/images/logoprocopio.png' },
+          { key: 'beach', label: 'Beach Arena', logo: '/images/logobeacharena.png' },
+        ].map(f => (
+          <button key={f.key} onClick={() => setFiltroEmpresa(f.key)} style={{
+            padding: '4px 10px', borderRadius: '20px', border: 'none', fontSize: '11px',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
+            fontWeight: filtroEmpresa === f.key ? '600' : '400',
+            background: filtroEmpresa === f.key ? 'rgba(207,27,155,0.15)' : '#1a1a1a',
+            color: filtroEmpresa === f.key ? '#cf1b9b' : '#555',
+            outline: filtroEmpresa === f.key ? '1px solid rgba(207,27,155,0.4)' : '1px solid #2a2a2a',
+          }}>
+            {f.logo && <img src={f.logo} style={{ height: '12px', objectFit: 'contain', opacity: 0.8 }} />}
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {isLoading ? <p style={{ color: '#555' }}>Carregando...</p> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-          {professores.map(prof => (
+          {professores.filter(prof => {
+            if (filtroFuncao !== 'todos' && prof.funcao !== filtroFuncao) return false
+            if (filtroEmpresa !== 'todas') {
+              const mods = prof.modalidades_ids || []
+              const nomesProf = modalidades.filter(m => mods.includes(m.id)).map(m => m.nome)
+              const temProcopio = nomesProf.some(n => MODALIDADES_PROCOPIO.some(p => n.toLowerCase().includes(p.toLowerCase())))
+              const temBeach = nomesProf.some(n => MODALIDADES_BEACH.some(b => n.toLowerCase().includes(b.toLowerCase())))
+              if (filtroEmpresa === 'procopio' && !temProcopio) return false
+              if (filtroEmpresa === 'beach' && !temBeach) return false
+            }
+            return true
+          }).map(prof => (
             <div key={prof.id} onClick={() => abrirCard(prof)} style={{ cursor: 'pointer', textAlign: 'center' }}>
               <div style={{
                 width: '80px', height: '80px', margin: '0 auto 8px',
@@ -503,7 +554,9 @@ export default function ProfessoresPage() {
                 {prof.apelido || prof.nome?.split(' ')[0]}
               </div>
               <div style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>
-                {prof.modalidades?.nome?.split(' ')[0] || '—'}
+                {prof.funcao && prof.funcao !== 'professor'
+                  ? prof.funcao.charAt(0).toUpperCase() + prof.funcao.slice(1)
+                  : prof.modalidades?.nome?.split(' ')[0] || '—'}
               </div>
               <div style={{ display: 'inline-block', marginTop: '4px', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: prof.ativo ? '#22c55e' : '#EF4444' }} />
             </div>
@@ -769,6 +822,20 @@ export default function ProfessoresPage() {
                 </div>
                 <div><div style={labelStyle}>E-mail</div><input style={inputStyle} placeholder="email@exemplo.com" value={form.email} onChange={e => set('email', e.target.value)} /></div>
                 <div><div style={labelStyle}>Apelido (opcional)</div><input style={inputStyle} placeholder="Ex: Cigano, Borges, Nunes..." value={form.apelido || ''} onChange={e => set('apelido', e.target.value)} /></div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div><div style={labelStyle}>Função</div>
+                    <select style={inputStyle} value={form.funcao} onChange={e => set('funcao', e.target.value)}>
+                      <option value="professor">Professor</option>
+                      <option value="gerente">Gerente</option>
+                      <option value="auxiliar">Auxiliar de Quadra</option>
+                      <option value="coordenador">Coordenador</option>
+                    </select></div>
+                  {form.funcao !== 'professor' && (
+                    <div><div style={labelStyle}>Salário Fixo (R$)</div>
+                      <input type="number" style={inputStyle} placeholder="0,00" value={form.salario_fixo || ''} onChange={e => set('salario_fixo', e.target.value)} /></div>
+                  )}
+                </div>
 
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>CREF</div>
                 <button onClick={() => set('tem_cref', !form.tem_cref)} style={{
