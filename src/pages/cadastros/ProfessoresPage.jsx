@@ -838,7 +838,7 @@ export default function ProfessoresPage() {
                   <div><div style={labelStyle}>Início na empresa</div><input type="date" style={inputStyle} value={form.data_inicio} onChange={e => set('data_inicio', e.target.value)} /></div>
                   <div>
                     <div style={labelStyle}>Modalidades</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                       {modalidades.map(m => {
                         const selecionada = (form.modalidades_ids || []).includes(m.id)
                         return (
@@ -846,14 +846,21 @@ export default function ProfessoresPage() {
                             const atual = form.modalidades_ids || []
                             set('modalidades_ids', selecionada ? atual.filter(id => id !== m.id) : [...atual, m.id])
                           }} style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            padding: '7px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                            background: selecionada ? 'rgba(252,200,37,0.1)' : '#111',
-                            outline: selecionada ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-                            color: selecionada ? '#fcc825' : '#888', fontSize: '12px', width: '100%',
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            padding: '5px 10px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                            background: selecionada ? 'rgba(252,200,37,0.15)' : '#111',
+                            outline: selecionada ? '1px solid rgba(252,200,37,0.5)' : '1px solid #2a2a2a',
+                            color: selecionada ? '#fcc825' : '#555', fontSize: '11px',
                           }}>
-                            <span>{m.icone_emoji} {m.nome}</span>
-                            <span>{selecionada ? '✓' : '+'}</span>
+                            <div style={{
+                              width: '10px', height: '10px', borderRadius: '2px', flexShrink: 0,
+                              backgroundColor: selecionada ? '#fcc825' : 'transparent',
+                              border: selecionada ? 'none' : '1px solid #444',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              {selecionada && <span style={{ fontSize: '8px', color: '#110f0f', fontWeight: '900' }}>✓</span>}
+                            </div>
+                            {m.nome}
                           </button>
                         )
                       })}
