@@ -716,6 +716,7 @@ export default function ProfessoresPage() {
             {/* ABA DADOS */}
             {aba === 'perfil' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div><div style={labelStyle}>Nome Completo</div><input style={inputStyle} placeholder="Nome completo *" value={form.nome} onChange={e => set('nome', e.target.value)} /></div>
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Contato</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div><div style={labelStyle}>Telefone</div><input style={inputStyle} placeholder="(11) 99999-9999" value={form.telefone} onChange={e => set('telefone', e.target.value)} /></div>
