@@ -39,6 +39,7 @@ const labelStyle = {
 const FORM_VAZIO = {
   id: null, nome: '', email: '', telefone: '', instagram: '', apelido: '',
   tem_cref: false, numero_cref: '', cref_url: '',
+  cnpj: '', razao_social: '',
   modalidade_id: '', valor_aula: '', ativo: true,
   nascimento: '', cidade_nascimento: '', estado_nascimento: '',
   cpf: '', cep: '', endereco: '', numero: '', complemento: '',
@@ -238,6 +239,8 @@ export default function ProfessoresPage() {
       tem_cref: prof.tem_cref || false,
       numero_cref: prof.numero_cref || '',
       cref_url: prof.cref_url || '',
+      cnpj: prof.cnpj || '',
+      razao_social: prof.razao_social || '',
     })
   }
 
@@ -271,6 +274,8 @@ export default function ProfessoresPage() {
       tem_cref: form.tem_cref || false,
       numero_cref: form.numero_cref || null,
       cref_url: form.cref_url || null,
+      cnpj: form.cnpj || null,
+      razao_social: form.razao_social || null,
     }
     try {
       if (form.id) {
@@ -815,6 +820,13 @@ export default function ProfessoresPage() {
                     </select></div>
                 </div>
 
+<div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Dados do CNPJ</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div><div style={labelStyle}>CNPJ</div>
+                    <input style={inputStyle} placeholder="00.000.000/0000-00" value={form.cnpj} onChange={e => set('cnpj', e.target.value)} /></div>
+                  <div><div style={labelStyle}>Razão Social</div>
+                    <input style={inputStyle} placeholder="Nome da empresa" value={form.razao_social} onChange={e => set('razao_social', e.target.value)} /></div>
+                </div>
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Endereço</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div><div style={labelStyle}>CEP</div><input style={inputStyle} placeholder="00000-000" value={form.cep} onChange={e => { set('cep', e.target.value); buscarCep(e.target.value, setForm) }} /></div>
