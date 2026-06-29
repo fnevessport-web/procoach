@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2 } from 'lucide-react'
+import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -395,7 +395,14 @@ export default function ProfessoresPage() {
     setSalvandoExtra(true)
     const d = new Date(formExtra.data_pagamento + 'T12:00')
     try {
-      await supabase.from('pagamentos_extras').insert({
+      if (formExtra.id) {
+        await supabase.from('pagamentos_extras').update({
+          data_pagamento: formExtra.data_pagamento,
+          descricao: formExtra.descricao,
+          valor: parseFloat(String(formExtra.valor).replace(',', '.')),
+        }).eq('id', formExtra.id)
+      } else {
+        await supabase.from('pagamentos_extras').insert({
         professor_id: cardAberto.id,
         data_pagamento: formExtra.data_pagamento,
         descricao: formExtra.descricao,
@@ -403,6 +410,7 @@ export default function ProfessoresPage() {
         mes: d.getMonth() + 1,
         ano: d.getFullYear(),
       })
+      }
       qc.invalidateQueries({ queryKey: ['pagamentos_extras', cardAberto.id] })
       setFormExtra({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '' })
       setModalExtra(false)
@@ -623,7 +631,7 @@ export default function ProfessoresPage() {
               <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }} onClick={() => setModalExtra(false)}>
                 <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box' }}>
                   <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
-                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '16px' }}>+ Pagamento Extra</div>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '16px' }}>{formExtra.id ? '✏️ Editar Extra' : '+ Pagamento Extra'}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div><div style={labelStyle}>Data</div>
                       <input type="date" style={inputStyle} value={formExtra.data_pagamento} onChange={e => setFormExtra(f => ({ ...f, data_pagamento: e.target.value }))} /></div>
@@ -713,16 +721,19 @@ export default function ProfessoresPage() {
                                   <div style={{ fontSize: '12px', color: '#F0F2F5' }}>{ex.descricao}</div>
                                   <div style={{ fontSize: '10px', color: '#555' }}>{format(new Date(ex.data_pagamento + 'T12:00'), 'dd/MM/yyyy')}</div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#cf1b9b' }}>R${Number(ex.valor).toFixed(2).replace('.', ',')}</span>
-                                  <button onClick={async () => {
-                                    if (!confirm('Excluir este extra?')) return
-                                    await supabase.from('pagamentos_extras').delete().eq('id', ex.id)
-                                    qc.invalidateQueries({ queryKey: ['pagamentos_extras', cardAberto.id] })
-                                  }} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer' }}>
-                                    <X size={11} />
-                                  </button>
-                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#cf1b9b' }}>R${Number(ex.valor).toFixed(2).replace('.', ',')}</span>
+                                    <button onClick={() => setFormExtra({ id: ex.id, data_pagamento: ex.data_pagamento, descricao: ex.descricao, valor: ex.valor })} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(252,200,37,0.1)', color: '#fcc825', cursor: 'pointer' }}>
+                                      <Pencil size={11} />
+                                    </button>
+                                    <button onClick={async () => {
+                                      if (!confirm('Excluir este extra?')) return
+                                      await supabase.from('pagamentos_extras').delete().eq('id', ex.id)
+                                      qc.invalidateQueries({ queryKey: ['pagamentos_extras', cardAberto.id] })
+                                    }} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer' }}>
+                                      <X size={11} />
+                                    </button>
+                                  </div>
                               </div>
                             ))}
                           </div>
