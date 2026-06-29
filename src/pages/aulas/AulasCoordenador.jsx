@@ -696,11 +696,12 @@ export function AulasCoordenador({ onCelulaVazia }) {
       )}
 
       {isLoading ? <Loading /> : (
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <div style={{ minWidth: `${50 + quadrasParaGrade.length * 140}px` }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ minWidth: `${50 + quadrasParaGrade.length * 140}px`, position: 'relative' }}>
 
             {/* Cabeçalho com grupos por empresa */}
-            <div style={{ display: 'flex', marginBottom: '2px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#110f0f', paddingTop: '4px', paddingBottom: '4px' }}>
+            <div style={{ display: 'flex', marginBottom: '2px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#110f0f', paddingTop: '4px', paddingBottom: '4px', marginLeft: 0 }}>
+              <div style={{ width: '50px', flexShrink: 0 }} />
               <div style={{ width: '50px', flexShrink: 0 }} />
               {gruposParaGrade.map((grupo, gi) => (
                 <div key={grupo.empresa} style={{ display: 'flex', alignItems: 'center' }}>
