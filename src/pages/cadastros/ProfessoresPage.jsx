@@ -516,6 +516,8 @@ export default function ProfessoresPage() {
           onClick={() => setCardAberto(null)}>
           <div onClick={e => e.stopPropagation()} style={{
             width: '100%', maxHeight: '94vh', overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain',
             backgroundColor: '#151515', borderRadius: '20px 20px 0 0',
             padding: '20px 16px 32px', boxSizing: 'border-box',
           }}>
@@ -851,7 +853,7 @@ export default function ProfessoresPage() {
                   <div><div style={labelStyle}>Início na empresa</div><input type="date" style={inputStyle} value={form.data_inicio} onChange={e => set('data_inicio', e.target.value)} /></div>
                   <div>
                     <div style={labelStyle}>Modalidades</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       {modalidades.map(m => {
                         const selecionada = (form.modalidades_ids || []).includes(m.id)
                         return (
