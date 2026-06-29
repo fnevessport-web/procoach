@@ -648,31 +648,57 @@ export default function ProfessoresPage() {
                 })}
               </div>
 
-              {mesSelecionado && (() => {
-                const diasMap = getAulasDoDia(mesSelecionado.mes, mesSelecionado.ano)
-                const diasComAula = Object.keys(diasMap).sort((a, b) => Number(a) - Number(b))
-                const { qtd, valor } = calcularGanhosMes(mesSelecionado.mes, mesSelecionado.ano)
-                return (
-                  <div style={{ marginTop: '12px', backgroundColor: '#0d0d0d', borderRadius: '10px', padding: '12px', border: '1px solid rgba(207,27,155,0.2)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#cf1b9b' }}>{MESES[mesSelecionado.mes - 1]}/{mesSelecionado.ano} · {qtd} aulas · R${valor.toFixed(2).replace('.', ',')}</div>
-                      <button onClick={() => setMesSelecionado(null)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}><X size={14} /></button>
-                    </div>
-                    {diasComAula.length === 0 ? (
-                      <div style={{ fontSize: '12px', color: '#444', textAlign: 'center' }}>Nenhuma aula confirmada</div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        {diasComAula.map(dia => (
-                          <div key={dia} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', backgroundColor: '#111', borderRadius: '8px' }}>
-                            <span style={{ fontSize: '12px', color: '#888' }}>Dia {String(dia).padStart(2, '0')}/{String(mesSelecionado.mes).padStart(2, '0')}</span>
-                            <span style={{ fontSize: '12px', fontWeight: '600', color: '#22c55e' }}>{diasMap[dia]} {diasMap[dia] === 1 ? 'aula' : 'aulas'}</span>
-                          </div>
-                        ))}
+{mesSelecionado && (() => {
+                  const diasMap = getAulasDoDia(mesSelecionado.mes, mesSelecionado.ano)
+                  const diasComAula = Object.keys(diasMap).sort((a, b) => Number(a) - Number(b))
+                  const { qtd, valor } = calcularGanhosMes(mesSelecionado.mes, mesSelecionado.ano)
+                  const extrasDoMes = pagamentosExtras.filter(p => p.mes === mesSelecionado.mes && p.ano === mesSelecionado.ano)
+                  return (
+                    <div style={{ marginTop: '12px', backgroundColor: '#0d0d0d', borderRadius: '10px', padding: '12px', border: '1px solid rgba(207,27,155,0.2)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#cf1b9b' }}>{MESES[mesSelecionado.mes - 1]}/{mesSelecionado.ano} · {qtd} aulas · R${valor.toFixed(2).replace('.', ',')}</div>
+                        <button onClick={() => setMesSelecionado(null)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}><X size={14} /></button>
                       </div>
-                    )}
-                  </div>
-                )
-              })()}
+                      {diasComAula.length === 0 ? (
+                        <div style={{ fontSize: '12px', color: '#444', textAlign: 'center', marginBottom: '8px' }}>Nenhuma aula confirmada</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+                          {diasComAula.map(dia => (
+                            <div key={dia} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', backgroundColor: '#111', borderRadius: '8px' }}>
+                              <span style={{ fontSize: '12px', color: '#888' }}>Dia {String(dia).padStart(2, '0')}/{String(mesSelecionado.mes).padStart(2, '0')}</span>
+                              <span style={{ fontSize: '12px', fontWeight: '600', color: '#22c55e' }}>{diasMap[dia]} {diasMap[dia] === 1 ? 'aula' : 'aulas'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {extrasDoMes.length > 0 && (
+                        <>
+                          <div style={{ fontSize: '10px', color: '#cf1b9b', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '8px 0 6px' }}>Extras</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {extrasDoMes.map(ex => (
+                              <div key={ex.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', backgroundColor: 'rgba(207,27,155,0.06)', borderRadius: '8px', border: '1px solid rgba(207,27,155,0.15)' }}>
+                                <div>
+                                  <div style={{ fontSize: '12px', color: '#F0F2F5' }}>{ex.descricao}</div>
+                                  <div style={{ fontSize: '10px', color: '#555' }}>{format(new Date(ex.data_pagamento + 'T12:00'), 'dd/MM/yyyy')}</div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#cf1b9b' }}>R${Number(ex.valor).toFixed(2).replace('.', ',')}</span>
+                                  <button onClick={async () => {
+                                    if (!confirm('Excluir este extra?')) return
+                                    await supabase.from('pagamentos_extras').delete().eq('id', ex.id)
+                                    qc.invalidateQueries({ queryKey: ['pagamentos_extras', cardAberto.id] })
+                                  }} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer' }}>
+                                    <X size={11} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )
+                })()} 
             </div>
 
             {/* Abas */}
