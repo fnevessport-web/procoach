@@ -406,7 +406,17 @@ export function AulasCoordenador({ onCelulaVazia }) {
   const quadrasParaGrade = gruposParaGrade.flatMap(g => g.quadras)
 
   const modalidadesNaGrade = [...new Set(
-    aulasFiltradas.map(a => a.turmas?.modalidades?.nome).filter(Boolean)
+    GRUPOS_EMPRESA.flatMap(g => g.quadras)
+      .filter(q => todasQuadrasNomes.includes(q))
+      .map(q => {
+        if (['Quadra 1', 'Quadra 2', 'Quadra 3', 'Quadra 4'].includes(q)) return 'Tênis'
+        if (q === 'Quadra de Padel') return 'Padel'
+        if (q === 'Quadra 1 Areia') return 'Beach Tênis'
+        if (q === 'Quadra 3 Areia') return 'Futevôlei'
+        if (q === 'Quadra 5 Areia') return 'Vôlei de Praia'
+        return null
+      })
+      .filter(Boolean)
   )]
 
   const horariosGrade = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
