@@ -194,24 +194,72 @@ export function useSalvarPresencas() {
   })
 }
 
-export function useReposicoes() {
+export function useRelatorioReposicoes({ mes, ano }) {
   return useQuery({
-    queryKey: ['reposicoes'],
+    queryKey: ['relatorio_repos', mes, ano],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const dataInicio = `${ano}-${String(mes).padStart(2, '0')}-01`
+      const ultimoDia = new Date(ano, mes, 0).getDate()
+      const dataFim = `${ano}-${String(mes).padStart(2, '0')}-${ultimoDia}`
+
+      const { data: aulas, error: err1 } = await supabase
+        .from('aulas')
+        .select(`id, data_aula, turma_id, observacoes,
+          turmas(id, nome, modalidades(nome, icone_emoji, cor_hex))`)
+        .gte('data_aula', dataInicio)
+        .lte('data_aula', dataFim)
+      if (err1) throw err1
+      if (!aulas?.length) return []
+
+      const aulaIds = aulas.map(a => a.id)
+      const aulaMap = Object.fromEntries(aulas.map(a => [a.id, a]))
+
+      const { data: faltas, error: err2 } = await supabase
+        .from('presencas')
+        .select('id, aluno_id, aula_id, alunos(id, nome, nivel_avaliado_prof)')
+        .eq('status_presenca', 'falta_justificada')
+        .in('aula_id', aulaIds)
+      if (err2) throw err2
+      if (!faltas?.length) return []
+
+      const { data: repos, error: err3 } = await supabase
         .from('reposicoes')
-        .select(`
-          id, status,
-          alunos(id, nome, nivel_avaliado_prof),
-          aulas(id, data_aula, turma_id, observacoes,
-            turmas(id, nome, horario_inicio, horario_fim, horario_dia_semana, quadras(nome))
-          )
-        `)
-        .eq('status', 'pendente')
-      if (error) throw error
-      return data || []
+        .select('id, aluno_id, aula_origem_id, status')
+        .in('aula_origem_id', aulaIds)
+      if (err3) throw err3
+
+      const reposMap = {}
+      repos?.forEach(r => {
+        if (!reposMap[r.aluno_id]) reposMap[r.aluno_id] = {}
+        reposMap[r.aluno_id][r.aula_origem_id] = r
+      })
+
+      const porAluno = {}
+      faltas.forEach(f => {
+        const aluno = f.alunos
+        if (!aluno) return
+        const aula = aulaMap[f.aula_id]
+        const modalidade = aula?.turmas?.modalidades || null
+        if (!porAluno[aluno.id]) {
+          porAluno[aluno.id] = { id: aluno.id, nome: aluno.nome, nivel: aluno.nivel_avaliado_prof, modalidade, faltas: [] }
+        }
+        porAluno[aluno.id].faltas.push({
+          presencaId: f.id,
+          aulaId: f.aula_id,
+          dataAula: aula?.data_aula,
+          turmaNome: aula?.turmas?.nome || 'Avulsa',
+          reposicao: reposMap[aluno.id]?.[f.aula_id] || null,
+        })
+      })
+
+      return Object.values(porAluno).map(a => {
+        const pendentes = a.faltas.filter(f => !f.reposicao || f.reposicao.status === 'pendente')
+        const agendadas = a.faltas.filter(f => f.reposicao?.status === 'agendado')
+        return { ...a, pendentes, agendadas }
+      }).sort((a, b) => b.pendentes.length - a.pendentes.length)
     },
-    staleTime: 30000,
+    enabled: !!mes && !!ano,
+    staleTime: 60000,
   })
 }
 
@@ -242,7 +290,7 @@ export function useAulasDisponiveisReposicao() {
 export function useAgendarReposicao() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ reposicaoId, aulaId, alunoId }) => {
+    mutationFn: async ({ reposicaoId, aulaOrigemId, aulaId, alunoId }) => {
       const { error: errPres } = await supabase
         .from('presencas')
         .upsert({
@@ -253,14 +301,20 @@ export function useAgendarReposicao() {
           tipo_participacao: 'reposicao',
         }, { onConflict: 'aula_id,aluno_id' })
       if (errPres) throw errPres
-      const { error: errRep } = await supabase
-        .from('reposicoes')
-        .update({ status: 'agendado' })
-        .eq('id', reposicaoId)
-      if (errRep) throw errRep
+
+      if (reposicaoId) {
+        const { error } = await supabase
+          .from('reposicoes').update({ status: 'agendado' }).eq('id', reposicaoId)
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('reposicoes')
+          .upsert({ aluno_id: alunoId, aula_origem_id: aulaOrigemId, status: 'agendado' }, { onConflict: 'aluno_id,aula_origem_id' })
+        if (error) throw error
+      }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['reposicoes'] })
+      qc.invalidateQueries({ queryKey: ['relatorio_repos'] })
       qc.invalidateQueries({ queryKey: ['aulas'] })
       qc.invalidateQueries({ queryKey: ['aulas_disp_repos'] })
     }
