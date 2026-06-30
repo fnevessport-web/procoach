@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Users, BookOpen, Grid3X3, Target, GraduationCap } from 'lucide-react'
+import { Users, BookOpen, Grid3X3, Target, GraduationCap, CalendarDays } from 'lucide-react'
 import ProfessoresPage from './ProfessoresPage'
 import { AlunosPage } from './AlunosPage'
 import { TurmasPage } from './TurmasPage'
 import { NiveisPage } from './NiveisPage'
 import { QuadrasPage } from './QuadrasPage'
+import { GradeDisponibilidade } from './GradeDisponibilidade'
 
 const ABAS = [
   { id: 'professores', label: 'Professores', icon: Users, component: ProfessoresPage },
@@ -12,6 +13,7 @@ const ABAS = [
   { id: 'turmas', label: 'Turmas', icon: BookOpen, component: TurmasPage },
   { id: 'niveis', label: 'Níveis', icon: Target, component: NiveisPage },
   { id: 'quadras', label: 'Quadras', icon: Grid3X3, component: QuadrasPage },
+  { id: 'grade', label: 'Grade', icon: CalendarDays, component: GradeDisponibilidade },
 ]
 
 export function CadastrosPage() {
