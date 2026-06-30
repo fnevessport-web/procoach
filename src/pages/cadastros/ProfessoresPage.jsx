@@ -45,6 +45,7 @@ const FORM_VAZIO = {
   cpf: '', cep: '', endereco: '', numero: '', complemento: '',
   bairro: '', cidade: '', estado: '', data_inicio: '',
   banco: '', agencia: '', conta: '', tipo_pagamento: 'pix', chave_pix: '',
+  nome_titular: '', cpf_titular: '', titular_proprio: false,
 }
 
 function StarRating({ value, onChange, disabled }) {
@@ -237,6 +238,7 @@ export default function ProfessoresPage() {
       data_inicio: prof.data_inicio || '', banco: prof.banco || '',
       agencia: prof.agencia || '', conta: prof.conta || '',
       tipo_pagamento: prof.tipo_pagamento || 'pix', chave_pix: prof.chave_pix || '',
+      nome_titular: prof.nome_titular || '', cpf_titular: prof.cpf_titular || '', titular_proprio: false,
       apelido: prof.apelido || '',
       tem_cref: prof.tem_cref || false,
       numero_cref: prof.numero_cref || '',
@@ -275,6 +277,7 @@ export default function ProfessoresPage() {
       data_inicio: form.data_inicio || null, banco: form.banco || null,
       agencia: form.agencia || null, conta: form.conta || null,
       tipo_pagamento: form.tipo_pagamento || 'pix', chave_pix: form.chave_pix || null,
+      nome_titular: form.nome_titular || null, cpf_titular: form.cpf_titular || null,
       apelido: form.apelido || null,
       tem_cref: form.tem_cref || false,
       numero_cref: form.numero_cref || null,
@@ -1056,6 +1059,39 @@ export default function ProfessoresPage() {
                     <span style={{ fontSize: '12px', color: '#f97316', fontWeight: '600' }}>Correntista Itaú — pagar via PIX</span>
                   </div>
                 )}
+
+                {/* Dados do titular da conta */}
+                <div style={{ backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dados bancários do titular</div>
+                  {/* Checkbox mesmo professor */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const novoVal = !form.titular_proprio
+                      set('titular_proprio', novoVal)
+                      if (novoVal) {
+                        set('nome_titular', cardAberto.nome || '')
+                        set('cpf_titular', cardAberto.cpf || '')
+                      }
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '8px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                      background: form.titular_proprio ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
+                      outline: form.titular_proprio ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+                      color: form.titular_proprio ? '#fcc825' : '#888', fontSize: '12px',
+                    }}
+                  >
+                    <span style={{ fontSize: '14px' }}>{form.titular_proprio ? '✓' : '○'}</span>
+                    Titular é o próprio professor
+                  </button>
+                  <div><div style={labelStyle}>Nome completo do titular</div>
+                    <input style={inputStyle} placeholder="Nome como está no banco..." value={form.nome_titular} onChange={e => { set('nome_titular', e.target.value); set('titular_proprio', false) }} />
+                  </div>
+                  <div><div style={labelStyle}>CPF do titular</div>
+                    <input style={inputStyle} placeholder="000.000.000-00" value={form.cpf_titular} onChange={e => { set('cpf_titular', e.target.value); set('titular_proprio', false) }} />
+                  </div>
+                </div>
                 <div><div style={labelStyle}>Valor por aula (R$)</div><input type="number" style={inputStyle} placeholder="0,00" value={form.valor_aula} onChange={e => set('valor_aula', e.target.value)} /></div>
                 <button onClick={handleSalvar} disabled={salvando} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                   {salvando ? 'Salvando...' : '💾 Salvar dados bancários'}

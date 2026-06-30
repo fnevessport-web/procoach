@@ -103,7 +103,7 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
         .select(`
           id, professor_executou_id, turma_id, observacoes,
           turmas(nome, quadras(nome)),
-          professores!professor_executou_id(id, nome, foto_url, valor_aula, valor_hora_aula, chave_pix, banco, tipo_pagamento)
+          professores!professor_executou_id(id, nome, foto_url, valor_aula, valor_hora_aula, chave_pix, banco, tipo_pagamento, nome_titular, cpf_titular)
         `)
         .gte('data_aula', dataInicio)
         .lte('data_aula', dataFim)
@@ -211,6 +211,25 @@ export function useConfirmarPagamento() {
       const { error } = await supabase
         .from('boletos_professor')
         .upsert({ professor_id: professorId, mes, ano, status: 'pago' }, { onConflict: 'professor_id,mes,ano' })
+      if (error) throw error
+    },
+    onSuccess: (_, { mes, ano, professorId }) => {
+      qc.invalidateQueries({ queryKey: ['boletos', professorId] })
+      qc.invalidateQueries({ queryKey: ['pagamentos_confirmados', mes, ano] })
+    },
+  })
+}
+
+export function useDesfazerPagamento() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ professorId, mes, ano }) => {
+      const { error } = await supabase
+        .from('boletos_professor')
+        .update({ status: 'pendente' })
+        .eq('professor_id', professorId)
+        .eq('mes', mes)
+        .eq('ano', ano)
       if (error) throw error
     },
     onSuccess: (_, { mes, ano, professorId }) => {

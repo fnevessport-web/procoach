@@ -11,6 +11,7 @@ import {
   useBoletosProfessor,
   usePagamentosConfirmados,
   useConfirmarPagamento,
+  useDesfazerPagamento,
 } from '../../hooks/useFinanceiro'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
@@ -169,6 +170,7 @@ export function FinanceiroPage() {
   const salvarLancamento = useSalvarLancamento()
   const removerLancamento = useRemoverLancamento()
   const confirmarPagamento = useConfirmarPagamento()
+  const desfazerPagamento = useDesfazerPagamento()
   const { data: pagamentosConfirmados = new Set() } = usePagamentosConfirmados({ mes, ano: anoSel })
 
   // Derived
@@ -189,6 +191,14 @@ export function FinanceiroPage() {
     try {
       await confirmarPagamento.mutateAsync({ professorId: professorSel.id, mes, ano: anoSel })
       toast.success('✅ Pagamento confirmado!', { style: toastStyle })
+    } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
+
+  async function handleDesfazerPagamento() {
+    if (!professorSel) return
+    try {
+      await desfazerPagamento.mutateAsync({ professorId: professorSel.id, mes, ano: anoSel })
+      toast.success('Pagamento desmarcado', { style: toastStyle })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
@@ -497,20 +507,28 @@ export function FinanceiroPage() {
                   <Check size={14} /> Pago
                 </button>
               ) : (
-                <div style={{
+                <button onClick={handleDesfazerPagamento} disabled={desfazerPagamento.isPending} style={{
                   flexShrink: 0, padding: '10px 14px', borderRadius: '10px',
-                  backgroundColor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)',
-                  fontSize: '12px', fontWeight: '700', color: '#22c55e',
+                  backgroundColor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.4)',
+                  fontSize: '12px', fontWeight: '700', color: '#22c55e', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '5px',
                 }}>
                   <Check size={14} /> Confirmado
-                </div>
+                </button>
               )}
             </div>
+            {/* Titular da conta */}
+            {(professorSel.nome_titular || professorSel.cpf_titular) && (
+              <div style={{ marginTop: '8px', fontSize: '11px', color: '#444', paddingLeft: '2px' }}>
+                {professorSel.nome_titular && <span>{professorSel.nome_titular}</span>}
+                {professorSel.nome_titular && professorSel.cpf_titular && <span style={{ color: '#333', margin: '0 5px' }}>·</span>}
+                {professorSel.cpf_titular && <span>CPF {professorSel.cpf_titular}</span>}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Boleto + NF */}
+        {/* Boleto (apenas para quem paga via boleto) */}
         {temBoleto && (
           <div style={{
             backgroundColor: '#1a1a1a', borderRadius: '12px',
@@ -518,52 +536,27 @@ export function FinanceiroPage() {
             marginBottom: '14px',
           }}>
             <div style={{ fontSize: '10px', color: '#60a5fa', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '10px' }}>
-              Boleto + NF — {MESES_ABREV[mesSel]}/{anoSel}
+              Boleto — {MESES_ABREV[mesSel]}/{anoSel}
             </div>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-              {/* Boleto */}
+            <div style={{ display: 'flex', gap: '8px' }}>
               {boletoMes?.boleto_url ? (
                 <a href={boletoMes.boleto_url} target="_blank" rel="noreferrer" style={{
                   flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                   padding: '10px', borderRadius: '10px',
-                  border: '1px solid rgba(96,165,250,0.3)',
-                  backgroundColor: 'rgba(96,165,250,0.06)',
+                  border: '1px solid rgba(96,165,250,0.3)', backgroundColor: 'rgba(96,165,250,0.06)',
                   color: '#60a5fa', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
                 }}>
-                  <FileText size={14} /> Boleto
+                  <FileText size={14} /> Ver boleto
                 </a>
               ) : (
                 <div style={{
                   flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '10px', borderRadius: '10px',
-                  border: '1px dashed #2a2a2a',
+                  padding: '10px', borderRadius: '10px', border: '1px dashed #2a2a2a',
                   color: '#555', fontSize: '12px',
                 }}>
                   Sem boleto
                 </div>
               )}
-              {/* NF */}
-              {boletoMes?.nf_url ? (
-                <a href={boletoMes.nf_url} target="_blank" rel="noreferrer" style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                  padding: '10px', borderRadius: '10px',
-                  border: '1px solid rgba(252,200,37,0.3)',
-                  backgroundColor: 'rgba(252,200,37,0.06)',
-                  color: '#fcc825', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
-                }}>
-                  <FileText size={14} /> NF
-                </a>
-              ) : (
-                <div style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '10px', borderRadius: '10px',
-                  border: '1px dashed rgba(252,200,37,0.2)',
-                  color: '#555', fontSize: '12px',
-                }}>
-                  Sem NF
-                </div>
-              )}
-              {/* Confirmar */}
               {!pagamentoConfirmado ? (
                 <button onClick={handleConfirmarPagamento} disabled={confirmarPagamento.isPending} style={{
                   flexShrink: 0, padding: '10px 14px', borderRadius: '10px', border: 'none',
@@ -574,18 +567,49 @@ export function FinanceiroPage() {
                   <Check size={14} /> Pago
                 </button>
               ) : (
-                <div style={{
-                  flexShrink: 0, padding: '10px 12px', borderRadius: '10px',
-                  backgroundColor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)',
-                  fontSize: '12px', fontWeight: '700', color: '#22c55e',
+                <button onClick={handleDesfazerPagamento} disabled={desfazerPagamento.isPending} style={{
+                  flexShrink: 0, padding: '10px 14px', borderRadius: '10px',
+                  backgroundColor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.4)',
+                  fontSize: '12px', fontWeight: '700', color: '#22c55e', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '5px',
                 }}>
-                  <Check size={14} /> OK
-                </div>
+                  <Check size={14} /> Confirmado
+                </button>
               )}
             </div>
           </div>
         )}
+
+        {/* NF — universal para todos os professores */}
+        <div style={{
+          backgroundColor: '#1a1a1a', borderRadius: '12px',
+          border: '1px solid rgba(252,200,37,0.15)', padding: '14px',
+          marginBottom: '14px',
+        }}>
+          <div style={{ fontSize: '10px', color: '#fcc825', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
+            NF — {MESES_ABREV[mesSel]}/{anoSel}
+          </div>
+          {boletoMes?.nf_url ? (
+            <a href={boletoMes.nf_url} target="_blank" rel="noreferrer" style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '10px 14px', borderRadius: '10px',
+              border: '1px solid rgba(252,200,37,0.3)', backgroundColor: 'rgba(252,200,37,0.06)',
+              color: '#fcc825', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
+            }}>
+              <FileText size={14} /> Ver Nota Fiscal
+              <ExternalLink size={12} style={{ marginLeft: 'auto' }} />
+            </a>
+          ) : (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '10px', borderRadius: '10px',
+              border: '1px dashed rgba(252,200,37,0.15)',
+              color: '#444', fontSize: '12px',
+            }}>
+              Nenhuma NF enviada
+            </div>
+          )}
+        </div>
 
         {/* Resumo por dia */}
         <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
