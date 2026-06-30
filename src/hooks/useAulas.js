@@ -208,7 +208,7 @@ export function useRelatorioReposicoes() {
         .from('presencas')
         .select(`
           id, aluno_id, aula_id,
-          alunos(id, nome, nivel_avaliado_prof, modalidades_ids),
+          alunos(id, nome, nivel_avaliado_prof),
           aulas!inner(id, data_aula, turma_id,
             turmas(id, nome, modalidades(id, nome, icone_emoji, cor_hex))
           )
@@ -218,20 +218,6 @@ export function useRelatorioReposicoes() {
         .lte('aulas.data_aula', dataFim)
       if (error) throw error
       if (!faltas?.length) return []
-
-      // Busca modalidades dos alunos para aulas avulsas (sem turma)
-      const modalidadeIds = new Set()
-      faltas.forEach(f => {
-        if (!f.aulas?.turma_id) f.alunos?.modalidades_ids?.forEach(id => modalidadeIds.add(id))
-      })
-      let modalidadesMap = {}
-      if (modalidadeIds.size > 0) {
-        const { data: mods } = await supabase
-          .from('modalidades')
-          .select('id, nome, cor_hex, icone_emoji')
-          .in('id', [...modalidadeIds])
-        mods?.forEach(m => { modalidadesMap[m.id] = m })
-      }
 
       const aulaIdsUnicos = [...new Set(faltas.map(f => f.aula_id))]
       const { data: repos } = await supabase
@@ -250,11 +236,7 @@ export function useRelatorioReposicoes() {
         const aluno = f.alunos
         if (!aluno) return
         const aula = f.aulas
-        const modalidadeTurma = aula?.turmas?.modalidades || null
-        const modalidadeAluno = !modalidadeTurma && aluno.modalidades_ids?.length
-          ? modalidadesMap[aluno.modalidades_ids[0]] || null
-          : null
-        const modalidade = modalidadeTurma || modalidadeAluno
+        const modalidade = aula?.turmas?.modalidades || null
 
         if (!porAluno[aluno.id]) {
           porAluno[aluno.id] = { id: aluno.id, nome: aluno.nome, nivel: aluno.nivel_avaliado_prof, modalidade, faltas: [] }
