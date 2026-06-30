@@ -425,11 +425,25 @@ function AulasDivergencias() {
 
 const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
+function calcReposicaoStatus(dataAula) {
+  if (!dataAula) return { diasRestantes: null, cor: '#3b82f6', progresso: 0, label: '' }
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+  const dataFalta = new Date(dataAula + 'T12:00')
+  const daysElapsed = Math.floor((hoje - dataFalta) / (1000 * 60 * 60 * 24))
+  const diasRestantes = 60 - daysElapsed
+  const progresso = Math.min(100, Math.max(0, (daysElapsed / 60) * 100))
+  let cor = '#3b82f6'
+  if (diasRestantes < 0) cor = '#ef4444'
+  else if (diasRestantes <= 7) cor = '#f59e0b'
+  return { diasRestantes, cor, progresso, label: diasRestantes < 0 ? 'Expirado' : `${diasRestantes}d restantes` }
+}
+
 function AulasReposicoes() {
   const hoje = new Date()
   const [mes, setMes] = useState(hoje.getMonth() + 1)
   const [ano, setAno] = useState(hoje.getFullYear())
   const [modFilter, setModFilter] = useState(null)
+  const [showModMenu, setShowModMenu] = useState(false)
   const [alunoSel, setAlunoSel] = useState(null)
 
   const { data: relatorio, isLoading } = useRelatorioReposicoes({ mes, ano })
@@ -449,32 +463,61 @@ function AulasReposicoes() {
 
   return (
     <div>
-      {/* Seletor de mês */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '14px' }}>
-        <button onClick={() => navMes(-1)} style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#888', cursor: 'pointer', fontSize: '18px' }}>‹</button>
-        <span style={{ fontSize: '15px', fontWeight: '600', color: '#F0F2F5', minWidth: '90px', textAlign: 'center' }}>
-          {MESES_ABREV[mes - 1]} · {ano}
-        </span>
-        <button onClick={() => navMes(1)} style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#888', cursor: 'pointer', fontSize: '18px' }}>›</button>
-      </div>
-
-      {/* Filtro de modalidade */}
-      {modalidades.length > 1 && (
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
-          <button onClick={() => setModFilter(null)} style={{
-            padding: '5px 12px', borderRadius: '20px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer',
-            background: !modFilter ? 'linear-gradient(135deg,#fcc825,#cf1b9b)' : '#1a1a1a',
-            outline: !modFilter ? 'none' : '1px solid #2a2a2a', color: !modFilter ? 'white' : '#555',
-          }}>Todas</button>
-          {modalidades.map(m => (
-            <button key={m.nome} onClick={() => setModFilter(modFilter === m.nome ? null : m.nome)} style={{
-              padding: '5px 12px', borderRadius: '20px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer',
-              background: modFilter === m.nome ? 'linear-gradient(135deg,#fcc825,#cf1b9b)' : '#1a1a1a',
-              outline: modFilter === m.nome ? 'none' : '1px solid #2a2a2a', color: modFilter === m.nome ? 'white' : '#888',
-            }}>{m.icone_emoji} {m.nome}</button>
-          ))}
+      {/* Header: seletor de mês + dropdown filtro modalidade */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button onClick={() => navMes(-1)} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#888', cursor: 'pointer', fontSize: '18px' }}>‹</button>
+          <span style={{ fontSize: '15px', fontWeight: '600', color: '#F0F2F5', minWidth: '90px', textAlign: 'center' }}>
+            {MESES_ABREV[mes - 1]} · {ano}
+          </span>
+          <button onClick={() => navMes(1)} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#888', cursor: 'pointer', fontSize: '18px' }}>›</button>
         </div>
-      )}
+
+        {modalidades.length > 0 && (
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setShowModMenu(v => !v)} style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '7px 12px', borderRadius: '8px', border: 'none',
+              backgroundColor: modFilter ? 'rgba(252,200,37,0.08)' : '#1a1a1a',
+              outline: `1px solid ${modFilter ? 'rgba(252,200,37,0.3)' : '#2a2a2a'}`,
+              color: modFilter ? '#fcc825' : '#777', cursor: 'pointer', fontSize: '12px', fontWeight: '500',
+            }}>
+              {modFilter || 'Modalidade'} <span style={{ fontSize: '8px', opacity: 0.7 }}>▾</span>
+            </button>
+            {showModMenu && (
+              <>
+                <div onClick={() => setShowModMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+                <div style={{
+                  position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 20,
+                  backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: '10px',
+                  padding: '6px', minWidth: '150px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                }}>
+                  <button onClick={() => { setModFilter(null); setShowModMenu(false) }} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
+                    cursor: 'pointer', fontSize: '13px', textAlign: 'left',
+                    backgroundColor: !modFilter ? 'rgba(252,200,37,0.08)' : 'transparent',
+                    color: !modFilter ? '#fcc825' : '#888',
+                  }}>
+                    Todas {!modFilter && <span style={{ fontSize: '10px' }}>✓</span>}
+                  </button>
+                  {modalidades.map(m => (
+                    <button key={m.nome} onClick={() => { setModFilter(m.nome); setShowModMenu(false) }} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
+                      cursor: 'pointer', fontSize: '13px', textAlign: 'left',
+                      backgroundColor: modFilter === m.nome ? 'rgba(252,200,37,0.08)' : 'transparent',
+                      color: modFilter === m.nome ? '#fcc825' : '#888',
+                    }}>
+                      {m.nome} {modFilter === m.nome && <span style={{ fontSize: '10px' }}>✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       {isLoading ? <Loading /> : lista.length === 0 ? (
         <EmptyState icon="🎉" title="Nenhuma falta justificada" description={`Nenhuma reposição pendente em ${MESES_ABREV[mes - 1]}/${ano}`} />
@@ -482,41 +525,60 @@ function AulasReposicoes() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {lista.map(aluno => {
             const cor = aluno.modalidade?.cor_hex || '#fcc825'
+            const statusUrgente = aluno.pendentes.length > 0
+              ? calcReposicaoStatus(aluno.pendentes.reduce((w, f) => {
+                  const sw = calcReposicaoStatus(w.dataAula), sf = calcReposicaoStatus(f.dataAula)
+                  return sf.diasRestantes < sw.diasRestantes ? f : w
+                }).dataAula)
+              : null
             return (
               <button key={aluno.id} onClick={() => setAlunoSel(aluno)} style={{
-                display: 'flex', alignItems: 'center', gap: '10px',
+                display: 'flex', flexDirection: 'column',
                 backgroundColor: '#151515', border: '1px solid #2a2a2a', borderRadius: '12px',
                 padding: '12px 14px', cursor: 'pointer', textAlign: 'left', width: '100%',
               }}>
-                {/* Chip modalidade */}
-                <div style={{
-                  flexShrink: 0, borderRadius: '8px', padding: '5px 8px', textAlign: 'center',
-                  backgroundColor: `${cor}18`, border: `1px solid ${cor}44`,
-                  minWidth: '44px',
-                }}>
-                  <div style={{ fontSize: '15px' }}>{aluno.modalidade?.icone_emoji || '🎾'}</div>
-                  <div style={{ fontSize: '8px', fontWeight: '700', color: cor, textTransform: 'uppercase', marginTop: '2px', letterSpacing: '0.3px' }}>
-                    {(aluno.modalidade?.nome || 'Esporte').split(' ')[0]}
+                {/* Linha principal: chip + badge + nome/nivel */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {aluno.modalidade && (
+                    <div style={{
+                      flexShrink: 0, borderRadius: '6px', padding: '5px 8px',
+                      backgroundColor: `${cor}18`, border: `1px solid ${cor}44`,
+                    }}>
+                      <div style={{ fontSize: '10px', fontWeight: '700', color: cor, textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                        {aluno.modalidade.nome}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{
+                    minWidth: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                    backgroundColor: aluno.pendentes.length > 0 ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.1)',
+                    border: `1px solid ${aluno.pendentes.length > 0 ? 'rgba(59,130,246,0.35)' : 'rgba(34,197,94,0.3)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '12px', fontWeight: '700', color: aluno.pendentes.length > 0 ? '#3b82f6' : '#22c55e',
+                  }}>
+                    {aluno.pendentes.length > 0 ? aluno.pendentes.length : '✓'}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5' }}>{aluno.nome}</div>
+                    <div style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>
+                      {aluno.nivel || '-'}
+                      {aluno.agendadas.length > 0 && <span style={{ color: '#22c55e', marginLeft: '8px' }}>✓ {aluno.agendadas.length} agendada{aluno.agendadas.length !== 1 ? 's' : ''}</span>}
+                    </div>
                   </div>
                 </div>
-                {/* Badge contagem */}
-                <div style={{
-                  minWidth: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-                  backgroundColor: aluno.pendentes.length > 0 ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.1)',
-                  border: `1px solid ${aluno.pendentes.length > 0 ? 'rgba(59,130,246,0.35)' : 'rgba(34,197,94,0.3)'}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '12px', fontWeight: '700', color: aluno.pendentes.length > 0 ? '#3b82f6' : '#22c55e',
-                }}>
-                  {aluno.pendentes.length > 0 ? aluno.pendentes.length : '✓'}
-                </div>
-                {/* Nome + nível */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5' }}>{aluno.nome}</div>
-                  <div style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>
-                    {aluno.nivel || '-'}
-                    {aluno.agendadas.length > 0 && <span style={{ color: '#22c55e', marginLeft: '8px' }}>✓ {aluno.agendadas.length} agendada{aluno.agendadas.length !== 1 ? 's' : ''}</span>}
+
+                {/* Barra de progresso do prazo mais urgente */}
+                {statusUrgente && aluno.pendentes.length > 0 && (
+                  <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #1e1e1e' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '4px' }}>
+                      <span style={{ color: '#444' }}>Prazo mais urgente</span>
+                      <span style={{ color: statusUrgente.cor, fontWeight: '600' }}>{statusUrgente.label}</span>
+                    </div>
+                    <div style={{ height: '3px', backgroundColor: '#0e0e0e', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ width: `${statusUrgente.progresso}%`, height: '100%', backgroundColor: statusUrgente.cor, borderRadius: '2px' }} />
+                    </div>
                   </div>
-                </div>
+                )}
               </button>
             )
           })}
@@ -583,26 +645,40 @@ function ModalReposicao({ aluno, onClose }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div style={{ fontSize: '12px', color: '#555', marginBottom: '6px' }}>
             {faltasLocais.length} falta{faltasLocais.length !== 1 ? 's' : ''} a repor
-            {aluno.modalidade ? ` · ${aluno.modalidade.icone_emoji} ${aluno.modalidade.nome}` : ''}
+            {aluno.modalidade ? ` · ${aluno.modalidade.nome}` : ''}
           </div>
-          {faltasLocais.map(item => (
-            <button key={item.aulaId} onClick={() => { setFaltaSel(item); setSlotSel(null); setStep('grade') }} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '14px 16px', borderRadius: '12px', border: 'none', cursor: 'pointer',
-              textAlign: 'left', width: '100%', backgroundColor: '#111', outline: '1px solid #2a2a2a',
-            }}
-            onMouseEnter={e => e.currentTarget.style.outline = '1px solid rgba(59,130,246,0.4)'}
-            onMouseLeave={e => e.currentTarget.style.outline = '1px solid #2a2a2a'}
-            >
-              <div>
-                <div style={{ fontSize: '14px', color: '#F0F2F5', fontWeight: '600' }}>
-                  {item.dataAula ? format(new Date(item.dataAula + 'T12:00'), "dd/MM/yyyy · EEEE", { locale: ptBR }) : 'Data desconhecida'}
+          {faltasLocais.map(item => {
+            const status = calcReposicaoStatus(item.dataAula)
+            return (
+              <button key={item.aulaId} onClick={() => { setFaltaSel(item); setSlotSel(null); setStep('grade') }} style={{
+                display: 'flex', flexDirection: 'column',
+                padding: '14px 16px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+                textAlign: 'left', width: '100%', backgroundColor: '#111', outline: '1px solid #2a2a2a',
+              }}
+              onMouseEnter={e => e.currentTarget.style.outline = `1px solid ${status.cor}55`}
+              onMouseLeave={e => e.currentTarget.style.outline = '1px solid #2a2a2a'}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: '14px', color: '#F0F2F5', fontWeight: '600' }}>
+                      {item.dataAula ? format(new Date(item.dataAula + 'T12:00'), "dd/MM/yyyy · EEEE", { locale: ptBR }) : 'Data desconhecida'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#555', marginTop: '3px' }}>{item.turmaNome}</div>
+                  </div>
+                  <span style={{ color: '#3b82f6', fontSize: '20px', flexShrink: 0 }}>›</span>
                 </div>
-                <div style={{ fontSize: '12px', color: '#555', marginTop: '3px' }}>{item.turmaNome}</div>
-              </div>
-              <span style={{ color: '#3b82f6', fontSize: '20px', flexShrink: 0 }}>›</span>
-            </button>
-          ))}
+                <div style={{ marginTop: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '4px' }}>
+                    <span style={{ color: '#444' }}>Prazo: {item.dataAula ? format(new Date(new Date(item.dataAula + 'T12:00').getTime() + 60 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy', { locale: ptBR }) : '-'}</span>
+                    <span style={{ color: status.cor, fontWeight: '600' }}>{status.label}</span>
+                  </div>
+                  <div style={{ height: '3px', backgroundColor: '#1a1a1a', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ width: `${status.progresso}%`, height: '100%', backgroundColor: status.cor, borderRadius: '2px' }} />
+                  </div>
+                </div>
+              </button>
+            )
+          })}
         </div>
       </Modal>
     )
