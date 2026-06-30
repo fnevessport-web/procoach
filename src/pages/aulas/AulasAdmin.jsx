@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { format, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Plus, Calendar, UserPlus, X, ChevronRight, Copy } from 'lucide-react'
-import { useAulas, useGerarAulas } from '../../hooks/useAulas'
+import { useAulas, useGerarAulas, useReposicoes, useAulasDisponiveisReposicao, useAgendarReposicao } from '../../hooks/useAulas'
 import { useTurmas } from '../../hooks/useTurmas'
 import { useProfessores } from '../../hooks/useProfessores'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
@@ -48,6 +48,8 @@ export function AulasAdmin() {
   const [tab, setTab] = useState('hoje')
   const [modalGerar, setModalGerar] = useState(null)
   const [atalho, setAtalho] = useState(null)
+  const { data: reposicoesPendentes } = useReposicoes()
+  const totalReposicoes = reposicoesPendentes?.length || 0
 
   function handleCelulaVazia({ horario, quadraNome, data }) {
     setAtalho({ horario, quadraNome, data })
@@ -85,22 +87,39 @@ export function AulasAdmin() {
       </div>
 
       <div style={{
-        display: 'flex', gap: '4px', marginBottom: '20px',
+        display: 'flex', gap: '3px', marginBottom: '20px',
         padding: '4px', backgroundColor: '#1a1a1a',
         border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px',
       }}>
-        {[{ key: 'hoje', label: 'Por Dia' }, { key: 'divergencias', label: '🔴 Divergências' }].map(t => (
+        {[
+          { key: 'hoje', label: 'Por Dia' },
+          { key: 'divergencias', label: '🔴 Diverg.' },
+          { key: 'reposicoes', label: '↩ Reposição', count: totalReposicoes },
+        ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
-            flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
-            fontSize: '13px', fontWeight: '500', cursor: 'pointer',
+            flex: 1, padding: '7px 4px', borderRadius: '8px', border: 'none',
+            fontSize: '12px', fontWeight: '500', cursor: 'pointer',
             background: tab === t.key ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : 'transparent',
             color: tab === t.key ? 'white' : '#555', transition: 'all 0.2s',
-          }}>{t.label}</button>
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+          }}>
+            {t.label}
+            {t.count > 0 && (
+              <span style={{
+                minWidth: '16px', height: '16px', borderRadius: '8px', fontSize: '10px', fontWeight: '700',
+                backgroundColor: tab === t.key ? 'rgba(255,255,255,0.3)' : 'rgba(59,130,246,0.25)',
+                color: tab === t.key ? 'white' : '#3b82f6',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px',
+              }}>{t.count}</span>
+            )}
+          </button>
         ))}
       </div>
 
       {tab === 'hoje'
         ? <AulasCoordenador onCelulaVazia={handleCelulaVazia} />
+        : tab === 'reposicoes'
+        ? <AulasReposicoes />
         : <AulasDivergencias />
       }
 
@@ -400,6 +419,195 @@ function AulasDivergencias() {
         </div>
       ))}
     </div>
+  )
+}
+
+function AulasReposicoes() {
+  const { data: reposicoes, isLoading } = useReposicoes()
+  const [alunoSel, setAlunoSel] = useState(null)
+
+  if (isLoading) return <Loading />
+
+  const porAluno = {}
+  reposicoes?.forEach(r => {
+    const a = r.alunos
+    if (!a) return
+    if (!porAluno[a.id]) porAluno[a.id] = { ...a, itens: [] }
+    porAluno[a.id].itens.push(r)
+  })
+
+  const lista = Object.values(porAluno).sort((a, b) => b.itens.length - a.itens.length)
+
+  if (!lista.length) return (
+    <EmptyState icon="🎉" title="Nenhuma reposição pendente" description="Todos os alunos estão em dia!" />
+  )
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {lista.map(aluno => {
+        const nivel = aluno.nivel_avaliado_prof
+        const primeiraAula = aluno.itens[0]?.aulas
+        const ehGrupo = !!primeiraAula?.turma_id
+        const turmaNome = primeiraAula?.turmas?.nome || 'Aula Avulsa'
+
+        return (
+          <button key={aluno.id} onClick={() => setAlunoSel({ ...aluno, itens: [...aluno.itens] })} style={{
+            display: 'flex', alignItems: 'center', gap: '12px',
+            backgroundColor: '#151515', border: '1px solid #2a2a2a', borderRadius: '12px',
+            padding: '14px', cursor: 'pointer', textAlign: 'left', width: '100%',
+          }}>
+            <div style={{
+              minWidth: '34px', height: '34px', borderRadius: '50%',
+              backgroundColor: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '14px', fontWeight: '700', color: '#3b82f6', flexShrink: 0,
+            }}>
+              {aluno.itens.length}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '3px' }}>
+                {aluno.nome}
+              </div>
+              <div style={{ fontSize: '12px', color: '#555', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>{ehGrupo ? turmaNome : '👤 Individual'}</span>
+                {nivel && <><span>·</span><span>{nivel}</span></>}
+              </div>
+            </div>
+            <span style={{ fontSize: '18px', opacity: nivel ? 1 : 0.2, flexShrink: 0 }}>🏆</span>
+          </button>
+        )
+      })}
+
+      {alunoSel && (
+        <ModalReposicao aluno={alunoSel} onClose={() => setAlunoSel(null)} />
+      )}
+    </div>
+  )
+}
+
+function ModalReposicao({ aluno, onClose }) {
+  const { data: aulasDisp, isLoading: loadingDisp } = useAulasDisponiveisReposicao()
+  const agendar = useAgendarReposicao()
+  const [itensLocais, setItensLocais] = useState(aluno.itens)
+  const [reposicaoSel, setReposicaoSel] = useState(aluno.itens[0])
+  const [slotSel, setSlotSel] = useState(null)
+
+  const slotsDisponiveis = (aulasDisp || []).filter(a =>
+    !a.presencas?.some(p => p.aluno_id === aluno.id)
+  )
+
+  async function handleConfirmar() {
+    if (!slotSel || !reposicaoSel) return
+    try {
+      await agendar.mutateAsync({ reposicaoId: reposicaoSel.id, aulaId: slotSel.id, alunoId: aluno.id })
+      toast.success(
+        `✅ ${aluno.nome} agendado para ${format(new Date(slotSel.data_aula + 'T12:00'), 'dd/MM', { locale: ptBR })}!`,
+        { style: toastStyle }
+      )
+      const restantes = itensLocais.filter(i => i.id !== reposicaoSel.id)
+      if (restantes.length === 0) {
+        onClose()
+      } else {
+        setItensLocais(restantes)
+        setReposicaoSel(restantes[0])
+        setSlotSel(null)
+      }
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title={aluno.nome} size="md">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+        {/* Aulas perdidas */}
+        <div>
+          <div style={{ fontSize: '11px', color: '#555', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+            Aulas a repor ({itensLocais.length})
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {itensLocais.map(item => {
+              const isSel = reposicaoSel?.id === item.id
+              const dataAula = item.aulas?.data_aula
+              const turmaNome = item.aulas?.turma_id ? (item.aulas?.turmas?.nome || 'Turma') : 'Aula Avulsa'
+              return (
+                <button key={item.id} onClick={() => setReposicaoSel(item)} style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%',
+                  backgroundColor: isSel ? 'rgba(59,130,246,0.08)' : '#111',
+                  outline: `1px solid ${isSel ? 'rgba(59,130,246,0.4)' : '#2a2a2a'}`,
+                }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: isSel ? '#3b82f6' : '#333', flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: isSel ? '600' : '400' }}>
+                      {dataAula ? format(new Date(dataAula + 'T12:00'), "dd/MM/yyyy · EEEE", { locale: ptBR }) : 'Data desconhecida'}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#555', marginTop: '1px' }}>{turmaNome}</div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Slots disponíveis */}
+        <div>
+          <div style={{ fontSize: '11px', color: '#555', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+            Escolher horário para encaixar
+          </div>
+          {loadingDisp ? (
+            <Loading />
+          ) : slotsDisponiveis.length === 0 ? (
+            <div style={{ padding: '16px', textAlign: 'center', fontSize: '13px', color: '#444' }}>
+              Nenhum horário disponível nas próximas aulas
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '220px', overflowY: 'auto' }}>
+              {slotsDisponiveis.slice(0, 30).map(a => {
+                const isSel = slotSel?.id === a.id
+                const vagas = 4 - (a.presencas?.length || 0)
+                return (
+                  <button key={a.id} onClick={() => setSlotSel(a)} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%',
+                    backgroundColor: isSel ? 'rgba(252,200,37,0.08)' : '#111',
+                    outline: `1px solid ${isSel ? 'rgba(252,200,37,0.4)' : '#2a2a2a'}`,
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: isSel ? '600' : '400' }}>
+                        {format(new Date(a.data_aula + 'T12:00'), 'EEE dd/MM', { locale: ptBR })} · {a.turmas?.horario_inicio?.slice(0, 5)}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#555', marginTop: '1px' }}>
+                        {a.turmas?.nome} · {a.turmas?.quadras?.nome}
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: '11px', padding: '3px 8px', borderRadius: '6px', fontWeight: '600', flexShrink: 0,
+                      backgroundColor: vagas >= 3 ? 'rgba(34,197,94,0.1)' : vagas === 2 ? 'rgba(252,200,37,0.1)' : 'rgba(239,68,68,0.1)',
+                      color: vagas >= 3 ? '#22c55e' : vagas === 2 ? '#fcc825' : '#ef4444',
+                    }}>
+                      {vagas} vaga{vagas !== 1 ? 's' : ''}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Confirmar */}
+        <button onClick={handleConfirmar} disabled={!slotSel || !reposicaoSel || agendar.isPending} style={{
+          width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
+          background: slotSel && reposicaoSel ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
+          outline: slotSel && reposicaoSel ? 'none' : '1px solid #2a2a2a',
+          color: slotSel && reposicaoSel ? 'white' : '#333',
+          fontSize: '14px', fontWeight: '600', cursor: slotSel && reposicaoSel ? 'pointer' : 'default',
+        }}>
+          {agendar.isPending ? 'Agendando...' : '✓ Confirmar Reposição'}
+        </button>
+      </div>
+    </Modal>
   )
 }
 

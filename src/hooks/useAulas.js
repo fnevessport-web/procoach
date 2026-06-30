@@ -194,6 +194,79 @@ export function useSalvarPresencas() {
   })
 }
 
+export function useReposicoes() {
+  return useQuery({
+    queryKey: ['reposicoes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reposicoes')
+        .select(`
+          id, status,
+          alunos(id, nome, nivel_avaliado_prof),
+          aulas(id, data_aula, turma_id, observacoes,
+            turmas(id, nome, horario_inicio, horario_fim, horario_dia_semana, quadras(nome))
+          )
+        `)
+        .eq('status', 'pendente')
+      if (error) throw error
+      return data || []
+    },
+    staleTime: 30000,
+  })
+}
+
+export function useAulasDisponiveisReposicao() {
+  const hoje = format(new Date(), 'yyyy-MM-dd')
+  return useQuery({
+    queryKey: ['aulas_disp_repos', hoje],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('aulas')
+        .select(`
+          id, data_aula, turma_id,
+          turmas(id, nome, horario_inicio, horario_fim, quadras(nome)),
+          presencas(id, aluno_id)
+        `)
+        .gte('data_aula', hoje)
+        .not('turma_id', 'is', null)
+        .neq('status_aula', 'cancelada')
+        .order('data_aula', { ascending: true })
+        .limit(200)
+      if (error) throw error
+      return (data || []).filter(a => (a.presencas?.length || 0) < 4)
+    },
+    staleTime: 60000,
+  })
+}
+
+export function useAgendarReposicao() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ reposicaoId, aulaId, alunoId }) => {
+      const { error: errPres } = await supabase
+        .from('presencas')
+        .upsert({
+          aula_id: aulaId,
+          aluno_id: alunoId,
+          presente: false,
+          status_presenca: 'presente',
+          tipo_participacao: 'reposicao',
+        }, { onConflict: 'aula_id,aluno_id' })
+      if (errPres) throw errPres
+      const { error: errRep } = await supabase
+        .from('reposicoes')
+        .update({ status: 'agendado' })
+        .eq('id', reposicaoId)
+      if (errRep) throw errRep
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reposicoes'] })
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      qc.invalidateQueries({ queryKey: ['aulas_disp_repos'] })
+    }
+  })
+}
+
 export function useGerarAulas() {
   const qc = useQueryClient()
   return useMutation({
