@@ -48,8 +48,7 @@ export function AulasAdmin() {
   const [tab, setTab] = useState('hoje')
   const [modalGerar, setModalGerar] = useState(null)
   const [atalho, setAtalho] = useState(null)
-  const _hoje = new Date()
-  const { data: _relatorioAtual } = useRelatorioReposicoes({ mes: _hoje.getMonth() + 1, ano: _hoje.getFullYear() })
+  const { data: _relatorioAtual } = useRelatorioReposicoes()
   const totalReposicoes = (_relatorioAtual || []).filter(a => a.pendentes.length > 0).length
 
   function handleCelulaVazia({ horario, quadraNome, data }) {
@@ -423,108 +422,175 @@ function AulasDivergencias() {
   )
 }
 
-const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-
 function calcReposicaoStatus(dataAula) {
-  if (!dataAula) return { diasRestantes: null, cor: '#3b82f6', progresso: 0, label: '' }
+  if (!dataAula) return { diasRestantes: null, cor: '#3b82f6', progresso: 100, label: '' }
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
   const dataFalta = new Date(dataAula + 'T12:00')
   const daysElapsed = Math.floor((hoje - dataFalta) / (1000 * 60 * 60 * 24))
   const diasRestantes = 60 - daysElapsed
-  const progresso = Math.min(100, Math.max(0, (daysElapsed / 60) * 100))
   let cor = '#3b82f6'
-  if (diasRestantes < 0) cor = '#ef4444'
-  else if (diasRestantes <= 7) cor = '#f59e0b'
-  return { diasRestantes, cor, progresso, label: diasRestantes < 0 ? 'Expirado' : `${diasRestantes}d restantes` }
+  if (diasRestantes <= 0) cor = '#ef4444'
+  else if (diasRestantes <= 10) cor = '#f59e0b'
+  // Barra começa cheia e vai diminuindo; expirado = tracinho mínimo vermelho
+  const progresso = diasRestantes <= 0
+    ? 3
+    : Math.min(100, (diasRestantes / 60) * 100)
+  const label = diasRestantes <= 0
+    ? `+${Math.abs(diasRestantes)}d em atraso`
+    : `${diasRestantes}d restantes`
+  return { diasRestantes, cor, progresso, label }
+}
+
+const SORT_OPTS = [
+  { key: 'urgencia', label: 'Mais urgente' },
+  { key: 'quantidade', label: 'Mais faltas' },
+  { key: 'alfabetico', label: 'Alfabético' },
+]
+
+function urgenciaMenor(pendentes) {
+  if (!pendentes.length) return 999
+  return pendentes.reduce((min, f) => {
+    const d = calcReposicaoStatus(f.dataAula).diasRestantes
+    return d < min ? d : min
+  }, Infinity)
 }
 
 function AulasReposicoes() {
-  const hoje = new Date()
-  const [mes, setMes] = useState(hoje.getMonth() + 1)
-  const [ano, setAno] = useState(hoje.getFullYear())
+  const [busca, setBusca] = useState('')
   const [modFilter, setModFilter] = useState(null)
   const [showModMenu, setShowModMenu] = useState(false)
+  const [sortBy, setSortBy] = useState('urgencia')
+  const [showSortMenu, setShowSortMenu] = useState(false)
   const [alunoSel, setAlunoSel] = useState(null)
 
-  const { data: relatorio, isLoading } = useRelatorioReposicoes({ mes, ano })
-
-  function navMes(dir) {
-    let m = mes + dir, a = ano
-    if (m > 12) { m = 1; a++ }
-    if (m < 1) { m = 12; a-- }
-    setMes(m); setAno(a)
-  }
+  const { data: relatorio, isLoading } = useRelatorioReposicoes()
 
   const modalidades = [...new Map(
     (relatorio || []).filter(a => a.modalidade).map(a => [a.modalidade.nome, a.modalidade])
   ).values()]
 
-  const lista = (relatorio || []).filter(a => !modFilter || a.modalidade?.nome === modFilter)
+  let lista = (relatorio || []).filter(a => {
+    if (modFilter && a.modalidade?.nome !== modFilter) return false
+    if (busca && !a.nome.toLowerCase().includes(busca.toLowerCase())) return false
+    return true
+  })
+
+  if (sortBy === 'urgencia') {
+    lista = [...lista].sort((a, b) => urgenciaMenor(a.pendentes) - urgenciaMenor(b.pendentes))
+  } else if (sortBy === 'quantidade') {
+    lista = [...lista].sort((a, b) => b.pendentes.length - a.pendentes.length)
+  } else if (sortBy === 'alfabetico') {
+    lista = [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
+  }
+
+  const sortLabel = SORT_OPTS.find(o => o.key === sortBy)?.label || 'Ordenar'
 
   return (
     <div>
-      {/* Header: seletor de mês + dropdown filtro modalidade */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button onClick={() => navMes(-1)} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#888', cursor: 'pointer', fontSize: '18px' }}>‹</button>
-          <span style={{ fontSize: '15px', fontWeight: '600', color: '#F0F2F5', minWidth: '90px', textAlign: 'center' }}>
-            {MESES_ABREV[mes - 1]} · {ano}
-          </span>
-          <button onClick={() => navMes(1)} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#888', cursor: 'pointer', fontSize: '18px' }}>›</button>
-        </div>
+      {/* Busca */}
+      <div style={{ marginBottom: '10px' }}>
+        <input
+          type="text"
+          placeholder="Buscar aluno..."
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          style={{
+            width: '100%', padding: '9px 14px', borderRadius: '8px', border: 'none',
+            outline: '1px solid #2a2a2a', backgroundColor: '#1a1a1a',
+            color: '#F0F2F5', fontSize: '13px', boxSizing: 'border-box',
+          }}
+        />
+      </div>
 
-        {modalidades.length > 0 && (
-          <div style={{ position: 'relative' }}>
-            <button onClick={() => setShowModMenu(v => !v)} style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '7px 12px', borderRadius: '8px', border: 'none',
-              backgroundColor: modFilter ? 'rgba(252,200,37,0.08)' : '#1a1a1a',
-              outline: `1px solid ${modFilter ? 'rgba(252,200,37,0.3)' : '#2a2a2a'}`,
-              color: modFilter ? '#fcc825' : '#777', cursor: 'pointer', fontSize: '12px', fontWeight: '500',
-            }}>
-              {modFilter || 'Modalidade'} <span style={{ fontSize: '8px', opacity: 0.7 }}>▾</span>
-            </button>
-            {showModMenu && (
-              <>
-                <div onClick={() => setShowModMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-                <div style={{
-                  position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 20,
-                  backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: '10px',
-                  padding: '6px', minWidth: '150px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+      {/* Filtros: modalidade + ordenação */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+        {/* Dropdown modalidade */}
+        <div style={{ position: 'relative', flex: 1 }}>
+          <button onClick={() => { setShowModMenu(v => !v); setShowSortMenu(false) }} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%', padding: '8px 12px', borderRadius: '8px', border: 'none',
+            backgroundColor: modFilter ? 'rgba(252,200,37,0.08)' : '#1a1a1a',
+            outline: `1px solid ${modFilter ? 'rgba(252,200,37,0.3)' : '#2a2a2a'}`,
+            color: modFilter ? '#fcc825' : '#666', cursor: 'pointer', fontSize: '12px', fontWeight: '500',
+          }}>
+            <span>{modFilter || 'Modalidade'}</span>
+            <span style={{ fontSize: '8px', opacity: 0.6 }}>▾</span>
+          </button>
+          {showModMenu && (
+            <>
+              <div onClick={() => setShowModMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+              <div style={{
+                position: 'absolute', left: 0, top: 'calc(100% + 4px)', zIndex: 20,
+                backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: '10px',
+                padding: '6px', minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+              }}>
+                <button onClick={() => { setModFilter(null); setShowModMenu(false) }} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
+                  cursor: 'pointer', fontSize: '13px', textAlign: 'left',
+                  backgroundColor: !modFilter ? 'rgba(252,200,37,0.08)' : 'transparent',
+                  color: !modFilter ? '#fcc825' : '#888',
                 }}>
-                  <button onClick={() => { setModFilter(null); setShowModMenu(false) }} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  Todas {!modFilter && '✓'}
+                </button>
+                {modalidades.map(m => (
+                  <button key={m.nome} onClick={() => { setModFilter(m.nome); setShowModMenu(false) }} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
                     cursor: 'pointer', fontSize: '13px', textAlign: 'left',
-                    backgroundColor: !modFilter ? 'rgba(252,200,37,0.08)' : 'transparent',
-                    color: !modFilter ? '#fcc825' : '#888',
+                    backgroundColor: modFilter === m.nome ? 'rgba(252,200,37,0.08)' : 'transparent',
+                    color: modFilter === m.nome ? '#fcc825' : '#888',
                   }}>
-                    Todas {!modFilter && <span style={{ fontSize: '10px' }}>✓</span>}
+                    {m.nome} {modFilter === m.nome && '✓'}
                   </button>
-                  {modalidades.map(m => (
-                    <button key={m.nome} onClick={() => { setModFilter(m.nome); setShowModMenu(false) }} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
-                      cursor: 'pointer', fontSize: '13px', textAlign: 'left',
-                      backgroundColor: modFilter === m.nome ? 'rgba(252,200,37,0.08)' : 'transparent',
-                      color: modFilter === m.nome ? '#fcc825' : '#888',
-                    }}>
-                      {m.nome} {modFilter === m.nome && <span style={{ fontSize: '10px' }}>✓</span>}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Dropdown ordenação */}
+        <div style={{ position: 'relative', flex: 1 }}>
+          <button onClick={() => { setShowSortMenu(v => !v); setShowModMenu(false) }} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%', padding: '8px 12px', borderRadius: '8px', border: 'none',
+            backgroundColor: '#1a1a1a', outline: '1px solid #2a2a2a',
+            color: '#666', cursor: 'pointer', fontSize: '12px', fontWeight: '500',
+          }}>
+            <span>{sortLabel}</span>
+            <span style={{ fontSize: '8px', opacity: 0.6 }}>▾</span>
+          </button>
+          {showSortMenu && (
+            <>
+              <div onClick={() => setShowSortMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+              <div style={{
+                position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 20,
+                backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: '10px',
+                padding: '6px', minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+              }}>
+                {SORT_OPTS.map(opt => (
+                  <button key={opt.key} onClick={() => { setSortBy(opt.key); setShowSortMenu(false) }} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
+                    cursor: 'pointer', fontSize: '13px', textAlign: 'left',
+                    backgroundColor: sortBy === opt.key ? 'rgba(252,200,37,0.08)' : 'transparent',
+                    color: sortBy === opt.key ? '#fcc825' : '#888',
+                  }}>
+                    {opt.label} {sortBy === opt.key && '✓'}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {isLoading ? <Loading /> : lista.length === 0 ? (
-        <EmptyState icon="🎉" title="Nenhuma falta justificada" description={`Nenhuma reposição pendente em ${MESES_ABREV[mes - 1]}/${ano}`} />
+        <EmptyState icon="🎉" title="Nenhuma falta justificada" description="Nenhuma reposição pendente" />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {lista.map(aluno => {
-            const cor = aluno.modalidade?.cor_hex || '#fcc825'
+            const cor = aluno.modalidade?.cor_hex || '#555'
             const statusUrgente = aluno.pendentes.length > 0
               ? calcReposicaoStatus(aluno.pendentes.reduce((w, f) => {
                   const sw = calcReposicaoStatus(w.dataAula), sf = calcReposicaoStatus(f.dataAula)
@@ -537,11 +603,11 @@ function AulasReposicoes() {
                 backgroundColor: '#151515', border: '1px solid #2a2a2a', borderRadius: '12px',
                 padding: '12px 14px', cursor: 'pointer', textAlign: 'left', width: '100%',
               }}>
-                {/* Linha principal: chip + badge + nome/nivel */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {/* Chip modalidade — só texto, sem emoji */}
                   {aluno.modalidade && (
                     <div style={{
-                      flexShrink: 0, borderRadius: '6px', padding: '5px 8px',
+                      flexShrink: 0, borderRadius: '6px', padding: '4px 8px',
                       backgroundColor: `${cor}18`, border: `1px solid ${cor}44`,
                     }}>
                       <div style={{ fontSize: '10px', fontWeight: '700', color: cor, textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
@@ -549,6 +615,7 @@ function AulasReposicoes() {
                       </div>
                     </div>
                   )}
+                  {/* Badge contagem */}
                   <div style={{
                     minWidth: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
                     backgroundColor: aluno.pendentes.length > 0 ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.1)',
@@ -558,6 +625,7 @@ function AulasReposicoes() {
                   }}>
                     {aluno.pendentes.length > 0 ? aluno.pendentes.length : '✓'}
                   </div>
+                  {/* Nome + nível */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5' }}>{aluno.nome}</div>
                     <div style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>
@@ -567,7 +635,7 @@ function AulasReposicoes() {
                   </div>
                 </div>
 
-                {/* Barra de progresso do prazo mais urgente */}
+                {/* Barra de prazo mais urgente */}
                 {statusUrgente && aluno.pendentes.length > 0 && (
                   <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #1e1e1e' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '4px' }}>
@@ -663,7 +731,9 @@ function ModalReposicao({ aluno, onClose }) {
                     <div style={{ fontSize: '14px', color: '#F0F2F5', fontWeight: '600' }}>
                       {item.dataAula ? format(new Date(item.dataAula + 'T12:00'), "dd/MM/yyyy · EEEE", { locale: ptBR }) : 'Data desconhecida'}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#555', marginTop: '3px' }}>{item.turmaNome}</div>
+                    <div style={{ fontSize: '12px', color: '#555', marginTop: '3px' }}>
+                      {item.turmaNome || aluno.nivel || 'Individual'}
+                    </div>
                   </div>
                   <span style={{ color: '#3b82f6', fontSize: '20px', flexShrink: 0 }}>›</span>
                 </div>
@@ -698,7 +768,7 @@ function ModalReposicao({ aluno, onClose }) {
           <div style={{ flex: 1, padding: '8px 12px', backgroundColor: 'rgba(59,130,246,0.08)', borderRadius: '8px', border: '1px solid rgba(59,130,246,0.2)' }}>
             <div style={{ fontSize: '10px', color: '#3b82f6', fontWeight: '600', textTransform: 'uppercase' }}>Falta a repor</div>
             <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600', marginTop: '1px' }}>
-              {faltaSel?.dataAula ? format(new Date(faltaSel.dataAula + 'T12:00'), "dd/MM · EEEE", { locale: ptBR }) : ''} · {faltaSel?.turmaNome}
+              {faltaSel?.dataAula ? format(new Date(faltaSel.dataAula + 'T12:00'), "dd/MM · EEEE", { locale: ptBR }) : ''} · {faltaSel?.turmaNome || aluno.nivel || 'Individual'}
             </div>
           </div>
         </div>

@@ -194,23 +194,23 @@ export function useSalvarPresencas() {
   })
 }
 
-export function useRelatorioReposicoes({ mes, ano }) {
+export function useRelatorioReposicoes() {
   return useQuery({
-    queryKey: ['relatorio_repos', mes, ano],
+    queryKey: ['relatorio_repos'],
     queryFn: async () => {
-      const dataInicio = `${ano}-${String(mes).padStart(2, '0')}-01`
-      const ultimoDia = new Date(ano, mes, 0).getDate()
-      const dataFim = `${ano}-${String(mes).padStart(2, '0')}-${ultimoDia}`
+      const hoje = new Date()
+      const dataFim = format(hoje, 'yyyy-MM-dd')
+      const umAnoAtras = new Date(hoje)
+      umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1)
+      const dataInicio = format(umAnoAtras, 'yyyy-MM-dd')
 
-      // Query única: presencas com !inner join em aulas filtrando por data
-      // Evita o problema de .in() com centenas de IDs
       const { data: faltas, error } = await supabase
         .from('presencas')
         .select(`
           id, aluno_id, aula_id,
-          alunos(id, nome, nivel_avaliado_prof),
+          alunos(id, nome, nivel_avaliado_prof, modalidades_ids),
           aulas!inner(id, data_aula, turma_id,
-            turmas(id, nome, modalidades(nome, icone_emoji, cor_hex))
+            turmas(id, nome, modalidades(id, nome, icone_emoji, cor_hex))
           )
         `)
         .eq('status_presenca', 'falta_justificada')
@@ -219,7 +219,20 @@ export function useRelatorioReposicoes({ mes, ano }) {
       if (error) throw error
       if (!faltas?.length) return []
 
-      // Busca reposicoes apenas para as aulas únicas com faltas (conjunto menor)
+      // Busca modalidades dos alunos para aulas avulsas (sem turma)
+      const modalidadeIds = new Set()
+      faltas.forEach(f => {
+        if (!f.aulas?.turma_id) f.alunos?.modalidades_ids?.forEach(id => modalidadeIds.add(id))
+      })
+      let modalidadesMap = {}
+      if (modalidadeIds.size > 0) {
+        const { data: mods } = await supabase
+          .from('modalidades')
+          .select('id, nome, cor_hex, icone_emoji')
+          .in('id', [...modalidadeIds])
+        mods?.forEach(m => { modalidadesMap[m.id] = m })
+      }
+
       const aulaIdsUnicos = [...new Set(faltas.map(f => f.aula_id))]
       const { data: repos } = await supabase
         .from('reposicoes')
@@ -237,15 +250,23 @@ export function useRelatorioReposicoes({ mes, ano }) {
         const aluno = f.alunos
         if (!aluno) return
         const aula = f.aulas
-        const modalidade = aula?.turmas?.modalidades || null
+        const modalidadeTurma = aula?.turmas?.modalidades || null
+        const modalidadeAluno = !modalidadeTurma && aluno.modalidades_ids?.length
+          ? modalidadesMap[aluno.modalidades_ids[0]] || null
+          : null
+        const modalidade = modalidadeTurma || modalidadeAluno
+
         if (!porAluno[aluno.id]) {
           porAluno[aluno.id] = { id: aluno.id, nome: aluno.nome, nivel: aluno.nivel_avaliado_prof, modalidade, faltas: [] }
+        }
+        if (!porAluno[aluno.id].modalidade && modalidade) {
+          porAluno[aluno.id].modalidade = modalidade
         }
         porAluno[aluno.id].faltas.push({
           presencaId: f.id,
           aulaId: f.aula_id,
           dataAula: aula?.data_aula,
-          turmaNome: aula?.turmas?.nome || 'Avulsa',
+          turmaNome: aula?.turmas?.nome || null,
           reposicao: reposMap[aluno.id]?.[f.aula_id] || null,
         })
       })
@@ -256,7 +277,6 @@ export function useRelatorioReposicoes({ mes, ano }) {
         return { ...a, pendentes, agendadas }
       }).sort((a, b) => b.pendentes.length - a.pendentes.length)
     },
-    enabled: !!mes && !!ano,
     staleTime: 60000,
   })
 }
