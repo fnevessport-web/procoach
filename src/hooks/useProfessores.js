@@ -13,12 +13,14 @@ export function useProfessores(modalidadeId) {
         .select('*, modalidades(nome)')
         .order('nome')
 
-      if (modalidadeId) {
-        query = query.eq('modalidade_id', modalidadeId)
-      }
-
       const { data, error } = await query
       if (error) throw error
+      if (modalidadeId) {
+        return (data || []).filter(p =>
+          p.modalidade_id === modalidadeId ||
+          (p.modalidades_ids && p.modalidades_ids.includes(modalidadeId))
+        )
+      }
       return data || []
     },
     enabled: true,
