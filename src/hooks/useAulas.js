@@ -11,7 +11,7 @@ export function useAulas({ data, professorId, modalidadeId, status } = {}) {
         .from('aulas')
         .select(`
           *,
-          turmas(nome, horario_inicio, horario_fim, horario_dia_semana, modalidades(nome, icone_emoji, cor_hex)),
+          turmas(nome, horario_inicio, horario_fim, horario_dia_semana, quadras(nome), modalidades(nome, icone_emoji, cor_hex)),
           professores!professor_executou_id(id, nome),
           prof_titular:professores!professor_titular_id(id, nome),
           presencas(id, aluno_id, presente, status_presenca, tipo_participacao, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof, alunos(id, nome, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof))

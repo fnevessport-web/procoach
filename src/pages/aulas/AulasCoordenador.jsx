@@ -382,20 +382,14 @@ export function AulasCoordenador({ onCelulaVazia }) {
 
   const quadrasFiltradasPorModalidade = filtroModalidadeGrade === 'todas'
     ? todasQuadrasNomes
-    : (() => {
-        const mod = todasQuadras?.find(q => {
-          const aula = aulasFiltradas.find(a => getQuadraNome(a) === q.nome)
-          return aula?.turmas?.modalidades?.nome === filtroModalidadeGrade ||
-            parseObservacoes(aula?.observacoes)?.nivel === filtroModalidadeGrade
-        })
-        const quadrasDasMod = aulasFiltradas
-          .filter(a => {
-            const nomeMod = a.turmas?.modalidades?.nome || ''
-            return nomeMod === filtroModalidadeGrade
-          })
-          .map(a => getQuadraNome(a))
-        return [...new Set(quadrasDasMod)]
-      })()
+    : todasQuadrasNomes.filter(q => {
+        if (filtroModalidadeGrade === 'Tênis') return ['Quadra 1', 'Quadra 2', 'Quadra 3', 'Quadra 4'].includes(q)
+        if (filtroModalidadeGrade === 'Padel') return q === 'Quadra de Padel'
+        if (filtroModalidadeGrade === 'Beach Tênis') return q === 'Quadra 1 Areia'
+        if (filtroModalidadeGrade === 'Futevôlei') return q === 'Quadra 3 Areia'
+        if (filtroModalidadeGrade === 'Vôlei de Praia') return q === 'Quadra 5 Areia'
+        return false
+      })
 
   const gruposParaGrade = GRUPOS_EMPRESA.map(g => ({
     ...g,
