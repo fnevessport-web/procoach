@@ -263,6 +263,31 @@ export function useRelatorioReposicoes({ mes, ano }) {
   })
 }
 
+export function useAulasDiaParaReposicao(data) {
+  return useQuery({
+    queryKey: ['aulas_dia_repos', data],
+    queryFn: async () => {
+      if (!data) return []
+      const { data: aulas, error } = await supabase
+        .from('aulas')
+        .select(`
+          id, data_aula, turma_id,
+          turmas(id, nome, horario_inicio, horario_fim, quadras(id, nome), niveis(nome)),
+          presencas(id, aluno_id)
+        `)
+        .eq('data_aula', data)
+        .not('turma_id', 'is', null)
+        .neq('status_aula', 'cancelada')
+      if (error) throw error
+      return (aulas || []).sort((a, b) =>
+        (a.turmas?.horario_inicio || '').localeCompare(b.turmas?.horario_inicio || '')
+      )
+    },
+    enabled: !!data,
+    staleTime: 30000,
+  })
+}
+
 export function useAulasDisponiveisReposicao() {
   const hoje = format(new Date(), 'yyyy-MM-dd')
   return useQuery({
