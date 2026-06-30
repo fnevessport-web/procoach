@@ -185,6 +185,41 @@ export function useBoletosProfessor(professorId) {
   })
 }
 
+// IDs de professores com pagamento confirmado no mês/ano
+export function usePagamentosConfirmados({ mes, ano }) {
+  return useQuery({
+    queryKey: ['pagamentos_confirmados', mes, ano],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('boletos_professor')
+        .select('professor_id')
+        .eq('mes', mes)
+        .eq('ano', ano)
+        .eq('status', 'pago')
+      if (error) throw error
+      return new Set((data || []).map(b => b.professor_id))
+    },
+    enabled: !!mes && !!ano,
+    staleTime: 30000,
+  })
+}
+
+export function useConfirmarPagamento() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ professorId, mes, ano }) => {
+      const { error } = await supabase
+        .from('boletos_professor')
+        .upsert({ professor_id: professorId, mes, ano, status: 'pago' }, { onConflict: 'professor_id,mes,ano' })
+      if (error) throw error
+    },
+    onSuccess: (_, { mes, ano, professorId }) => {
+      qc.invalidateQueries({ queryKey: ['boletos', professorId] })
+      qc.invalidateQueries({ queryKey: ['pagamentos_confirmados', mes, ano] })
+    },
+  })
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Lancamentos financeiros (receita + outros custos)
 // Requer tabela: financeiro_lancamentos

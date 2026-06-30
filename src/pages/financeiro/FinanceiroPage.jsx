@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
-import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns'
+import { format, endOfMonth, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink } from 'lucide-react'
+import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink } from 'lucide-react'
 import {
   useCustoProfessores,
   useAulasProfessorFinanceiro,
@@ -9,6 +9,8 @@ import {
   useSalvarLancamento,
   useRemoverLancamento,
   useBoletosProfessor,
+  usePagamentosConfirmados,
+  useConfirmarPagamento,
 } from '../../hooks/useFinanceiro'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
@@ -71,9 +73,10 @@ function fimMes(mes, ano) {
 // Sub-componentes pequenos
 // ──────────────────────────────────────────────────────────────────────
 
-function Avatar({ src, nome, size = 44 }) {
+function Avatar({ src, nome, size = 44, borderColor }) {
   const [imgError, setImgError] = useState(false)
   const iniciais = (nome || '?').split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+  const border = borderColor ? `2.5px solid ${borderColor}` : '2px solid #2a2a2a'
   if (src && !imgError) {
     return (
       <img
@@ -81,8 +84,7 @@ function Avatar({ src, nome, size = 44 }) {
         alt={nome}
         style={{
           width: size, height: size, borderRadius: '50%',
-          objectFit: 'cover', flexShrink: 0,
-          border: '2px solid #2a2a2a',
+          objectFit: 'cover', flexShrink: 0, border,
         }}
         onError={() => setImgError(true)}
       />
@@ -93,7 +95,7 @@ function Avatar({ src, nome, size = 44 }) {
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.33, fontWeight: '700', color: 'white',
+      fontSize: size * 0.33, fontWeight: '700', color: 'white', border,
     }}>
       {iniciais}
     </div>
@@ -166,6 +168,8 @@ export function FinanceiroPage() {
 
   const salvarLancamento = useSalvarLancamento()
   const removerLancamento = useRemoverLancamento()
+  const confirmarPagamento = useConfirmarPagamento()
+  const { data: pagamentosConfirmados = new Set() } = usePagamentosConfirmados({ mes, ano: anoSel })
 
   // Derived
   const receitaRecord = lancamentos.find(l => l.tipo === 'receita')
@@ -178,6 +182,15 @@ export function FinanceiroPage() {
   const totalAulasProf = aulasProf.length
   const valorUnitarioProf = Number(professorSel?.valor_aula || professorSel?.valor_hora_aula || 0)
   const totalPagarProf = totalAulasProf * valorUnitarioProf
+  const pagamentoConfirmado = professorSel ? pagamentosConfirmados.has(professorSel.id) : false
+
+  async function handleConfirmarPagamento() {
+    if (!professorSel) return
+    try {
+      await confirmarPagamento.mutateAsync({ professorId: professorSel.id, mes, ano: anoSel })
+      toast.success('✅ Pagamento confirmado!', { style: toastStyle })
+    } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
 
   function navegarEmpresa(id) {
     setEmpresaId(id)
@@ -365,36 +378,69 @@ export function FinanceiroPage() {
     const temPix = professorSel.tipo_pagamento === 'pix' || (professorSel.banco === 'Itaú' && professorSel.chave_pix)
     const temBoleto = professorSel.tipo_pagamento === 'boleto'
 
+    // Agrupa aulas por dia
+    const porDia = {}
+    aulasProf.forEach(a => {
+      if (!porDia[a.data_aula]) porDia[a.data_aula] = []
+      porDia[a.data_aula].push(a)
+    })
+    const diasOrdenados = Object.entries(porDia).sort(([a], [b]) => a.localeCompare(b))
+
     return (
       <div className="fade-in">
-        {/* Breadcrumb */}
-        <button onClick={voltarEmpresa} style={{
-          display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px',
-          background: 'none', border: 'none', cursor: 'pointer', color: '#555', fontSize: '13px', padding: 0,
-        }}>
-          <ChevronLeft size={16} /> {empresa?.nome}
-        </button>
+        {/* Breadcrumb + X */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <button onClick={voltarEmpresa} style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: 'none', border: 'none', cursor: 'pointer', color: '#555', fontSize: '13px', padding: 0,
+          }}>
+            <ChevronLeft size={16} /> {empresa?.nome}
+          </button>
+          <button onClick={voltarEmpresa} style={{
+            width: '32px', height: '32px', borderRadius: '8px',
+            border: '1px solid #2a2a2a', background: '#1a1a1a',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <X size={16} color="#555" />
+          </button>
+        </div>
 
         {/* Header professor */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: '14px',
           backgroundColor: '#1a1a1a', borderRadius: '14px',
-          border: '1px solid rgba(255,255,255,0.06)', padding: '16px',
-          marginBottom: '14px',
+          border: pagamentoConfirmado ? '1px solid rgba(34,197,94,0.4)' : '1px solid rgba(255,255,255,0.06)',
+          padding: '16px', marginBottom: '14px',
         }}>
-          <Avatar src={professorSel.foto_url} nome={professorSel.nome} size={56} />
+          <div style={{ position: 'relative' }}>
+            <Avatar src={professorSel.foto_url} nome={professorSel.nome} size={56}
+              borderColor={pagamentoConfirmado ? '#22c55e' : undefined} />
+            {pagamentoConfirmado && (
+              <div style={{
+                position: 'absolute', bottom: 0, right: 0,
+                width: '18px', height: '18px', borderRadius: '50%',
+                backgroundColor: '#22c55e', border: '2px solid #1a1a1a',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Check size={10} color="white" />
+              </div>
+            )}
+          </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '16px', fontWeight: '700', color: '#F0F2F5' }}>
               {professorSel.nome}
             </div>
-            {professorSel.banco && (
-              <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
-                {professorSel.banco}
-                {professorSel.tipo_pagamento === 'boleto' && (
-                  <span style={{ marginLeft: '6px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(59,130,246,0.15)', color: '#60a5fa', fontSize: '10px' }}>Boleto</span>
-                )}
-              </div>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+              {professorSel.banco && (
+                <span style={{ fontSize: '11px', color: '#555' }}>{professorSel.banco}</span>
+              )}
+              {temBoleto && (
+                <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(96,165,250,0.15)', color: '#60a5fa', fontSize: '10px', fontWeight: '600' }}>Boleto</span>
+              )}
+              {pagamentoConfirmado && (
+                <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(34,197,94,0.15)', color: '#22c55e', fontSize: '10px', fontWeight: '600' }}>✓ Pago</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -415,77 +461,170 @@ export function FinanceiroPage() {
           </div>
         </div>
 
-        {/* PIX */}
+        {/* PIX ITAÚ */}
         {temPix && professorSel.chave_pix && (
-          <div style={{ marginBottom: '14px' }}>
-            <div style={{ fontSize: '10px', color: '#555', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Chave PIX</div>
-            <PixButton chave={professorSel.chave_pix} />
+          <div style={{
+            backgroundColor: '#1a1a1a', borderRadius: '12px',
+            border: '1px solid rgba(249,115,22,0.25)', padding: '14px',
+            marginBottom: '14px',
+          }}>
+            <div style={{ fontSize: '10px', color: '#f97316', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
+              PIX ITAÚ
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button onClick={() => {
+                navigator.clipboard.writeText(professorSel.chave_pix)
+                toast.success('PIX copiado!', { style: toastStyle })
+              }} style={{
+                flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '10px 14px', borderRadius: '10px',
+                border: '1px solid rgba(249,115,22,0.3)',
+                backgroundColor: 'rgba(249,115,22,0.06)',
+                cursor: 'pointer',
+              }}>
+                <Copy size={14} color="#f97316" />
+                <span style={{ flex: 1, textAlign: 'left', fontSize: '13px', color: '#f97316', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {professorSel.chave_pix}
+                </span>
+              </button>
+              {!pagamentoConfirmado ? (
+                <button onClick={handleConfirmarPagamento} disabled={confirmarPagamento.isPending} style={{
+                  flexShrink: 0, padding: '10px 14px', borderRadius: '10px', border: 'none',
+                  backgroundColor: '#22c55e', color: 'white',
+                  fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                }}>
+                  <Check size={14} /> Pago
+                </button>
+              ) : (
+                <div style={{
+                  flexShrink: 0, padding: '10px 14px', borderRadius: '10px',
+                  backgroundColor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)',
+                  fontSize: '12px', fontWeight: '700', color: '#22c55e',
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                }}>
+                  <Check size={14} /> Confirmado
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Boleto */}
+        {/* Boleto + NF */}
         {temBoleto && (
           <div style={{
             backgroundColor: '#1a1a1a', borderRadius: '12px',
-            border: '1px solid rgba(59,130,246,0.2)', padding: '14px',
+            border: '1px solid rgba(96,165,250,0.2)', padding: '14px',
             marginBottom: '14px',
           }}>
-            <div style={{ fontSize: '11px', color: '#60a5fa', fontWeight: '600', marginBottom: '8px' }}>
-              📄 Boleto — {MESES_ABREV[mesSel]}/{anoSel}
+            <div style={{ fontSize: '10px', color: '#60a5fa', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '10px' }}>
+              Boleto + NF — {MESES_ABREV[mesSel]}/{anoSel}
             </div>
-            {boletoMes?.boleto_url ? (
-              <a href={boletoMes.boleto_url} target="_blank" rel="noreferrer" style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '10px 14px', borderRadius: '10px',
-                border: '1px solid rgba(59,130,246,0.3)',
-                backgroundColor: 'rgba(59,130,246,0.06)',
-                color: '#60a5fa', fontSize: '12px', textDecoration: 'none',
-              }}>
-                <ExternalLink size={14} /> Ver boleto
-              </a>
-            ) : (
-              <div style={{ fontSize: '12px', color: '#555' }}>
-                Nenhum boleto enviado para {MESES_ABREV[mesSel]}/{anoSel}
-              </div>
-            )}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+              {/* Boleto */}
+              {boletoMes?.boleto_url ? (
+                <a href={boletoMes.boleto_url} target="_blank" rel="noreferrer" style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  padding: '10px', borderRadius: '10px',
+                  border: '1px solid rgba(96,165,250,0.3)',
+                  backgroundColor: 'rgba(96,165,250,0.06)',
+                  color: '#60a5fa', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
+                }}>
+                  <FileText size={14} /> Boleto
+                </a>
+              ) : (
+                <div style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '10px', borderRadius: '10px',
+                  border: '1px dashed #2a2a2a',
+                  color: '#555', fontSize: '12px',
+                }}>
+                  Sem boleto
+                </div>
+              )}
+              {/* NF */}
+              {boletoMes?.nf_url ? (
+                <a href={boletoMes.nf_url} target="_blank" rel="noreferrer" style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  padding: '10px', borderRadius: '10px',
+                  border: '1px solid rgba(252,200,37,0.3)',
+                  backgroundColor: 'rgba(252,200,37,0.06)',
+                  color: '#fcc825', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
+                }}>
+                  <FileText size={14} /> NF
+                </a>
+              ) : (
+                <div style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '10px', borderRadius: '10px',
+                  border: '1px dashed rgba(252,200,37,0.2)',
+                  color: '#555', fontSize: '12px',
+                }}>
+                  Sem NF
+                </div>
+              )}
+              {/* Confirmar */}
+              {!pagamentoConfirmado ? (
+                <button onClick={handleConfirmarPagamento} disabled={confirmarPagamento.isPending} style={{
+                  flexShrink: 0, padding: '10px 14px', borderRadius: '10px', border: 'none',
+                  backgroundColor: '#22c55e', color: 'white',
+                  fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                }}>
+                  <Check size={14} /> Pago
+                </button>
+              ) : (
+                <div style={{
+                  flexShrink: 0, padding: '10px 12px', borderRadius: '10px',
+                  backgroundColor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)',
+                  fontSize: '12px', fontWeight: '700', color: '#22c55e',
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                }}>
+                  <Check size={14} /> OK
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Aulas do período */}
+        {/* Resumo por dia */}
         <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           Aulas no período
         </div>
 
-        {loadingAulasProf ? <Loading /> : aulasProf.length === 0 ? (
+        {loadingAulasProf ? <Loading /> : diasOrdenados.length === 0 ? (
           <div style={{ fontSize: '13px', color: '#555', textAlign: 'center', padding: '24px' }}>
             Nenhuma aula encontrada
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {aulasProf.map(a => {
-              const dataFmt = format(parseISO(a.data_aula + 'T12:00:00'), "dd/MM", { locale: ptBR })
-              const nomeTurma = a.turma_id ? (a.turmas?.nome || 'Turma') : 'Avulsa'
-              const horario = a.turma_id ? (a.turmas?.horario_inicio?.slice(0, 5) || '') : ''
-              const quadra = a.turma_id ? (a.turmas?.quadras?.nome || '') : ''
+            {diasOrdenados.map(([dataStr, aulasNoDia]) => {
+              const dataFmt = format(parseISO(dataStr + 'T12:00:00'), "dd/MM · EEEE", { locale: ptBR })
+              const totalDia = aulasNoDia.length * valorUnitarioProf
+              const pct = Math.round((aulasNoDia.length / Math.max(...diasOrdenados.map(([,a]) => a.length), 1)) * 100)
               return (
-                <div key={a.id} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                <div key={dataStr} style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
                   padding: '10px 12px', borderRadius: '10px',
                   backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.04)',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '12px', color: '#888', fontWeight: '600', minWidth: '36px' }}>{dataFmt}</span>
-                    <div>
-                      <div style={{ fontSize: '12px', color: '#F0F2F5' }}>{nomeTurma}</div>
-                      {(horario || quadra) && (
-                        <div style={{ fontSize: '10px', color: '#555' }}>
-                          {[horario, quadra].filter(Boolean).join(' · ')}
-                        </div>
-                      )}
+                  <div style={{ minWidth: '90px' }}>
+                    <div style={{ fontSize: '12px', color: '#F0F2F5', fontWeight: '600', textTransform: 'capitalize' }}>
+                      {dataFmt}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                      <div style={{ flex: 1, height: '3px', borderRadius: '2px', backgroundColor: '#222', overflow: 'hidden', width: '60px' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', borderRadius: '2px', background: 'linear-gradient(90deg, #fcc825, #cf1b9b)' }} />
+                      </div>
                     </div>
                   </div>
-                  <span style={{ fontSize: '12px', color: '#fcc825', fontWeight: '600' }}>
-                    {fmtBRL(valorUnitarioProf)}
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: '11px', color: '#555' }}>
+                      {aulasNoDia.length} {aulasNoDia.length === 1 ? 'aula' : 'aulas'}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '13px', color: '#fcc825', fontWeight: '700' }}>
+                    {fmtBRL(totalDia)}
                   </span>
                 </div>
               )
@@ -610,17 +749,31 @@ export function FinanceiroPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {custosProf.map(prof => {
               const pct = Math.round((prof.totalValor / maxValorProf) * 100)
+              const pago = pagamentosConfirmados.has(prof.id)
               return (
                 <button key={prof.id} onClick={() => navegarProfessor(prof)} style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
                   background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                   textAlign: 'left', width: '100%',
                 }}>
-                  <Avatar src={prof.foto_url} nome={prof.nome} size={40} />
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <Avatar src={prof.foto_url} nome={prof.nome} size={40}
+                      borderColor={pago ? '#22c55e' : undefined} />
+                    {pago && (
+                      <div style={{
+                        position: 'absolute', bottom: -1, right: -1,
+                        width: '14px', height: '14px', borderRadius: '50%',
+                        backgroundColor: '#22c55e', border: '2px solid #1a1a1a',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Check size={8} color="white" />
+                      </div>
+                    )}
+                  </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5' }}>{prof.nome}</span>
-                      <span style={{ fontSize: '13px', fontWeight: '700', color: '#EF4444', flexShrink: 0, marginLeft: '8px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '600', color: pago ? '#22c55e' : '#F0F2F5' }}>{prof.nome}</span>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: pago ? '#22c55e' : '#EF4444', flexShrink: 0, marginLeft: '8px' }}>
                         {fmtBRL(prof.totalValor)}
                       </span>
                     </div>
@@ -628,7 +781,7 @@ export function FinanceiroPage() {
                       <div style={{ flex: 1, height: '4px', borderRadius: '2px', backgroundColor: '#222', overflow: 'hidden' }}>
                         <div style={{
                           width: `${pct}%`, height: '100%', borderRadius: '2px',
-                          background: 'linear-gradient(90deg, #ef4444, #dc2626)',
+                          background: pago ? 'linear-gradient(90deg, #22c55e, #16a34a)' : 'linear-gradient(90deg, #ef4444, #dc2626)',
                           transition: 'width 0.4s ease',
                         }} />
                       </div>
