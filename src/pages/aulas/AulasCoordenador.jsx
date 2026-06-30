@@ -373,7 +373,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
     },
     {
       empresa: 'BEACH ARENA',
-      cor: '#3b82f6',
+      cor: '#cf1b9b',
       quadras: ['Quadra 1 Areia', 'Quadra 3 Areia', 'Quadra 5 Areia'],
     },
   ]
@@ -701,8 +701,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
 
             {/* Cabeçalho com grupos por empresa */}
             <div style={{ display: 'flex', marginBottom: '2px', position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#110f0f', paddingTop: '4px', paddingBottom: '4px', marginLeft: 0 }}>
-              <div style={{ width: '50px', flexShrink: 0 }} />
-              <div style={{ width: '50px', flexShrink: 0 }} />
+              <div style={{ width: '50px', flexShrink: 0, marginRight: '4px' }} />
               {gruposParaGrade.map((grupo, gi) => (
                 <div key={grupo.empresa} style={{ display: 'flex', alignItems: 'center' }}>
                   {gi > 0 && (
