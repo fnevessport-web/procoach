@@ -202,31 +202,29 @@ export function useRelatorioReposicoes({ mes, ano }) {
       const ultimoDia = new Date(ano, mes, 0).getDate()
       const dataFim = `${ano}-${String(mes).padStart(2, '0')}-${ultimoDia}`
 
-      const { data: aulas, error: err1 } = await supabase
-        .from('aulas')
-        .select(`id, data_aula, turma_id, observacoes,
-          turmas(id, nome, modalidades(nome, icone_emoji, cor_hex))`)
-        .gte('data_aula', dataInicio)
-        .lte('data_aula', dataFim)
-      if (err1) throw err1
-      if (!aulas?.length) return []
-
-      const aulaIds = aulas.map(a => a.id)
-      const aulaMap = Object.fromEntries(aulas.map(a => [a.id, a]))
-
-      const { data: faltas, error: err2 } = await supabase
+      // Query única: presencas com !inner join em aulas filtrando por data
+      // Evita o problema de .in() com centenas de IDs
+      const { data: faltas, error } = await supabase
         .from('presencas')
-        .select('id, aluno_id, aula_id, alunos(id, nome, nivel_avaliado_prof)')
+        .select(`
+          id, aluno_id, aula_id,
+          alunos(id, nome, nivel_avaliado_prof),
+          aulas!inner(id, data_aula, turma_id,
+            turmas(id, nome, modalidades(nome, icone_emoji, cor_hex))
+          )
+        `)
         .eq('status_presenca', 'falta_justificada')
-        .in('aula_id', aulaIds)
-      if (err2) throw err2
+        .gte('aulas.data_aula', dataInicio)
+        .lte('aulas.data_aula', dataFim)
+      if (error) throw error
       if (!faltas?.length) return []
 
-      const { data: repos, error: err3 } = await supabase
+      // Busca reposicoes apenas para as aulas únicas com faltas (conjunto menor)
+      const aulaIdsUnicos = [...new Set(faltas.map(f => f.aula_id))]
+      const { data: repos } = await supabase
         .from('reposicoes')
         .select('id, aluno_id, aula_origem_id, status')
-        .in('aula_origem_id', aulaIds)
-      if (err3) throw err3
+        .in('aula_origem_id', aulaIdsUnicos)
 
       const reposMap = {}
       repos?.forEach(r => {
@@ -238,7 +236,7 @@ export function useRelatorioReposicoes({ mes, ano }) {
       faltas.forEach(f => {
         const aluno = f.alunos
         if (!aluno) return
-        const aula = aulaMap[f.aula_id]
+        const aula = f.aulas
         const modalidade = aula?.turmas?.modalidades || null
         if (!porAluno[aluno.id]) {
           porAluno[aluno.id] = { id: aluno.id, nome: aluno.nome, nivel: aluno.nivel_avaliado_prof, modalidade, faltas: [] }
