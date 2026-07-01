@@ -170,6 +170,7 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
         .lte('data_aula', dataFim)
         .eq('paga_professor', true)
         .eq('status_aula', 'dada')
+        .neq('status', 'pendente')
       if (error) throw error
 
       const quadras = QUADRAS_EMPRESA[empresa] || []
@@ -214,6 +215,7 @@ export function useAulasProfessorFinanceiro({ professorId, empresa, dataInicio, 
         .lte('data_aula', dataFim)
         .eq('paga_professor', true)
         .eq('status_aula', 'dada')
+        .neq('status', 'pendente')
         .order('data_aula', { ascending: true })
       if (error) throw error
 
