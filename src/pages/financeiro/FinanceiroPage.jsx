@@ -574,11 +574,40 @@ export function FinanceiroPage() {
   // VIEW: seleção de empresa
   // ══════════════════════════════════════════════════════════════════════
   if (view === 'empresas') {
+    const temPin = !!localStorage.getItem(PIN_KEY)
     return (
       <div className="fade-in">
-        <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', marginBottom: '20px' }}>
-          Financeiro
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
+            Financeiro
+          </h1>
+          <button
+            onClick={() => setPinModal({ professorId: null, initialMode: 'config1' })}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              padding: '7px 12px', borderRadius: '9px',
+              border: temPin ? '1px solid rgba(252,200,37,0.3)' : '1px solid #2a2a2a',
+              background: temPin ? 'rgba(252,200,37,0.06)' : '#1a1a1a',
+              color: temPin ? '#fcc825' : '#555',
+              fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+            }}
+          >
+            <Hash size={11} />
+            {temPin ? 'Alterar PIN' : 'Criar PIN'}
+          </button>
+        </div>
+
+        {pinModal && (
+          <PinModal
+            initialMode={pinModal.initialMode}
+            professorId={pinModal.professorId}
+            mes={mes}
+            ano={anoSel}
+            onClose={() => setPinModal(null)}
+            onAutorizado={() => toast.success('Pagamento autorizado!', { style: toastStyle })}
+          />
+        )}
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           {Object.values(EMPRESAS).map(emp => (
             <button key={emp.id} onClick={() => navegarEmpresa(emp.id)} style={{
