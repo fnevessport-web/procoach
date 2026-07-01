@@ -374,15 +374,19 @@ export function FinanceiroPage() {
   const empresa = EMPRESAS[empresaId]
   const mes = mesSel + 1 // 1-12
 
+  // Cap em hoje para não contar aulas futuras
+  const hoje = format(new Date(), 'yyyy-MM-dd')
+  const dataFimEfetivo = dataFim > hoje ? hoje : dataFim
+
   // Hooks de dados
   const { data: custosProf = [], isLoading: loadingCustos } = useCustoProfessores({
-    empresa: empresaId, dataInicio, dataFim,
+    empresa: empresaId, dataInicio, dataFim: dataFimEfetivo,
   })
   const { data: lancamentos = [] } = useLancamentosFinanceiro({
     empresa: empresaId, mes, ano: anoSel,
   })
   const { data: aulasProf = [], isLoading: loadingAulasProf } = useAulasProfessorFinanceiro({
-    professorId: professorSel?.id, empresa: empresaId, dataInicio, dataFim,
+    professorId: professorSel?.id, empresa: empresaId, dataInicio, dataFim: dataFimEfetivo,
   })
   const { data: boletos = [] } = useBoletosProfessor(professorSel?.id)
 

@@ -438,9 +438,13 @@ export default function ProfessoresPage() {
   }
 
   const ganhosMesAtual = calcularGanhosMes(mesAtual, anoAtual)
-  const ganhosMesAnterior = calcularGanhosMes(mesAtual === 1 ? 12 : mesAtual - 1, mesAtual === 1 ? anoAtual - 1 : anoAtual)
   const totalAulas = aulasProf.length
-  const totalGeral = aulasProf.length * (cardAberto?.valor_aula || 0)
+  const ganhosMostrar = mesSelecionado
+    ? calcularGanhosMes(mesSelecionado.mes, mesSelecionado.ano)
+    : ganhosMesAtual
+  const labelMesMostrar = mesSelecionado
+    ? `${MESES[mesSelecionado.mes - 1]} ${mesSelecionado.ano}`
+    : `${MESES[mesAtual - 1]} ${anoAtual}`
 
   const dadosGrafico = Array.from({ length: 6 }, (_, i) => {
     const m = mesAtual - 5 + i
@@ -699,7 +703,7 @@ export default function ProfessoresPage() {
                 })()}
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '34px', fontWeight: '900', color: '#fcc825', lineHeight: 1 }}>{totalAulas}</div>
-                  <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>aulas</div>
+                  <div style={{ fontSize: '8px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1.3 }}>Total de<br/>Aulas</div>
                 </div>
               </div>
 
@@ -709,17 +713,16 @@ export default function ProfessoresPage() {
             <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '14px 16px', border: '1px solid rgba(252,200,37,0.15)', marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{MESES[mesAtual - 1]} {anoAtual} · {ganhosMesAtual.qtd} aulas</div>
-                  <div style={{ fontSize: '24px', fontWeight: '800', color: '#fcc825' }}>R$ {ganhosMesAtual.valor.toFixed(2).replace('.', ',')}</div>
-                  {ganhosMesAtual.valorExtras > 0 && <div style={{ fontSize: '10px', color: '#cf1b9b', marginTop: '2px' }}>+ R$ {ganhosMesAtual.valorExtras.toFixed(2).replace('.', ',')} em extras</div>}
+                  <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{labelMesMostrar} · {ganhosMostrar.qtd} aulas</div>
+                  <div style={{ fontSize: '24px', fontWeight: '800', color: '#fcc825' }}>R$ {ganhosMostrar.valor.toFixed(2).replace('.', ',')}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {ganhosMesAnterior.valor > 0 && (
-                    <div style={{ textAlign: 'right', opacity: 0.4 }}>
-                      <div style={{ fontSize: '9px', color: '#888', marginBottom: '2px' }}>{MESES[mesAtual === 1 ? 11 : mesAtual - 2]}</div>
-                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#888' }}>R$ {ganhosMesAnterior.valor.toFixed(2).replace('.', ',')}</div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '9px', color: '#555', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Receita Extra</div>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: ganhosMostrar.valorExtras > 0 ? '#cf1b9b' : '#333' }}>
+                      {ganhosMostrar.valorExtras > 0 ? `R$ ${ganhosMostrar.valorExtras.toFixed(2).replace('.', ',')}` : '—'}
                     </div>
-                  )}
+                  </div>
                   <button onClick={() => setModalExtra(true)} style={{ width: '28px', height: '28px', borderRadius: '8px', border: '1px solid #2a2a2a', backgroundColor: '#111', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Plus size={14} color="#555" />
                   </button>
@@ -759,12 +762,17 @@ export default function ProfessoresPage() {
             <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '14px 16px', border: '1px solid #222', marginBottom: '16px' }}>
               <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Evolução — últimos 6 meses</div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', height: '60px' }}>
-                {dadosGrafico.map((d, i) => (
-                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                    <div style={{ width: '100%', borderRadius: '4px 4px 0 0', height: `${Math.max((d.qtd / maxGrafico) * 48, d.qtd > 0 ? 4 : 0)}px`, background: i === 5 ? 'linear-gradient(180deg, #fcc825, #cf1b9b)' : '#2a2a2a' }} />
-                    <div style={{ fontSize: '9px', color: i === 5 ? '#fcc825' : '#444' }}>{d.label}</div>
-                  </div>
-                ))}
+                {dadosGrafico.map((d, i) => {
+                  const isHL = mesSelecionado
+                    ? (d.mes === mesSelecionado.mes && d.ano === mesSelecionado.ano)
+                    : i === 5
+                  return (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                      <div style={{ width: '100%', borderRadius: '4px 4px 0 0', height: `${Math.max((d.qtd / maxGrafico) * 48, d.qtd > 0 ? 4 : 0)}px`, background: isHL ? 'linear-gradient(180deg, #fcc825, #cf1b9b)' : '#2a2a2a' }} />
+                      <div style={{ fontSize: '9px', color: isHL ? '#fcc825' : '#444' }}>{d.label}</div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
@@ -784,10 +792,15 @@ export default function ProfessoresPage() {
                   const isAtual = i + 1 === mesAtual && anoSelecionado === anoAtual
                   const isSelecionado = mesSelecionado?.mes === i + 1 && mesSelecionado?.ano === anoSelecionado
                   return (
-                    <button key={m} onClick={() => setMesSelecionado(isSelecionado ? null : { mes: i + 1, ano: anoSelecionado })} style={{ backgroundColor: isAtual ? 'rgba(252,200,37,0.1)' : '#111', borderRadius: '10px', padding: '8px 6px', border: isSelecionado ? '1px solid rgba(207,27,155,0.4)' : isAtual ? '1px solid rgba(252,200,37,0.3)' : '1px solid #1e1e1e', cursor: 'pointer', textAlign: 'center' }}>
-                      <div style={{ fontSize: '10px', color: isAtual ? '#fcc825' : '#555', fontWeight: '600' }}>{m}</div>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#F0F2F5', margin: '2px 0' }}>{qtd > 0 ? qtd : '—'}</div>
-                      {valor > 0 && <div style={{ fontSize: '9px', color: '#22c55e' }}>R${valor.toFixed(0)}</div>}
+                    <button key={m} onClick={() => setMesSelecionado(isSelecionado ? null : { mes: i + 1, ano: anoSelecionado })} style={{
+                      backgroundColor: isSelecionado ? 'rgba(207,27,155,0.18)' : isAtual ? 'rgba(252,200,37,0.1)' : '#111',
+                      borderRadius: '10px', padding: '8px 6px',
+                      border: isSelecionado ? '1px solid rgba(207,27,155,0.55)' : isAtual ? '1px solid rgba(252,200,37,0.3)' : '1px solid #1e1e1e',
+                      cursor: 'pointer', textAlign: 'center',
+                    }}>
+                      <div style={{ fontSize: '10px', color: isSelecionado ? '#cf1b9b' : isAtual ? '#fcc825' : '#555', fontWeight: '600' }}>{m}</div>
+                      <div style={{ fontSize: isSelecionado ? '16px' : '13px', fontWeight: '700', color: isSelecionado ? '#22c55e' : '#F0F2F5', margin: '2px 0' }}>{qtd > 0 ? qtd : '—'}</div>
+                      {valor > 0 && <div style={{ fontSize: '9px', color: isSelecionado ? '#22c55e' : '#22c55e', opacity: isSelecionado ? 1 : 0.7 }}>R${valor.toFixed(0)}</div>}
                     </button>
                   )
                 })}

@@ -68,6 +68,8 @@ export function useConfirmarAulaProfessor() {
           eh_substituicao: ehSubstituicao,
           professor_titular_id: professorTitularId,
           observacoes,
+          paga_professor: true,
+          status_aula: 'dada',
           atualizado_em: new Date().toISOString()
         })
         .eq('id', aulaId)
@@ -387,6 +389,9 @@ export function useGerarAulas() {
       }
 
       if (aulasParaInserir.length === 0) return 0
+
+      // paga_professor: false por padrão — só vira true quando professor confirmar a aula
+      aulasParaInserir.forEach(a => { a.paga_professor = false; a.status_aula = 'agendada' })
 
       const { data: aulasCriadas, error } = await supabase
         .from('aulas')
