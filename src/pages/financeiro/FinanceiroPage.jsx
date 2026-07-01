@@ -418,6 +418,7 @@ export function FinanceiroPage() {
   const [professorSel, setProfessorSel] = useState(null)
   const [pinModal, setPinModal] = useState(null)   // { professorId, initialMode }
   const [detalhesDia, setDetalhesDia] = useState(null) // { dataStr, aulas }
+  const [buscaProf, setBuscaProf] = useState('')
 
   // Form: receita
   const [valorReceitaInput, setValorReceitaInput] = useState('')
@@ -1199,13 +1200,36 @@ export function FinanceiroPage() {
           </div>
         </div>
 
+        {/* Campo de busca */}
+        <div style={{ position: 'relative', marginBottom: '12px' }}>
+          <input
+            type="text"
+            placeholder="Buscar professor..."
+            value={buscaProf}
+            onChange={e => setBuscaProf(e.target.value)}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              backgroundColor: '#111', border: '1px solid #2a2a2a',
+              borderRadius: '10px', padding: '9px 12px 9px 34px',
+              color: '#F0F2F5', fontSize: '13px', outline: 'none',
+            }}
+          />
+          <span style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: '#555', fontSize: '13px', pointerEvents: 'none' }}>🔍</span>
+          {buscaProf && (
+            <button onClick={() => setBuscaProf('')} style={{
+              position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+              background: 'none', border: 'none', cursor: 'pointer', color: '#555', fontSize: '14px', lineHeight: 1,
+            }}>✕</button>
+          )}
+        </div>
+
         {loadingCustos ? <Loading /> : custosProf.length === 0 ? (
           <div style={{ fontSize: '12px', color: '#555', textAlign: 'center', padding: '16px 0' }}>
             Nenhuma aula confirmada no período
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {custosProf.map(prof => {
+          <div style={{ maxHeight: '420px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '2px' }}>
+            {custosProf.filter(p => p.nome.toLowerCase().includes(buscaProf.toLowerCase())).map(prof => {
               const extras = extrasMapGeral[prof.id] || 0
               const totalComExtras = prof.totalValor + extras
               const pct = Math.round((totalComExtras / maxValorProf) * 100)
