@@ -460,6 +460,8 @@ export default function ProfessoresPage() {
     return { mes: m, ano: a }
   })
 
+  const totalGeral = mesesFinanceiro.reduce((acc, { mes, ano }) => acc + calcularGanhosMes(mes, ano).valor, 0)
+
   const DIAS_SEMANA = ['segunda','terca','quarta','quinta','sexta','sabado','domingo']
   const DIAS_LABEL = ['SEG','TER','QUA','QUI','SEX','SAB','DOM']
   const HORARIOS_GRADE = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)

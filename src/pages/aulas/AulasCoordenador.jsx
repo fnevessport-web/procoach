@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { format, addDays, subDays, isAfter, startOfDay } from 'date-fns'
+import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap } from 'lucide-react'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas } from '../../hooks/useAulas'
@@ -73,10 +73,17 @@ function getNivel(aula) {
   return aula.turmas?.niveis?.nome || ''
 }
 
-function isAulaFutura(dataAula) {
-  const hoje = startOfDay(new Date())
-  const diaAula = startOfDay(new Date(dataAula + 'T12:00:00'))
-  return isAfter(diaAula, hoje)
+function isAulaFutura(dataAula, horarioInicio) {
+  const agora = new Date()
+  const hoje = format(agora, 'yyyy-MM-dd')
+  if (dataAula > hoje) return true
+  if (dataAula < hoje) return false
+  // mesma data: checar horário com 10 min de antecedência
+  if (!horarioInicio) return false
+  const [h, m] = horarioInicio.split(':').map(Number)
+  const inicioAula = new Date()
+  inicioAula.setHours(h, m - 10, 0, 0)
+  return agora < inicioAula
 }
 
 export function AulasCoordenador({ onCelulaVazia }) {
@@ -772,7 +779,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
                     )
                   }
 
-                  const aulaEhFutura = isAulaFutura(aulaCelula.data_aula)
+                  const aulaEhFutura = isAulaFutura(aulaCelula.data_aula, getHorario(aulaCelula))
                   const st = aulaEhFutura ? 'futura' : (statusLocal[aulaCelula.id] || aulaCelula.status_aula || 'dada')
                   const nivel = getNivel(aulaCelula)
                   const qtdTotal = aulaCelula.presencas?.length || 0
