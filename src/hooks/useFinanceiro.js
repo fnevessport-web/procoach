@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { logAudit } from '../lib/audit'
+import { format } from 'date-fns'
 
 // ──────────────────────────────────────────────────────────────────────
 // Autorização de pagamento pelo coordenador
@@ -76,6 +77,23 @@ function parseQuadraObs(obs) {
   if (!obs) return ''
   const partes = obs.split('·').map(s => s.trim())
   return partes[1] || ''
+}
+
+function parseHorarioObs(obs) {
+  if (!obs) return ''
+  const partes = obs.split('·').map(s => s.trim())
+  return partes[2] || ''
+}
+
+// Retorna true se a aula já começou (para o dia de hoje, filtra por horário)
+function aulaJaComecou(dataAula, horarioInicio) {
+  const hoje = format(new Date(), 'yyyy-MM-dd')
+  if (dataAula !== hoje) return true  // dias passados ou futuros: nao filtra por horario
+  if (!horarioInicio) return true
+  const [h, m] = horarioInicio.split(':').map(Number)
+  const inicio = new Date()
+  inicio.setHours(h, m, 0, 0)
+  return new Date() >= inicio
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -162,8 +180,8 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
       const { data: aulas, error } = await supabase
         .from('aulas')
         .select(`
-          id, professor_executou_id, turma_id, observacoes,
-          turmas(nome, quadras(nome)),
+          id, professor_executou_id, turma_id, observacoes, data_aula,
+          turmas(nome, horario_inicio, quadras(nome)),
           professores!professor_executou_id(id, nome, foto_url, valor_aula, valor_hora_aula, chave_pix, banco, tipo_pagamento, nome_titular, cpf_titular)
         `)
         .gte('data_aula', dataInicio)
@@ -176,7 +194,9 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
       const quadras = QUADRAS_EMPRESA[empresa] || []
       const filtradas = (aulas || []).filter(a => {
         const q = a.turma_id ? (a.turmas?.quadras?.nome || '') : parseQuadraObs(a.observacoes)
-        return quadras.includes(q)
+        if (!quadras.includes(q)) return false
+        const horario = a.turmas?.horario_inicio || parseHorarioObs(a.observacoes)
+        return aulaJaComecou(a.data_aula, horario)
       })
 
       const por = {}
@@ -222,7 +242,9 @@ export function useAulasProfessorFinanceiro({ professorId, empresa, dataInicio, 
       const quadras = QUADRAS_EMPRESA[empresa] || []
       return (aulas || []).filter(a => {
         const q = a.turma_id ? (a.turmas?.quadras?.nome || '') : parseQuadraObs(a.observacoes)
-        return !empresa || quadras.includes(q)
+        if (empresa && !quadras.includes(q)) return false
+        const horario = a.turmas?.horario_inicio || parseHorarioObs(a.observacoes)
+        return aulaJaComecou(a.data_aula, horario)
       })
     },
     enabled: !!professorId && !!dataInicio && !!dataFim,
