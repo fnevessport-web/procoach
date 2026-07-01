@@ -414,6 +414,13 @@ export function FinanceiroPage() {
 
   async function handleConfirmarPagamento() {
     if (!professorSel) return
+    if (!pagamentoAutorizado) {
+      toast.error('Aguarde a liberação da Coordenação para prosseguir com o pagamento.', {
+        style: { ...toastStyle, border: '1px solid rgba(239,68,68,0.4)' },
+        duration: 4000,
+      })
+      return
+    }
     try {
       await confirmarPagamento.mutateAsync({ professorId: professorSel.id, mes, ano: anoSel })
       toast.success('✅ Pagamento confirmado!', { style: toastStyle })
@@ -766,11 +773,13 @@ export function FinanceiroPage() {
               {!pagamentoConfirmado ? (
                 <button onClick={handleConfirmarPagamento} disabled={confirmarPagamento.isPending} style={{
                   flexShrink: 0, padding: '10px 14px', borderRadius: '10px', border: 'none',
-                  backgroundColor: '#22c55e', color: 'white',
+                  backgroundColor: pagamentoAutorizado ? '#22c55e' : '#2a2a2a',
+                  color: pagamentoAutorizado ? 'white' : '#555',
                   fontSize: '12px', fontWeight: '700', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '5px',
                 }}>
-                  <Check size={14} /> Pago
+                  {pagamentoAutorizado ? <Check size={14} /> : <Lock size={14} />}
+                  Pago
                 </button>
               ) : (
                 <button onClick={handleDesfazerPagamento} disabled={desfazerPagamento.isPending} style={{
@@ -826,11 +835,13 @@ export function FinanceiroPage() {
               {!pagamentoConfirmado ? (
                 <button onClick={handleConfirmarPagamento} disabled={confirmarPagamento.isPending} style={{
                   flexShrink: 0, padding: '10px 14px', borderRadius: '10px', border: 'none',
-                  backgroundColor: '#22c55e', color: 'white',
+                  backgroundColor: pagamentoAutorizado ? '#22c55e' : '#2a2a2a',
+                  color: pagamentoAutorizado ? 'white' : '#555',
                   fontSize: '12px', fontWeight: '700', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '5px',
                 }}>
-                  <Check size={14} /> Pago
+                  {pagamentoAutorizado ? <Check size={14} /> : <Lock size={14} />}
+                  Pago
                 </button>
               ) : (
                 <button onClick={handleDesfazerPagamento} disabled={desfazerPagamento.isPending} style={{
