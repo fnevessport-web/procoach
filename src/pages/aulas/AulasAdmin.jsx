@@ -1096,8 +1096,8 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
 
       const { data: aulaData, error: aulaError } = await supabase.from('aulas').insert({
         professor_executou_id: form.professor_id,
-        data_aula: form.data, status: 'confirmada_coord', status_aula: 'dada',
-        paga_professor: true, eh_substituicao: false,
+        data_aula: form.data, status: 'confirmada_coord', status_aula: 'agendada',
+        paga_professor: false, eh_substituicao: false,
         observacoes: `⚡ Avulsa · ${quadraNome} · ${form.horario}${nivelNome ? ' · ' + nivelNome : ''}`,
       }).select().single()
       if (aulaError) throw aulaError
