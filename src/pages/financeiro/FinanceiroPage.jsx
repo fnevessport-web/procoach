@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { format, endOfMonth, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash } from 'lucide-react'
@@ -195,6 +195,16 @@ function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado })
     setErro('')
     if (next.length === 4) handleSubmit(next.join(''))
   }
+
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key >= '0' && e.key <= '9') appendDigit(e.key)
+      else if (e.key === 'Backspace') setDigits(d => { setErro(''); return d.slice(0, -1) })
+      else if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [digits, mode, firstPin])
 
   const LABELS = {
     config1: 'Crie seu PIN de autorização',
