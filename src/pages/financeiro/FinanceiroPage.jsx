@@ -147,7 +147,10 @@ function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado })
       setFirstPin(pin)
       setDigits([])
       setMode('config2')
-    } else if (mode === 'config2') {
+      return
+    }
+
+    if (mode === 'config2') {
       if (pin !== firstPin) {
         setErro('PINs não coincidem. Tente novamente.')
         setDigits([])
@@ -157,17 +160,31 @@ function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado })
       }
       localStorage.setItem(PIN_KEY, pin)
       if (professorId) {
-        await liberar.mutateAsync({ professorId, mes, ano })
-        onAutorizado()
+        try {
+          await liberar.mutateAsync({ professorId, mes, ano })
+          onAutorizado()
+          onClose()
+        } catch (err) {
+          setErro('Erro ao salvar: ' + (err.message || 'tente novamente'))
+          setDigits([])
+        }
+      } else {
+        onClose()
       }
-      onClose()
-    } else {
-      const saved = localStorage.getItem(PIN_KEY)
-      if (!saved) { setDigits([]); setMode('config1'); return }
-      if (pin !== saved) { setErro('PIN incorreto'); setDigits([]); return }
+      return
+    }
+
+    // mode === 'verificar'
+    const saved = localStorage.getItem(PIN_KEY)
+    if (!saved) { setDigits([]); setMode('config1'); return }
+    if (pin !== saved) { setErro('PIN incorreto'); setDigits([]); return }
+    try {
       await liberar.mutateAsync({ professorId, mes, ano })
       onAutorizado()
       onClose()
+    } catch (err) {
+      setErro('Erro ao autorizar: ' + (err.message || 'tente novamente'))
+      setDigits([])
     }
   }
 
