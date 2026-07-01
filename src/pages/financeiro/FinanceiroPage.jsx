@@ -450,6 +450,7 @@ export function FinanceiroPage() {
   })
   const { data: boletos = [] } = useBoletosProfessor(professorSel?.id)
 
+  // Extras do professor selecionado (detalhe)
   const { data: extrasProf = [] } = useQuery({
     queryKey: ['pagamentos_extras_fin', professorSel?.id, mes, anoSel],
     queryFn: async () => {
@@ -467,6 +468,25 @@ export function FinanceiroPage() {
     staleTime: 30000,
   })
 
+  // Extras de todos os professores do mês (para a lista principal)
+  const { data: todoExtras = [] } = useQuery({
+    queryKey: ['pagamentos_extras_todos_fin', mes, anoSel],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pagamentos_extras')
+        .select('professor_id, valor')
+        .eq('mes', mes)
+        .eq('ano', anoSel)
+      if (error) return []
+      return data || []
+    },
+    staleTime: 30000,
+  })
+  const extrasMapGeral = todoExtras.reduce((acc, e) => {
+    acc[e.professor_id] = (acc[e.professor_id] || 0) + Number(e.valor || 0)
+    return acc
+  }, {})
+
   const salvarLancamento = useSalvarLancamento()
   const removerLancamento = useRemoverLancamento()
   const confirmarPagamento = useConfirmarPagamento()
@@ -478,10 +498,10 @@ export function FinanceiroPage() {
   // Derived
   const receitaRecord = lancamentos.find(l => l.tipo === 'receita')
   const outrosCustos = lancamentos.filter(l => l.tipo === 'custo_extra')
-  const totalProfessores = custosProf.reduce((s, p) => s + p.totalValor, 0)
+  const totalProfessores = custosProf.reduce((s, p) => s + p.totalValor + (extrasMapGeral[p.id] || 0), 0)
   const totalOutros = outrosCustos.reduce((s, c) => s + Number(c.valor), 0)
   const totalCustos = totalProfessores + totalOutros
-  const maxValorProf = Math.max(...custosProf.map(p => p.totalValor), 1)
+  const maxValorProf = Math.max(...custosProf.map(p => p.totalValor + (extrasMapGeral[p.id] || 0)), 1)
   const boletoMes = boletos.find(b => b.mes === mes && b.ano === anoSel)
   const totalAulasProf = aulasProf.length
   const valorUnitarioProf = Number(professorSel?.valor_aula || professorSel?.valor_hora_aula || 0)
@@ -1186,7 +1206,9 @@ export function FinanceiroPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {custosProf.map(prof => {
-              const pct = Math.round((prof.totalValor / maxValorProf) * 100)
+              const extras = extrasMapGeral[prof.id] || 0
+              const totalComExtras = prof.totalValor + extras
+              const pct = Math.round((totalComExtras / maxValorProf) * 100)
               const pago = pagamentosConfirmados.has(prof.id)
               const autorizado = liberacoes.has(prof.id)
               return (
@@ -1212,9 +1234,12 @@ export function FinanceiroPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
                       <span style={{ fontSize: '13px', fontWeight: '600', color: pago ? '#22c55e' : '#F0F2F5' }}>{prof.nome}</span>
-                      <span style={{ fontSize: '13px', fontWeight: '700', color: pago ? '#22c55e' : '#EF4444', flexShrink: 0, marginLeft: '8px' }}>
-                        {fmtBRL(prof.totalValor)}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, marginLeft: '8px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: '700', color: pago ? '#22c55e' : '#EF4444' }}>
+                          {fmtBRL(totalComExtras)}
+                        </span>
+                        {extras > 0 && <span style={{ fontSize: '9px', color: '#cf1b9b', fontWeight: '600' }}>+E</span>}
+                      </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <div style={{ flex: 1, height: '4px', borderRadius: '2px', backgroundColor: '#222', overflow: 'hidden' }}>
