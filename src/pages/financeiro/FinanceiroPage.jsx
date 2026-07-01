@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { format, endOfMonth, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -277,6 +278,7 @@ function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado })
 
 function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onClose }) {
   const dataFmt = format(parseISO(dataStr + 'T12:00:00'), "EEEE, dd 'de' MMMM", { locale: ptBR })
+  const navigate = useNavigate()
 
   const { data: aulas = [], isLoading } = useQuery({
     queryKey: ['fin_detalhe_dia', professorId, dataStr],
@@ -356,7 +358,11 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
             const presentes = presencas.filter(p => p.status_presenca === 'presente').length
             const ausentes = presencas.filter(p => p.status_presenca !== 'presente').length
             return (
-              <div key={a.id || i} style={{ backgroundColor: '#111', borderRadius: '10px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div
+                key={a.id || i}
+                onClick={() => navigate('/aulas', { state: { data: dataStr, horario: info.horario, from: '/financeiro' } })}
+                style={{ backgroundColor: '#111', borderRadius: '10px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: presencas.length > 0 ? '8px' : 0 }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0, backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '700', color: '#fcc825', textAlign: 'center', lineHeight: 1.2 }}>
                     {info.horario || '—'}
