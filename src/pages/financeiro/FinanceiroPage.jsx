@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { format, endOfMonth, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink } from 'lucide-react'
+import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash } from 'lucide-react'
 import {
   useCustoProfessores,
   useAulasProfessorFinanceiro,
@@ -12,6 +12,9 @@ import {
   usePagamentosConfirmados,
   useConfirmarPagamento,
   useDesfazerPagamento,
+  useLiberacoesPagamento,
+  useLiberar,
+  useDesautorizar,
 } from '../../hooks/useFinanceiro'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
@@ -22,6 +25,8 @@ import toast from 'react-hot-toast'
 // ──────────────────────────────────────────────────────────────────────
 
 const MESES_ABREV = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']
+
+const PIN_KEY = 'procoach_pin_fin'
 
 const EMPRESAS = {
   procopio: {
@@ -127,6 +132,191 @@ function PixButton({ chave }) {
 }
 
 // ──────────────────────────────────────────────────────────────────────
+// PinModal — bottom sheet com teclado numérico
+// ──────────────────────────────────────────────────────────────────────
+
+function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado }) {
+  const [mode, setMode] = useState(initialMode)
+  const [digits, setDigits] = useState([])
+  const [firstPin, setFirstPin] = useState('')
+  const [erro, setErro] = useState('')
+  const liberar = useLiberar()
+
+  async function handleSubmit(pin) {
+    if (mode === 'config1') {
+      setFirstPin(pin)
+      setDigits([])
+      setMode('config2')
+    } else if (mode === 'config2') {
+      if (pin !== firstPin) {
+        setErro('PINs não coincidem. Tente novamente.')
+        setDigits([])
+        setFirstPin('')
+        setMode('config1')
+        return
+      }
+      localStorage.setItem(PIN_KEY, pin)
+      if (professorId) {
+        await liberar.mutateAsync({ professorId, mes, ano })
+        onAutorizado()
+      }
+      onClose()
+    } else {
+      const saved = localStorage.getItem(PIN_KEY)
+      if (!saved) { setDigits([]); setMode('config1'); return }
+      if (pin !== saved) { setErro('PIN incorreto'); setDigits([]); return }
+      await liberar.mutateAsync({ professorId, mes, ano })
+      onAutorizado()
+      onClose()
+    }
+  }
+
+  function appendDigit(d) {
+    if (digits.length >= 4) return
+    const next = [...digits, d]
+    setDigits(next)
+    setErro('')
+    if (next.length === 4) handleSubmit(next.join(''))
+  }
+
+  const LABELS = {
+    config1: 'Crie seu PIN de autorização',
+    config2: 'Confirme o PIN',
+    verificar: 'Digite o PIN para autorizar',
+  }
+
+  const PAD = [1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'del']
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0', padding: '20px 28px 44px', width: '100%', maxWidth: '400px' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: '#333', margin: '0 auto 20px' }} />
+
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <Hash size={22} color="#fcc825" style={{ marginBottom: '10px', display: 'block', margin: '0 auto 10px' }} />
+          <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>{LABELS[mode]}</div>
+          {erro && <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '8px' }}>{erro}</div>}
+        </div>
+
+        {/* Dots */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '18px', marginBottom: '32px' }}>
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} style={{
+              width: '14px', height: '14px', borderRadius: '50%',
+              backgroundColor: digits.length > i ? '#fcc825' : '#333',
+              transition: 'background-color 0.12s',
+            }} />
+          ))}
+        </div>
+
+        {/* Number pad */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+          {PAD.map((n, i) => {
+            if (n === null) return <div key={i} />
+            const isDel = n === 'del'
+            return (
+              <button
+                key={i}
+                onClick={() => isDel ? setDigits(d => d.slice(0, -1)) : appendDigit(String(n))}
+                disabled={liberar.isPending}
+                style={{
+                  padding: '18px', borderRadius: '14px', border: 'none', cursor: 'pointer',
+                  backgroundColor: isDel ? 'transparent' : '#252525',
+                  color: isDel ? '#777' : '#F0F2F5',
+                  fontSize: isDel ? '18px' : '22px', fontWeight: '500',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                {isDel ? '⌫' : n}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// DetalhesDiaModal — aulas de um dia específico do professor
+// ──────────────────────────────────────────────────────────────────────
+
+function DetalhesDiaModal({ dataStr, aulas, valorUnitario, onClose }) {
+  const dataFmt = format(parseISO(dataStr + 'T12:00:00'), "EEEE, dd 'de' MMMM", { locale: ptBR })
+
+  function getInfo(a) {
+    if (a.turma_id && a.turmas) {
+      return {
+        nome: a.turmas.nome,
+        horario: a.turmas.horario_inicio,
+        quadra: a.turmas.quadras?.nome || '',
+      }
+    }
+    const partes = (a.observacoes || '').split('·').map(s => s.trim())
+    return { nome: 'Avulsa', horario: partes[2] || '', quadra: partes[1] || '' }
+  }
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 900, backgroundColor: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxWidth: '480px', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: '#333', margin: '0 auto 16px' }} />
+
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5', textTransform: 'capitalize' }}>{dataFmt}</div>
+          <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{aulas.length} aula{aulas.length !== 1 ? 's' : ''}</div>
+        </div>
+
+        <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {aulas.map((a, i) => {
+            const info = getInfo(a)
+            return (
+              <div key={a.id || i} style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '12px', borderRadius: '10px',
+                backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.05)',
+              }}>
+                <div style={{
+                  width: '44px', height: '44px', borderRadius: '10px', flexShrink: 0,
+                  backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.18)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '10px', fontWeight: '700', color: '#fcc825', textAlign: 'center', lineHeight: 1.2,
+                }}>
+                  {info.horario || '—'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>{info.nome}</div>
+                  {info.quadra && <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{info.quadra}</div>}
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825', flexShrink: 0 }}>
+                  {fmtBRL(valorUnitario)}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #2a2a2a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '12px', color: '#555' }}>Total do dia</span>
+          <span style={{ fontSize: '16px', fontWeight: '700', color: '#fcc825' }}>{fmtBRL(aulas.length * valorUnitario)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────────────
 // Página principal
 // ──────────────────────────────────────────────────────────────────────
 
@@ -139,6 +329,8 @@ export function FinanceiroPage() {
   const [dataInicio, setDataInicio] = useState(inicioMes(now.getMonth(), now.getFullYear()))
   const [dataFim, setDataFim] = useState(fimMes(now.getMonth(), now.getFullYear()))
   const [professorSel, setProfessorSel] = useState(null)
+  const [pinModal, setPinModal] = useState(null)   // { professorId, initialMode }
+  const [detalhesDia, setDetalhesDia] = useState(null) // { dataStr, aulas }
 
   // Form: receita
   const [valorReceitaInput, setValorReceitaInput] = useState('')
@@ -172,6 +364,8 @@ export function FinanceiroPage() {
   const confirmarPagamento = useConfirmarPagamento()
   const desfazerPagamento = useDesfazerPagamento()
   const { data: pagamentosConfirmados = new Set() } = usePagamentosConfirmados({ mes, ano: anoSel })
+  const { data: liberacoes = new Set() } = useLiberacoesPagamento({ mes, ano: anoSel })
+  const desautorizar = useDesautorizar()
 
   // Derived
   const receitaRecord = lancamentos.find(l => l.tipo === 'receita')
@@ -185,6 +379,21 @@ export function FinanceiroPage() {
   const valorUnitarioProf = Number(professorSel?.valor_aula || professorSel?.valor_hora_aula || 0)
   const totalPagarProf = totalAulasProf * valorUnitarioProf
   const pagamentoConfirmado = professorSel ? pagamentosConfirmados.has(professorSel.id) : false
+  const pagamentoAutorizado = professorSel ? liberacoes.has(professorSel.id) : false
+
+  function handleAbrirPin(professorId, e) {
+    if (e) e.stopPropagation()
+    const hasPin = !!localStorage.getItem(PIN_KEY)
+    setPinModal({ professorId, initialMode: hasPin ? 'verificar' : 'config1' })
+  }
+
+  async function handleDesautorizar(professorId, e) {
+    if (e) e.stopPropagation()
+    try {
+      await desautorizar.mutateAsync({ professorId, mes, ano: anoSel })
+      toast.success('Autorização removida', { style: toastStyle })
+    } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
 
   async function handleConfirmarPagamento() {
     if (!professorSel) return
@@ -447,6 +656,17 @@ export function FinanceiroPage() {
               {temBoleto && (
                 <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(96,165,250,0.15)', color: '#60a5fa', fontSize: '10px', fontWeight: '600' }}>Boleto</span>
               )}
+              {pagamentoAutorizado
+                ? <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: '10px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    <LockOpen size={9} /> Autorizado
+                  </span>
+                : <span
+                    onClick={e => handleAbrirPin(professorSel.id, e)}
+                    style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.05)', color: '#555', fontSize: '10px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                  >
+                    <Lock size={9} /> Aguardando coord.
+                  </span>
+              }
               {pagamentoConfirmado && (
                 <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(34,197,94,0.15)', color: '#22c55e', fontSize: '10px', fontWeight: '600' }}>✓ Pago</span>
               )}
@@ -616,6 +836,28 @@ export function FinanceiroPage() {
           Aulas no período
         </div>
 
+        {/* PIN modal */}
+        {pinModal && (
+          <PinModal
+            initialMode={pinModal.initialMode}
+            professorId={pinModal.professorId}
+            mes={mes}
+            ano={anoSel}
+            onClose={() => setPinModal(null)}
+            onAutorizado={() => toast.success('Pagamento autorizado!', { style: toastStyle })}
+          />
+        )}
+
+        {/* Detalhes dia modal */}
+        {detalhesDia && (
+          <DetalhesDiaModal
+            dataStr={detalhesDia.dataStr}
+            aulas={detalhesDia.aulas}
+            valorUnitario={valorUnitarioProf}
+            onClose={() => setDetalhesDia(null)}
+          />
+        )}
+
         {loadingAulasProf ? <Loading /> : diasOrdenados.length === 0 ? (
           <div style={{ fontSize: '13px', color: '#555', textAlign: 'center', padding: '24px' }}>
             Nenhuma aula encontrada
@@ -627,11 +869,16 @@ export function FinanceiroPage() {
               const totalDia = aulasNoDia.length * valorUnitarioProf
               const pct = Math.round((aulasNoDia.length / Math.max(...diasOrdenados.map(([,a]) => a.length), 1)) * 100)
               return (
-                <div key={dataStr} style={{
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '10px 12px', borderRadius: '10px',
-                  backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.04)',
-                }}>
+                <button
+                  key={dataStr}
+                  onClick={() => setDetalhesDia({ dataStr, aulas: aulasNoDia })}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '10px 12px', borderRadius: '10px',
+                    backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.04)',
+                    width: '100%', textAlign: 'left', cursor: 'pointer',
+                  }}
+                >
                   <div style={{ minWidth: '90px' }}>
                     <div style={{ fontSize: '12px', color: '#F0F2F5', fontWeight: '600', textTransform: 'capitalize' }}>
                       {dataFmt}
@@ -650,7 +897,7 @@ export function FinanceiroPage() {
                   <span style={{ fontSize: '13px', color: '#fcc825', fontWeight: '700' }}>
                     {fmtBRL(totalDia)}
                   </span>
-                </div>
+                </button>
               )
             })}
           </div>
@@ -750,6 +997,18 @@ export function FinanceiroPage() {
         </div>
       </div>
 
+      {/* PIN modal (can be opened from professor list) */}
+      {pinModal && (
+        <PinModal
+          initialMode={pinModal.initialMode}
+          professorId={pinModal.professorId}
+          mes={mes}
+          ano={anoSel}
+          onClose={() => setPinModal(null)}
+          onAutorizado={() => toast.success('Pagamento autorizado!', { style: toastStyle })}
+        />
+      )}
+
       {/* ── CUSTOS PROFESSORES ────────────────────────────────────── */}
       <div style={{
         backgroundColor: '#1a1a1a', borderRadius: '14px',
@@ -774,6 +1033,7 @@ export function FinanceiroPage() {
             {custosProf.map(prof => {
               const pct = Math.round((prof.totalValor / maxValorProf) * 100)
               const pago = pagamentosConfirmados.has(prof.id)
+              const autorizado = liberacoes.has(prof.id)
               return (
                 <button key={prof.id} onClick={() => navegarProfessor(prof)} style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
@@ -813,6 +1073,19 @@ export function FinanceiroPage() {
                         {prof.totalAulas}×
                       </span>
                     </div>
+                  </div>
+                  {/* Lock icon — coordinator authorization */}
+                  <div
+                    onClick={autorizado
+                      ? e => handleDesautorizar(prof.id, e)
+                      : e => handleAbrirPin(prof.id, e)
+                    }
+                    style={{ flexShrink: 0, padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    {autorizado
+                      ? <LockOpen size={16} color="#22c55e" />
+                      : <Lock size={16} color="#3a3a3a" />
+                    }
                   </div>
                 </button>
               )

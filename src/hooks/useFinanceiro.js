@@ -3,6 +3,67 @@ import { supabase } from '../lib/supabase'
 import { logAudit } from '../lib/audit'
 
 // ──────────────────────────────────────────────────────────────────────
+// Autorização de pagamento pelo coordenador
+// SQL para criar a tabela no Supabase:
+//
+// CREATE TABLE IF NOT EXISTS liberacoes_pagamento (
+//   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+//   professor_id uuid REFERENCES professores(id) ON DELETE CASCADE,
+//   mes int NOT NULL, ano int NOT NULL,
+//   autorizado_em timestamptz DEFAULT now(),
+//   UNIQUE(professor_id, mes, ano)
+// );
+// ALTER TABLE liberacoes_pagamento ENABLE ROW LEVEL SECURITY;
+// CREATE POLICY "admin_all" ON liberacoes_pagamento FOR ALL TO authenticated USING (true);
+// ──────────────────────────────────────────────────────────────────────
+
+export function useLiberacoesPagamento({ mes, ano }) {
+  return useQuery({
+    queryKey: ['liberacoes_pag', mes, ano],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('liberacoes_pagamento')
+        .select('professor_id')
+        .eq('mes', mes)
+        .eq('ano', ano)
+      if (error) { console.warn('liberacoes_pagamento:', error.message); return new Set() }
+      return new Set((data || []).map(r => r.professor_id))
+    },
+    enabled: !!mes && !!ano,
+    staleTime: 30000,
+  })
+}
+
+export function useLiberar() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ professorId, mes, ano }) => {
+      const { error } = await supabase
+        .from('liberacoes_pagamento')
+        .upsert({ professor_id: professorId, mes, ano }, { onConflict: 'professor_id,mes,ano' })
+      if (error) throw error
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['liberacoes_pag', v.mes, v.ano] }),
+  })
+}
+
+export function useDesautorizar() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ professorId, mes, ano }) => {
+      const { error } = await supabase
+        .from('liberacoes_pagamento')
+        .delete()
+        .eq('professor_id', professorId)
+        .eq('mes', mes)
+        .eq('ano', ano)
+      if (error) throw error
+    },
+    onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['liberacoes_pag', v.mes, v.ano] }),
+  })
+}
+
+// ──────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────
 
