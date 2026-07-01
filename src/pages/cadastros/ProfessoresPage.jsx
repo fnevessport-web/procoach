@@ -102,6 +102,98 @@ async function buscarCep(cep, setForm) {
   } catch {}
 }
 
+function ModalDetalhesDia({ professorId, dataStr, onClose }) {
+  const { data: aulas = [], isLoading } = useQuery({
+    queryKey: ['aulas_dia_prof_detalhe', professorId, dataStr],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('aulas')
+        .select(`
+          id, turma_id, observacoes,
+          turmas(nome, horario_inicio, niveis(nome)),
+          presencas(presente, status_presenca, alunos(nome))
+        `)
+        .eq('professor_executou_id', professorId)
+        .eq('data_aula', dataStr)
+        .eq('status_aula', 'dada')
+        .order('id')
+      if (error) throw error
+      return data || []
+    },
+    enabled: !!professorId && !!dataStr,
+    staleTime: 30000,
+  })
+
+  const parteObs = obs => (obs || '').split('·').map(s => s.trim())
+  const getNome = a => a.turmas?.nome || parteObs(a.observacoes)[3] || 'Avulsa'
+  const getHorario = a => a.turmas?.horario_inicio?.slice(0, 5) || parteObs(a.observacoes)[2] || ''
+  const getNivel = a => a.turmas?.niveis?.nome || parteObs(a.observacoes)[3] || ''
+  const dataLabel = format(new Date(dataStr + 'T12:00'), "dd 'de' MMMM", { locale: ptBR })
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-end' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0', padding: '20px 16px 32px', boxSizing: 'border-box', maxHeight: '82vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>{dataLabel}</div>
+            <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{aulas.length} aula{aulas.length !== 1 ? 's' : ''} confirmada{aulas.length !== 1 ? 's' : ''}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+            <X size={18} color="#EF4444" />
+          </button>
+        </div>
+
+        <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {isLoading ? (
+            <div style={{ textAlign: 'center', color: '#555', fontSize: '13px', padding: '24px' }}>Carregando...</div>
+          ) : aulas.map(aula => {
+            const horario = getHorario(aula)
+            const nivel = getNivel(aula)
+            const nome = getNome(aula)
+            const presencas = (aula.presencas || []).filter(p => p.alunos)
+            const presentes = presencas.filter(p => p.status_presenca === 'presente').length
+            const ausentes = presencas.filter(p => p.status_presenca !== 'presente').length
+            return (
+              <div key={aula.id} style={{ backgroundColor: '#111', borderRadius: '10px', padding: '10px 12px', border: '1px solid #222' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: presencas.length > 0 ? '8px' : 0 }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5' }}>{nome}</div>
+                    {nivel && nivel !== nome && <div style={{ fontSize: '10px', color: '#555', marginTop: '1px' }}>{nivel}</div>}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                    {horario && <span style={{ fontSize: '11px', color: '#fcc825', fontWeight: '600' }}>{horario}</span>}
+                    {presencas.length > 0 && (
+                      <span style={{ fontSize: '10px', color: '#555' }}>
+                        <span style={{ color: '#22c55e' }}>✓{presentes}</span>{' '}
+                        {ausentes > 0 && <span style={{ color: '#EF4444' }}>✗{ausentes}</span>}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {presencas.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {presencas.map((p, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '3px 0', borderTop: '1px solid #1a1a1a' }}>
+                        {p.status_presenca === 'presente'
+                          ? <span style={{ color: '#22c55e', fontSize: '13px', fontWeight: '700', lineHeight: 1 }}>✓</span>
+                          : <span style={{ color: '#EF4444', fontSize: '13px', fontWeight: '700', lineHeight: 1 }}>✗</span>
+                        }
+                        <span style={{ fontSize: '12px', color: p.status_presenca === 'presente' ? '#ccc' : '#555' }}>{p.alunos?.nome || '—'}</span>
+                        {p.status_presenca === 'falta_justificada' && <span style={{ fontSize: '9px', color: '#f97316', marginLeft: 'auto' }}>just.</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ProfessoresPage() {
   const qc = useQueryClient()
   const [cardAberto, setCardAberto] = useState(null)
@@ -116,6 +208,7 @@ export default function ProfessoresPage() {
   const [dataAvaliacao, setDataAvaliacao] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [uploadandoFoto, setUploadandoFoto] = useState(false)
   const [mesSelecionado, setMesSelecionado] = useState(null)
+  const [diaSelecionado, setDiaSelecionado] = useState(null)
   const [modalExtra, setModalExtra] = useState(false)
   const [formExtra, setFormExtra] = useState({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '' })
   const [salvandoExtra, setSalvandoExtra] = useState(false)
@@ -823,12 +916,20 @@ export default function ProfessoresPage() {
                         <div style={{ fontSize: '12px', color: '#444', textAlign: 'center', marginBottom: '8px' }}>Nenhuma aula confirmada</div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
-                          {diasComAula.map(dia => (
-                            <div key={dia} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', backgroundColor: '#111', borderRadius: '8px' }}>
-                              <span style={{ fontSize: '12px', color: '#888' }}>Dia {String(dia).padStart(2, '0')}/{String(mesSelecionado.mes).padStart(2, '0')}</span>
-                              <span style={{ fontSize: '12px', fontWeight: '600', color: '#22c55e' }}>{diasMap[dia]} {diasMap[dia] === 1 ? 'aula' : 'aulas'}</span>
-                            </div>
-                          ))}
+                          {diasComAula.map(dia => {
+                            const dataStr = `${mesSelecionado.ano}-${String(mesSelecionado.mes).padStart(2,'0')}-${String(dia).padStart(2,'0')}`
+                            return (
+                              <button key={dia} onClick={() => setDiaSelecionado({ dataStr, professorId: cardAberto.id })} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', backgroundColor: '#111', borderRadius: '8px', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+                                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#181818'}
+                                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#111'}>
+                                <span style={{ fontSize: '12px', color: '#888' }}>Dia {String(dia).padStart(2, '0')}/{String(mesSelecionado.mes).padStart(2, '0')}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#22c55e' }}>{diasMap[dia]} {diasMap[dia] === 1 ? 'aula' : 'aulas'}</span>
+                                  <span style={{ fontSize: '11px', color: '#333' }}>›</span>
+                                </div>
+                              </button>
+                            )
+                          })}
                         </div>
                       )}
                       {extrasDoMes.length > 0 && (
@@ -1300,6 +1401,15 @@ export default function ProfessoresPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* MODAL DETALHES DIA */}
+      {diaSelecionado && (
+        <ModalDetalhesDia
+          professorId={diaSelecionado.professorId}
+          dataStr={diaSelecionado.dataStr}
+          onClose={() => setDiaSelecionado(null)}
+        />
       )}
 
       {/* MODAL CRIAR */}
