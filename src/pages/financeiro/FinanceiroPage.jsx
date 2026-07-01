@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { format, endOfMonth, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash } from 'lucide-react'
@@ -274,61 +275,120 @@ function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado })
 // DetalhesDiaModal — aulas de um dia específico do professor
 // ──────────────────────────────────────────────────────────────────────
 
-function DetalhesDiaModal({ dataStr, aulas, valorUnitario, onClose }) {
+function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onClose }) {
   const dataFmt = format(parseISO(dataStr + 'T12:00:00'), "EEEE, dd 'de' MMMM", { locale: ptBR })
+
+  const { data: aulas = [], isLoading } = useQuery({
+    queryKey: ['fin_detalhe_dia', professorId, dataStr],
+    queryFn: async () => {
+      // 1) busca aulas do dia
+      const { data: aulasData, error: e1 } = await supabase
+        .from('aulas')
+        .select('id, turma_id, observacoes, turmas(nome, horario_inicio, quadras(nome))')
+        .eq('professor_executou_id', professorId)
+        .eq('data_aula', dataStr)
+        .eq('status_aula', 'dada')
+        .eq('paga_professor', true)
+        .order('id')
+      if (e1) throw e1
+      const lista = aulasData || []
+      if (!lista.length) return []
+
+      // 2) busca presenças (sem join — só aula_id e aluno_id)
+      const ids = lista.map(a => a.id)
+      const { data: presData } = await supabase
+        .from('presencas')
+        .select('aula_id, status_presenca, aluno_id')
+        .in('aula_id', ids)
+
+      // 3) busca nomes dos alunos separadamente
+      const alunoIds = [...new Set((presData || []).map(p => p.aluno_id).filter(Boolean))]
+      let alunoNomes = {}
+      if (alunoIds.length > 0) {
+        const { data: aData } = await supabase
+          .from('alunos').select('id, nome').in('id', alunoIds)
+        alunoNomes = Object.fromEntries((aData || []).map(a => [a.id, a.nome]))
+      }
+
+      // 4) monta mapa e anexa às aulas
+      const mapa = {}
+      ;(presData || []).forEach(p => {
+        if (!mapa[p.aula_id]) mapa[p.aula_id] = []
+        mapa[p.aula_id].push({ ...p, nomeAluno: alunoNomes[p.aluno_id] || null })
+      })
+      return lista.map(a => ({ ...a, presencas: mapa[a.id] || [] }))
+    },
+    enabled: !!professorId && !!dataStr,
+    staleTime: 30000,
+  })
 
   function getInfo(a) {
     if (a.turma_id && a.turmas) {
-      return {
-        nome: a.turmas.nome,
-        horario: a.turmas.horario_inicio,
-        quadra: a.turmas.quadras?.nome || '',
-      }
+      return { nome: a.turmas.nome, horario: a.turmas.horario_inicio?.slice(0,5) || '', quadra: a.turmas.quadras?.nome || '' }
     }
     const partes = (a.observacoes || '').split('·').map(s => s.trim())
     return { nome: 'Avulsa', horario: partes[2] || '', quadra: partes[1] || '' }
   }
 
+  const contagem = aulas.length || totalAulas
+
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, zIndex: 900, backgroundColor: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-      onClick={onClose}
-    >
-      <div
-        style={{ backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxWidth: '480px', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}
-        onClick={e => e.stopPropagation()}
-      >
+    <div style={{ position: 'fixed', inset: 0, zIndex: 900, backgroundColor: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
+      <div style={{ backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxWidth: '480px', maxHeight: '78vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
         <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: '#333', margin: '0 auto 16px' }} />
 
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5', textTransform: 'capitalize' }}>{dataFmt}</div>
-          <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{aulas.length} aula{aulas.length !== 1 ? 's' : ''}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5', textTransform: 'capitalize' }}>{dataFmt}</div>
+            <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{contagem} aula{contagem !== 1 ? 's' : ''}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+            <X size={16} color="#EF4444" />
+          </button>
         </div>
 
-        <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {aulas.map((a, i) => {
+        <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {isLoading ? (
+            <div style={{ textAlign: 'center', padding: '24px', color: '#555', fontSize: '13px' }}>Carregando...</div>
+          ) : aulas.map((a, i) => {
             const info = getInfo(a)
+            const presencas = a.presencas || []
+            const presentes = presencas.filter(p => p.status_presenca === 'presente').length
+            const ausentes = presencas.filter(p => p.status_presenca !== 'presente').length
             return (
-              <div key={a.id || i} style={{
-                display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '12px', borderRadius: '10px',
-                backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.05)',
-              }}>
-                <div style={{
-                  width: '44px', height: '44px', borderRadius: '10px', flexShrink: 0,
-                  backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.18)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '10px', fontWeight: '700', color: '#fcc825', textAlign: 'center', lineHeight: 1.2,
-                }}>
-                  {info.horario || '—'}
+              <div key={a.id || i} style={{ backgroundColor: '#111', borderRadius: '10px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: presencas.length > 0 ? '8px' : 0 }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0, backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '700', color: '#fcc825', textAlign: 'center', lineHeight: 1.2 }}>
+                    {info.horario || '—'}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>{info.nome}</div>
+                    {info.quadra && <div style={{ fontSize: '11px', color: '#555', marginTop: '1px' }}>{info.quadra}</div>}
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825' }}>{fmtBRL(valorUnitario)}</div>
+                    {presencas.length > 0 && (
+                      <div style={{ fontSize: '10px', marginTop: '2px' }}>
+                        <span style={{ color: '#22c55e' }}>✓{presentes}</span>{' '}
+                        {ausentes > 0 && <span style={{ color: '#EF4444' }}>✗{ausentes}</span>}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>{info.nome}</div>
-                  {info.quadra && <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{info.quadra}</div>}
-                </div>
-                <div style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825', flexShrink: 0 }}>
-                  {fmtBRL(valorUnitario)}
-                </div>
+                {presencas.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '4px' }}>
+                    {presencas.map((p, j) => (
+                      <div key={j} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '3px 0', borderTop: '1px solid #1a1a1a' }}>
+                        {p.status_presenca === 'presente'
+                          ? <span style={{ color: '#22c55e', fontSize: '13px', fontWeight: '700', lineHeight: 1, flexShrink: 0 }}>✓</span>
+                          : <span style={{ color: '#EF4444', fontSize: '13px', fontWeight: '700', lineHeight: 1, flexShrink: 0 }}>✗</span>
+                        }
+                        <span style={{ fontSize: '12px', color: p.status_presenca === 'presente' ? '#ccc' : '#555' }}>{p.nomeAluno || '—'}</span>
+                        {p.status_presenca === 'falta_justificada' && <span style={{ fontSize: '9px', color: '#f97316', marginLeft: 'auto' }}>just.</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}
@@ -336,7 +396,7 @@ function DetalhesDiaModal({ dataStr, aulas, valorUnitario, onClose }) {
 
         <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #2a2a2a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '12px', color: '#555' }}>Total do dia</span>
-          <span style={{ fontSize: '16px', fontWeight: '700', color: '#fcc825' }}>{fmtBRL(aulas.length * valorUnitario)}</span>
+          <span style={{ fontSize: '16px', fontWeight: '700', color: '#fcc825' }}>{fmtBRL(contagem * valorUnitario)}</span>
         </div>
       </div>
     </div>
@@ -923,7 +983,8 @@ export function FinanceiroPage() {
         {detalhesDia && (
           <DetalhesDiaModal
             dataStr={detalhesDia.dataStr}
-            aulas={detalhesDia.aulas}
+            professorId={professorSel.id}
+            totalAulas={detalhesDia.aulas.length}
             valorUnitario={valorUnitarioProf}
             onClose={() => setDetalhesDia(null)}
           />
