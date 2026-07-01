@@ -450,6 +450,23 @@ export function FinanceiroPage() {
   })
   const { data: boletos = [] } = useBoletosProfessor(professorSel?.id)
 
+  const { data: extrasProf = [] } = useQuery({
+    queryKey: ['pagamentos_extras_fin', professorSel?.id, mes, anoSel],
+    queryFn: async () => {
+      if (!professorSel?.id) return []
+      const { data, error } = await supabase
+        .from('pagamentos_extras')
+        .select('id, descricao, valor, data_pagamento')
+        .eq('professor_id', professorSel.id)
+        .eq('mes', mes)
+        .eq('ano', anoSel)
+      if (error) return []
+      return data || []
+    },
+    enabled: !!professorSel?.id,
+    staleTime: 30000,
+  })
+
   const salvarLancamento = useSalvarLancamento()
   const removerLancamento = useRemoverLancamento()
   const confirmarPagamento = useConfirmarPagamento()
@@ -468,7 +485,8 @@ export function FinanceiroPage() {
   const boletoMes = boletos.find(b => b.mes === mes && b.ano === anoSel)
   const totalAulasProf = aulasProf.length
   const valorUnitarioProf = Number(professorSel?.valor_aula || professorSel?.valor_hora_aula || 0)
-  const totalPagarProf = totalAulasProf * valorUnitarioProf
+  const totalExtrasProf = extrasProf.reduce((s, e) => s + Number(e.valor || 0), 0)
+  const totalPagarProf = totalAulasProf * valorUnitarioProf + totalExtrasProf
   const pagamentoConfirmado = professorSel ? pagamentosConfirmados.has(professorSel.id) : false
   const pagamentoAutorizado = professorSel ? liberacoes.has(professorSel.id) : false
 
@@ -815,6 +833,11 @@ export function FinanceiroPage() {
           </div>
           <div style={{ fontSize: '12px', color: '#555', marginTop: '4px' }}>
             {totalAulasProf} aulas × {fmtBRL(valorUnitarioProf)}
+            {totalExtrasProf > 0 && (
+              <span style={{ color: '#cf1b9b', marginLeft: '6px' }}>
+                + {fmtBRL(totalExtrasProf)} extra{extrasProf.length > 1 ? 's' : ''}
+              </span>
+            )}
           </div>
         </div>
 
