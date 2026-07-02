@@ -215,6 +215,7 @@ export default function ProfessoresPage() {
   const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear())
   const [filtroFuncao, setFiltroFuncao] = useState('todos')
   const [filtroEmpresa, setFiltroEmpresa] = useState('todas')
+  const [filtroAberto, setFiltroAberto] = useState(false)
   const fotoInputRef = useRef()
   const contratoInputRef = useRef()
 
@@ -586,7 +587,6 @@ export default function ProfessoresPage() {
 
       {/* Filtros */}
       {(() => {
-        const [filtroAberto, setFiltroAberto] = useState(false)
         const temFiltro = filtroFuncao !== 'todos' || filtroEmpresa !== 'todas'
         return (
           <div style={{ position: 'relative', marginBottom: '16px' }}>
