@@ -484,7 +484,7 @@ export function FinanceiroPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pagamentos_extras')
-        .select('professor_id, valor, professores(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, chave_pix, banco, tipo_pagamento, nome_titular, cpf_titular)')
+        .select('professor_id, valor, professores(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, tipo_pagamento, nome_titular, cpf_titular)')
         .eq('mes', mes)
         .eq('ano', anoSel)
       if (error) return []
@@ -502,8 +502,13 @@ export function FinanceiroPage() {
   const extrasOnlyMap = {}
   todoExtras.forEach(e => {
     if (!e.professores || custoProfIds.has(e.professor_id)) return
+    const prof = e.professores
+    // Filtra por empresa: só mostra se o professor trabalha nessa empresa
+    // Se nenhum flag definido (null), cai no Procopio por padrão
+    if (empresaId === 'beach_arena' && !prof.trabalha_beach) return
+    if (empresaId === 'procopio' && prof.trabalha_beach === true && prof.trabalha_procopio === false) return
     if (!extrasOnlyMap[e.professor_id]) {
-      extrasOnlyMap[e.professor_id] = { ...e.professores, valorUnitario: 0, totalAulas: 0, totalValor: 0 }
+      extrasOnlyMap[e.professor_id] = { ...prof, valorUnitario: 0, totalAulas: 0, totalValor: 0 }
     }
   })
   const extrasOnlyProfs = Object.values(extrasOnlyMap)
