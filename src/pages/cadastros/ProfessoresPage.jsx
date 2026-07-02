@@ -40,7 +40,7 @@ const FORM_VAZIO = {
   id: null, nome: '', email: '', telefone: '', instagram: '', apelido: '',
   tem_cref: false, numero_cref: '', cref_url: '',
   cnpj: '', razao_social: '',
-  modalidade_id: '', modalidades_ids: [], valor_aula: '', salario_fixo: '', funcao: 'professor', ativo: true,
+  modalidade_id: '', modalidades_ids: [], valor_aula: '', valor_aula_beach: '', trabalha_procopio: true, trabalha_beach: false, salario_fixo: '', funcao: 'professor', ativo: true,
   nascimento: '', cidade_nascimento: '', estado_nascimento: '',
   cpf: '', cep: '', endereco: '', numero: '', complemento: '',
   bairro: '', cidade: '', estado: '', data_inicio: '',
@@ -321,7 +321,7 @@ export default function ProfessoresPage() {
     setForm({
       id: prof.id, nome: prof.nome || '', email: prof.email || '',
       telefone: prof.telefone || '', instagram: prof.instagram || '',
-      modalidade_id: prof.modalidade_id || '', modalidades_ids: prof.modalidades_ids || [], valor_aula: prof.valor_aula || '', salario_fixo: prof.salario_fixo || '', funcao: prof.funcao || 'professor',
+      modalidade_id: prof.modalidade_id || '', modalidades_ids: prof.modalidades_ids || [], valor_aula: prof.valor_aula || '', valor_aula_beach: prof.valor_aula_beach || '', trabalha_procopio: prof.trabalha_procopio !== false, trabalha_beach: !!prof.trabalha_beach, salario_fixo: prof.salario_fixo || '', funcao: prof.funcao || 'professor',
       ativo: prof.ativo !== false, nascimento: prof.nascimento || '',
       cidade_nascimento: prof.cidade_nascimento || '',
       estado_nascimento: prof.estado_nascimento || '',
@@ -361,6 +361,9 @@ export default function ProfessoresPage() {
       funcao: form.funcao || 'professor',
       salario_fixo: form.salario_fixo ? parseFloat(String(form.salario_fixo).replace(',', '.')) : null,
       valor_aula: form.valor_aula ? parseFloat(String(form.valor_aula).replace(',', '.')) : null,
+      valor_aula_beach: form.valor_aula_beach ? parseFloat(String(form.valor_aula_beach).replace(',', '.')) : null,
+      trabalha_procopio: form.trabalha_procopio,
+      trabalha_beach: form.trabalha_beach,
       ativo: form.ativo, nascimento: form.nascimento || null,
       cidade_nascimento: form.cidade_nascimento || null,
       estado_nascimento: form.estado_nascimento || null,
@@ -1205,7 +1208,39 @@ export default function ProfessoresPage() {
                     <input style={inputStyle} placeholder="000.000.000-00" value={form.cpf_titular} onChange={e => { set('cpf_titular', e.target.value); set('titular_proprio', false) }} />
                   </div>
                 </div>
-                <div><div style={labelStyle}>Valor por aula (R$)</div><input type="number" style={inputStyle} placeholder="0,00" value={form.valor_aula} onChange={e => set('valor_aula', e.target.value)} /></div>
+                {/* Empresa(s) onde atua */}
+                <div>
+                  <div style={labelStyle}>Empresa(s) onde atua</div>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                    {[{ key: 'trabalha_procopio', label: 'Procopio', cor: '#fcc825' }, { key: 'trabalha_beach', label: 'Beach Arena', cor: '#cf1b9b' }].map(({ key, label, cor }) => (
+                      <button key={key} onClick={() => set(key, !form[key])} style={{
+                        flex: 1, padding: '8px', borderRadius: '10px', border: `1px solid ${form[key] ? cor : '#2a2a2a'}`,
+                        background: form[key] ? `${cor}18` : 'transparent',
+                        color: form[key] ? cor : '#444', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                      }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: form[key] ? cor : '#333', flexShrink: 0 }} />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Valores por empresa */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {form.trabalha_procopio && (
+                    <div>
+                      <div style={{ ...labelStyle, color: '#fcc825' }}>Valor por Aula — Procopio (R$)</div>
+                      <input type="number" style={inputStyle} placeholder="0,00" value={form.valor_aula} onChange={e => set('valor_aula', e.target.value)} />
+                    </div>
+                  )}
+                  {form.trabalha_beach && (
+                    <div>
+                      <div style={{ ...labelStyle, color: '#cf1b9b' }}>Valor por Aula — Beach Arena (R$)</div>
+                      <input type="number" style={inputStyle} placeholder="0,00" value={form.valor_aula_beach} onChange={e => set('valor_aula_beach', e.target.value)} />
+                    </div>
+                  )}
+                </div>
                 <button onClick={handleSalvar} disabled={salvando} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                   {salvando ? 'Salvando...' : '💾 Salvar dados bancários'}
                 </button>

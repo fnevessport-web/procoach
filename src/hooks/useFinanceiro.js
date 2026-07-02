@@ -182,7 +182,7 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
         .select(`
           id, professor_executou_id, turma_id, observacoes, data_aula,
           turmas(nome, horario_inicio, quadras(nome)),
-          professores!professor_executou_id(id, nome, foto_url, valor_aula, valor_hora_aula, chave_pix, banco, tipo_pagamento, nome_titular, cpf_titular)
+          professores!professor_executou_id(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, tipo_pagamento, nome_titular, cpf_titular)
         `)
         .gte('data_aula', dataInicio)
         .lte('data_aula', dataFim)
@@ -204,7 +204,10 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
         const p = a.professores
         if (!p) return
         if (!por[p.id]) {
-          const valorUnitario = Number(p.valor_aula || p.valor_hora_aula || 0)
+          const valorBase = Number(p.valor_aula || p.valor_hora_aula || 0)
+          const valorUnitario = empresa === 'beach_arena' && p.valor_aula_beach
+            ? Number(p.valor_aula_beach)
+            : valorBase
           por[p.id] = { ...p, valorUnitario, totalAulas: 0, totalValor: 0 }
         }
         por[p.id].totalAulas++

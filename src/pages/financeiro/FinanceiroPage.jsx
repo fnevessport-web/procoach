@@ -514,7 +514,9 @@ export function FinanceiroPage() {
   const maxValorProf = Math.max(...custosProf.map(p => p.totalValor + (extrasMapGeral[p.id] || 0)), 1)
   const boletoMes = boletos.find(b => b.mes === mes && b.ano === anoSel)
   const totalAulasProf = aulasProf.length
-  const valorUnitarioProf = Number(professorSel?.valor_aula || professorSel?.valor_hora_aula || 0)
+  const valorUnitarioProf = empresaId === 'beach_arena' && professorSel?.valor_aula_beach
+    ? Number(professorSel.valor_aula_beach)
+    : Number(professorSel?.valor_aula || professorSel?.valor_hora_aula || 0)
   const totalExtrasProf = extrasProf.reduce((s, e) => s + Number(e.valor || 0), 0)
   const totalPagarProf = totalAulasProf * valorUnitarioProf + totalExtrasProf
   const pagamentoConfirmado = professorSel ? pagamentosConfirmados.has(professorSel.id) : false
