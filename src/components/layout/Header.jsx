@@ -1,4 +1,4 @@
-import { Bell, LogOut, ChevronDown, ChevronLeft } from 'lucide-react'
+import { Bell, LogOut, ChevronDown, Undo2 } from 'lucide-react'
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
@@ -51,13 +51,13 @@ export function Header() {
           <button
             onClick={() => navigate(fromRoute, { state: backState ? { financeiroState: backState } : null })}
             style={{
-              display: 'flex', alignItems: 'center', gap: '4px',
-              background: 'none', border: '1px solid #2a2a2a', borderRadius: '8px',
-              padding: '5px 10px', cursor: 'pointer',
-              color: '#888', fontSize: '12px', fontWeight: '500',
+              display: 'flex', alignItems: 'center', gap: '5px',
+              background: 'none', border: 'none',
+              cursor: 'pointer', padding: '4px',
+              color: '#555', fontSize: '12px',
             }}
           >
-            <ChevronLeft size={13} color="#888" />
+            <Undo2 size={13} color="#555" />
             Voltar
           </button>
         )}
