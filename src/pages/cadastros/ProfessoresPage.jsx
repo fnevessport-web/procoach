@@ -586,86 +586,81 @@ export default function ProfessoresPage() {
       </div>
 
       {/* Filtros */}
-      {(() => {
-        const temFiltro = filtroFuncao !== 'todos' || filtroEmpresa !== 'todas'
-        return (
-          <div style={{ position: 'relative', marginBottom: '16px' }}>
-            <button onClick={() => setFiltroAberto(!filtroAberto)} style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '7px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-              background: temFiltro ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
-              outline: temFiltro ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-              color: temFiltro ? '#fcc825' : '#555', fontSize: '12px',
+      <div style={{ position: 'relative', marginBottom: '16px', zIndex: 50 }}>
+        <button onClick={() => setFiltroAberto(v => !v)} style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          padding: '7px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+          background: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas') ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
+          outline: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas') ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+          color: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas') ? '#fcc825' : '#555', fontSize: '12px',
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          Filtrar
+          {(filtroFuncao !== 'todos' || filtroEmpresa !== 'todas') && <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#fcc825', flexShrink: 0 }} />}
+        </button>
+
+        {filtroAberto && (
+          <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setFiltroAberto(false)} />
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, marginTop: '6px',
+              backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+              borderRadius: '12px', padding: '12px', zIndex: 50,
+              minWidth: '180px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
             }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-              </svg>
-              Filtrar
-              {temFiltro && <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#fcc825', flexShrink: 0 }} />}
-            </button>
-
-            {filtroAberto && (
-              <>
-                <div style={{ position: 'fixed', inset: 0, zIndex: 30 }} onClick={() => setFiltroAberto(false)} />
-                <div style={{
-                  position: 'absolute', top: '100%', left: 0, marginTop: '6px',
-                  backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
-                  borderRadius: '12px', padding: '12px', zIndex: 40,
-                  minWidth: '180px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              <div style={{ fontSize: '10px', color: '#444', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Função</div>
+              {[
+                { key: 'todos', label: 'Todos' },
+                { key: 'professor', label: 'Professores' },
+                { key: 'gerente', label: 'Gerentes' },
+                { key: 'auxiliar', label: 'Auxiliares' },
+                { key: 'coordenador', label: 'Coordenadores' },
+              ].map(f => (
+                <button key={f.key} onClick={() => { setFiltroFuncao(f.key); setFiltroAberto(false) }} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
+                  cursor: 'pointer', fontSize: '12px', marginBottom: '2px',
+                  background: filtroFuncao === f.key ? 'rgba(252,200,37,0.1)' : 'transparent',
+                  color: filtroFuncao === f.key ? '#fcc825' : '#888',
                 }}>
-                  <div style={{ fontSize: '10px', color: '#444', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Função</div>
-                  {[
-                    { key: 'todos', label: 'Todos' },
-                    { key: 'professor', label: 'Professores' },
-                    { key: 'gerente', label: 'Gerentes' },
-                    { key: 'auxiliar', label: 'Auxiliares' },
-                    { key: 'coordenador', label: 'Coordenadores' },
-                  ].map(f => (
-                    <button key={f.key} onClick={() => { setFiltroFuncao(f.key); setFiltroAberto(false) }} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
-                      cursor: 'pointer', fontSize: '12px', marginBottom: '2px',
-                      background: filtroFuncao === f.key ? 'rgba(252,200,37,0.1)' : 'transparent',
-                      color: filtroFuncao === f.key ? '#fcc825' : '#888',
-                    }}>
-                      {f.label}
-                      {filtroFuncao === f.key && <span style={{ fontSize: '10px' }}>✓</span>}
-                    </button>
-                  ))}
+                  {f.label}
+                  {filtroFuncao === f.key && <span style={{ fontSize: '10px' }}>✓</span>}
+                </button>
+              ))}
 
-                  <div style={{ height: '1px', backgroundColor: '#2a2a2a', margin: '10px 0' }} />
+              <div style={{ height: '1px', backgroundColor: '#2a2a2a', margin: '10px 0' }} />
 
-                  <div style={{ fontSize: '10px', color: '#444', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Empresa</div>
-                  {[
-                    { key: 'todas', label: 'Todas' },
-                    { key: 'procopio', label: 'Procopio' },
-                    { key: 'beach', label: 'Beach Arena' },
-                  ].map(f => (
-                    <button key={f.key} onClick={() => { setFiltroEmpresa(f.key); setFiltroAberto(false) }} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
-                      cursor: 'pointer', fontSize: '12px', marginBottom: '2px',
-                      background: filtroEmpresa === f.key ? 'rgba(207,27,155,0.1)' : 'transparent',
-                      color: filtroEmpresa === f.key ? '#cf1b9b' : '#888',
-                    }}>
-                      {f.label}
-                      {filtroEmpresa === f.key && <span style={{ fontSize: '10px' }}>✓</span>}
-                    </button>
-                  ))}
+              <div style={{ fontSize: '10px', color: '#444', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Empresa</div>
+              {[
+                { key: 'todas', label: 'Todas' },
+                { key: 'procopio', label: 'Procopio' },
+                { key: 'beach', label: 'Beach Arena' },
+              ].map(f => (
+                <button key={f.key} onClick={() => { setFiltroEmpresa(f.key); setFiltroAberto(false) }} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
+                  cursor: 'pointer', fontSize: '12px', marginBottom: '2px',
+                  background: filtroEmpresa === f.key ? 'rgba(207,27,155,0.1)' : 'transparent',
+                  color: filtroEmpresa === f.key ? '#cf1b9b' : '#888',
+                }}>
+                  {f.label}
+                  {filtroEmpresa === f.key && <span style={{ fontSize: '10px' }}>✓</span>}
+                </button>
+              ))}
 
-                  {temFiltro && (
-                    <button onClick={() => { setFiltroFuncao('todos'); setFiltroEmpresa('todas'); setFiltroAberto(false) }} style={{
-                      width: '100%', marginTop: '8px', padding: '6px', borderRadius: '8px',
-                      border: 'none', background: 'rgba(239,68,68,0.1)', color: '#EF4444',
-                      fontSize: '11px', cursor: 'pointer',
-                    }}>Limpar filtros</button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        )
-      })()}
+              {(filtroFuncao !== 'todos' || filtroEmpresa !== 'todas') && (
+                <button onClick={() => { setFiltroFuncao('todos'); setFiltroEmpresa('todas'); setFiltroAberto(false) }} style={{
+                  width: '100%', marginTop: '8px', padding: '6px', borderRadius: '8px',
+                  border: 'none', background: 'rgba(239,68,68,0.1)', color: '#EF4444',
+                  fontSize: '11px', cursor: 'pointer',
+                }}>Limpar filtros</button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
 
       {isLoading ? <p style={{ color: '#555' }}>Carregando...</p> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
