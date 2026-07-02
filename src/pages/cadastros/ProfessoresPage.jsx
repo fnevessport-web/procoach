@@ -398,16 +398,18 @@ export default function ProfessoresPage() {
     const file = e.target.files?.[0]
     if (!file || !cardAberto?.id) return
     setUploadandoFoto(true)
+    e.target.value = ''
     try {
-      const ext = file.name.split('.').pop()
-      const path = `professores/${cardAberto.id}/foto.${ext}`
-      const { error: upErr } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
+      const ext = file.name.split('.').pop().toLowerCase()
+      const path = `professores/${cardAberto.id}/foto_${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('uploads').upload(path, file)
       if (upErr) throw upErr
       const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
       await supabase.from('professores').update({ foto_url: publicUrl }).eq('id', cardAberto.id)
       setCardAberto(prev => ({ ...prev, foto_url: publicUrl }))
       qc.invalidateQueries({ queryKey: ['professores'] })
-    } catch (err) { alert('Erro upload: ' + err.message) }
+      toast.success('Foto atualizada!', { style: toastStyle })
+    } catch (err) { toast.error('Erro ao subir foto: ' + err.message, { style: toastStyle }) }
     finally { setUploadandoFoto(false) }
   }
 
