@@ -57,8 +57,7 @@ export function Header() {
               color: '#555', fontSize: '12px',
             }}
           >
-            <Undo2 size={13} color="#555" />
-            Voltar
+            <Undo2 size={15} color="#555" />
           </button>
         )}
 
