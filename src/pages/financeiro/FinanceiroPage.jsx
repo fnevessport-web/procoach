@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { format, endOfMonth, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -276,7 +276,7 @@ function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado })
 // DetalhesDiaModal — aulas de um dia específico do professor
 // ──────────────────────────────────────────────────────────────────────
 
-function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onClose }) {
+function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onClose, financeiroState }) {
   const dataFmt = format(parseISO(dataStr + 'T12:00:00'), "EEEE, dd 'de' MMMM", { locale: ptBR })
   const navigate = useNavigate()
 
@@ -360,7 +360,7 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
             return (
               <div
                 key={a.id || i}
-                onClick={() => navigate('/aulas', { state: { data: dataStr, horario: info.horario, from: '/financeiro' } })}
+                onClick={() => navigate('/aulas', { state: { data: dataStr, horario: info.horario, from: '/financeiro', financeiroState } })}
                 style={{ backgroundColor: '#111', borderRadius: '10px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: presencas.length > 0 ? '8px' : 0 }}>
@@ -415,13 +415,16 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
 
 export function FinanceiroPage() {
   const now = new Date()
-  const [view, setView] = useState('empresas') // 'empresas' | 'empresa' | 'professor'
-  const [empresaId, setEmpresaId] = useState(null)
-  const [mesSel, setMesSel] = useState(now.getMonth())   // 0-11
-  const [anoSel, setAnoSel] = useState(now.getFullYear())
-  const [dataInicio, setDataInicio] = useState(inicioMes(now.getMonth(), now.getFullYear()))
-  const [dataFim, setDataFim] = useState(fimMes(now.getMonth(), now.getFullYear()))
-  const [professorSel, setProfessorSel] = useState(null)
+  const location = useLocation()
+  const savedFin = location.state?.financeiroState
+
+  const [view, setView] = useState(savedFin?.view || 'empresas') // 'empresas' | 'empresa' | 'professor'
+  const [empresaId, setEmpresaId] = useState(savedFin?.empresaId || null)
+  const [mesSel, setMesSel] = useState(savedFin?.mesSel ?? now.getMonth())   // 0-11
+  const [anoSel, setAnoSel] = useState(savedFin?.anoSel ?? now.getFullYear())
+  const [dataInicio, setDataInicio] = useState(inicioMes(savedFin?.mesSel ?? now.getMonth(), savedFin?.anoSel ?? now.getFullYear()))
+  const [dataFim, setDataFim] = useState(fimMes(savedFin?.mesSel ?? now.getMonth(), savedFin?.anoSel ?? now.getFullYear()))
+  const [professorSel, setProfessorSel] = useState(savedFin?.professorSel || null)
   const [pinModal, setPinModal] = useState(null)   // { professorId, initialMode }
   const [detalhesDia, setDetalhesDia] = useState(null) // { dataStr, aulas }
   const [buscaProf, setBuscaProf] = useState('')
@@ -1037,6 +1040,7 @@ export function FinanceiroPage() {
             totalAulas={detalhesDia.aulas.length}
             valorUnitario={valorUnitarioProf}
             onClose={() => setDetalhesDia(null)}
+            financeiroState={{ view, empresaId, mesSel, anoSel, professorSel }}
           />
         )}
 

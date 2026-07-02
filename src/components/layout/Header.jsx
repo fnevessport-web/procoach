@@ -1,5 +1,6 @@
-import { Bell, LogOut, ChevronDown } from 'lucide-react'
+import { Bell, LogOut, ChevronDown, ChevronLeft } from 'lucide-react'
 import { useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useAulasPendentes } from '../../hooks/useAulas'
 import useAppStore from '../../store/useAppStore'
@@ -23,6 +24,11 @@ export function Header() {
   const { data: pendentes = 0 } = useAulasPendentes()
   const [menuOpen, setMenuOpen] = useState(false)
   const { modalidadeSelecionada, setModalidadeSelecionada } = useAppStore()
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const fromRoute = location.state?.from
+  const backState = location.state?.financeiroState
 
   const iniciais = getIniciais(perfil?.nome)
   const sobrenome = getSobrenome(perfil?.nome)
@@ -40,6 +46,21 @@ export function Header() {
           alt="ProCoach"
           style={{ height: '28px', objectFit: 'contain' }}
         />
+
+        {fromRoute && (
+          <button
+            onClick={() => navigate(fromRoute, { state: backState ? { financeiroState: backState } : null })}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '4px',
+              background: 'none', border: '1px solid #2a2a2a', borderRadius: '8px',
+              padding: '5px 10px', cursor: 'pointer',
+              color: '#888', fontSize: '12px', fontWeight: '500',
+            }}
+          >
+            <ChevronLeft size={13} color="#888" />
+            Voltar
+          </button>
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {pendentes > 0 && (

@@ -8,7 +8,7 @@ import { useProfessores } from '../../hooks/useProfessores'
 import { useQuadras } from '../../hooks/useQuadras'
 import { useNiveis } from '../../hooks/useNiveis'
 import { useModalidades } from '../../hooks/useModalidades'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
 import { Loading, EmptyState } from '../../components/ui/Loading'
 import { supabase } from '../../lib/supabase'
@@ -91,7 +91,6 @@ export function AulasCoordenador({ onCelulaVazia }) {
   const { modalidadeSelecionada } = useAppStore()
   const qc = useQueryClient()
   const location = useLocation()
-  const navigate = useNavigate()
   const [data, setData] = useState(() => location.state?.data || format(new Date(), 'yyyy-MM-dd'))
 
   useEffect(() => {
@@ -470,21 +469,6 @@ export function AulasCoordenador({ onCelulaVazia }) {
 
   return (
     <div className="fade-in">
-
-      {/* Botão Voltar — aparece quando veio do financeiro */}
-      {location.state?.from && (
-        <button
-          onClick={() => navigate(location.state.from)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            background: 'none', border: '1px solid #2a2a2a', borderRadius: '10px',
-            padding: '8px 14px', marginBottom: '10px', cursor: 'pointer',
-            color: '#fcc825', fontSize: '13px', fontWeight: '600',
-          }}
-        >
-          <ChevronLeft size={15} /> Voltar ao Financeiro
-        </button>
-      )}
 
       {/* Navegador de data */}
       <div style={{
