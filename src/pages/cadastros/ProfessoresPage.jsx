@@ -215,6 +215,7 @@ export default function ProfessoresPage() {
   const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear())
   const [filtroFuncao, setFiltroFuncao] = useState('todos')
   const [filtroEmpresa, setFiltroEmpresa] = useState('todas')
+  const [filtroAtivo, setFiltroAtivo] = useState('ativos')
   const [filtroAberto, setFiltroAberto] = useState(false)
   const fotoInputRef = useRef()
   const contratoInputRef = useRef()
@@ -593,15 +594,15 @@ export default function ProfessoresPage() {
         <button onClick={() => setFiltroAberto(v => !v)} style={{
           display: 'flex', alignItems: 'center', gap: '6px',
           padding: '7px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-          background: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas') ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
-          outline: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas') ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-          color: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas') ? '#fcc825' : '#555', fontSize: '12px',
+          background: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
+          outline: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+          color: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') ? '#fcc825' : '#555', fontSize: '12px',
         }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
           </svg>
           Filtrar
-          {(filtroFuncao !== 'todos' || filtroEmpresa !== 'todas') && <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#fcc825', flexShrink: 0 }} />}
+          {(filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') && <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#fcc825', flexShrink: 0 }} />}
         </button>
 
         {filtroAberto && (
@@ -653,8 +654,31 @@ export default function ProfessoresPage() {
                 </button>
               ))}
 
-              {(filtroFuncao !== 'todos' || filtroEmpresa !== 'todas') && (
-                <button onClick={() => { setFiltroFuncao('todos'); setFiltroEmpresa('todas'); setFiltroAberto(false) }} style={{
+              <div style={{ height: '1px', backgroundColor: '#2a2a2a', margin: '10px 0' }} />
+
+              <div style={{ fontSize: '10px', color: '#444', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Status</div>
+              {[
+                { key: 'ativos', label: 'Ativos', cor: '#22c55e' },
+                { key: 'inativos', label: 'Inativos', cor: '#555' },
+                { key: 'todos', label: 'Todos', cor: '#888' },
+              ].map(f => (
+                <button key={f.key} onClick={() => { setFiltroAtivo(f.key); setFiltroAberto(false) }} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
+                  cursor: 'pointer', fontSize: '12px', marginBottom: '2px',
+                  background: filtroAtivo === f.key ? 'rgba(34,197,94,0.08)' : 'transparent',
+                  color: filtroAtivo === f.key ? f.cor : '#888',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: f.cor, flexShrink: 0 }} />
+                    {f.label}
+                  </div>
+                  {filtroAtivo === f.key && <span style={{ fontSize: '10px' }}>✓</span>}
+                </button>
+              ))}
+
+              {(filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') && (
+                <button onClick={() => { setFiltroFuncao('todos'); setFiltroEmpresa('todas'); setFiltroAtivo('ativos'); setFiltroAberto(false) }} style={{
                   width: '100%', marginTop: '8px', padding: '6px', borderRadius: '8px',
                   border: 'none', background: 'rgba(239,68,68,0.1)', color: '#EF4444',
                   fontSize: '11px', cursor: 'pointer',
@@ -668,6 +692,8 @@ export default function ProfessoresPage() {
       {isLoading ? <p style={{ color: '#555' }}>Carregando...</p> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
           {professores.filter(prof => {
+            if (filtroAtivo === 'ativos' && prof.ativo === false) return false
+            if (filtroAtivo === 'inativos' && prof.ativo !== false) return false
             if (filtroFuncao !== 'todos' && prof.funcao !== filtroFuncao) return false
             if (filtroEmpresa !== 'todas') {
               const mods = prof.modalidades_ids || []
@@ -707,7 +733,7 @@ export default function ProfessoresPage() {
                   ? prof.funcao.charAt(0).toUpperCase() + prof.funcao.slice(1)
                   : prof.modalidades?.nome?.split(' ')[0] || '—'}
               </div>
-              <div style={{ display: 'inline-block', marginTop: '4px', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: prof.ativo ? '#22c55e' : '#EF4444' }} />
+              <div style={{ display: 'inline-block', marginTop: '4px', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: prof.ativo !== false ? '#22c55e' : '#444' }} />
             </div>
           ))}
         </div>
@@ -1241,6 +1267,24 @@ export default function ProfessoresPage() {
                     </div>
                   )}
                 </div>
+                {/* Status ativo/inativo */}
+                <div>
+                  <div style={labelStyle}>Status do Colaborador</div>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                    {[{ val: true, label: 'Ativo', cor: '#22c55e' }, { val: false, label: 'Inativo', cor: '#555' }].map(({ val, label, cor }) => (
+                      <button key={String(val)} onClick={() => set('ativo', val)} style={{
+                        flex: 1, padding: '8px', borderRadius: '10px',
+                        border: `1px solid ${form.ativo === val ? cor : '#2a2a2a'}`,
+                        background: form.ativo === val ? `${cor}18` : 'transparent',
+                        color: form.ativo === val ? cor : '#444', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                      }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: cor, display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <button onClick={handleSalvar} disabled={salvando} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                   {salvando ? 'Salvando...' : '💾 Salvar dados bancários'}
                 </button>
