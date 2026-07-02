@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { format, addDays } from 'date-fns'
+import { format, addDays, addMonths, startOfMonth, getDaysInMonth, getDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Plus, Calendar, UserPlus, X, ChevronRight, Copy } from 'lucide-react'
+import { Plus, Calendar, UserPlus, X, ChevronRight, ChevronLeft, Copy, Check } from 'lucide-react'
 import { useAulas, useGerarAulas, useRelatorioReposicoes, useAulasDiaParaReposicao, useAgendarReposicao } from '../../hooks/useAulas'
 import { useTurmas } from '../../hooks/useTurmas'
 import { useProfessores } from '../../hooks/useProfessores'
@@ -983,6 +983,11 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
   const [alunos, setAlunos] = useState([])
   const [buscaAluno, setBuscaAluno] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [step, setStep] = useState('form') // 'form' | 'replicar'
+  const [aulaOrigem, setAulaOrigem] = useState(null)
+  const [datasSelecionadas, setDatasSelecionadas] = useState(new Set())
+  const [mesCalendario, setMesCalendario] = useState(new Date())
+  const [replicando, setReplicando] = useState(false)
   const [novoAluno, setNovoAluno] = useState({
     show: false, nome: '', telefone: '', nivel: '',
     menor_idade: false, nome_responsavel: '', modalidades_ids: [],
@@ -1030,6 +1035,17 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
     setNovoAluno({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '', modalidades_ids: [] })
   }
 
+  function resetTudo() {
+    setAlunos([])
+    setModalidadeId('')
+    setBuscaAluno('')
+    setForm({ data: format(new Date(), 'yyyy-MM-dd'), horario: '07:00', professor_id: '', quadra_id: '', nivel_id: '' })
+    resetNovoAluno()
+    setStep('form')
+    setAulaOrigem(null)
+    setDatasSelecionadas(new Set())
+  }
+
   function resetForm() {
     setAlunos([])
     setModalidadeId('')
@@ -1073,6 +1089,46 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
     } catch (err) { toast.error(err.message) }
   }
 
+  async function handleReplicar() {
+    if (datasSelecionadas.size === 0) return
+    setReplicando(true)
+    const hoje = format(new Date(), 'yyyy-MM-dd')
+    const datas = Array.from(datasSelecionadas).sort()
+    let criadas = 0
+    let puladas = 0
+    for (const dataStr of datas) {
+      const { data: existentes } = await supabase
+        .from('aulas').select('id').eq('data_aula', dataStr)
+        .ilike('observacoes', `%${aulaOrigem.quadraNome}%`)
+        .ilike('observacoes', `%${aulaOrigem.horario}%`)
+      if (existentes?.length > 0) { puladas++; continue }
+      const { data: novaAula, error } = await supabase.from('aulas').insert({
+        professor_executou_id: aulaOrigem.professor_id,
+        data_aula: dataStr, status: 'confirmada_coord', status_aula: 'dada',
+        paga_professor: dataStr < hoje, eh_substituicao: false,
+        observacoes: aulaOrigem.observacoes,
+      }).select().single()
+      if (error || !novaAula) { puladas++; continue }
+      if (aulaOrigem.alunos.length > 0) {
+        await supabase.from('presencas').insert(
+          aulaOrigem.alunos.map(al => ({
+            aula_id: novaAula.id, aluno_id: al.aluno_id,
+            presente: true, status_presenca: 'presente', tipo_participacao: al.tipo,
+          }))
+        )
+      }
+      criadas++
+    }
+    qc.invalidateQueries({ queryKey: ['aulas'] })
+    const msg = puladas > 0
+      ? `${criadas} aula(s) replicada(s)${puladas > 0 ? `, ${puladas} ignorada(s) por conflito` : ''}`
+      : `Aula replicada em ${criadas} dia(s)!`
+    toast.success(msg)
+    resetTudo()
+    onClose()
+    setReplicando(false)
+  }
+
   async function handleSalvar() {
     if (!form.professor_id) return toast.error('Selecione um professor')
     if (!form.quadra_id) return toast.error('Selecione uma quadra')
@@ -1112,8 +1168,18 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
       }
       qc.invalidateQueries({ queryKey: ['aulas'] })
       toast.success('Aula avulsa criada!')
-      resetForm()
-      onClose()
+      setAulaOrigem({
+        aulaId: aulaData.id,
+        professor_id: form.professor_id,
+        alunos: [...alunos],
+        quadraNome,
+        horario: form.horario,
+        nivelNome,
+        observacoes: `⚡ Avulsa · ${quadraNome} · ${form.horario}${nivelNome ? ' · ' + nivelNome : ''}`,
+        dataOrigem: form.data,
+      })
+      setMesCalendario(new Date(form.data + 'T12:00:00'))
+      setStep('replicar')
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -1122,8 +1188,112 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
   }
 
   return (
-    <Modal open={open} onClose={() => { resetForm(); onClose() }} title="⚡ Aula Avulsa" size="md">
+    <Modal open={open} onClose={() => { resetTudo(); onClose() }} title={step === 'replicar' ? '📅 Replicar Aula' : '⚡ Aula Avulsa'} size="md">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+        {/* ── Step: Replicar ── */}
+        {step === 'replicar' && aulaOrigem && (() => {
+          const primeiroDia = startOfMonth(mesCalendario)
+          const totalDias = getDaysInMonth(mesCalendario)
+          const iniciaSemana = getDay(primeiroDia)
+          const cells = [
+            ...Array(iniciaSemana).fill(null),
+            ...Array.from({ length: totalDias }, (_, i) => {
+              const d = new Date(mesCalendario.getFullYear(), mesCalendario.getMonth(), i + 1)
+              return format(d, 'yyyy-MM-dd')
+            }),
+          ]
+          const hoje = format(new Date(), 'yyyy-MM-dd')
+          const toggleData = (ds) => setDatasSelecionadas(prev => {
+            const next = new Set(prev)
+            if (next.has(ds)) next.delete(ds); else next.add(ds)
+            return next
+          })
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ padding: '10px 14px', backgroundColor: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: '10px', fontSize: '12px', color: '#22c55e' }}>
+                <div style={{ fontWeight: '600', marginBottom: '4px' }}>✓ Aula criada em {format(new Date(aulaOrigem.dataOrigem + 'T12:00:00'), "dd/MM", { locale: ptBR })}</div>
+                <div style={{ color: '#888' }}>{aulaOrigem.quadraNome} · {aulaOrigem.horario}{aulaOrigem.nivelNome ? ' · ' + aulaOrigem.nivelNome : ''} · {aulaOrigem.alunos.length} aluno(s)</div>
+              </div>
+
+              <div style={{ fontSize: '13px', color: '#ccc', fontWeight: '500' }}>Selecione os dias para replicar:</div>
+
+              {/* Calendário */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <button onClick={() => setMesCalendario(m => addMonths(m, -1))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px' }}>
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#ccc', textTransform: 'capitalize' }}>
+                    {format(mesCalendario, 'MMMM yyyy', { locale: ptBR })}
+                  </span>
+                  <button onClick={() => setMesCalendario(m => addMonths(m, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px' }}>
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px', textAlign: 'center' }}>
+                  {['D','S','T','Q','Q','S','S'].map((d, i) => (
+                    <div key={i} style={{ fontSize: '10px', color: '#444', paddingBottom: '4px', fontWeight: '600' }}>{d}</div>
+                  ))}
+                  {cells.map((ds, i) => {
+                    if (!ds) return <div key={i} />
+                    const isOrigem = ds === aulaOrigem.dataOrigem
+                    const isSel = datasSelecionadas.has(ds)
+                    const isHoje = ds === hoje
+                    return (
+                      <button
+                        key={ds}
+                        disabled={isOrigem}
+                        onClick={() => toggleData(ds)}
+                        style={{
+                          aspectRatio: '1', borderRadius: '8px', border: 'none',
+                          fontSize: '11px', fontWeight: isSel || isOrigem ? '700' : '400',
+                          cursor: isOrigem ? 'default' : 'pointer',
+                          background: isOrigem ? 'rgba(252,200,37,0.15)'
+                            : isSel ? 'linear-gradient(135deg,#fcc825,#cf1b9b)'
+                            : 'transparent',
+                          color: isOrigem ? '#fcc825' : isSel ? 'white' : isHoje ? '#fcc825' : '#888',
+                          outline: isHoje && !isSel && !isOrigem ? '1px solid rgba(252,200,37,0.3)' : 'none',
+                        }}
+                      >
+                        {parseInt(ds.split('-')[2])}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {datasSelecionadas.size > 0 && (
+                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center' }}>
+                  {datasSelecionadas.size} dia(s) selecionado(s)
+                </div>
+              )}
+
+              <button
+                onClick={handleReplicar}
+                disabled={datasSelecionadas.size === 0 || replicando}
+                style={{
+                  width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
+                  background: datasSelecionadas.size > 0 ? 'linear-gradient(135deg,#fcc825,#cf1b9b)' : '#222',
+                  color: datasSelecionadas.size > 0 ? 'white' : '#444',
+                  fontSize: '14px', fontWeight: '600',
+                  cursor: datasSelecionadas.size > 0 ? 'pointer' : 'not-allowed',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                }}
+              >
+                <Copy size={15} />
+                {replicando ? 'Replicando...' : `Replicar em ${datasSelecionadas.size || '—'} dia(s)`}
+              </button>
+
+              <button onClick={() => { resetTudo(); onClose() }} style={{ background: 'none', border: 'none', color: '#555', fontSize: '12px', cursor: 'pointer', textAlign: 'center' }}>
+                Não, finalizar sem replicar
+              </button>
+            </div>
+          )
+        })()}
+
+        {/* ── Step: Formulário ── */}
+        {step === 'form' && <>
 
         {atalho && (
           <div style={{ padding: '8px 12px', backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.2)', borderRadius: '8px', fontSize: '12px', color: '#fcc825' }}>
@@ -1262,6 +1432,7 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
           <Plus size={16} />
           {salvando ? 'Salvando...' : 'Criar Aula Avulsa'}
         </button>
+        </>}
       </div>
     </Modal>
   )
