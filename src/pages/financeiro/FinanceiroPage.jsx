@@ -484,7 +484,7 @@ export function FinanceiroPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pagamentos_extras')
-        .select('professor_id, valor')
+        .select('professor_id, valor, professores(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, chave_pix, banco, tipo_pagamento, nome_titular, cpf_titular)')
         .eq('mes', mes)
         .eq('ano', anoSel)
       if (error) return []
@@ -497,6 +497,18 @@ export function FinanceiroPage() {
     return acc
   }, {})
 
+  // Professores que têm só extras (sem aulas no período) — ex: salários manuais
+  const custoProfIds = new Set(custosProf.map(p => p.id))
+  const extrasOnlyMap = {}
+  todoExtras.forEach(e => {
+    if (!e.professores || custoProfIds.has(e.professor_id)) return
+    if (!extrasOnlyMap[e.professor_id]) {
+      extrasOnlyMap[e.professor_id] = { ...e.professores, valorUnitario: 0, totalAulas: 0, totalValor: 0 }
+    }
+  })
+  const extrasOnlyProfs = Object.values(extrasOnlyMap)
+  const allProfs = [...custosProf, ...extrasOnlyProfs]
+
   const salvarLancamento = useSalvarLancamento()
   const removerLancamento = useRemoverLancamento()
   const confirmarPagamento = useConfirmarPagamento()
@@ -508,10 +520,10 @@ export function FinanceiroPage() {
   // Derived
   const receitaRecord = lancamentos.find(l => l.tipo === 'receita')
   const outrosCustos = lancamentos.filter(l => l.tipo === 'custo_extra')
-  const totalProfessores = custosProf.reduce((s, p) => s + p.totalValor + (extrasMapGeral[p.id] || 0), 0)
+  const totalProfessores = allProfs.reduce((s, p) => s + p.totalValor + (extrasMapGeral[p.id] || 0), 0)
   const totalOutros = outrosCustos.reduce((s, c) => s + Number(c.valor), 0)
   const totalCustos = totalProfessores + totalOutros
-  const maxValorProf = Math.max(...custosProf.map(p => p.totalValor + (extrasMapGeral[p.id] || 0)), 1)
+  const maxValorProf = Math.max(...allProfs.map(p => p.totalValor + (extrasMapGeral[p.id] || 0)), 1)
   const boletoMes = boletos.find(b => b.mes === mes && b.ano === anoSel)
   const totalAulasProf = aulasProf.length
   const valorUnitarioProf = empresaId === 'beach_arena' && professorSel?.valor_aula_beach
@@ -1242,13 +1254,13 @@ export function FinanceiroPage() {
           )}
         </div>
 
-        {loadingCustos ? <Loading /> : custosProf.length === 0 ? (
+        {loadingCustos ? <Loading /> : allProfs.length === 0 ? (
           <div style={{ fontSize: '12px', color: '#555', textAlign: 'center', padding: '16px 0' }}>
             Nenhuma aula confirmada no período
           </div>
         ) : (
           <div style={{ maxHeight: '420px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '2px' }}>
-            {custosProf.filter(p => p.nome.toLowerCase().includes(buscaProf.toLowerCase())).map(prof => {
+            {allProfs.filter(p => p.nome.toLowerCase().includes(buscaProf.toLowerCase())).map(prof => {
               const extras = extrasMapGeral[prof.id] || 0
               const totalComExtras = prof.totalValor + extras
               const pct = Math.round((totalComExtras / maxValorProf) * 100)
