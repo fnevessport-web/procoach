@@ -728,10 +728,13 @@ export default function ProfessoresPage() {
               <div style={{ fontSize: '11px', fontWeight: '600', color: '#F0F2F5', lineHeight: 1.3 }}>
                 {prof.apelido || prof.nome?.split(' ')[0]}
               </div>
-              <div style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>
+              <div style={{ fontSize: '9px', color: '#555', marginTop: '2px', lineHeight: 1.4, wordBreak: 'break-word' }}>
                 {prof.funcao && prof.funcao !== 'professor'
                   ? prof.funcao.charAt(0).toUpperCase() + prof.funcao.slice(1)
-                  : prof.modalidades?.nome?.split(' ')[0] || '—'}
+                  : (prof.modalidades_ids || []).length > 0
+                    ? modalidades.filter(m => (prof.modalidades_ids || []).includes(m.id)).map(m => m.nome).join(' · ')
+                    : prof.modalidades?.nome || '—'
+                }
               </div>
               <div style={{ display: 'inline-block', marginTop: '4px', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: prof.ativo !== false ? '#22c55e' : '#444' }} />
             </div>
