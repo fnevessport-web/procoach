@@ -882,19 +882,26 @@ export function FinanceiroPage() {
               PIX ITAÚ
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button onClick={() => {
-                navigator.clipboard.writeText(professorSel.chave_pix)
-                toast.success('PIX copiado!', { style: toastStyle })
-              }} style={{
-                flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '10px 14px', borderRadius: '10px',
-                border: '1px solid rgba(249,115,22,0.3)',
-                backgroundColor: 'rgba(249,115,22,0.06)',
-                cursor: 'pointer',
-              }}>
-                <Copy size={14} color="#f97316" />
-                <span style={{ flex: 1, textAlign: 'left', fontSize: '13px', color: '#f97316', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {professorSel.chave_pix}
+              <button
+                onClick={() => {
+                  if (!pagamentoAutorizado) return
+                  navigator.clipboard.writeText(professorSel.chave_pix)
+                  toast.success('PIX copiado!', { style: toastStyle })
+                }}
+                style={{
+                  flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '10px 14px', borderRadius: '10px',
+                  border: pagamentoAutorizado ? '1px solid rgba(249,115,22,0.3)' : '1px solid #2a2a2a',
+                  backgroundColor: pagamentoAutorizado ? 'rgba(249,115,22,0.06)' : '#111',
+                  cursor: pagamentoAutorizado ? 'pointer' : 'default',
+                }}
+              >
+                {pagamentoAutorizado
+                  ? <Copy size={14} color="#f97316" />
+                  : <Lock size={14} color="#444" />
+                }
+                <span style={{ flex: 1, textAlign: 'left', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: pagamentoAutorizado ? 'normal' : '3px', color: pagamentoAutorizado ? '#f97316' : '#333' }}>
+                  {pagamentoAutorizado ? professorSel.chave_pix : '●●●●●●●●●●●●'}
                 </span>
               </button>
               {!pagamentoConfirmado ? (
