@@ -107,8 +107,7 @@ function AulaCardProfessor({ aula, onConfirmar, onNaoDada }) {
         <div className="flex items-start justify-between mb-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">{aula.turmas?.modalidades?.icone_emoji}</span>
-              <span className="font-semibold text-[#F0F2F5]">{aula.turmas?.nome}</span>
+<span className="font-semibold text-[#F0F2F5]">{aula.turmas?.nome}</span>
             </div>
             <div className="text-sm text-[#8B8FA8]">
               {aula.turmas?.horario_inicio?.slice(0, 5)} – {aula.turmas?.horario_fim?.slice(0, 5)}

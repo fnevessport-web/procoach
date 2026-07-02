@@ -171,7 +171,7 @@ export function AlunosPage() {
                   )}
                 </div>
                 <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>
-                  {aluno.modalidades?.icone_emoji} {aluno.modalidades?.nome || '—'}
+                  {aluno.modalidades?.nome || '—'}
                   {aluno.menor_idade && aluno.nome_responsavel && (
                     <span style={{ marginLeft: '6px' }}>👤 {aluno.nome_responsavel}</span>
                   )}
@@ -256,7 +256,7 @@ export function AlunosPage() {
                   color: modalidadesSelecionadas.includes(m.id) ? '#fcc825' : '#888',
                   cursor: 'pointer', textAlign: 'left', width: '100%', boxSizing: 'border-box',
                 }}>
-                  <span style={{ fontSize: '13px' }}>{m.icone_emoji} {m.nome}</span>
+                  <span style={{ fontSize: '13px' }}>{m.nome}</span>
                   <span style={{ fontSize: '16px' }}>{modalidadesSelecionadas.includes(m.id) ? '✓' : '+'}</span>
                 </button>
               ))}

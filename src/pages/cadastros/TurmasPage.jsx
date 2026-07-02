@@ -168,7 +168,6 @@ export function TurmasPage({ onIrParaProfessores }) {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span>{turma.modalidades?.icone_emoji}</span>
                         <span className="font-semibold text-[#F0F2F5]">{turma.nome}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#8B8FA8]">
@@ -212,7 +211,7 @@ export function TurmasPage({ onIrParaProfessores }) {
 
           <Select label="Modalidade" value={form.modalidade_id} onChange={e => updateModalidade(e.target.value)}>
             <option value="">Selecione...</option>
-            {modalidades?.map(m => <option key={m.id} value={m.id}>{m.icone_emoji} {m.nome}</option>)}
+            {modalidades?.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </Select>
 
           <Select label="Dia da Semana" value={form.horario_dia_semana} onChange={e => update('horario_dia_semana', e.target.value)}>

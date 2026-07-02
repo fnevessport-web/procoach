@@ -112,7 +112,6 @@ export function KPIsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {kpis.porModalidade.map(m => (
                   <div key={m.nome} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '14px', width: '20px', flexShrink: 0 }}>{m.icone}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                         <span style={{ fontSize: '12px', color: '#F0F2F5' }}>{m.nome}</span>

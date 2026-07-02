@@ -105,7 +105,7 @@ export function QuadrasPage() {
                 <div style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '14px' }}>{quadra.nome}</div>
                 {quadra.modalidades && (
                   <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>
-                    {quadra.modalidades.icone_emoji} {quadra.modalidades.nome}
+                    {quadra.modalidades.nome}
                   </div>
                 )}
               </div>
@@ -133,7 +133,7 @@ export function QuadrasPage() {
           <Input label="Nome *" placeholder="Ex: Quadra 1, Court A" value={form.nome} onChange={e => update('nome', e.target.value)} />
           <Select label="Modalidade" value={form.modalidade_id} onChange={e => update('modalidade_id', e.target.value)}>
             <option value="">Selecione...</option>
-            {modalidades?.map(m => <option key={m.id} value={m.id}>{m.icone_emoji} {m.nome}</option>)}
+            {modalidades?.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </Select>
           <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
             <button onClick={() => setModal(false)} style={{

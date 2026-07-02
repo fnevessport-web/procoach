@@ -140,7 +140,7 @@ export function HomePage() {
                       }}
                     />
                   ) : (
-                    <span style={{ fontSize: '40px' }}>{mod.icone_emoji}</span>
+                    <span style={{ fontSize: '13px', color: '#555', fontWeight: '600' }}>{mod.nome}</span>
                   )}
                 </button>
               )

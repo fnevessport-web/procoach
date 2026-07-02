@@ -102,7 +102,7 @@ export function NiveisPage() {
                 <div style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '14px' }}>{nivel.nome}</div>
                 {nivel.modalidades && (
                   <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>
-                    {nivel.modalidades.icone_emoji} {nivel.modalidades.nome}
+                    {nivel.modalidades.nome}
                   </div>
                 )}
               </div>
@@ -126,7 +126,7 @@ export function NiveisPage() {
           <Input label="Nome *" placeholder="Ex: Iniciante, Avançado" value={form.nome} onChange={e => update('nome', e.target.value)} />
           <Select label="Modalidade" value={form.modalidade_id} onChange={e => update('modalidade_id', e.target.value)}>
             <option value="">Selecione...</option>
-            {modalidades?.map(m => <option key={m.id} value={m.id}>{m.icone_emoji} {m.nome}</option>)}
+            {modalidades?.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </Select>
           <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
             <button onClick={() => setModal(false)} style={{
