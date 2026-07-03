@@ -44,7 +44,7 @@ const FORM_VAZIO = {
   nascimento: '', cidade_nascimento: '', estado_nascimento: '',
   cpf: '', cep: '', endereco: '', numero: '', complemento: '',
   bairro: '', cidade: '', estado: '', data_inicio: '',
-  banco: '', agencia: '', conta: '', tipo_pagamento: 'pix', chave_pix: '',
+  banco: '', agencia: '', conta: '', tipo_conta: 'corrente', tipo_pagamento: 'pix', chave_pix: '',
   nome_titular: '', cpf_titular: '', titular_proprio: false,
 }
 
@@ -332,6 +332,7 @@ export default function ProfessoresPage() {
       cidade: prof.cidade || '', estado: prof.estado || '',
       data_inicio: prof.data_inicio || '', banco: prof.banco || '',
       agencia: prof.agencia || '', conta: prof.conta || '',
+      tipo_conta: prof.tipo_conta || 'corrente',
       tipo_pagamento: prof.tipo_pagamento || 'pix', chave_pix: prof.chave_pix || '',
       nome_titular: prof.nome_titular || '', cpf_titular: prof.cpf_titular || '', titular_proprio: false,
       apelido: prof.apelido || '',
@@ -374,6 +375,7 @@ export default function ProfessoresPage() {
       cidade: form.cidade || null, estado: form.estado || null,
       data_inicio: form.data_inicio || null, banco: form.banco || null,
       agencia: form.agencia || null, conta: form.conta || null,
+      tipo_conta: form.tipo_conta || 'corrente',
       tipo_pagamento: form.tipo_pagamento || 'pix', chave_pix: form.chave_pix || null,
       nome_titular: form.nome_titular || null, cpf_titular: form.cpf_titular || null,
       apelido: form.apelido || null,
@@ -1192,16 +1194,26 @@ export default function ProfessoresPage() {
                       <option value="boleto">Boleto</option>
                     </select></div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
                   <div><div style={labelStyle}>Agência</div><input style={inputStyle} placeholder="0000" value={form.agencia} onChange={e => set('agencia', e.target.value)} /></div>
                   <div><div style={labelStyle}>Conta</div><input style={inputStyle} placeholder="00000-0" value={form.conta} onChange={e => set('conta', e.target.value)} /></div>
+                  <div><div style={labelStyle}>Tipo</div>
+                    <select style={inputStyle} value={form.tipo_conta} onChange={e => set('tipo_conta', e.target.value)}>
+                      <option value="corrente">Corrente</option>
+                      <option value="poupanca">Poupança</option>
+                    </select></div>
                 </div>
                 <div><div style={labelStyle}>Chave PIX</div><input style={inputStyle} placeholder="CPF, e-mail, telefone..." value={form.chave_pix} onChange={e => set('chave_pix', e.target.value)} /></div>
                 {cardAberto.chave_pix && <PixCopiavel pix={cardAberto.chave_pix} />}
                 {cardAberto.banco === 'Itaú' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: 'rgba(249,115,22,0.08)', borderRadius: '8px', border: '1px solid rgba(249,115,22,0.2)' }}>
-                    <span style={{ fontSize: '16px' }}>🧡</span>
-                    <span style={{ fontSize: '12px', color: '#f97316', fontWeight: '600' }}>Correntista Itaú — pagar via PIX</span>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: 'rgba(249,115,22,0.08)', borderRadius: '8px', border: '1px solid rgba(249,115,22,0.2)' }}>
+                      <span style={{ fontSize: '16px' }}>🧡</span>
+                      <span style={{ fontSize: '12px', color: '#f97316', fontWeight: '600' }}>Correntista Itaú — pagar via PIX</span>
+                    </div>
+                    {form.nome_titular && (
+                      <div style={{ fontSize: '11px', color: '#555', marginTop: '6px', paddingLeft: '2px' }}>{form.nome_titular}</div>
+                    )}
                   </div>
                 )}
 

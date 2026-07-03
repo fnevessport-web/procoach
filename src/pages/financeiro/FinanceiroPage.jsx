@@ -484,7 +484,7 @@ export function FinanceiroPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pagamentos_extras')
-        .select('professor_id, valor, professores(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, tipo_pagamento, nome_titular, cpf_titular)')
+        .select('professor_id, valor, professores(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular)')
         .eq('mes', mes)
         .eq('ano', anoSel)
       if (error) return []
@@ -790,6 +790,8 @@ export function FinanceiroPage() {
   if (view === 'professor' && professorSel) {
     const temPix = professorSel.tipo_pagamento === 'pix' || (professorSel.banco === 'Itaú' && professorSel.chave_pix)
     const temBoleto = professorSel.tipo_pagamento === 'boleto'
+    const temDadosConta = !temBoleto && !professorSel.chave_pix && professorSel.banco && professorSel.conta
+    const contaFormatada = `${professorSel.agencia ? `Ag ${professorSel.agencia} · ` : ''}Conta ${professorSel.conta}${professorSel.tipo_conta ? ` (${professorSel.tipo_conta === 'poupanca' ? 'Poupança' : 'Corrente'})` : ''}`
 
     // Agrupa aulas por dia
     const porDia = {}
@@ -921,6 +923,72 @@ export function FinanceiroPage() {
                 }
                 <span style={{ flex: 1, textAlign: 'left', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: pagamentoAutorizado ? 'normal' : '3px', color: pagamentoAutorizado ? '#f97316' : '#333' }}>
                   {pagamentoAutorizado ? professorSel.chave_pix : '●●●●●●●●●●●●'}
+                </span>
+              </button>
+              {!pagamentoConfirmado ? (
+                <button onClick={handleConfirmarPagamento} disabled={confirmarPagamento.isPending} style={{
+                  flexShrink: 0, padding: '10px 14px', borderRadius: '10px', border: 'none',
+                  backgroundColor: pagamentoAutorizado ? '#22c55e' : '#2a2a2a',
+                  color: pagamentoAutorizado ? 'white' : '#555',
+                  fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                }}>
+                  {pagamentoAutorizado ? <Check size={14} /> : <Lock size={14} />}
+                  Pago
+                </button>
+              ) : (
+                <button onClick={handleDesfazerPagamento} disabled={desfazerPagamento.isPending} style={{
+                  flexShrink: 0, padding: '10px 14px', borderRadius: '10px',
+                  backgroundColor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.4)',
+                  fontSize: '12px', fontWeight: '700', color: '#22c55e', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                }}>
+                  <Check size={14} /> Confirmado
+                </button>
+              )}
+            </div>
+            {/* Titular da conta */}
+            {(professorSel.nome_titular || professorSel.cpf_titular) && (
+              <div style={{ marginTop: '8px', fontSize: '11px', color: '#444', paddingLeft: '2px' }}>
+                {professorSel.nome_titular && <span>{professorSel.nome_titular}</span>}
+                {professorSel.nome_titular && professorSel.cpf_titular && <span style={{ color: '#333', margin: '0 5px' }}>·</span>}
+                {professorSel.cpf_titular && <span>CPF {professorSel.cpf_titular}</span>}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Dados bancários para transferência (sem chave PIX cadastrada) */}
+        {temDadosConta && (
+          <div style={{
+            backgroundColor: '#1a1a1a', borderRadius: '12px',
+            border: '1px solid rgba(249,115,22,0.25)', padding: '14px',
+            marginBottom: '14px',
+          }}>
+            <div style={{ fontSize: '10px', color: '#f97316', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
+              {professorSel.banco === 'Itaú' ? 'Transferência Itaú' : 'Dados Bancários'}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                onClick={() => {
+                  if (!pagamentoAutorizado) return
+                  navigator.clipboard.writeText(contaFormatada)
+                  toast.success('Dados copiados!', { style: toastStyle })
+                }}
+                style={{
+                  flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '10px 14px', borderRadius: '10px',
+                  border: pagamentoAutorizado ? '1px solid rgba(249,115,22,0.3)' : '1px solid #2a2a2a',
+                  backgroundColor: pagamentoAutorizado ? 'rgba(249,115,22,0.06)' : '#111',
+                  cursor: pagamentoAutorizado ? 'pointer' : 'default',
+                }}
+              >
+                {pagamentoAutorizado
+                  ? <Copy size={14} color="#f97316" />
+                  : <Lock size={14} color="#444" />
+                }
+                <span style={{ flex: 1, textAlign: 'left', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: pagamentoAutorizado ? 'normal' : '3px', color: pagamentoAutorizado ? '#f97316' : '#333' }}>
+                  {pagamentoAutorizado ? contaFormatada : '●●●●●●●●●●●●'}
                 </span>
               </button>
               {!pagamentoConfirmado ? (
