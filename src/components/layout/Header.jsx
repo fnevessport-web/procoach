@@ -23,12 +23,18 @@ export function Header() {
   const { perfil, signOut } = useAuth()
   const { data: pendentes = 0 } = useAulasPendentes()
   const [menuOpen, setMenuOpen] = useState(false)
-  const { modalidadeSelecionada, setModalidadeSelecionada } = useAppStore()
+  const { modalidadeSelecionada, setModalidadeSelecionada, origemAulas, setOrigemAulas } = useAppStore()
   const location = useLocation()
   const navigate = useNavigate()
 
   const fromRoute = location.state?.from
   const backState = location.state?.financeiroState
+  const mostrarVoltarAulas = location.pathname === '/' && !!origemAulas
+
+  function voltarParaAulas() {
+    navigate('/aulas', { state: { data: origemAulas.data, highlightAulaId: origemAulas.aulaId, fromHome: true } })
+    setOrigemAulas(null)
+  }
 
   const iniciais = getIniciais(perfil?.nome)
   const sobrenome = getSobrenome(perfil?.nome)
@@ -50,6 +56,20 @@ export function Header() {
         {fromRoute && (
           <button
             onClick={() => navigate(fromRoute, { state: backState ? { financeiroState: backState } : null })}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              background: 'none', border: 'none',
+              cursor: 'pointer', padding: '4px',
+              color: '#555', fontSize: '12px',
+            }}
+          >
+            <Undo2 size={15} color="#555" />
+          </button>
+        )}
+
+        {!fromRoute && mostrarVoltarAulas && (
+          <button
+            onClick={voltarParaAulas}
             style={{
               display: 'flex', alignItems: 'center', gap: '5px',
               background: 'none', border: 'none',

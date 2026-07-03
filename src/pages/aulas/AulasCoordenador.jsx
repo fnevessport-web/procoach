@@ -88,10 +88,13 @@ function isAulaFutura(dataAula, horarioInicio) {
 }
 
 export function AulasCoordenador({ onCelulaVazia }) {
-  const { modalidadeSelecionada } = useAppStore()
+  const { modalidadeSelecionada, setOrigemAulas } = useAppStore()
   const qc = useQueryClient()
   const location = useLocation()
   const [data, setData] = useState(() => location.state?.data || format(new Date(), 'yyyy-MM-dd'))
+  const [highlightedAulaId, setHighlightedAulaId] = useState(null)
+  const highlightAulaId = location.state?.highlightAulaId
+  const fromHome = location.state?.fromHome
 
   useEffect(() => {
     if (location.state?.horario) {
@@ -102,6 +105,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
       return () => clearTimeout(timer)
     }
   }, [])
+
   const [aulaModal, setAulaModal] = useState(null)
   const [presencasLocal, setPresencasLocal] = useState({})
   const [adicionandoAluno, setAdicionandoAluno] = useState(null)
@@ -162,6 +166,19 @@ export function AulasCoordenador({ onCelulaVazia }) {
   const salvarAluno = useSalvarAluno()
   const atualizarStatus = useAtualizarStatusAula()
   const salvarPresencas = useSalvarPresencas()
+
+  useEffect(() => {
+    if (!highlightAulaId || !aulas?.length) return
+    const aulaAlvo = aulas.find(a => a.id === highlightAulaId)
+    if (!aulaAlvo) return
+    const timer = setTimeout(() => {
+      document.getElementById(`aula-cel-${highlightAulaId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setHighlightedAulaId(highlightAulaId)
+      if (fromHome) setOrigemAulas({ data, aulaId: highlightAulaId })
+      setTimeout(() => setHighlightedAulaId(null), 2000)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [aulas?.length, highlightAulaId])
 
   const dataObj = new Date(data + 'T12:00:00')
   const label = format(dataObj, "EEEE, d 'de' MMMM", { locale: ptBR })
@@ -811,14 +828,17 @@ export function AulasCoordenador({ onCelulaVazia }) {
                     : st === 'nao_dada' ? '#EF4444'
                     : '#3b82f6'
 
+                  const isHighlighted = highlightedAulaId === aulaCelula.id
+
                   return (
-                    <button key={quadra} onClick={() => abrirAula(aulaCelula)} style={{
+                    <button key={quadra} id={`aula-cel-${aulaCelula.id}`} onClick={() => abrirAula(aulaCelula)} style={{
                       width: '140px', flexShrink: 0, marginRight: '4px',
-                      backgroundColor: aulaEhFutura ? '#131313' : '#1a1a1a',
-                      borderRadius: '10px', border: `1px solid ${borderColor}`,
+                      backgroundColor: isHighlighted ? 'rgba(252,200,37,0.15)' : (aulaEhFutura ? '#131313' : '#1a1a1a'),
+                      borderRadius: '10px', border: `1px solid ${isHighlighted ? '#fcc825' : borderColor}`,
                       padding: '8px 10px', cursor: 'pointer', textAlign: 'left',
                       minHeight: '72px', boxSizing: 'border-box',
                       display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                      transition: 'background-color 0.3s ease, border-color 0.3s ease',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                         {isAv
