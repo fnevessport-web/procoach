@@ -1,5 +1,798 @@
+import { useState } from 'react'
+import { format, addDays, addMonths, startOfMonth, getDaysInMonth, getDay } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { Plus, Calendar, UserPlus, X, ChevronRight, ChevronLeft, Copy, Check } from 'lucide-react'
+import { useAulas, useGerarAulas, useRelatorioReposicoes, useAulasDiaParaReposicao, useAgendarReposicao } from '../../hooks/useAulas'
+import { useTurmas } from '../../hooks/useTurmas'
+import { useProfessores } from '../../hooks/useProfessores'
+import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
+import { useQuadras } from '../../hooks/useQuadras'
+import { useNiveis } from '../../hooks/useNiveis'
+import { useModalidades } from '../../hooks/useModalidades'
+import { StatusBadge } from '../../components/ui/Badge'
+import { Modal } from '../../components/ui/Modal'
+import { Input, Select } from '../../components/ui/Input'
+import { Loading, EmptyState } from '../../components/ui/Loading'
+import { AulasCoordenador } from './AulasCoordenador'
+import { supabase } from '../../lib/supabase'
+import { useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 
-</div>
+const TIPOS_PARTICIPACAO = [
+  { value: 'mensalista', label: 'Mensalista', color: '#22c55e' },
+  { value: 'avulso', label: 'Avulso', color: '#fcc825' },
+  { value: 'cortesia', label: 'Cortesia', color: '#cf1b9b' },
+  { value: 'reposicao', label: 'Reposição', color: '#3b82f6' },
+]
+
+const NIVEIS_ALUNO = [
+  'Iniciante 1', 'Iniciante 2',
+  'Intermediário 1', 'Intermediário 2',
+  'Avançado',
+  'Kids Iniciante', 'Kids Intermediário', 'Kids Avançado',
+]
+
+const inputInline = {
+  width: '100%', padding: '8px 12px', borderRadius: '8px',
+  backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+  color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+}
+
+const toastStyle = {
+  background: '#1a1a1a', color: '#F0F2F5',
+  border: '1px solid rgba(252,200,37,0.3)',
+  borderRadius: '10px', fontSize: '13px',
+}
+
+export function AulasAdmin() {
+  const [tab, setTab] = useState('hoje')
+  const [modalGerar, setModalGerar] = useState(null)
+  const [atalho, setAtalho] = useState(null)
+  const { data: _relatorioAtual } = useRelatorioReposicoes()
+  const totalReposicoes = (_relatorioAtual || []).filter(a => a.pendentes.length > 0).length
+
+  function handleCelulaVazia({ horario, quadraNome, data }) {
+    setAtalho({ horario, quadraNome, data })
+    setModalGerar('menu_atalho')
+  }
+
+  function fecharTudo() {
+    setModalGerar(null)
+    setAtalho(null)
+  }
+
+  return (
+    <div className="fade-in">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
+          Gestão de Aulas
+        </h1>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={() => setModalGerar('copiar')} title="Copiar Grade" style={{
+            padding: '8px', borderRadius: '10px', border: 'none',
+            background: 'none', color: '#333', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Copy size={18} />
+          </button>
+          <button onClick={() => setModalGerar('menu')} style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '8px 14px', borderRadius: '10px', border: 'none',
+            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+            color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+          }}>
+            <Calendar size={14} /> Gerar Aulas
+          </button>
+        </div>
+      </div>
+
+      <div style={{
+        display: 'flex', gap: '3px', marginBottom: '20px',
+        padding: '4px', backgroundColor: '#1a1a1a',
+        border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px',
+      }}>
+        {[
+          { key: 'hoje', label: 'Por Dia' },
+          { key: 'divergencias', label: '🔴 Diverg.' },
+          { key: 'reposicoes', label: '↩ Reposição', count: totalReposicoes },
+        ].map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            flex: 1, padding: '7px 4px', borderRadius: '8px', border: 'none',
+            fontSize: '12px', fontWeight: '500', cursor: 'pointer',
+            background: tab === t.key ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : 'transparent',
+            color: tab === t.key ? 'white' : '#555', transition: 'all 0.2s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+          }}>
+            {t.label}
+            {t.count > 0 && (
+              <span style={{
+                minWidth: '16px', height: '16px', borderRadius: '8px', fontSize: '10px', fontWeight: '700',
+                backgroundColor: tab === t.key ? 'rgba(255,255,255,0.3)' : 'rgba(59,130,246,0.25)',
+                color: tab === t.key ? 'white' : '#3b82f6',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px',
+              }}>{t.count}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'hoje'
+        ? <AulasCoordenador onCelulaVazia={handleCelulaVazia} />
+        : tab === 'reposicoes'
+        ? <AulasReposicoes />
+        : <AulasDivergencias />
+      }
+
+      {/* Menu normal */}
+      <Modal open={modalGerar === 'menu'} onClose={() => setModalGerar(null)} title="Gerar Aulas" size="sm">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button onClick={() => setModalGerar('avulsa')} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px', borderRadius: '12px', border: 'none',
+            backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
+            cursor: 'pointer', textAlign: 'left', width: '100%',
+          }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>⚡ Aula Avulsa</div>
+              <div style={{ fontSize: '12px', color: '#555' }}>Uma única aula — sem data de término</div>
+            </div>
+            <ChevronRight size={16} color="#555" />
+          </button>
+          <button onClick={() => setModalGerar('mensal')} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px', borderRadius: '12px', border: 'none',
+            backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
+            cursor: 'pointer', textAlign: 'left', width: '100%',
+          }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>📅 Aula Mensal / Recorrente</div>
+              <div style={{ fontSize: '12px', color: '#555' }}>Gera aulas de uma turma por período</div>
+            </div>
+            <ChevronRight size={16} color="#555" />
+          </button>
+        </div>
+      </Modal>
+
+      {/* Menu atalho */}
+      <Modal open={modalGerar === 'menu_atalho'} onClose={fecharTudo} title="Nova Aula" size="sm">
+        <div style={{ marginBottom: '14px', padding: '10px 12px', backgroundColor: '#111', borderRadius: '10px', border: '1px solid rgba(252,200,37,0.2)' }}>
+          <div style={{ fontSize: '11px', color: '#fcc825', marginBottom: '4px' }}>⚡ Atalho selecionado</div>
+          <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>
+            {atalho?.quadraNome} · {atalho?.horario}
+          </div>
+          <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
+            {atalho?.data && format(new Date(atalho.data + 'T12:00'), "dd/MM/yyyy", { locale: ptBR })}
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button onClick={() => setModalGerar('avulsa_atalho')} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px', borderRadius: '12px', border: 'none',
+            backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
+            cursor: 'pointer', textAlign: 'left', width: '100%',
+          }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>⚡ Aula Avulsa</div>
+              <div style={{ fontSize: '12px', color: '#555' }}>Quadra e horário já preenchidos</div>
+            </div>
+            <ChevronRight size={16} color="#555" />
+          </button>
+          <button onClick={() => setModalGerar('mensal')} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px', borderRadius: '12px', border: 'none',
+            backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
+            cursor: 'pointer', textAlign: 'left', width: '100%',
+          }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>📅 Aula Mensal / Recorrente</div>
+              <div style={{ fontSize: '12px', color: '#555' }}>Gera aulas de uma turma por período</div>
+            </div>
+            <ChevronRight size={16} color="#555" />
+          </button>
+        </div>
+      </Modal>
+
+      <ModalCopiarGrade open={modalGerar === 'copiar'} onClose={fecharTudo} />
+      <ModalGerarAulas open={modalGerar === 'mensal'} onClose={fecharTudo} />
+      <ModalAulaAvulsa
+        open={modalGerar === 'avulsa' || modalGerar === 'avulsa_atalho'}
+        onClose={fecharTudo}
+        atalho={modalGerar === 'avulsa_atalho' ? atalho : null}
+      />
+    </div>
+  )
+}
+
+function ModalCopiarGrade({ open, onClose }) {
+  const qc = useQueryClient()
+  const [dataOrigem, setDataOrigem] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [dataDestino, setDataDestino] = useState('')
+  const [copiando, setCopiando] = useState(false)
+  const [resultado, setResultado] = useState(null)
+
+  function resetar() {
+    setDataOrigem(format(new Date(), 'yyyy-MM-dd'))
+    setDataDestino('')
+    setResultado(null)
+  }
+
+  async function handleCopiar() {
+    if (!dataDestino) return toast.error('Selecione o dia de destino', { style: toastStyle })
+    if (dataOrigem === dataDestino) return toast.error('Origem e destino não podem ser iguais', { style: toastStyle })
+    setCopiando(true)
+    try {
+      // Busca aulas avulsas do dia origem
+      const { data: aulasOrigem, error: errBusca } = await supabase
+        .from('aulas')
+        .select('*')
+        .eq('data_aula', dataOrigem)
+        .not('observacoes', 'is', null)
+        .ilike('observacoes', '⚡ Avulsa%')
+
+      if (errBusca) throw errBusca
+      if (!aulasOrigem || aulasOrigem.length === 0) {
+        toast.error('Nenhuma aula avulsa encontrada no dia de origem', { style: toastStyle })
+        setCopiando(false)
+        return
+      }
+
+      // Verifica quais já existem no destino (por observacoes com mesma quadra+horario)
+      const { data: aulasDestino } = await supabase
+        .from('aulas')
+        .select('observacoes')
+        .eq('data_aula', dataDestino)
+
+      const obsDestino = aulasDestino?.map(a => a.observacoes) || []
+
+      // Filtra aulas que ainda não existem no destino
+      const aulasParaCopiar = aulasOrigem.filter(a => {
+        // Extrai quadra+horário da observação
+        const partes = (a.observacoes || '').split('·').map(s => s.trim())
+        const quadra = partes[1] || ''
+        const horario = partes[2] || ''
+        // Verifica se já existe no destino
+        return !obsDestino.some(obs => obs?.includes(quadra) && obs?.includes(horario))
+      })
+
+      if (aulasParaCopiar.length === 0) {
+        toast.error('Todas as aulas já existem no dia de destino', { style: toastStyle })
+        setCopiando(false)
+        return
+      }
+
+      // Busca as presenças das aulas de origem (apenas alunos, sem status)
+      const idsOrigem = aulasParaCopiar.map(a => a.id)
+      const { data: presencasOrigem } = await supabase
+        .from('presencas')
+        .select('aula_id, aluno_id, tipo_participacao')
+        .in('aula_id', idsOrigem)
+
+      // Cria as aulas no destino
+      const novasAulas = aulasParaCopiar.map(a => ({
+        professor_executou_id: a.professor_executou_id,
+        data_aula: dataDestino,
+        status: 'confirmada_coord',
+        status_aula: 'dada',
+        paga_professor: true,
+        eh_substituicao: false,
+        observacoes: a.observacoes,
+      }))
+
+      const { data: aulasCriadas, error: errInsert } = await supabase
+        .from('aulas')
+        .insert(novasAulas)
+        .select('id, observacoes')
+      if (errInsert) throw errInsert
+
+      // Copia as presenças (sem marcar presente/falta — status neutro)
+      if (presencasOrigem && presencasOrigem.length > 0 && aulasCriadas) {
+        const presencasNovas = []
+        for (const aulaOrigemId of idsOrigem) {
+          // Acha a aula origem e a aula nova correspondente pela observação
+          const aulaOrig = aulasParaCopiar.find(a => a.id === aulaOrigemId)
+          const aulaNova = aulasCriadas.find(a => a.observacoes === aulaOrig?.observacoes)
+          if (!aulaNova) continue
+          const presencasDaAula = presencasOrigem.filter(p => p.aula_id === aulaOrigemId)
+          for (const p of presencasDaAula) {
+            presencasNovas.push({
+              aula_id: aulaNova.id,
+              aluno_id: p.aluno_id,
+              presente: false,
+              status_presenca: 'falta',
+              tipo_participacao: p.tipo_participacao || 'mensalista',
+            })
+          }
+        }
+        if (presencasNovas.length > 0) {
+          await supabase.from('presencas').insert(presencasNovas)
+        }
+      }
+
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      setResultado(aulasParaCopiar.length)
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    } finally {
+      setCopiando(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={() => { resetar(); onClose() }} title="📋 Copiar Grade" size="sm">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {resultado !== null ? (
+          <div style={{ textAlign: 'center', padding: '16px 0' }}>
+            <div style={{ fontSize: '40px', marginBottom: '8px' }}>✅</div>
+            <div style={{ fontWeight: '600', color: '#F0F2F5', marginBottom: '6px' }}>{resultado} aulas copiadas!</div>
+            <div style={{ fontSize: '12px', color: '#555' }}>
+              Grade de {format(new Date(dataOrigem + 'T12:00'), "dd/MM", { locale: ptBR })} → {format(new Date(dataDestino + 'T12:00'), "dd/MM", { locale: ptBR })}
+            </div>
+            <div style={{ fontSize: '11px', color: '#888', marginTop: '8px' }}>
+              As aulas foram criadas sem presenças. Adicione os alunos clicando em cada aula.
+            </div>
+            <button onClick={() => { resetar(); onClose() }} style={{
+              marginTop: '16px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
+              background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+              color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+            }}>Fechar</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ padding: '12px', backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', fontSize: '12px', color: '#555' }}>
+              💡 Copia a estrutura das aulas avulsas (quadra, horário, professor, nível) sem as presenças.
+            </div>
+
+            <div>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>Dia de origem (copiar DE)</div>
+              <input type="date" value={dataOrigem} onChange={e => setDataOrigem(e.target.value)} style={{
+                width: '100%', padding: '10px 12px', borderRadius: '10px',
+                backgroundColor: '#111', border: '1px solid #2a2a2a',
+                color: '#F0F2F5', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+              }} />
+              {dataOrigem && (
+                <div style={{ fontSize: '11px', color: '#fcc825', marginTop: '4px', textTransform: 'capitalize' }}>
+                  {format(new Date(dataOrigem + 'T12:00'), "EEEE, d 'de' MMMM", { locale: ptBR })}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: '20px', color: '#333' }}>↓</span>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>Dia de destino (colar EM)</div>
+              <input type="date" value={dataDestino} onChange={e => setDataDestino(e.target.value)} style={{
+                width: '100%', padding: '10px 12px', borderRadius: '10px',
+                backgroundColor: '#111', border: '1px solid rgba(252,200,37,0.3)',
+                color: '#F0F2F5', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+              }} />
+              {dataDestino && (
+                <div style={{ fontSize: '11px', color: '#fcc825', marginTop: '4px', textTransform: 'capitalize' }}>
+                  {format(new Date(dataDestino + 'T12:00'), "EEEE, d 'de' MMMM", { locale: ptBR })}
+                </div>
+              )}
+            </div>
+
+            <button onClick={handleCopiar} disabled={copiando || !dataDestino} style={{
+              width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
+              background: !dataDestino ? '#1a1a1a' : 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+              color: !dataDestino ? '#555' : 'white',
+              fontSize: '14px', fontWeight: '600',
+              cursor: !dataDestino || copiando ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              outline: !dataDestino ? '1px solid #2a2a2a' : 'none',
+            }}>
+              <Copy size={16} />
+              {copiando ? 'Copiando...' : 'Copiar Grade'}
+            </button>
+          </>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
+function AulasDivergencias() {
+  const { data: aulas, isLoading } = useAulas({ status: 'divergencia' })
+  if (isLoading) return <Loading />
+  if (!aulas?.length) return <EmptyState icon="✅" title="Nenhuma divergência" description="Todas as aulas estão com match!" />
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {aulas.map(aula => (
+        <div key={aula.id} style={{
+          backgroundColor: '#1a1a1a', borderRadius: '12px',
+          border: '1px solid rgba(239,68,68,0.3)', padding: '14px 16px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <span style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '14px' }}>{aula.turmas?.nome}</span>
+              </div>
+              <div style={{ fontSize: '12px', color: '#555' }}>
+                {format(new Date(aula.data_aula + 'T12:00'), "dd/MM/yyyy", { locale: ptBR })} • Prof: {aula.professores?.nome}
+              </div>
+            </div>
+            <StatusBadge status={aula.status} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function calcReposicaoStatus(dataAula) {
+  if (!dataAula) return { diasRestantes: null, cor: '#3b82f6', progresso: 100, label: '' }
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+  const dataFalta = new Date(dataAula + 'T12:00')
+  const daysElapsed = Math.floor((hoje - dataFalta) / (1000 * 60 * 60 * 24))
+  const diasRestantes = 60 - daysElapsed
+  let cor = '#3b82f6'
+  if (diasRestantes <= 0) cor = '#ef4444'
+  else if (diasRestantes <= 10) cor = '#f59e0b'
+  // Barra começa cheia e vai diminuindo; expirado = tracinho mínimo vermelho
+  const progresso = diasRestantes <= 0
+    ? 3
+    : Math.min(100, (diasRestantes / 60) * 100)
+  const label = diasRestantes <= 0
+    ? `+${Math.abs(diasRestantes)}d em atraso`
+    : `${diasRestantes}d restantes`
+  return { diasRestantes, cor, progresso, label }
+}
+
+const SORT_OPTS = [
+  { key: 'urgencia', label: 'Mais urgente' },
+  { key: 'quantidade', label: 'Mais faltas' },
+  { key: 'alfabetico', label: 'Alfabético' },
+]
+
+function urgenciaMenor(pendentes) {
+  if (!pendentes.length) return 999
+  return pendentes.reduce((min, f) => {
+    const d = calcReposicaoStatus(f.dataAula).diasRestantes
+    return d < min ? d : min
+  }, Infinity)
+}
+
+function AulasReposicoes() {
+  const [busca, setBusca] = useState('')
+  const [modFilter, setModFilter] = useState(null)
+  const [showModMenu, setShowModMenu] = useState(false)
+  const [sortBy, setSortBy] = useState('urgencia')
+  const [showSortMenu, setShowSortMenu] = useState(false)
+  const [alunoSel, setAlunoSel] = useState(null)
+
+  const { data: relatorio, isLoading } = useRelatorioReposicoes()
+
+  const modalidades = [...new Map(
+    (relatorio || []).filter(a => a.modalidade).map(a => [a.modalidade.nome, a.modalidade])
+  ).values()]
+
+  let lista = (relatorio || []).filter(a => {
+    if (modFilter && a.modalidade?.nome !== modFilter) return false
+    if (busca && !a.nome.toLowerCase().includes(busca.toLowerCase())) return false
+    return true
+  })
+
+  if (sortBy === 'urgencia') {
+    lista = [...lista].sort((a, b) => urgenciaMenor(a.pendentes) - urgenciaMenor(b.pendentes))
+  } else if (sortBy === 'quantidade') {
+    lista = [...lista].sort((a, b) => b.pendentes.length - a.pendentes.length)
+  } else if (sortBy === 'alfabetico') {
+    lista = [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
+  }
+
+  const sortLabel = SORT_OPTS.find(o => o.key === sortBy)?.label || 'Ordenar'
+
+  return (
+    <div>
+      {/* Busca */}
+      <div style={{ marginBottom: '10px' }}>
+        <input
+          type="text"
+          placeholder="Buscar aluno..."
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          style={{
+            width: '100%', padding: '9px 14px', borderRadius: '8px', border: 'none',
+            outline: '1px solid #2a2a2a', backgroundColor: '#1a1a1a',
+            color: '#F0F2F5', fontSize: '13px', boxSizing: 'border-box',
+          }}
+        />
+      </div>
+
+      {/* Filtros: modalidade + ordenação */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+        {/* Dropdown modalidade */}
+        <div style={{ position: 'relative', flex: 1 }}>
+          <button onClick={() => { setShowModMenu(v => !v); setShowSortMenu(false) }} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%', padding: '8px 12px', borderRadius: '8px', border: 'none',
+            backgroundColor: modFilter ? 'rgba(252,200,37,0.08)' : '#1a1a1a',
+            outline: `1px solid ${modFilter ? 'rgba(252,200,37,0.3)' : '#2a2a2a'}`,
+            color: modFilter ? '#fcc825' : '#666', cursor: 'pointer', fontSize: '12px', fontWeight: '500',
+          }}>
+            <span>{modFilter || 'Modalidade'}</span>
+            <span style={{ fontSize: '8px', opacity: 0.6 }}>▾</span>
+          </button>
+          {showModMenu && (
+            <>
+              <div onClick={() => setShowModMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+              <div style={{
+                position: 'absolute', left: 0, top: 'calc(100% + 4px)', zIndex: 20,
+                backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: '10px',
+                padding: '6px', minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+              }}>
+                <button onClick={() => { setModFilter(null); setShowModMenu(false) }} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
+                  cursor: 'pointer', fontSize: '13px', textAlign: 'left',
+                  backgroundColor: !modFilter ? 'rgba(252,200,37,0.08)' : 'transparent',
+                  color: !modFilter ? '#fcc825' : '#888',
+                }}>
+                  Todas {!modFilter && '✓'}
+                </button>
+                {modalidades.map(m => (
+                  <button key={m.nome} onClick={() => { setModFilter(m.nome); setShowModMenu(false) }} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
+                    cursor: 'pointer', fontSize: '13px', textAlign: 'left',
+                    backgroundColor: modFilter === m.nome ? 'rgba(252,200,37,0.08)' : 'transparent',
+                    color: modFilter === m.nome ? '#fcc825' : '#888',
+                  }}>
+                    {m.nome} {modFilter === m.nome && '✓'}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Dropdown ordenação */}
+        <div style={{ position: 'relative', flex: 1 }}>
+          <button onClick={() => { setShowSortMenu(v => !v); setShowModMenu(false) }} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%', padding: '8px 12px', borderRadius: '8px', border: 'none',
+            backgroundColor: '#1a1a1a', outline: '1px solid #2a2a2a',
+            color: '#666', cursor: 'pointer', fontSize: '12px', fontWeight: '500',
+          }}>
+            <span>{sortLabel}</span>
+            <span style={{ fontSize: '8px', opacity: 0.6 }}>▾</span>
+          </button>
+          {showSortMenu && (
+            <>
+              <div onClick={() => setShowSortMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+              <div style={{
+                position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 20,
+                backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: '10px',
+                padding: '6px', minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+              }}>
+                {SORT_OPTS.map(opt => (
+                  <button key={opt.key} onClick={() => { setSortBy(opt.key); setShowSortMenu(false) }} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
+                    cursor: 'pointer', fontSize: '13px', textAlign: 'left',
+                    backgroundColor: sortBy === opt.key ? 'rgba(252,200,37,0.08)' : 'transparent',
+                    color: sortBy === opt.key ? '#fcc825' : '#888',
+                  }}>
+                    {opt.label} {sortBy === opt.key && '✓'}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {isLoading ? <Loading /> : lista.length === 0 ? (
+        <EmptyState icon="🎉" title="Nenhuma falta justificada" description="Nenhuma reposição pendente" />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {lista.map(aluno => {
+            const cor = aluno.modalidade?.cor_hex || '#555'
+            const statusUrgente = aluno.pendentes.length > 0
+              ? calcReposicaoStatus(aluno.pendentes.reduce((w, f) => {
+                  const sw = calcReposicaoStatus(w.dataAula), sf = calcReposicaoStatus(f.dataAula)
+                  return sf.diasRestantes < sw.diasRestantes ? f : w
+                }).dataAula)
+              : null
+            return (
+              <button key={aluno.id} onClick={() => setAlunoSel(aluno)} style={{
+                display: 'flex', flexDirection: 'column',
+                backgroundColor: '#151515', border: '1px solid #2a2a2a', borderRadius: '12px',
+                padding: '12px 14px', cursor: 'pointer', textAlign: 'left', width: '100%',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {/* Chip modalidade — só texto, sem emoji */}
+                  {aluno.modalidade && (
+                    <div style={{
+                      flexShrink: 0, borderRadius: '6px', padding: '4px 8px',
+                      backgroundColor: `${cor}18`, border: `1px solid ${cor}44`,
+                    }}>
+                      <div style={{ fontSize: '10px', fontWeight: '700', color: cor, textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                        {aluno.modalidade.nome}
+                      </div>
+                    </div>
+                  )}
+                  {/* Badge contagem */}
+                  <div style={{
+                    minWidth: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                    backgroundColor: aluno.pendentes.length > 0 ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.1)',
+                    border: `1px solid ${aluno.pendentes.length > 0 ? 'rgba(59,130,246,0.35)' : 'rgba(34,197,94,0.3)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '12px', fontWeight: '700', color: aluno.pendentes.length > 0 ? '#3b82f6' : '#22c55e',
+                  }}>
+                    {aluno.pendentes.length > 0 ? aluno.pendentes.length : '✓'}
+                  </div>
+                  {/* Nome + nível */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5' }}>{aluno.nome}</div>
+                    <div style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>
+                      {aluno.nivel || '-'}
+                      {aluno.agendadas.length > 0 && <span style={{ color: '#22c55e', marginLeft: '8px' }}>✓ {aluno.agendadas.length} agendada{aluno.agendadas.length !== 1 ? 's' : ''}</span>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Barra de prazo mais urgente */}
+                {statusUrgente && aluno.pendentes.length > 0 && (
+                  <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #1e1e1e' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '4px' }}>
+                      <span style={{ color: '#444' }}>Prazo mais urgente</span>
+                      <span style={{ color: statusUrgente.cor, fontWeight: '600' }}>{statusUrgente.label}</span>
+                    </div>
+                    <div style={{ height: '3px', backgroundColor: '#0e0e0e', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ width: `${statusUrgente.progresso}%`, height: '100%', backgroundColor: statusUrgente.cor, borderRadius: '2px' }} />
+                    </div>
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {alunoSel && <ModalReposicao aluno={alunoSel} onClose={() => setAlunoSel(null)} />}
+    </div>
+  )
+}
+
+function ModalReposicao({ aluno, onClose }) {
+  const agendar = useAgendarReposicao()
+  const [step, setStep] = useState('falta')         // 'falta' | 'grade'
+  const [faltasLocais, setFaltasLocais] = useState([...aluno.pendentes])
+  const [faltaSel, setFaltaSel] = useState(aluno.pendentes[0] || null)
+  const [dataSel, setDataSel] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [slotSel, setSlotSel] = useState(null)
+
+  const { data: aulasData, isLoading: loadingDia } = useAulasDiaParaReposicao(
+    step === 'grade' ? dataSel : null
+  )
+
+  const aulasComDisp = (aulasData || []).map(a => {
+    const ocupacao = a.presencas?.length || 0
+    const jaEsta = a.presencas?.some(p => p.aluno_id === aluno.id)
+    const disponivel = !jaEsta && ocupacao < 4
+    return { ...a, ocupacao, jaEsta, disponivel }
+  })
+
+  const proxDias = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() + i)
+    return format(d, 'yyyy-MM-dd')
+  })
+
+  async function handleConfirmar() {
+    if (!slotSel || !faltaSel) return
+    try {
+      await agendar.mutateAsync({
+        reposicaoId: faltaSel.reposicao?.id || null,
+        aulaOrigemId: faltaSel.aulaId,
+        aulaId: slotSel.id,
+        alunoId: aluno.id,
+      })
+      toast.success(
+        `✅ Reposição agendada — ${slotSel.turmas?.nome} · ${format(new Date(dataSel + 'T12:00'), 'dd/MM', { locale: ptBR })}`,
+        { style: toastStyle }
+      )
+      const restantes = faltasLocais.filter(f => f.aulaId !== faltaSel.aulaId)
+      if (restantes.length === 0) { onClose(); return }
+      setFaltasLocais(restantes)
+      setFaltaSel(restantes[0])
+      setSlotSel(null)
+      setStep('falta')
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    }
+  }
+
+  /* ── STEP 1: lista de faltas ─────────────────────────────────── */
+  if (step === 'falta') {
+    return (
+      <Modal open onClose={onClose} title={aluno.nome} size="md">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ fontSize: '12px', color: '#555', marginBottom: '6px' }}>
+            {faltasLocais.length} falta{faltasLocais.length !== 1 ? 's' : ''} a repor
+            {aluno.modalidade ? ` · ${aluno.modalidade.nome}` : ''}
+          </div>
+          {faltasLocais.map(item => {
+            const status = calcReposicaoStatus(item.dataAula)
+            return (
+              <button key={item.aulaId} onClick={() => { setFaltaSel(item); setSlotSel(null); setStep('grade') }} style={{
+                display: 'flex', flexDirection: 'column',
+                padding: '14px 16px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+                textAlign: 'left', width: '100%', backgroundColor: '#111', outline: '1px solid #2a2a2a',
+              }}
+              onMouseEnter={e => e.currentTarget.style.outline = `1px solid ${status.cor}55`}
+              onMouseLeave={e => e.currentTarget.style.outline = '1px solid #2a2a2a'}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: '14px', color: '#F0F2F5', fontWeight: '600' }}>
+                      {item.dataAula ? format(new Date(item.dataAula + 'T12:00'), "dd/MM/yyyy · EEEE", { locale: ptBR }) : 'Data desconhecida'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#555', marginTop: '3px' }}>
+                      {item.turmaNome || aluno.nivel || 'Individual'}
+                    </div>
+                  </div>
+                  <span style={{ color: '#3b82f6', fontSize: '20px', flexShrink: 0 }}>›</span>
+                </div>
+                <div style={{ marginTop: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '4px' }}>
+                    <span style={{ color: '#444' }}>Prazo: {item.dataAula ? format(new Date(new Date(item.dataAula + 'T12:00').getTime() + 60 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy', { locale: ptBR }) : '-'}</span>
+                    <span style={{ color: status.cor, fontWeight: '600' }}>{status.label}</span>
+                  </div>
+                  <div style={{ height: '3px', backgroundColor: '#1a1a1a', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ width: `${status.progresso}%`, height: '100%', backgroundColor: status.cor, borderRadius: '2px' }} />
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </Modal>
+    )
+  }
+
+  /* ── STEP 2: mini-grade por dia ──────────────────────────────── */
+  return (
+    <Modal open onClose={onClose} title={aluno.nome} size="xl">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+        {/* Info da falta + botão voltar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button onClick={() => { setStep('falta'); setSlotSel(null) }} style={{
+            flexShrink: 0, padding: '7px 12px', borderRadius: '8px', border: '1px solid #2a2a2a',
+            background: 'none', color: '#888', cursor: 'pointer', fontSize: '13px',
+          }}>← Voltar</button>
+          <div style={{ flex: 1, padding: '8px 12px', backgroundColor: 'rgba(59,130,246,0.08)', borderRadius: '8px', border: '1px solid rgba(59,130,246,0.2)' }}>
+            <div style={{ fontSize: '10px', color: '#3b82f6', fontWeight: '600', textTransform: 'uppercase' }}>Falta a repor</div>
+            <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600', marginTop: '1px' }}>
+              {faltaSel?.dataAula ? format(new Date(faltaSel.dataAula + 'T12:00'), "dd/MM · EEEE", { locale: ptBR }) : ''} · {faltaSel?.turmaNome || aluno.nivel || 'Individual'}
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs dos próximos 14 dias */}
+        <div style={{ display: 'flex', gap: '5px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none' }}>
+          {proxDias.map(d => {
+            const isSel = d === dataSel
+            const dtObj = new Date(d + 'T12:00')
+            return (
+              <button key={d} onClick={() => { setDataSel(d); setSlotSel(null) }} style={{
+                flexShrink: 0, padding: '8px 10px', borderRadius: '10px', border: 'none', cursor: 'pointer', textAlign: 'center', minWidth: '50px',
+                background: isSel ? 'linear-gradient(135deg,#fcc825,#cf1b9b)' : '#111',
+                outline: isSel ? 'none' : '1px solid #2a2a2a',
+                color: isSel ? 'white' : '#888',
+              }}>
+                <div style={{ fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', opacity: 0.8 }}>
+                  {format(dtObj, 'EEE', { locale: ptBR })}
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '700', margin: '2px 0' }}>{format(dtObj, 'dd')}</div>
+                <div style={{ fontSize: '8px', opacity: 0.7 }}>{format(dtObj, 'MMM', { locale: ptBR })}</div>
+              </button>
+            )
+          })}
+        </div>
 
         {/* Aulas do dia — iluminadas se disponível, apagadas se não */}
         {loadingDia ? <Loading /> : aulasComDisp.length === 0 ? (
