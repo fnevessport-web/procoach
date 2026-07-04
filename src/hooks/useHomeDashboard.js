@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { format, subDays } from 'date-fns'
+import { format, subDays, addDays } from 'date-fns'
 import { useProfessores } from './useProfessores'
 import { QUADRAS_EMPRESA } from './useFinanceiro'
 
@@ -38,6 +38,12 @@ function getModalidadeNome(aula, quadraNome) {
 function getTurmaNome(aula) {
   if (!aula.turma_id) return parseObservacoes(aula.observacoes).nivel || 'Avulsa'
   return aula.turmas?.nome || '—'
+}
+
+// Avulsas sempre contam como ativas (já nascem com aluno) — turma só conta se tiver aluno ativo matriculado
+function turmaAtiva(aula) {
+  if (!aula.turma_id) return true
+  return !!aula.turmas?.turmas_alunos?.some(ta => ta.ativo)
 }
 
 function horarioParaMinutos(hhmm) {
@@ -92,7 +98,7 @@ export function useHomeDashboard() {
         .from('aulas')
         .select(`
           id, data_aula, turma_id, status_aula, observacoes,
-          turmas(nome, horario_inicio, horario_fim, quadras(nome), modalidades(nome, icone_emoji, cor_hex)),
+          turmas(nome, horario_inicio, horario_fim, quadras(nome), modalidades(nome, icone_emoji, cor_hex), turmas_alunos(id, ativo)),
           professores!professor_executou_id(id, nome, foto_url),
           presencas(id, status_presenca, presente)
         `)
@@ -123,7 +129,29 @@ export function useHomeDashboard() {
 
   const { professores: todosProfessores, isLoading: loadingProf } = useProfessores(null)
 
-  const aoVivoAgora = aulasHoje
+  const amanha = format(addDays(new Date(), 1), 'yyyy-MM-dd')
+  const { data: alertaSemProfessor = [] } = useQuery({
+    queryKey: ['home_dashboard_sem_professor', hoje, amanha],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('aulas')
+        .select(`
+          id, data_aula,
+          turmas!inner(nome, horario_inicio, quadras(nome), niveis(nome), turmas_alunos!inner(id, ativo))
+        `)
+        .in('data_aula', [hoje, amanha])
+        .neq('status_aula', 'cancelada')
+        .is('professor_executou_id', null)
+        .eq('turmas.turmas_alunos.ativo', true)
+      if (error) throw error
+      return data || []
+    },
+    staleTime: 60000,
+  })
+
+  const aulasAtivasHoje = aulasHoje.filter(turmaAtiva)
+
+  const aoVivoAgora = aulasAtivasHoje
     .filter(aulaEmAndamento)
     .map(a => {
       const quadraNome = getQuadraNome(a)
@@ -136,7 +164,7 @@ export function useHomeDashboard() {
     })
     .sort((a, b) => (a.horarioInicio || '').localeCompare(b.horarioInicio || ''))
 
-  const aulasJaComecaram = aulasHoje.filter(aulaJaComecou)
+  const aulasJaComecaram = aulasAtivasHoje.filter(aulaJaComecou)
   let presentes = 0, faltas = 0
   aulasJaComecaram.forEach(a => {
     a.presencas?.forEach(p => {
@@ -144,8 +172,8 @@ export function useHomeDashboard() {
       else if (p.status_presenca === 'falta' || p.status_presenca === 'falta_justificada') faltas++
     })
   })
-  const totalAulas = aulasHoje.length
-  const alunosEsperados = aulasHoje.reduce((s, a) => s + (a.presencas?.length || 0), 0)
+  const totalAulas = aulasAtivasHoje.length
+  const alunosEsperados = aulasAtivasHoje.reduce((s, a) => s + (a.presencas?.length || 0), 0)
   const totalConfirmado = presentes + faltas
   const pctPresenca = totalConfirmado > 0 ? Math.round((presentes / totalConfirmado) * 100) : 0
 
@@ -180,10 +208,20 @@ export function useHomeDashboard() {
     return (a.nome || '').localeCompare(b.nome || '')
   })
 
+  const alertasSemProfessor = alertaSemProfessor.map(a => ({
+    id: a.id,
+    ehHoje: a.data_aula === hoje,
+    turmaNome: a.turmas?.nome || '—',
+    nivelNome: a.turmas?.niveis?.nome || '',
+    horarioInicio: a.turmas?.horario_inicio?.slice(0, 5) || '',
+    quadraNome: a.turmas?.quadras?.nome || '',
+  })).sort((a, b) => (a.ehHoje === b.ehHoje ? 0 : a.ehHoje ? -1 : 1) || a.horarioInicio.localeCompare(b.horarioInicio))
+
   return {
     aoVivoAgora,
     hojeAcumulado,
     professoresAgora,
+    alertasSemProfessor,
     isLoading: loadingHoje || loadingProf,
   }
 }

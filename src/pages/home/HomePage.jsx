@@ -75,7 +75,7 @@ export function HomePage() {
   const navigate = useNavigate()
   const { perfil, modalidadeSelecionada, setModalidadeSelecionada } = useAppStore()
   const { data: modalidades, isLoading: loadingModalidades } = useModalidades()
-  const { aoVivoAgora, hojeAcumulado, professoresAgora, isLoading } = useHomeDashboard()
+  const { aoVivoAgora, hojeAcumulado, professoresAgora, alertasSemProfessor, isLoading } = useHomeDashboard()
   const role = perfil?.role || 'professor'
 
   const [filtroAoVivo, setFiltroAoVivo] = useState('todas')
@@ -123,6 +123,33 @@ export function HomePage() {
           <span style={{ fontSize: '14px', fontWeight: '700', color: 'white' }}>{getIniciais(perfil?.nome)}</span>
         </div>
       </div>
+
+      {/* Alerta: aulas sem professor com aluno ativo */}
+      {alertasSemProfessor.length > 0 && (
+        <div style={{
+          marginBottom: '22px', borderRadius: '12px', padding: '14px 16px',
+          backgroundColor: 'rgba(226,75,74,0.08)', border: '1px solid rgba(226,75,74,0.3)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '14px' }}>⚠️</span>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: '#e24b4a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {alertasSemProfessor.length} {alertasSemProfessor.length === 1 ? 'aula sem professor' : 'aulas sem professor'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {alertasSemProfessor.map(a => (
+              <div key={a.id} onClick={() => abrirAula(a.id)} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+                fontSize: '12px', color: '#F0F2F5', cursor: 'pointer',
+              }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <b>{a.ehHoje ? 'Hoje' : 'Amanhã'} {a.horarioInicio}</b> · {a.nivelNome || a.turmaNome} · {a.quadraNome}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Ao vivo agora */}
       <div style={{ marginBottom: '26px' }}>

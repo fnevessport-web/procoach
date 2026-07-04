@@ -74,6 +74,12 @@ function getNivel(aula) {
   return aula.turmas?.niveis?.nome || ''
 }
 
+// Avulsas sempre contam como ativas (já nascem com aluno) — turma só conta se tiver aluno ativo matriculado
+function turmaAtiva(aula) {
+  if (!aula.turma_id) return true
+  return !!aula.turmas?.turmas_alunos?.some(ta => ta.ativo)
+}
+
 function isAulaFutura(dataAula, horarioInicio) {
   const agora = new Date()
   const hoje = format(agora, 'yyyy-MM-dd')
@@ -451,12 +457,15 @@ export function AulasCoordenador({ onCelulaVazia }) {
 
   const horariosGrade = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
 
-  const totalAulas = aulasFiltradas.length
-  const aulasDadas = aulasFiltradas.filter(a => !isAulaFutura(a.data_aula, getHorario(a)) && (statusLocal[a.id] || a.status_aula || 'dada') === 'dada').length
-  const aulasNaoDadas = aulasFiltradas.filter(a => (statusLocal[a.id] || a.status_aula) === 'nao_dada').length
-  const aulasCanceladas = aulasFiltradas.filter(a => (statusLocal[a.id] || a.status_aula) === 'cancelada').length
+  // Turmas sem aluno matriculado não contam nas estatísticas do dia (só aparecem cinza na grade)
+  const aulasAtivas = aulasFiltradas.filter(turmaAtiva)
+
+  const totalAulas = aulasAtivas.length
+  const aulasDadas = aulasAtivas.filter(a => !isAulaFutura(a.data_aula, getHorario(a)) && (statusLocal[a.id] || a.status_aula || 'dada') === 'dada').length
+  const aulasNaoDadas = aulasAtivas.filter(a => (statusLocal[a.id] || a.status_aula) === 'nao_dada').length
+  const aulasCanceladas = aulasAtivas.filter(a => (statusLocal[a.id] || a.status_aula) === 'cancelada').length
   let totalPresentes = 0, totalFaltas = 0
-  aulasFiltradas.forEach(aula => {
+  aulasAtivas.forEach(aula => {
     if (isAulaFutura(aula.data_aula, getHorario(aula))) return
     aula.presencas?.forEach(p => {
       if (p.status_presenca === 'presente' || p.presente) totalPresentes++
@@ -819,6 +828,8 @@ export function AulasCoordenador({ onCelulaVazia }) {
                   const hasAlerta = temAlertaNivel(aulaCelula)
                   const hasReposicao = temReposicao(aulaCelula)
                   const hasNotas = !!(aulaCelula.notas && aulaCelula.notas.trim())
+                  const semAluno = !turmaAtiva(aulaCelula)
+                  const semProfessor = !isAv && !aulaCelula.professores
 
                   const borderColor = st === 'futura' ? 'rgba(255,255,255,0.06)'
                     : st === 'dada' ? 'rgba(34,197,94,0.3)'
@@ -839,11 +850,14 @@ export function AulasCoordenador({ onCelulaVazia }) {
                       padding: '8px 10px', cursor: 'pointer', textAlign: 'left',
                       minHeight: '72px', boxSizing: 'border-box',
                       display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                      opacity: semAluno ? 0.45 : 1,
                       transition: 'background-color 0.3s ease, border-color 0.3s ease',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                         {isAv
                           ? <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', backgroundColor: 'rgba(252,200,37,0.15)', color: '#fcc825' }}>avulsa</span>
+                          : semAluno
+                          ? <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.06)', color: '#666' }}>sem aluno</span>
                           : <span />
                         }
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
@@ -856,8 +870,8 @@ export function AulasCoordenador({ onCelulaVazia }) {
                       <div style={{ fontSize: '11px', fontWeight: '600', color: aulaEhFutura ? '#444' : '#F0F2F5', lineHeight: '1.3', marginBottom: '4px' }}>
                         {nivel || (isAv ? 'Avulsa' : aulaCelula.turmas?.nome || '—')}
                       </div>
-                      <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {aulaCelula.professores?.nome?.split(' ')[0]}
+                      <div style={{ fontSize: '10px', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: semProfessor ? '#e0a856' : '#555' }}>
+                        {semProfessor ? '⚠️ sem professor' : aulaCelula.professores?.nome?.split(' ')[0]}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {aulaEhFutura
