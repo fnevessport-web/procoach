@@ -5,6 +5,11 @@ import { useHomeDashboard } from '../../hooks/useHomeDashboard'
 import useAppStore from '../../store/useAppStore'
 import { Loading } from '../../components/ui/Loading'
 
+const EMPRESAS = [
+  { valor: 'procopio', label: 'Procópio' },
+  { valor: 'beach_arena', label: 'Beach Arena' },
+]
+
 const ICONES_MODALIDADES = {
   'Tênis':          '/images/tenis.png',
   'Padel':          '/images/padel.png',
@@ -73,6 +78,19 @@ export function HomePage() {
   const { aoVivoAgora, hojeAcumulado, professoresAgora, isLoading } = useHomeDashboard()
   const role = perfil?.role || 'professor'
 
+  const [filtroAoVivo, setFiltroAoVivo] = useState('todas')
+  const [filtroAoVivoAberto, setFiltroAoVivoAberto] = useState(false)
+
+  const aoVivoFiltrado = aoVivoAgora.filter(aula => {
+    if (filtroAoVivo === 'todas') return true
+    if (filtroAoVivo === 'procopio' || filtroAoVivo === 'beach_arena') return aula.empresa === filtroAoVivo
+    return aula.modalidadeNome === filtroAoVivo
+  })
+
+  const filtroAoVivoLabel = filtroAoVivo === 'todas'
+    ? 'Filtrar'
+    : (EMPRESAS.find(e => e.valor === filtroAoVivo)?.label || filtroAoVivo)
+
   function abrirAula(aulaId) {
     navigate('/aulas', { state: { highlightAulaId: aulaId, fromHome: true } })
   }
@@ -108,11 +126,83 @@ export function HomePage() {
 
       {/* Ao vivo agora */}
       <div style={{ marginBottom: '26px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-          <span className="pulse-badge" style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#e24b4a' }} />
-          <h2 style={{ fontSize: '12px', fontWeight: '700', color: '#888', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Ao vivo agora · {aoVivoAgora.length} {aoVivoAgora.length === 1 ? 'aula' : 'aulas'}
-          </h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="pulse-badge" style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#e24b4a' }} />
+            <h2 style={{ fontSize: '12px', fontWeight: '700', color: '#888', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Ao vivo agora · {aoVivoFiltrado.length} {aoVivoFiltrado.length === 1 ? 'aula' : 'aulas'}
+            </h2>
+          </div>
+
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setFiltroAoVivoAberto(!filtroAoVivoAberto)} style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              padding: '5px 9px', borderRadius: '8px', cursor: 'pointer',
+              background: filtroAoVivo !== 'todas' ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
+              border: filtroAoVivo !== 'todas' ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+              color: filtroAoVivo !== 'todas' ? '#fcc825' : '#555', fontSize: '11px',
+            }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+              {filtroAoVivoLabel}
+            </button>
+            {filtroAoVivoAberto && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 30 }} onClick={() => setFiltroAoVivoAberto(false)} />
+                <div style={{
+                  position: 'absolute', right: 0, top: '100%', marginTop: '4px',
+                  backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+                  borderRadius: '10px', padding: '8px', zIndex: 40,
+                  minWidth: '170px', maxHeight: '260px', overflowY: 'auto',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                }}>
+                  <button onClick={() => { setFiltroAoVivo('todas'); setFiltroAoVivoAberto(false) }} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
+                    cursor: 'pointer', fontSize: '12px', marginBottom: '4px',
+                    background: filtroAoVivo === 'todas' ? 'rgba(252,200,37,0.1)' : 'transparent',
+                    color: filtroAoVivo === 'todas' ? '#fcc825' : '#888',
+                  }}>
+                    Todas
+                    {filtroAoVivo === 'todas' && <span>✓</span>}
+                  </button>
+
+                  <div style={{ fontSize: '9px', color: '#444', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '4px 8px 2px' }}>Empresa</div>
+                  {EMPRESAS.map(e => (
+                    <button key={e.valor} onClick={() => { setFiltroAoVivo(e.valor); setFiltroAoVivoAberto(false) }} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
+                      cursor: 'pointer', fontSize: '12px', marginBottom: '2px',
+                      background: filtroAoVivo === e.valor ? 'rgba(252,200,37,0.1)' : 'transparent',
+                      color: filtroAoVivo === e.valor ? '#fcc825' : '#888',
+                    }}>
+                      {e.label}
+                      {filtroAoVivo === e.valor && <span>✓</span>}
+                    </button>
+                  ))}
+
+                  {modalidades?.length > 0 && (
+                    <>
+                      <div style={{ fontSize: '9px', color: '#444', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '6px 8px 2px' }}>Modalidade</div>
+                      {modalidades.map(m => (
+                        <button key={m.id} onClick={() => { setFiltroAoVivo(m.nome); setFiltroAoVivoAberto(false) }} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
+                          cursor: 'pointer', fontSize: '12px', marginBottom: '2px',
+                          background: filtroAoVivo === m.nome ? 'rgba(252,200,37,0.1)' : 'transparent',
+                          color: filtroAoVivo === m.nome ? '#fcc825' : '#888',
+                        }}>
+                          {m.nome}
+                          {filtroAoVivo === m.nome && <span>✓</span>}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {isLoading ? <Loading /> : aoVivoAgora.length === 0 ? (
@@ -122,9 +212,16 @@ export function HomePage() {
           }}>
             Nenhuma aula rolando agora
           </div>
+        ) : aoVivoFiltrado.length === 0 ? (
+          <div style={{
+            padding: '20px', textAlign: 'center', fontSize: '12px', color: '#444',
+            backgroundColor: '#1a1a1a', borderRadius: '12px', border: '1px solid #252525',
+          }}>
+            Nenhuma aula ao vivo com esse filtro
+          </div>
         ) : (
           <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '2px' }}>
-            {aoVivoAgora.map(aula => (
+            {aoVivoFiltrado.map(aula => (
               <button key={aula.id} onClick={() => abrirAula(aula.id)} style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
                 padding: '8px 10px', borderRadius: '12px', textAlign: 'left', width: '100%',
