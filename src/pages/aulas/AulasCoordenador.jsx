@@ -916,7 +916,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
               </div>
             )}
 
-            {isAvulsa && !aulaFutura && (
+            {isAvulsa && (
               <div style={{ marginBottom: '12px' }}>
                 {estaEditando ? (
                   <div style={{
