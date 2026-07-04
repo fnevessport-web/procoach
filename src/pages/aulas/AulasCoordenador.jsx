@@ -452,11 +452,12 @@ export function AulasCoordenador({ onCelulaVazia }) {
   const horariosGrade = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
 
   const totalAulas = aulasFiltradas.length
-  const aulasDadas = aulasFiltradas.filter(a => !isAulaFutura(a.data_aula) && (statusLocal[a.id] || a.status_aula || 'dada') === 'dada').length
+  const aulasDadas = aulasFiltradas.filter(a => !isAulaFutura(a.data_aula, getHorario(a)) && (statusLocal[a.id] || a.status_aula || 'dada') === 'dada').length
   const aulasNaoDadas = aulasFiltradas.filter(a => (statusLocal[a.id] || a.status_aula) === 'nao_dada').length
   const aulasCanceladas = aulasFiltradas.filter(a => (statusLocal[a.id] || a.status_aula) === 'cancelada').length
   let totalPresentes = 0, totalFaltas = 0
   aulasFiltradas.forEach(aula => {
+    if (isAulaFutura(aula.data_aula, getHorario(aula))) return
     aula.presencas?.forEach(p => {
       if (p.status_presenca === 'presente' || p.presente) totalPresentes++
       else if (p.status_presenca === 'falta' || p.status_presenca === 'falta_justificada') totalFaltas++
@@ -467,7 +468,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
   const presencas = aula ? (presencasLocal[aula.id] || {}) : {}
   const alunosNaAula = Object.values(presencas)
   const idsNaAula = Object.keys(presencas)
-  const aulaFutura = aula ? isAulaFutura(aula.data_aula) : false
+  const aulaFutura = aula ? isAulaFutura(aula.data_aula, getHorario(aula)) : false
   const statusAtual = aula ? (aulaFutura ? 'futura' : (statusLocal[aula.id] || aula.status_aula || 'dada')) : 'dada'
   const isAvulsa = aula ? !aula.turma_id : false
   const estaEditando = aula ? editandoAula === aula.id : false

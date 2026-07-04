@@ -21,11 +21,25 @@ function minutosAgora() {
   return agora.getHours() * 60 + agora.getMinutes()
 }
 
-// Só aulas de turma têm horario_fim confiável — avulsas ficam de fora do "ao vivo agora"
+// Avulsas não têm turma vinculada — horário vem da observação "⚡ Avulsa · quadra · HH:MM · nivel"
+function horarioInicioDaAula(aula) {
+  if (aula.turma_id) return aula.turmas?.horario_inicio || null
+  const partes = (aula.observacoes || '').split('·').map(s => s.trim())
+  return partes[2] || null
+}
+
+// Avulsas ocupam 1 slot de 1h na grade, então assumimos 60min de duração
+function horarioFimDaAula(aula) {
+  if (aula.turma_id) return aula.turmas?.horario_fim || null
+  const inicio = horarioParaMinutos(horarioInicioDaAula(aula))
+  if (inicio == null) return null
+  const fim = inicio + 60
+  return `${String(Math.floor(fim / 60)).padStart(2, '0')}:${String(fim % 60).padStart(2, '0')}`
+}
+
 function aulaEmAndamento(aula) {
-  if (!aula.turma_id) return false
-  const inicio = horarioParaMinutos(aula.turmas?.horario_inicio)
-  const fim = horarioParaMinutos(aula.turmas?.horario_fim)
+  const inicio = horarioParaMinutos(horarioInicioDaAula(aula))
+  const fim = horarioParaMinutos(horarioFimDaAula(aula))
   if (inicio == null || fim == null) return false
   const agora = minutosAgora()
   return agora >= inicio && agora < fim
@@ -33,9 +47,8 @@ function aulaEmAndamento(aula) {
 
 // Mesma tolerância de 10min usada em AulasCoordenador/useFinanceiro para "aula já começou"
 function aulaJaComecou(aula) {
-  if (!aula.turma_id) return true
-  const inicio = horarioParaMinutos(aula.turmas?.horario_inicio)
-  if (inicio == null) return true
+  const inicio = horarioParaMinutos(horarioInicioDaAula(aula))
+  if (inicio == null) return false
   return minutosAgora() >= inicio - 10
 }
 
