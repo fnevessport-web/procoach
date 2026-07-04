@@ -10,6 +10,36 @@ function getEmpresaPorQuadra(quadraNome) {
   return null
 }
 
+// Aulas avulsas guardam quadra/horario/nivel na string "⚡ Avulsa · quadra · HH:MM · nivel"
+function parseObservacoes(obs) {
+  if (!obs) return { quadra: '', horario: '', nivel: '' }
+  const partes = obs.split('·').map(s => s.trim())
+  return { quadra: partes[1] || '', horario: partes[2] || '', nivel: partes[3] || '' }
+}
+
+function getQuadraNome(aula) {
+  if (aula.turma_id) return aula.turmas?.quadras?.nome || ''
+  return parseObservacoes(aula.observacoes).quadra
+}
+
+const QUADRA_MODALIDADE = {
+  'Quadra 1': 'Tênis', 'Quadra 2': 'Tênis', 'Quadra 3': 'Tênis', 'Quadra 4': 'Tênis',
+  'Quadra de Padel': 'Padel',
+  'Quadra 1 Areia': 'Beach Tennis',
+  'Quadra 3 Areia': 'Futevôlei',
+  'Quadra 5 Areia': 'Vôlei de Praia',
+}
+
+function getModalidadeNome(aula, quadraNome) {
+  if (aula.turma_id) return aula.turmas?.modalidades?.nome || ''
+  return QUADRA_MODALIDADE[quadraNome] || ''
+}
+
+function getTurmaNome(aula) {
+  if (!aula.turma_id) return parseObservacoes(aula.observacoes).nivel || 'Avulsa'
+  return aula.turmas?.nome || '—'
+}
+
 function horarioParaMinutos(hhmm) {
   if (!hhmm) return null
   const [h, m] = hhmm.slice(0, 5).split(':').map(Number)
@@ -24,8 +54,7 @@ function minutosAgora() {
 // Avulsas não têm turma vinculada — horário vem da observação "⚡ Avulsa · quadra · HH:MM · nivel"
 function horarioInicioDaAula(aula) {
   if (aula.turma_id) return aula.turmas?.horario_inicio || null
-  const partes = (aula.observacoes || '').split('·').map(s => s.trim())
-  return partes[2] || null
+  return parseObservacoes(aula.observacoes).horario || null
 }
 
 // Avulsas ocupam 1 slot de 1h na grade, então assumimos 60min de duração
@@ -97,12 +126,15 @@ export function useHomeDashboard() {
   const aoVivoAgora = aulasHoje
     .filter(aulaEmAndamento)
     .map(a => {
-      const quadraNome = a.turmas?.quadras?.nome || ''
+      const quadraNome = getQuadraNome(a)
+      const turmaNome = getTurmaNome(a)
+      const modalidadeNome = getModalidadeNome(a, quadraNome)
+      const horarioInicio = horarioInicioDaAula(a)
       const presentes = a.presencas?.filter(p => p.status_presenca === 'presente' || p.presente).length || 0
       const faltas = a.presencas?.filter(p => p.status_presenca === 'falta' || p.status_presenca === 'falta_justificada').length || 0
-      return { ...a, quadraNome, empresa: getEmpresaPorQuadra(quadraNome), presentes, faltas }
+      return { ...a, quadraNome, turmaNome, modalidadeNome, horarioInicio, empresa: getEmpresaPorQuadra(quadraNome), presentes, faltas }
     })
-    .sort((a, b) => (a.turmas?.horario_inicio || '').localeCompare(b.turmas?.horario_inicio || ''))
+    .sort((a, b) => (a.horarioInicio || '').localeCompare(b.horarioInicio || ''))
 
   const aulasJaComecaram = aulasHoje.filter(aulaJaComecou)
   let presentes = 0, faltas = 0
@@ -132,7 +164,7 @@ export function useHomeDashboard() {
   const professoresAgora = professoresAtivos.map(prof => {
     const aulaAtual = aulasHoje.find(a => a.professores?.id === prof.id && aulaEmAndamento(a))
     if (aulaAtual) {
-      return { ...prof, status: 'ativo', aula: aulaAtual, quadraNome: aulaAtual.turmas?.quadras?.nome || '' }
+      return { ...prof, status: 'ativo', aula: aulaAtual, quadraNome: getQuadraNome(aulaAtual) }
     }
     const agora = minutosAgora()
     const proximas = aulasHoje

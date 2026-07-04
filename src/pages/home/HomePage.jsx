@@ -126,45 +126,43 @@ export function HomePage() {
           <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '2px' }}>
             {aoVivoAgora.map(aula => (
               <button key={aula.id} onClick={() => abrirAula(aula.id)} style={{
-                display: 'flex', flexDirection: 'column', gap: '8px',
-                padding: '12px', borderRadius: '12px', textAlign: 'left', width: '100%',
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '8px 10px', borderRadius: '12px', textAlign: 'left', width: '100%',
                 backgroundColor: '#1a1a1a', border: '1px solid #252525', cursor: 'pointer',
                 boxSizing: 'border-box',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="pulse-badge" style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#e24b4a' }} />
-                    <span style={{ fontSize: '10px', fontWeight: '700', color: '#e24b4a', letterSpacing: '0.5px' }}>AO VIVO</span>
-                    <span style={{ fontSize: '11px', color: '#555' }}>{aula.turmas?.horario_inicio?.slice(0, 5)}</span>
-                  </div>
-                  {aula.empresa && LOGO_EMPRESA[aula.empresa] && (
-                    <img src={LOGO_EMPRESA[aula.empresa]} alt={aula.empresa} style={{ height: '16px', objectFit: 'contain', opacity: 0.85 }} />
-                  )}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+                  <FotoProfessor src={aula.professores?.foto_url} nome={aula.professores?.nome} />
+                  <span style={{ fontSize: '9px', color: '#555', maxWidth: '52px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {aula.professores?.nome?.split(' ')[0]}
+                  </span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-                    <FotoProfessor src={aula.professores?.foto_url} nome={aula.professores?.nome} />
-                    <span style={{ fontSize: '9px', color: '#555', maxWidth: '52px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {aula.professores?.nome?.split(' ')[0]}
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                    <span style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {aula.turmaNome}
                     </span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {aula.turmas?.nome}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                      <span className="pulse-badge" style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#e24b4a' }} />
+                      <span style={{ fontSize: '9px', color: '#555' }}>{aula.horarioInicio?.slice(0, 5)}</span>
+                      {aula.empresa && LOGO_EMPRESA[aula.empresa] && (
+                        <img src={LOGO_EMPRESA[aula.empresa]} alt={aula.empresa} style={{ height: '12px', objectFit: 'contain', opacity: 0.85 }} />
+                      )}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#fcc825', marginTop: '2px' }}>
-                      {aula.quadraNome}
-                    </div>
                   </div>
-                </div>
 
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <div style={{ flex: 1, textAlign: 'center', padding: '5px', borderRadius: '8px', backgroundColor: 'rgba(29,158,117,0.12)', color: '#1D9E75', fontSize: '11px', fontWeight: '600' }}>
-                    ✓ {aula.presentes} presente{aula.presentes !== 1 ? 's' : ''}
+                  <div style={{ fontSize: '11px', color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {[aula.modalidadeNome, aula.quadraNome].filter(Boolean).join(' · ')}
                   </div>
-                  <div style={{ flex: 1, textAlign: 'center', padding: '5px', borderRadius: '8px', backgroundColor: 'rgba(226,75,74,0.12)', color: '#e24b4a', fontSize: '11px', fontWeight: '600' }}>
-                    ✗ {aula.faltas} falta{aula.faltas !== 1 ? 's' : ''}
+
+                  <div style={{ display: 'flex', gap: '5px' }}>
+                    <span style={{ padding: '2px 7px', borderRadius: '6px', backgroundColor: 'rgba(29,158,117,0.12)', color: '#1D9E75', fontSize: '10px', fontWeight: '600' }}>
+                      ✓ {aula.presentes}
+                    </span>
+                    <span style={{ padding: '2px 7px', borderRadius: '6px', backgroundColor: 'rgba(226,75,74,0.12)', color: '#e24b4a', fontSize: '10px', fontWeight: '600' }}>
+                      ✗ {aula.faltas}
+                    </span>
                   </div>
                 </div>
               </button>
