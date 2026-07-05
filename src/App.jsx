@@ -9,6 +9,8 @@ import useAppStore from './store/useAppStore'
 import { PageLoading } from './components/ui/Loading'
 import { AppLayout } from './components/layout/AppLayout'
 import { LoginPage } from './pages/auth/LoginPage'
+import { EsqueciSenha } from './pages/auth/EsqueciSenha'
+import { TrocarSenha } from './pages/auth/TrocarSenha'
 import { SelecionarEmpresaPage } from './pages/auth/SelecionarEmpresaPage'
 import { HomePage } from './pages/home/HomePage'
 import { ModalidadePage } from './pages/modalidades/ModalidadePage'
@@ -58,6 +60,10 @@ function AppRouter() {
 
   if (loading) return <PageLoading />
   if (!user) return <LoginPage />
+
+  // Primeiro acesso: troca de senha obrigatória antes de qualquer outra tela
+  if (perfil?.primeiro_acesso) return <TrocarSenha />
+
   if (loadingEmpresas) return <PageLoading />
 
   // Duas ou mais empresas vinculadas: precisa escolher antes de entrar no app
@@ -112,6 +118,7 @@ export default function App() {
         <Routes>
           {/* Rota pública — sem login */}
           <Route path="/disponibilidade/:token" element={<DisponibilidadePage />} />
+          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           {/* App com autenticação */}
           <Route path="/*" element={<AppRouter />} />
         </Routes>

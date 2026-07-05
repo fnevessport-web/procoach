@@ -1,11 +1,12 @@
 import { useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil } from 'lucide-react'
+import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil, Lock, KeyRound } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { usePermissions } from '../../hooks/usePermissions'
 import useAppStore from '../../store/useAppStore'
+import toast from 'react-hot-toast'
 
 const BANCOS = [
   'Itaú', 'Bradesco', 'Santander', 'Banco do Brasil', 'Caixa Econômica',
@@ -219,6 +220,10 @@ export default function ProfessoresPage() {
   const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear())
   const [filtroFuncao, setFiltroFuncao] = useState('todos')
   const [filtroEmpresa, setFiltroEmpresa] = useState('todas')
+  const [criandoAcesso, setCriandoAcesso] = useState(false)
+  const [formAcesso, setFormAcesso] = useState({ email: '', senha: '' })
+  const [salvandoAcesso, setSalvandoAcesso] = useState(false)
+  const [resetandoSenha, setResetandoSenha] = useState(false)
   const [filtroAtivo, setFiltroAtivo] = useState('ativos')
   const [filtroAberto, setFiltroAberto] = useState(false)
   const fotoInputRef = useRef()
@@ -283,6 +288,69 @@ export default function ProfessoresPage() {
       return data || []
     },
   })
+
+  const { data: perfilVinculado, isLoading: carregandoPerfilVinculado } = useQuery({
+    queryKey: ['perfil_vinculado', cardAberto?.id],
+    enabled: !!cardAberto?.id && podeEditarCadastros,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('perfis_usuario')
+        .select('user_id, nome')
+        .eq('professor_id', cardAberto.id)
+        .maybeSingle()
+      return data || null
+    },
+  })
+
+  async function handleCriarAcesso() {
+    if (!formAcesso.email.trim() || formAcesso.senha.length < 8) {
+      toast.error('Preencha e-mail e uma senha com pelo menos 8 caracteres')
+      return
+    }
+    setSalvandoAcesso(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const resp = await fetch('/api/criar-professor-usuario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({
+          professorId: cardAberto.id,
+          nome: cardAberto.nome,
+          email: formAcesso.email.trim(),
+          senha: formAcesso.senha,
+        }),
+      })
+      const resultado = await resp.json()
+      if (!resp.ok) throw new Error(resultado.error || 'Erro ao criar acesso')
+      toast.success('Acesso criado! O professor já pode entrar com essa senha.')
+      setCriandoAcesso(false)
+      setFormAcesso({ email: '', senha: '' })
+      qc.invalidateQueries({ queryKey: ['perfil_vinculado', cardAberto.id] })
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setSalvandoAcesso(false)
+    }
+  }
+
+  async function handleResetarSenha() {
+    if (!cardAberto?.email) {
+      toast.error('Esse professor não tem e-mail cadastrado')
+      return
+    }
+    setResetandoSenha(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(cardAberto.email, {
+        redirectTo: `${window.location.origin}/`,
+      })
+      if (error) throw error
+      toast.success(`E-mail de redefinição enviado pra ${cardAberto.email}`)
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setResetandoSenha(false)
+    }
+  }
 
   const { data: boletos = [] } = useQuery({
     queryKey: ['boletos', cardAberto?.id],
@@ -863,6 +931,65 @@ export default function ProfessoresPage() {
               </div>
 
             </div>
+
+            {/* Acesso ao sistema (gestor) */}
+            {podeEditarCadastros && (
+              <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '14px 16px', border: '1px solid rgba(252,200,37,0.15)', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                  <Lock size={13} color="#555" />
+                  <span style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Acesso ao sistema</span>
+                </div>
+
+                {carregandoPerfilVinculado ? (
+                  <div style={{ fontSize: '12px', color: '#555' }}>Carregando...</div>
+                ) : perfilVinculado ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                    <div style={{ fontSize: '12px', color: '#F0F2F5' }}>
+                      Login ativo <span style={{ color: '#555' }}>· {perfilVinculado.nome || cardAberto.email}</span>
+                    </div>
+                    <button onClick={handleResetarSenha} disabled={resetandoSenha} style={{
+                      display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '9px',
+                      backgroundColor: 'rgba(252,200,37,0.1)', border: '1px solid rgba(252,200,37,0.3)',
+                      color: '#fcc825', fontSize: '12px', fontWeight: '600', cursor: resetandoSenha ? 'not-allowed' : 'pointer',
+                      opacity: resetandoSenha ? 0.6 : 1, whiteSpace: 'nowrap',
+                    }}>
+                      <KeyRound size={13} /> {resetandoSenha ? 'Enviando...' : 'Resetar senha'}
+                    </button>
+                  </div>
+                ) : criandoAcesso ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <input type="email" placeholder="E-mail do professor" value={formAcesso.email}
+                      onChange={e => setFormAcesso(f => ({ ...f, email: e.target.value }))} style={inputStyle} />
+                    <input type="password" placeholder="Senha inicial (mín. 8 caracteres)" value={formAcesso.senha}
+                      onChange={e => setFormAcesso(f => ({ ...f, senha: e.target.value }))} style={inputStyle} />
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
+                      <button onClick={handleCriarAcesso} disabled={salvandoAcesso} style={{
+                        flex: 1, padding: '10px', borderRadius: '9px', border: 'none',
+                        background: 'linear-gradient(135deg, #fcc825, #d28c3c, #cf1b9b)',
+                        color: 'white', fontSize: '12px', fontWeight: '700',
+                        cursor: salvandoAcesso ? 'not-allowed' : 'pointer', opacity: salvandoAcesso ? 0.7 : 1,
+                      }}>
+                        {salvandoAcesso ? 'Criando...' : 'Criar acesso'}
+                      </button>
+                      <button onClick={() => { setCriandoAcesso(false); setFormAcesso({ email: '', senha: '' }) }} style={{
+                        padding: '10px 14px', borderRadius: '9px', border: '1px solid #2a2a2a',
+                        backgroundColor: 'transparent', color: '#888', fontSize: '12px', cursor: 'pointer',
+                      }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => { setCriandoAcesso(true); setFormAcesso({ email: cardAberto.email || '', senha: '' }) }} style={{
+                    display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '9px',
+                    backgroundColor: 'rgba(252,200,37,0.1)', border: '1px solid rgba(252,200,37,0.3)',
+                    color: '#fcc825', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                  }}>
+                    <Lock size={13} /> Criar acesso ao sistema
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Financeiro resumo topo */}
             <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '14px 16px', border: '1px solid rgba(252,200,37,0.15)', marginBottom: '16px' }}>

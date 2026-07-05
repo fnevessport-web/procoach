@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { Input } from '../../components/ui/Input'
 
 export function LoginPage() {
   const { signIn } = useAuth()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
   const [form, setForm] = useState({ email: '', senha: '' })
@@ -59,6 +61,13 @@ export function LoginPage() {
               opacity: loading ? 0.7 : 1, marginTop: '8px'
             }}>
               {loading ? 'Aguarde...' : 'Entrar'}
+            </button>
+
+            <button type="button" onClick={() => navigate('/esqueci-senha')} style={{
+              background: 'none', border: 'none', color: '#666', fontSize: '12px',
+              cursor: 'pointer', textAlign: 'center', padding: '4px',
+            }}>
+              Esqueci minha senha
             </button>
           </div>
         </div>
