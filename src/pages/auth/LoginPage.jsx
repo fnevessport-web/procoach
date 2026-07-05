@@ -44,7 +44,7 @@ export function LoginPage() {
 
         <div style={{ backgroundColor: '#1a1a1a', borderRadius: '20px', border: '1px solid #222', padding: '24px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Input label="E-mail" type="email" placeholder="seu@email.com" value={form.email} onChange={e => update('email', e.target.value)} required />
+            <Input label="E-mail ou CPF" type="text" placeholder="seu@email.com ou seu CPF" value={form.email} onChange={e => update('email', e.target.value)} required />
             <Input label="Senha" type="password" placeholder="••••••••" value={form.senha} onChange={e => update('senha', e.target.value)} required />
 
             {erro && (

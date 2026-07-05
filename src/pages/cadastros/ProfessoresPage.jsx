@@ -7,16 +7,9 @@ import { ptBR } from 'date-fns/locale'
 import { usePermissions } from '../../hooks/usePermissions'
 import useAppStore from '../../store/useAppStore'
 import toast from 'react-hot-toast'
-
-const BANCOS = [
-  'Itaú', 'Bradesco', 'Santander', 'Banco do Brasil', 'Caixa Econômica',
-  'Nubank', 'Inter', 'C6 Bank', 'BTG', 'Sicredi', 'Sicoob', 'Outro'
-]
-
-const ESTADOS = [
-  'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
-  'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
-]
+import { apenasDigitosCPF, mascararCPF } from '../../lib/cpf'
+import { buscarCep } from '../../lib/cep'
+import { BANCOS, ESTADOS } from '../../constants/geografia'
 
 const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']
 
@@ -85,24 +78,6 @@ function PixCopiavel({ pix }) {
       </span>
     </button>
   )
-}
-
-async function buscarCep(cep, setForm) {
-  const c = cep.replace(/\D/g, '')
-  if (c.length !== 8) return
-  try {
-    const res = await fetch(`https://viacep.com.br/ws/${c}/json/`)
-    const data = await res.json()
-    if (!data.erro) {
-      setForm(f => ({
-        ...f,
-        endereco: data.logradouro || '',
-        bairro: data.bairro || '',
-        cidade: data.localidade || '',
-        estado: data.uf || '',
-      }))
-    }
-  } catch {}
 }
 
 function ModalDetalhesDia({ professorId, dataStr, onClose }) {
@@ -221,10 +196,13 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   const [filtroFuncao, setFiltroFuncao] = useState('todos')
   const [filtroEmpresa, setFiltroEmpresa] = useState('todas')
   const [criandoAcesso, setCriandoAcesso] = useState(false)
-  const [formAcesso, setFormAcesso] = useState({ email: '', senha: '', confirmacao: '' })
+  const [formAcesso, setFormAcesso] = useState({ cpf: '', senha: '', confirmacao: '' })
   const [mostrarSenhaAcesso, setMostrarSenhaAcesso] = useState(false)
   const [salvandoAcesso, setSalvandoAcesso] = useState(false)
   const [resetandoSenha, setResetandoSenha] = useState(false)
+  const [mostrandoResetSenha, setMostrandoResetSenha] = useState(false)
+  const [novaSenhaReset, setNovaSenhaReset] = useState('')
+  const [mostrarNovaSenhaReset, setMostrarNovaSenhaReset] = useState(false)
   const [filtroAtivo, setFiltroAtivo] = useState('ativos')
   const [filtroAberto, setFiltroAberto] = useState(false)
   const fotoInputRef = useRef()
@@ -311,8 +289,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   })
 
   async function handleCriarAcesso() {
-    if (!formAcesso.email.trim() || formAcesso.senha.length < 8) {
-      toast.error('Preencha e-mail e uma senha com pelo menos 8 caracteres')
+    const cpfDigitos = apenasDigitosCPF(formAcesso.cpf)
+    if (cpfDigitos.length !== 11 || formAcesso.senha.length < 8) {
+      toast.error('Preencha o CPF completo e uma senha com pelo menos 8 caracteres')
       return
     }
     if (formAcesso.senha !== formAcesso.confirmacao) {
@@ -328,16 +307,17 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
         body: JSON.stringify({
           professorId: cardAberto.id,
           nome: cardAberto.nome,
-          email: formAcesso.email.trim(),
+          cpf: cpfDigitos,
           senha: formAcesso.senha,
         }),
       })
       const resultado = await resp.json()
       if (!resp.ok) throw new Error(resultado.error || 'Erro ao criar acesso')
-      toast.success('Acesso criado! O professor já pode entrar com essa senha.')
+      toast.success('Acesso criado! O professor já pode entrar com essa senha usando o CPF como login.')
       setCriandoAcesso(false)
-      setFormAcesso({ email: '', senha: '', confirmacao: '' })
+      setFormAcesso({ cpf: '', senha: '', confirmacao: '' })
       qc.invalidateQueries({ queryKey: ['perfil_vinculado', cardAberto.id] })
+      qc.invalidateQueries({ queryKey: ['professores'] })
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -346,17 +326,23 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   }
 
   async function handleResetarSenha() {
-    if (!cardAberto?.email) {
-      toast.error('Esse professor não tem e-mail cadastrado')
+    if (novaSenhaReset.length < 8) {
+      toast.error('Digite uma senha nova com pelo menos 8 caracteres')
       return
     }
     setResetandoSenha(true)
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(cardAberto.email, {
-        redirectTo: `${window.location.origin}/`,
+      const { data: { session } } = await supabase.auth.getSession()
+      const resp = await fetch('/api/resetar-senha-professor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ professorId: cardAberto.id, novaSenha: novaSenhaReset }),
       })
-      if (error) throw error
-      toast.success(`E-mail de redefinição enviado pra ${cardAberto.email}`)
+      const resultado = await resp.json()
+      if (!resp.ok) throw new Error(resultado.error || 'Erro ao resetar senha')
+      toast.success('Senha redefinida! Passe essa senha pro professor — ele vai ter que trocar por uma só dele no próximo login.')
+      setMostrandoResetSenha(false)
+      setNovaSenhaReset('')
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -955,23 +941,60 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 {carregandoPerfilVinculado ? (
                   <div style={{ fontSize: '12px', color: '#555' }}>Carregando...</div>
                 ) : perfilVinculado ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                    <div style={{ fontSize: '12px', color: '#F0F2F5' }}>
-                      Login ativo <span style={{ color: '#555' }}>· {perfilVinculado.nome || cardAberto.email}</span>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                      <div style={{ fontSize: '12px', color: '#F0F2F5' }}>
+                        Login ativo <span style={{ color: '#555' }}>· CPF {mascararCPF(cardAberto.cpf) || '—'}</span>
+                      </div>
+                      {!mostrandoResetSenha && (
+                        <button onClick={() => setMostrandoResetSenha(true)} style={{
+                          display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '9px',
+                          backgroundColor: 'rgba(252,200,37,0.1)', border: '1px solid rgba(252,200,37,0.3)',
+                          color: '#fcc825', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap',
+                        }}>
+                          <KeyRound size={13} /> Resetar senha
+                        </button>
+                      )}
                     </div>
-                    <button onClick={handleResetarSenha} disabled={resetandoSenha} style={{
-                      display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '9px',
-                      backgroundColor: 'rgba(252,200,37,0.1)', border: '1px solid rgba(252,200,37,0.3)',
-                      color: '#fcc825', fontSize: '12px', fontWeight: '600', cursor: resetandoSenha ? 'not-allowed' : 'pointer',
-                      opacity: resetandoSenha ? 0.6 : 1, whiteSpace: 'nowrap',
-                    }}>
-                      <KeyRound size={13} /> {resetandoSenha ? 'Enviando...' : 'Resetar senha'}
-                    </button>
+
+                    {mostrandoResetSenha && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                        <p style={{ fontSize: '11px', color: '#888', margin: 0 }}>
+                          Defina uma senha temporária e passe pro professor — ele vai ser obrigado a trocar por uma senha só dele no próximo login.
+                        </p>
+                        <div style={{ position: 'relative' }}>
+                          <input type={mostrarNovaSenhaReset ? 'text' : 'password'} placeholder="Senha temporária (mín. 8 caracteres)" value={novaSenhaReset}
+                            onChange={e => setNovaSenhaReset(e.target.value)} style={{ ...inputStyle, paddingRight: '40px' }} />
+                          <button type="button" onClick={() => setMostrarNovaSenhaReset(v => !v)} style={{
+                            position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                            background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '4px', display: 'flex',
+                          }}>
+                            {mostrarNovaSenhaReset ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button onClick={handleResetarSenha} disabled={resetandoSenha} style={{
+                            flex: 1, padding: '10px', borderRadius: '9px', border: 'none',
+                            background: 'linear-gradient(135deg, #fcc825, #d28c3c, #cf1b9b)',
+                            color: 'white', fontSize: '12px', fontWeight: '700',
+                            cursor: resetandoSenha ? 'not-allowed' : 'pointer', opacity: resetandoSenha ? 0.7 : 1,
+                          }}>
+                            {resetandoSenha ? 'Salvando...' : 'Salvar senha nova'}
+                          </button>
+                          <button onClick={() => { setMostrandoResetSenha(false); setNovaSenhaReset('') }} style={{
+                            padding: '10px 14px', borderRadius: '9px', border: '1px solid #2a2a2a',
+                            backgroundColor: 'transparent', color: '#888', fontSize: '12px', cursor: 'pointer',
+                          }}>
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : criandoAcesso ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <input type="email" placeholder="E-mail do professor" value={formAcesso.email}
-                      onChange={e => setFormAcesso(f => ({ ...f, email: e.target.value }))} style={inputStyle} />
+                    <input placeholder="CPF do professor" value={mascararCPF(formAcesso.cpf)} inputMode="numeric" maxLength={14}
+                      onChange={e => setFormAcesso(f => ({ ...f, cpf: apenasDigitosCPF(e.target.value) }))} style={inputStyle} />
                     <div style={{ position: 'relative' }}>
                       <input type={mostrarSenhaAcesso ? 'text' : 'password'} placeholder="Senha inicial (mín. 8 caracteres)" value={formAcesso.senha}
                         onChange={e => setFormAcesso(f => ({ ...f, senha: e.target.value }))} style={{ ...inputStyle, paddingRight: '40px' }} />
@@ -1001,7 +1024,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                       }}>
                         {salvandoAcesso ? 'Criando...' : 'Criar acesso'}
                       </button>
-                      <button onClick={() => { setCriandoAcesso(false); setFormAcesso({ email: '', senha: '', confirmacao: '' }) }} style={{
+                      <button onClick={() => { setCriandoAcesso(false); setFormAcesso({ cpf: '', senha: '', confirmacao: '' }) }} style={{
                         padding: '10px 14px', borderRadius: '9px', border: '1px solid #2a2a2a',
                         backgroundColor: 'transparent', color: '#888', fontSize: '12px', cursor: 'pointer',
                       }}>
@@ -1010,7 +1033,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => { setCriandoAcesso(true); setFormAcesso({ email: cardAberto.email || '', senha: '', confirmacao: '' }) }} style={{
+                  <button onClick={() => { setCriandoAcesso(true); setFormAcesso({ cpf: cardAberto.cpf || '', senha: '', confirmacao: '' }) }} style={{
                     display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '9px',
                     backgroundColor: 'rgba(252,200,37,0.1)', border: '1px solid rgba(252,200,37,0.3)',
                     color: '#fcc825', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
@@ -1295,7 +1318,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
 
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Dados Pessoais</div>
                 <div><div style={labelStyle}>Nascimento</div><input type="date" style={inputStyle} value={form.nascimento} onChange={e => set('nascimento', e.target.value)} /></div>
-                <div><div style={labelStyle}>CPF</div><input style={inputStyle} placeholder="000.000.000-00" value={form.cpf} onChange={e => set('cpf', e.target.value)} /></div>
+                <div><div style={labelStyle}>CPF</div><input style={inputStyle} placeholder="•••.•••.•••-••" inputMode="numeric" maxLength={14} value={mascararCPF(form.cpf)} onChange={e => set('cpf', apenasDigitosCPF(e.target.value))} /></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div><div style={labelStyle}>Cidade Nasc.</div><input style={inputStyle} placeholder="Cidade" value={form.cidade_nascimento} onChange={e => set('cidade_nascimento', e.target.value)} /></div>
                   <div><div style={labelStyle}>Estado Nasc.</div>
@@ -1437,7 +1460,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     <input style={inputStyle} placeholder="Nome como está no banco..." value={form.nome_titular} onChange={e => { set('nome_titular', e.target.value); set('titular_proprio', false) }} />
                   </div>
                   <div><div style={labelStyle}>CPF do titular</div>
-                    <input style={inputStyle} placeholder="000.000.000-00" value={form.cpf_titular} onChange={e => { set('cpf_titular', e.target.value); set('titular_proprio', false) }} />
+                    <input style={inputStyle} placeholder="•••.•••.•••-••" inputMode="numeric" maxLength={14} value={mascararCPF(form.cpf_titular)} onChange={e => { set('cpf_titular', apenasDigitosCPF(e.target.value)); set('titular_proprio', false) }} />
                   </div>
                 </div>
                 {/* Empresa(s) onde atua */}

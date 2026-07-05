@@ -38,22 +38,33 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Acesso não permitido' })
   }
 
-  const { professorId, nome, email, senha } = req.body || {}
-  if (!professorId || !email || !senha) {
-    return res.status(400).json({ error: 'Dados incompletos' })
+  const { professorId, nome, cpf, senha } = req.body || {}
+  const cpfDigitos = String(cpf || '').replace(/\D/g, '')
+  if (!professorId || cpfDigitos.length !== 11 || !senha) {
+    return res.status(400).json({ error: 'Informe um CPF válido (11 dígitos) e uma senha' })
   }
   if (String(senha).length < 8) {
     return res.status(400).json({ error: 'A senha precisa ter pelo menos 8 caracteres' })
   }
 
+  // Login do professor é o CPF, não e-mail. Usamos um e-mail sintético (nunca enviado de
+  // verdade) só pra satisfazer o Supabase Auth, que exige e-mail como identificador — isso
+  // também garante 1 CPF = 1 conta só, já que o Supabase rejeita e-mail duplicado.
+  const emailSintetico = `${cpfDigitos}@procoach.local`
+
   try {
     const { data: novoUsuario, error: erroCriar } = await admin.auth.admin.createUser({
-      email,
+      email: emailSintetico,
       password: senha,
       email_confirm: true,
       user_metadata: { nome },
     })
-    if (erroCriar) return res.status(400).json({ error: erroCriar.message })
+    if (erroCriar) {
+      const mensagem = erroCriar.message?.includes('already been registered')
+        ? 'Esse CPF já tem um acesso criado (talvez em outro cadastro de professor)'
+        : erroCriar.message
+      return res.status(400).json({ error: mensagem })
+    }
 
     const { error: erroPerfil } = await admin.from('perfis_usuario').insert({
       user_id: novoUsuario.user.id,
@@ -63,6 +74,8 @@ export default async function handler(req, res) {
       primeiro_acesso: true,
     })
     if (erroPerfil) return res.status(400).json({ error: erroPerfil.message })
+
+    await admin.from('professores').update({ cpf: cpfDigitos }).eq('id', professorId)
 
     return res.status(200).json({ ok: true, userId: novoUsuario.user.id })
   } catch (err) {

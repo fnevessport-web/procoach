@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import useAppStore from '../store/useAppStore'
+import { apenasDigitosCPF, cpfParaEmailSintetico } from '../lib/cpf'
 
 export function useAuth() {
   const [loading, setLoading] = useState(true)
@@ -75,8 +76,14 @@ export function useAuth() {
     }
   }
 
-  async function signIn(email, senha) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha })
+  // Professor loga com CPF (não tem e-mail próprio no sistema); os demais papéis logam
+  // com e-mail normal. Se o que foi digitado não tem "@", assume CPF e converte pro
+  // e-mail sintético usado internamente pra criar a conta desse professor.
+  async function signIn(emailOuCpf, senha) {
+    const identificador = emailOuCpf.includes('@')
+      ? emailOuCpf
+      : cpfParaEmailSintetico(apenasDigitosCPF(emailOuCpf))
+    const { data, error } = await supabase.auth.signInWithPassword({ email: identificador, password: senha })
     if (error) throw error
     return data
   }
