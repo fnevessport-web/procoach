@@ -620,13 +620,13 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
 
       {/* Modal ação em massa */}
       {modalMassa && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'flex-end' }}
+        <div className="sheet-overlay" style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex' }}
           onClick={() => { setModalMassa(null); setAcaoMassa(null) }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            width: '100%', backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0',
+          <div className="sheet-content" onClick={e => e.stopPropagation()} style={{
+            backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0',
             padding: '20px 16px', boxSizing: 'border-box',
           }}>
-            <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
+            <div className="sheet-handle" style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
 
             {modalMassa === 'menu' ? (
               <>
@@ -916,17 +916,17 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
 
       {/* Modal */}
       {aulaModal && (
-        <div style={{
+        <div className="sheet-overlay" style={{
           position: 'fixed', inset: 0, zIndex: 50,
           backgroundColor: 'rgba(0,0,0,0.7)',
-          display: 'flex', alignItems: 'flex-end',
+          display: 'flex',
         }} onClick={fecharModal}>
-          <div onClick={e => e.stopPropagation()} style={{
-            width: '100%', maxHeight: '90vh', overflowY: 'auto',
+          <div className="sheet-content" onClick={e => e.stopPropagation()} style={{
+            maxHeight: '90vh', overflowY: 'auto',
             backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0',
             padding: '20px 16px', boxSizing: 'border-box',
           }}>
-            <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
+            <div className="sheet-handle" style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div>

@@ -712,7 +712,7 @@ export default function ProfessoresPage() {
       </div>
 
       {isLoading ? <p style={{ color: '#555' }}>Carregando...</p> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+        <div className="professores-grid">
           {professores.filter(prof => {
             // Sem permissão pra ver todos: só enxerga o próprio card (não vê salário/dados de colegas)
             if (!podeVerTodosSalarios && prof.id !== perfil?.professor_id) return false
@@ -729,9 +729,9 @@ export default function ProfessoresPage() {
             }
             return true
           }).map(prof => (
-            <div key={prof.id} onClick={() => abrirCard(prof)} style={{ cursor: 'pointer', textAlign: 'center' }}>
-              <div style={{
-                width: '80px', height: '80px', margin: '0 auto 8px',
+            <div key={prof.id} onClick={() => abrirCard(prof)} className="professor-card">
+              <div className="professor-avatar" style={{
+                margin: '0 auto 10px',
                 borderRadius: '50%',
                 background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
                 padding: '2px', boxSizing: 'border-box',
@@ -749,10 +749,13 @@ export default function ProfessoresPage() {
                   }
                 </div>
               </div>
-              <div style={{ fontSize: '11px', fontWeight: '600', color: '#F0F2F5', lineHeight: 1.3 }}>
-                {prof.apelido || prof.nome?.split(' ')[0]}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: prof.ativo !== false ? '#22c55e' : '#444', flexShrink: 0 }} />
+                <span style={{ fontSize: '13px', fontWeight: '700', color: '#F0F2F5', lineHeight: 1.3 }}>
+                  {prof.apelido || prof.nome?.split(' ')[0]}
+                </span>
               </div>
-              <div style={{ fontSize: '9px', color: '#555', marginTop: '2px', lineHeight: 1.4, wordBreak: 'break-word' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginTop: '4px', lineHeight: 1.4, wordBreak: 'break-word' }}>
                 {prof.funcao && prof.funcao !== 'professor'
                   ? prof.funcao.charAt(0).toUpperCase() + prof.funcao.slice(1)
                   : (prof.modalidades_ids || []).length > 0
@@ -760,7 +763,6 @@ export default function ProfessoresPage() {
                     : prof.modalidades?.nome || '—'
                 }
               </div>
-              <div style={{ display: 'inline-block', marginTop: '4px', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: prof.ativo !== false ? '#22c55e' : '#444' }} />
             </div>
           ))}
         </div>

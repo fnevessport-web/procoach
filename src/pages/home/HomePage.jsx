@@ -202,7 +202,7 @@ export function HomePage() {
             Nenhuma aula ao vivo com esse filtro
           </div>
         ) : (
-          <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '2px' }}>
+          <div className="ao-vivo-grid" style={{ paddingRight: '2px' }}>
             {aoVivoFiltrado.map(aula => (
               <button key={aula.id} onClick={() => abrirAula(aula.id)} style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
@@ -254,7 +254,7 @@ export function HomePage() {
       <div style={{ marginBottom: '26px' }}>
         <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', margin: '0 0 12px' }}>Modalidades</h2>
         {loadingModalidades ? <Loading /> : (
-          <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
+          <div className="modalidades-row">
             {modalidades?.map(mod => {
               const selected = modalidadeSelecionada?.id === mod.id
               const icone = ICONES_MODALIDADES[mod.nome]
@@ -262,22 +262,19 @@ export function HomePage() {
                 <button
                   key={mod.id}
                   onClick={() => selectModalidade(mod)}
+                  className="modalidade-card"
                   style={{
-                    flexShrink: 0, width: '72px',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
-                    padding: '10px 6px', borderRadius: '14px',
                     border: selected ? '1.5px solid rgba(207,27,155,0.7)' : '1px solid rgba(255,255,255,0.06)',
                     background: selected ? 'rgba(252,200,37,0.06)' : '#1a1a1a',
-                    cursor: 'pointer',
                   }}
                 >
-                  <div style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div className="modalidade-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {icone
                       ? <img src={icone} alt={mod.nome} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                       : <span style={{ fontSize: '10px', color: '#555' }}>{mod.nome}</span>
                     }
                   </div>
-                  <span style={{ fontSize: '10px', color: selected ? '#fcc825' : '#888', textAlign: 'center', lineHeight: '1.2' }}>
+                  <span className="modalidade-label" style={{ color: selected ? '#fcc825' : '#888' }}>
                     {mod.nome}
                   </span>
                 </button>

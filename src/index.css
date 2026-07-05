@@ -226,3 +226,120 @@ button {
 .ui-card:hover {
   border-color: rgba(252,200,37,0.3) !important;
 }
+
+/* ── Modais/sheets: bottom-sheet no mobile, dialogo centralizado e proporcional no desktop ── */
+.sheet-overlay {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.sheet-content {
+  width: 100%;
+}
+.sheet-handle { display: block; }
+
+@media (min-width: 768px) {
+  .sheet-overlay {
+    align-items: center;
+    padding: 24px;
+  }
+  .sheet-content {
+    width: 100%;
+    max-width: 560px;
+    border-radius: 20px !important;
+    max-height: 85vh;
+  }
+  .sheet-handle { display: none; }
+}
+
+/* ── Home: "ao vivo agora" — lista no mobile, grid no desktop ── */
+.ao-vivo-grid {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+@media (min-width: 768px) {
+  .ao-vivo-grid {
+    max-height: none;
+    overflow-y: visible;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+  }
+}
+
+/* ── Home: Modalidades — icone+texto empilhado no mobile, lado a lado preenchendo a grade no desktop ── */
+.modalidades-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.modalidade-card {
+  flex-shrink: 0;
+  width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  border-radius: 14px;
+  cursor: pointer;
+}
+.modalidade-icon { width: 36px; height: 36px; flex-shrink: 0; transition: width 200ms, height 200ms; }
+.modalidade-label { font-size: 10px; text-align: center; line-height: 1.2; }
+
+@media (min-width: 768px) {
+  .modalidades-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    overflow-x: visible;
+    gap: 12px;
+  }
+  .modalidade-card {
+    width: auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 16px 20px;
+    gap: 16px;
+  }
+  .modalidade-icon { width: 48px; height: 48px; }
+  .modalidade-label { font-size: 14px; font-weight: 600; text-align: left; }
+}
+
+/* ── Cadastros: grade de colaboradores/professores responsiva ── */
+.professores-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .professores-grid {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 16px;
+  }
+}
+
+.professor-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  padding: 14px 10px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.professor-avatar { width: 80px; height: 80px; }
+
+@media (min-width: 768px) {
+  .professor-card {
+    background-color: #1a1a1a;
+    border-color: rgba(255,255,255,0.06);
+  }
+  .professor-card:hover { border-color: rgba(252,200,37,0.3); background-color: #1e1e1e; }
+  .professor-avatar { width: 96px; height: 96px; }
+}
