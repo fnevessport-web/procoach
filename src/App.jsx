@@ -49,7 +49,7 @@ function RouteGuard({ permitido, homeRoute, children }) {
 
 function AppRouter() {
   const { user, perfil, loading } = useAuth()
-  const { empresaSelecionada, setEmpresaSelecionada } = useAppStore()
+  const { empresaSelecionada, setEmpresaSelecionada, sessaoRecuperacao } = useAppStore()
   const { data: empresas = [], isLoading: loadingEmpresas } = useMinhasEmpresas(user?.id)
   const permissoes = usePermissions()
 
@@ -63,8 +63,8 @@ function AppRouter() {
   if (loading) return <PageLoading />
   if (!user) return <LoginPage />
 
-  // Primeiro acesso: troca de senha obrigatória antes de qualquer outra tela
-  if (perfil?.primeiro_acesso) return <TrocarSenha />
+  // Primeiro acesso (ou sessão vinda de link de recuperação de senha): troca obrigatória antes de qualquer outra tela
+  if (perfil?.primeiro_acesso || sessaoRecuperacao) return <TrocarSenha />
 
   if (loadingEmpresas) return <PageLoading />
 

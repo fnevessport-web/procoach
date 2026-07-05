@@ -4,7 +4,7 @@ import useAppStore from '../store/useAppStore'
 
 export function useAuth() {
   const [loading, setLoading] = useState(true)
-  const { user, perfil, setUser, setPerfil, reset } = useAppStore()
+  const { user, perfil, setUser, setPerfil, reset, setSessaoRecuperacao } = useAppStore()
 
   useEffect(() => {
     let mounted = true
@@ -23,6 +23,10 @@ export function useAuth() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return
+      // Sessão veio de um link de recuperação de senha (Esqueci minha senha / Resetar senha
+      // do gestor) — força a troca de senha mesmo que primeiro_acesso já seja false, senão o
+      // link só loga o usuário de volta sem nunca deixar ele definir uma senha nova.
+      if (_event === 'PASSWORD_RECOVERY') setSessaoRecuperacao(true)
       if (session?.user) {
         setUser(session.user)
         // Só busca o perfil se ainda não tiver carregado

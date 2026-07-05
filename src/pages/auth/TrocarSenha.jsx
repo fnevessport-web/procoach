@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/Input'
 
 export function TrocarSenha() {
   const navigate = useNavigate()
-  const { user, perfil, setPerfil } = useAppStore()
+  const { user, perfil, setPerfil, setSessaoRecuperacao } = useAppStore()
   const { homeRoute } = usePermissions()
   const [senha, setSenha] = useState('')
   const [confirmacao, setConfirmacao] = useState('')
@@ -27,6 +27,7 @@ export function TrocarSenha() {
 
       await supabase.from('perfis_usuario').update({ primeiro_acesso: false }).eq('user_id', user.id)
       setPerfil({ ...perfil, primeiro_acesso: false })
+      setSessaoRecuperacao(false)
       navigate(homeRoute, { replace: true })
     } catch (err) {
       setErro(err.message || 'Erro ao trocar senha')
