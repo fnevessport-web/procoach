@@ -10,7 +10,7 @@ export function Card({ children, className = '', onClick, ...props }) {
         transition: 'all 0.15s',
         boxSizing: 'border-box',
       }}
-      className={className}
+      className={`ui-card ${className}`}
       {...props}
     >
       {children}

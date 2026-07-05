@@ -41,11 +41,13 @@ export function Header() {
 
   return (
     <header style={{
-      position: 'sticky', top: 0, zIndex: 40,
-      backgroundColor: '#110f0f',
-      borderBottom: 'none',
+      flexShrink: 0, zIndex: 40,
+      backgroundColor: 'rgba(17,15,15,0.85)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      borderBottom: '0.5px solid rgba(255,255,255,0.06)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', maxWidth: '480px', margin: '0 auto' }}>
+      <div className="header-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px' }}>
 
         <img
           src="/images/logoprocoach.png"

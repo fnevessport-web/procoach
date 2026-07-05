@@ -9,6 +9,21 @@ export function Loading({ text = 'Carregando...' }) {
   )
 }
 
+// Placeholders retangulares com shimmer, pra usar no lugar do spinner quando o formato do conteúdo final já é conhecido
+export function Skeleton({ width = '100%', height = '16px', radius = '8px', style }) {
+  return <div className="skeleton" style={{ width, height, borderRadius: radius, ...style }} />
+}
+
+export function SkeletonList({ rows = 3, rowHeight = '56px', gap = '8px' }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap }}>
+      {Array.from({ length: rows }, (_, i) => (
+        <Skeleton key={i} height={rowHeight} radius="12px" />
+      ))}
+    </div>
+  )
+}
+
 export function PageLoading() {
   return (
     <div style={{
@@ -30,7 +45,7 @@ export function EmptyState({ icon, iconImg, title, description, action }) {
       justifyContent: 'center', gap: '12px', padding: '64px 0', textAlign: 'center',
     }}>
       {iconImg ? (
-        <img src={iconImg} alt={title} style={{ width: '56px', height: '56px', objectFit: 'contain', opacity: 0.6 }} />
+        <img src={iconImg} alt={title} style={{ width: '56px', height: '56px', objectFit: 'contain', opacity: 0.2 }} />
       ) : (
         <div style={{ fontSize: '40px' }}>{icon || '📭'}</div>
       )}

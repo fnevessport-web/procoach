@@ -23,17 +23,21 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html, body, #root {
+  height: 100%;
+}
+
 body {
   margin: 0;
   background-color: #110f0f;
   color: #F0F2F5;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 #root {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -44,11 +48,16 @@ body {
 ::-webkit-scrollbar-track { background: #1a1a1a; }
 ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
 
+@media (max-width: 767px) {
+  * { scrollbar-width: none; }
+  *::-webkit-scrollbar { display: none; }
+}
+
 input, textarea, select { outline: none; }
 
-.fade-in { animation: fadeIn 0.2s ease-in-out; }
+.fade-in { animation: fadeIn 0.3s ease-out; }
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -69,16 +78,151 @@ input, textarea, select { outline: none; }
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
 }
-/* Layout responsivo */
-.app-content {
+
+/* Skeleton loading — retangulos com shimmer, alternativa ao spinner */
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(90deg, #1a1a1a 0%, #222 50%, #1a1a1a 100%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Feedback tatil global em qualquer botao nativo do app */
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+button {
+  transition: transform 0.1s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in, .slide-up, .pulse-badge, .skeleton, button {
+    animation: none !important;
+    transition: none !important;
+  }
+  button:active:not(:disabled) { transform: none; }
+}
+
+/* ── Shell do app: trava a tela (sem bounce), cada pagina rola por dentro ── */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background-color: #110f0f;
+  overflow: hidden;
+}
+
+.app-shell-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 0 16px 24px;
+  box-sizing: border-box;
+}
+
+.header-inner {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 @media (min-width: 768px) {
-  .app-content {
-    max-width: 520px;
+  .app-shell-content { margin-left: 64px; }
+  .app-main {
+    max-width: 100%;
+    margin: 0;
+    padding: 24px 32px 32px;
   }
+  .header-inner {
+    max-width: 100%;
+    padding: 0 32px;
+  }
+  .bottom-nav { display: none; }
+}
+
+/* ── Sidebar desktop (colapsada 64px, expande em overlay no hover) ── */
+.sidebar-desktop { display: none; }
+
+@media (min-width: 768px) {
+  .sidebar-desktop {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 64px;
+    background-color: #0d0b0b;
+    border-right: 0.5px solid #1f1f1f;
+    z-index: 50;
+    padding: 16px 0;
+    overflow: hidden;
+    transition: width 200ms ease-in-out, box-shadow 200ms ease-in-out;
+  }
+  .sidebar-desktop:hover {
+    width: 220px;
+    box-shadow: 4px 0 32px rgba(0,0,0,0.45);
+  }
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 20px;
+  margin-bottom: 24px;
+  flex-shrink: 0;
+}
+.sidebar-logo img { height: 22px; object-fit: contain; }
+
+.sidebar-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 10px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #888;
+  flex-shrink: 0;
+}
+.sidebar-item-icon { color: #555; flex-shrink: 0; }
+.sidebar-item-label {
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 150ms ease-in-out;
+}
+.sidebar-desktop:hover .sidebar-item-label { opacity: 1; }
+
+.sidebar-item-active { background-color: #fcc825; color: #110f0f; }
+.sidebar-item-active .sidebar-item-icon { color: #110f0f; }
+
+/* Cartao compartilhado — realce sutil de borda no hover (o componente define a borda base inline, então precisa do !important pra sobrepor) */
+.ui-card:hover {
+  border-color: rgba(252,200,37,0.3) !important;
 }

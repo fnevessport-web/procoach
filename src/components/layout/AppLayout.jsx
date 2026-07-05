@@ -1,21 +1,18 @@
 import { Header } from './Header'
 import { BottomNav } from './BottomNav'
+import { Sidebar } from './Sidebar'
 
 export function AppLayout({ children }) {
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', minHeight: '100vh',
-      backgroundColor: '#110f0f',
-    }}>
-      <Header />
-      <main style={{
-        flex: 1, paddingBottom: '96px',
-        maxWidth: '480px', width: '100%', margin: '0 auto',
-        padding: '0 16px 96px',
-      }}>
-        {children}
-      </main>
-      <BottomNav />
+    <div className="app-shell">
+      <Sidebar />
+      <div className="app-shell-content">
+        <Header />
+        <main className="app-main">
+          {children}
+        </main>
+        <BottomNav />
+      </div>
     </div>
   )
 }

@@ -1,25 +1,6 @@
-import { Home, CalendarDays, Users, DollarSign, BarChart3 } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
-
-const navItemsAdmin = [
-  { path: '/', icon: Home, label: 'Início' },
-  { path: '/aulas', icon: CalendarDays, label: 'Aulas' },
-  { path: '/cadastros', icon: Users, label: 'Cadastros' },
-  { path: '/financeiro', icon: DollarSign, label: 'Financeiro' },
-  { path: '/kpis', icon: BarChart3, label: 'KPIs' },
-]
-
-const navItemsCoordenador = [
-  { path: '/', icon: Home, label: 'Início' },
-  { path: '/aulas', icon: CalendarDays, label: 'Aulas' },
-  { path: '/kpis', icon: BarChart3, label: 'KPIs' },
-]
-
-const navItemsProfessor = [
-  { path: '/', icon: Home, label: 'Início' },
-  { path: '/aulas', icon: CalendarDays, label: 'Minhas Aulas' },
-]
+import { getNavItems } from '../../constants/navItems'
 
 export function BottomNav() {
   const { perfil } = useAppStore()
@@ -27,11 +8,11 @@ export function BottomNav() {
   const navigate = useNavigate()
 
   const role = perfil?.role || 'professor'
-  const items = role === 'admin' ? navItemsAdmin : role === 'coordenador' ? navItemsCoordenador : navItemsProfessor
+  const items = getNavItems(role)
 
   return (
-    <nav style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
+    <nav className="bottom-nav" style={{
+      flexShrink: 0, zIndex: 40,
       backgroundColor: '#110f0f',
       borderTop: '1px solid #1e1e1e',
     }}>
