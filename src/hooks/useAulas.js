@@ -12,7 +12,7 @@ export function useAulas({ data, professorId, modalidadeId, status } = {}) {
         .select(`
           *,
           turmas(nome, horario_inicio, horario_fim, horario_dia_semana, quadras(nome), modalidades(nome, icone_emoji, cor_hex), turmas_alunos(id, ativo)),
-          professores!professor_executou_id(id, nome),
+          professores!professor_executou_id(id, nome, foto_url),
           prof_titular:professores!professor_titular_id(id, nome),
           presencas(id, aluno_id, presente, status_presenca, tipo_participacao, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof, alunos(id, nome, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof))
         `)
@@ -36,6 +36,25 @@ export function useAulas({ data, professorId, modalidadeId, status } = {}) {
       return aulas
     },
     staleTime: 30000
+  })
+}
+
+// Aulas de um mês inteiro, só os campos leves — pra colorir o calendário do Match de Aulas
+export function useAulasDoMes(inicioStr, fimStr) {
+  return useQuery({
+    queryKey: ['aulas_mes', inicioStr, fimStr],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('aulas')
+        .select('id, data_aula, status')
+        .gte('data_aula', inicioStr)
+        .lte('data_aula', fimStr)
+        .neq('status_aula', 'cancelada')
+      if (error) throw error
+      return data || []
+    },
+    enabled: !!inicioStr && !!fimStr,
+    staleTime: 30000,
   })
 }
 
