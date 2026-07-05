@@ -84,7 +84,10 @@ export function permissoesDoRole(roleBruto) {
 }
 
 export function usePermissions() {
-  const { perfil } = useAppStore()
-  const role = resolverRole(perfil?.role)
-  return { role, ...permissoesDoRole(perfil?.role) }
+  const { perfil, empresaSelecionada } = useAppStore()
+  // Role vem da empresa ativa na sessão (usuario_empresas.role); sem empresa selecionada
+  // ainda (single-tenant / fase de transição), cai pro role global de perfis_usuario
+  const roleBruto = empresaSelecionada?.role || perfil?.role
+  const role = resolverRole(roleBruto)
+  return { role, ...permissoesDoRole(roleBruto) }
 }

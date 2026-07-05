@@ -4,9 +4,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import toast, { Toaster } from 'react-hot-toast'
 import { useAuth } from './hooks/useAuth'
 import { usePermissions } from './hooks/usePermissions'
+import { useMinhasEmpresas } from './hooks/useEmpresas'
+import useAppStore from './store/useAppStore'
 import { PageLoading } from './components/ui/Loading'
 import { AppLayout } from './components/layout/AppLayout'
 import { LoginPage } from './pages/auth/LoginPage'
+import { SelecionarEmpresaPage } from './pages/auth/SelecionarEmpresaPage'
 import { HomePage } from './pages/home/HomePage'
 import { ModalidadePage } from './pages/modalidades/ModalidadePage'
 import { AulasPage } from './pages/aulas/AulasPage'
@@ -40,10 +43,25 @@ function RouteGuard({ permitido, homeRoute, children }) {
 
 function AppRouter() {
   const { user, perfil, loading } = useAuth()
+  const { empresaSelecionada, setEmpresaSelecionada } = useAppStore()
+  const { data: empresas = [], isLoading: loadingEmpresas } = useMinhasEmpresas(user?.id)
   const permissoes = usePermissions()
+
+  // Só uma empresa vinculada: entra direto nela, sem tela de escolha
+  useEffect(() => {
+    if (!empresaSelecionada && empresas.length === 1) {
+      setEmpresaSelecionada(empresas[0])
+    }
+  }, [empresas, empresaSelecionada])
 
   if (loading) return <PageLoading />
   if (!user) return <LoginPage />
+  if (loadingEmpresas) return <PageLoading />
+
+  // Duas ou mais empresas vinculadas: precisa escolher antes de entrar no app
+  if (empresas.length > 1 && !empresaSelecionada) {
+    return <SelecionarEmpresaPage empresas={empresas} onSelecionar={setEmpresaSelecionada} />
+  }
 
   const { homeRoute, podeAcessarCadastros, podeAcessarFinanceiro, podeAcessarKPIs } = permissoes
 

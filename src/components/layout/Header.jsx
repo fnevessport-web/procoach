@@ -1,8 +1,9 @@
-import { Bell, LogOut, ChevronDown, Undo2 } from 'lucide-react'
+import { Bell, LogOut, ChevronDown, Undo2, Building2 } from 'lucide-react'
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useAulasPendentes } from '../../hooks/useAulas'
+import { useMinhasEmpresas } from '../../hooks/useEmpresas'
 import useAppStore from '../../store/useAppStore'
 
 function getIniciais(nome) {
@@ -20,10 +21,11 @@ function getSobrenome(nome) {
 }
 
 export function Header() {
-  const { perfil, signOut } = useAuth()
+  const { user, perfil, signOut } = useAuth()
   const { data: pendentes = 0 } = useAulasPendentes()
+  const { data: empresas = [] } = useMinhasEmpresas(user?.id)
   const [menuOpen, setMenuOpen] = useState(false)
-  const { modalidadeSelecionada, setModalidadeSelecionada, origemAulas, setOrigemAulas } = useAppStore()
+  const { modalidadeSelecionada, setModalidadeSelecionada, origemAulas, setOrigemAulas, empresaSelecionada, setEmpresaSelecionada } = useAppStore()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -98,6 +100,20 @@ export function Header() {
             </div>
           )}
 
+          {empresas.length > 1 && (
+            <button
+              onClick={() => setEmpresaSelecionada(null)}
+              title="Trocar empresa"
+              style={{
+                padding: '6px', borderRadius: '8px', border: '1px solid #1e1e1e',
+                backgroundColor: '#1a1a1a', color: '#555', cursor: 'pointer',
+                display: 'flex', alignItems: 'center',
+              }}
+            >
+              <Building2 size={15} />
+            </button>
+          )}
+
           {modalidadeSelecionada && (
             <button
               onClick={() => setModalidadeSelecionada(null)}
@@ -150,7 +166,10 @@ export function Header() {
                 }}>
                   <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e1e1e' }}>
                     <div style={{ fontSize: '13px', fontWeight: '500', color: '#F0F2F5' }}>{perfil?.nome || 'Usuário'}</div>
-                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'capitalize' }}>{perfil?.role}</div>
+                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'capitalize' }}>
+                      {empresaSelecionada?.role || perfil?.role}
+                      {empresaSelecionada && ` · ${empresaSelecionada.nome}`}
+                    </div>
                   </div>
                   <button
                     onClick={() => { setMenuOpen(false); signOut() }}
