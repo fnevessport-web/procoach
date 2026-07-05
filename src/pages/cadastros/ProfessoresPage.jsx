@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil, Lock, KeyRound } from 'lucide-react'
+import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil, Lock, KeyRound, Eye, EyeOff } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { usePermissions } from '../../hooks/usePermissions'
@@ -221,7 +221,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   const [filtroFuncao, setFiltroFuncao] = useState('todos')
   const [filtroEmpresa, setFiltroEmpresa] = useState('todas')
   const [criandoAcesso, setCriandoAcesso] = useState(false)
-  const [formAcesso, setFormAcesso] = useState({ email: '', senha: '' })
+  const [formAcesso, setFormAcesso] = useState({ email: '', senha: '', confirmacao: '' })
+  const [mostrarSenhaAcesso, setMostrarSenhaAcesso] = useState(false)
   const [salvandoAcesso, setSalvandoAcesso] = useState(false)
   const [resetandoSenha, setResetandoSenha] = useState(false)
   const [filtroAtivo, setFiltroAtivo] = useState('ativos')
@@ -314,6 +315,10 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       toast.error('Preencha e-mail e uma senha com pelo menos 8 caracteres')
       return
     }
+    if (formAcesso.senha !== formAcesso.confirmacao) {
+      toast.error('As senhas não coincidem')
+      return
+    }
     setSalvandoAcesso(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -331,7 +336,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       if (!resp.ok) throw new Error(resultado.error || 'Erro ao criar acesso')
       toast.success('Acesso criado! O professor já pode entrar com essa senha.')
       setCriandoAcesso(false)
-      setFormAcesso({ email: '', senha: '' })
+      setFormAcesso({ email: '', senha: '', confirmacao: '' })
       qc.invalidateQueries({ queryKey: ['perfil_vinculado', cardAberto.id] })
     } catch (err) {
       toast.error(err.message)
@@ -967,8 +972,26 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <input type="email" placeholder="E-mail do professor" value={formAcesso.email}
                       onChange={e => setFormAcesso(f => ({ ...f, email: e.target.value }))} style={inputStyle} />
-                    <input type="password" placeholder="Senha inicial (mín. 8 caracteres)" value={formAcesso.senha}
-                      onChange={e => setFormAcesso(f => ({ ...f, senha: e.target.value }))} style={inputStyle} />
+                    <div style={{ position: 'relative' }}>
+                      <input type={mostrarSenhaAcesso ? 'text' : 'password'} placeholder="Senha inicial (mín. 8 caracteres)" value={formAcesso.senha}
+                        onChange={e => setFormAcesso(f => ({ ...f, senha: e.target.value }))} style={{ ...inputStyle, paddingRight: '40px' }} />
+                      <button type="button" onClick={() => setMostrarSenhaAcesso(v => !v)} style={{
+                        position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                        background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '4px', display: 'flex',
+                      }}>
+                        {mostrarSenhaAcesso ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <input type={mostrarSenhaAcesso ? 'text' : 'password'} placeholder="Confirmar senha" value={formAcesso.confirmacao}
+                        onChange={e => setFormAcesso(f => ({ ...f, confirmacao: e.target.value }))} style={{ ...inputStyle, paddingRight: '40px' }} />
+                      <button type="button" onClick={() => setMostrarSenhaAcesso(v => !v)} style={{
+                        position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                        background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '4px', display: 'flex',
+                      }}>
+                        {mostrarSenhaAcesso ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                     <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
                       <button onClick={handleCriarAcesso} disabled={salvandoAcesso} style={{
                         flex: 1, padding: '10px', borderRadius: '9px', border: 'none',
@@ -978,7 +1001,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                       }}>
                         {salvandoAcesso ? 'Criando...' : 'Criar acesso'}
                       </button>
-                      <button onClick={() => { setCriandoAcesso(false); setFormAcesso({ email: '', senha: '' }) }} style={{
+                      <button onClick={() => { setCriandoAcesso(false); setFormAcesso({ email: '', senha: '', confirmacao: '' }) }} style={{
                         padding: '10px 14px', borderRadius: '9px', border: '1px solid #2a2a2a',
                         backgroundColor: 'transparent', color: '#888', fontSize: '12px', cursor: 'pointer',
                       }}>
@@ -987,7 +1010,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => { setCriandoAcesso(true); setFormAcesso({ email: cardAberto.email || '', senha: '' }) }} style={{
+                  <button onClick={() => { setCriandoAcesso(true); setFormAcesso({ email: cardAberto.email || '', senha: '', confirmacao: '' }) }} style={{
                     display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '9px',
                     backgroundColor: 'rgba(252,200,37,0.1)', border: '1px solid rgba(252,200,37,0.3)',
                     color: '#fcc825', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
@@ -1681,10 +1704,29 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
               <input style={inputStyle} placeholder="Nome completo *" value={form.nome} onChange={e => set('nome', e.target.value)} />
               <input style={inputStyle} placeholder="Telefone (WhatsApp)" value={form.telefone} onChange={e => set('telefone', e.target.value)} />
               <input style={inputStyle} placeholder="E-mail" value={form.email} onChange={e => set('email', e.target.value)} />
-              <select style={inputStyle} value={form.modalidade_id} onChange={e => set('modalidade_id', e.target.value)}>
-                <option value="">Modalidade</option>
-                {modalidades.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-              </select>
+              <div>
+                <div style={labelStyle}>Modalidades</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  {modalidades.map(m => {
+                    const selecionada = (form.modalidades_ids || []).includes(m.id)
+                    return (
+                      <button key={m.id} type="button" onClick={() => {
+                        const atual = form.modalidades_ids || []
+                        set('modalidades_ids', selecionada ? atual.filter(id => id !== m.id) : [...atual, m.id])
+                      }} style={{
+                        padding: '8px 4px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                        background: selecionada ? '#fcc825' : '#111',
+                        outline: selecionada ? 'none' : '1px solid #2a2a2a',
+                        color: selecionada ? '#110f0f' : '#555',
+                        fontSize: '11px', fontWeight: selecionada ? '700' : '400',
+                        textAlign: 'center', lineHeight: 1.3,
+                      }}>
+                        {m.nome}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                 <button onClick={() => setModalCriar(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
                 <button onClick={handleSalvar} disabled={salvando || !form.nome.trim()} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
