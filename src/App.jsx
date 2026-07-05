@@ -1,7 +1,9 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from 'react-hot-toast'
+import toast, { Toaster } from 'react-hot-toast'
 import { useAuth } from './hooks/useAuth'
+import { usePermissions } from './hooks/usePermissions'
 import { PageLoading } from './components/ui/Loading'
 import { AppLayout } from './components/layout/AppLayout'
 import { LoginPage } from './pages/auth/LoginPage'
@@ -11,6 +13,7 @@ import { AulasPage } from './pages/aulas/AulasPage'
 import { CadastrosPage } from './pages/cadastros/CadastrosPage'
 import { FinanceiroPage } from './pages/financeiro/FinanceiroPage'
 import { KPIsPage } from './pages/kpis/KPIsPage'
+import { MensagensPage } from './pages/mensagens/MensagensPage'
 import { InstallBanner } from './components/ui/InstallBanner'
 import { DisponibilidadePage } from './pages/disponibilidade/DisponibilidadePage'
 
@@ -20,34 +23,59 @@ const queryClient = new QueryClient({
   }
 })
 
+// Rota protegida: se o role atual não tem a flag exigida, avisa e manda pra home do próprio role
+function RouteGuard({ permitido, homeRoute, children }) {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!permitido) {
+      toast.error('Acesso não permitido')
+      navigate(homeRoute, { replace: true })
+    }
+  }, [permitido, homeRoute])
+
+  if (!permitido) return null
+  return children
+}
+
 function AppRouter() {
   const { user, perfil, loading } = useAuth()
+  const permissoes = usePermissions()
 
   if (loading) return <PageLoading />
   if (!user) return <LoginPage />
 
-  const role = perfil?.role || 'professor'
+  const { homeRoute, podeAcessarCadastros, podeAcessarFinanceiro, podeAcessarKPIs } = permissoes
 
   return (
     <AppLayout>
       <InstallBanner />
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/modalidade/:nomeModalidade" element={<ModalidadePage />} />
+        <Route path="/" element={homeRoute === '/' ? <HomePage /> : <Navigate to={homeRoute} replace />} />
+        <Route path="/modalidade/:nomeModalidade" element={
+          <RouteGuard permitido={homeRoute === '/'} homeRoute={homeRoute}><ModalidadePage /></RouteGuard>
+        } />
         <Route path="/aulas" element={<AulasPage />} />
-        {(role === 'admin' || role === 'coordenador') && (
-          <>
-            <Route path="/cadastros" element={<CadastrosPage />} />
-            <Route path="/cadastros/professores" element={<CadastrosPage />} />
-            <Route path="/cadastros/alunos" element={<CadastrosPage />} />
-            <Route path="/cadastros/turmas" element={<CadastrosPage />} />
-            <Route path="/kpis" element={<KPIsPage />} />
-          </>
-        )}
-        {role === 'admin' && (
-          <Route path="/financeiro" element={<FinanceiroPage />} />
-        )}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/mensagens" element={<MensagensPage />} />
+        <Route path="/cadastros" element={
+          <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
+        } />
+        <Route path="/cadastros/professores" element={
+          <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
+        } />
+        <Route path="/cadastros/alunos" element={
+          <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
+        } />
+        <Route path="/cadastros/turmas" element={
+          <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
+        } />
+        <Route path="/kpis" element={
+          <RouteGuard permitido={podeAcessarKPIs} homeRoute={homeRoute}><KPIsPage /></RouteGuard>
+        } />
+        <Route path="/financeiro" element={
+          <RouteGuard permitido={podeAcessarFinanceiro} homeRoute={homeRoute}><FinanceiroPage /></RouteGuard>
+        } />
+        <Route path="*" element={<Navigate to={homeRoute} replace />} />
       </Routes>
     </AppLayout>
   )

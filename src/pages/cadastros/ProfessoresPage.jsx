@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabase'
 import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { usePermissions } from '../../hooks/usePermissions'
+import useAppStore from '../../store/useAppStore'
 
 const BANCOS = [
   'Itaú', 'Bradesco', 'Santander', 'Banco do Brasil', 'Caixa Econômica',
@@ -196,6 +198,8 @@ function ModalDetalhesDia({ professorId, dataStr, onClose }) {
 
 export default function ProfessoresPage() {
   const qc = useQueryClient()
+  const { podeVerTodosSalarios, podeEditarCadastros } = usePermissions()
+  const { perfil } = useAppStore()
   const [cardAberto, setCardAberto] = useState(null)
   const [aba, setAba] = useState('perfil')
   const [modalCriar, setModalCriar] = useState(false)
@@ -584,11 +588,13 @@ export default function ProfessoresPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>Colaboradores</h2>
-        <button onClick={() => { setForm(FORM_VAZIO); setModalCriar(true) }} style={{
-          padding: '8px 16px', borderRadius: '10px', border: 'none',
-          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-          color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-        }}>+ Novo</button>
+        {podeEditarCadastros && (
+          <button onClick={() => { setForm(FORM_VAZIO); setModalCriar(true) }} style={{
+            padding: '8px 16px', borderRadius: '10px', border: 'none',
+            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+            color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+          }}>+ Novo</button>
+        )}
       </div>
 
       {/* Filtros */}
@@ -694,6 +700,8 @@ export default function ProfessoresPage() {
       {isLoading ? <p style={{ color: '#555' }}>Carregando...</p> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
           {professores.filter(prof => {
+            // Sem permissão pra ver todos: só enxerga o próprio card (não vê salário/dados de colegas)
+            if (!podeVerTodosSalarios && prof.id !== perfil?.professor_id) return false
             if (filtroAtivo === 'ativos' && prof.ativo === false) return false
             if (filtroAtivo === 'inativos' && prof.ativo !== false) return false
             if (filtroFuncao !== 'todos' && prof.funcao !== filtroFuncao) return false

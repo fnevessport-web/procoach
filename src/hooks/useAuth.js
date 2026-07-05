@@ -54,15 +54,18 @@ export function useAuth() {
       if (data) {
         setPerfil(data)
       } else {
+        // Sem perfil ainda cadastrado: entra com o papel mais restrito por padrão —
+        // quem gerencia o sistema promove pra role correto depois
         const { data: newPerfil } = await supabase
           .from('perfis_usuario')
-          .insert({ user_id: userId, role: 'admin', nome: 'Admin' })
+          .insert({ user_id: userId, role: 'auxiliar', nome: 'Novo usuário' })
           .select()
           .single()
         setPerfil(newPerfil)
       }
     } catch {
-      setPerfil({ role: 'admin' })
+      // Falha ao buscar perfil: nunca presumir acesso total — cai fechado
+      setPerfil({ role: 'auxiliar' })
     } finally {
       setLoading(false)
     }

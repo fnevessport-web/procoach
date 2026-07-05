@@ -93,7 +93,7 @@ function isAulaFutura(dataAula, horarioInicio) {
   return agora < inicioAula
 }
 
-export function AulasCoordenador({ onCelulaVazia }) {
+export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
   const { modalidadeSelecionada, setOrigemAulas } = useAppStore()
   const qc = useQueryClient()
   const location = useLocation()
@@ -579,7 +579,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
         </div>
 
         {/* Ação em massa */}
-        {totalAulas > 0 && !isFuturo && (
+        {!somenteLeitura && totalAulas > 0 && !isFuturo && (
           <button
             onClick={() => setModalMassa('menu')}
             title="Ação em massa"
@@ -930,7 +930,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
               </div>
             )}
 
-            {isAvulsa && (
+            {isAvulsa && !somenteLeitura && (
               <div style={{ marginBottom: '12px' }}>
                 {estaEditando ? (
                   <div style={{
@@ -1001,7 +1001,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
               </div>
             )}
 
-            {!isAvulsa && !aulaFutura && (
+            {!isAvulsa && !aulaFutura && !somenteLeitura && (
               <div style={{ marginBottom: '12px' }}>
                 <button onClick={() => setEditandoNotas(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: notasAula ? '1px solid rgba(255,255,255,0.15)' : '1px solid #2a2a2a', background: 'none', color: notasAula ? '#aaa' : '#555', fontSize: '12px', cursor: 'pointer' }}>
                   <FileText size={12} /> {notasAula ? 'Ver nota' : 'Observação'}
@@ -1050,7 +1050,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
               </div>
             )}
 
-            {!aulaFutura && (
+            {!aulaFutura && !somenteLeitura && (
               <div style={{ marginBottom: '14px' }}>
                 <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status da Aula</div>
                 <div style={{ display: 'flex', gap: '6px' }}>
@@ -1100,24 +1100,26 @@ export function AulasCoordenador({ onCelulaVazia }) {
                           <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(59,130,246,0.15)', color: COR_REPOSICAO, fontWeight: '600' }}>reposição</span>
                         )}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <button onClick={() => toggleAlertaNivel(aluno.aluno_id, aluno)} title="Alerta de nível" style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: temAlerta ? 'rgba(252,200,37,0.15)' : '#1a1a1a', color: temAlerta ? '#fcc825' : '#555' }}>
-                          <AlertTriangle size={12} />
-                        </button>
-                        <select value={aluno.tipo_participacao} onChange={e => updatePresenca(aula.id, aluno.aluno_id, 'tipo_participacao', e.target.value)}
-                          style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', color: isReposicao ? COR_REPOSICAO : '#888', cursor: 'pointer', outline: 'none' }}>
-                          {TIPO_PARTICIPACAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                        </select>
-                        <button onClick={() => {
-                          setPresencasLocal(prev => {
-                            const novo = { ...prev[aula.id] }
-                            delete novo[aluno.aluno_id]
-                            return { ...prev, [aula.id]: novo }
-                          })
-                        }} title="Remover da lista" style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(239,68,68,0.08)', color: '#EF4444' }}>
-                          <X size={11} />
-                        </button>
-                      </div>
+                      {!somenteLeitura && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button onClick={() => toggleAlertaNivel(aluno.aluno_id, aluno)} title="Alerta de nível" style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: temAlerta ? 'rgba(252,200,37,0.15)' : '#1a1a1a', color: temAlerta ? '#fcc825' : '#555' }}>
+                            <AlertTriangle size={12} />
+                          </button>
+                          <select value={aluno.tipo_participacao} onChange={e => updatePresenca(aula.id, aluno.aluno_id, 'tipo_participacao', e.target.value)}
+                            style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', color: isReposicao ? COR_REPOSICAO : '#888', cursor: 'pointer', outline: 'none' }}>
+                            {TIPO_PARTICIPACAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                          </select>
+                          <button onClick={() => {
+                            setPresencasLocal(prev => {
+                              const novo = { ...prev[aula.id] }
+                              delete novo[aluno.aluno_id]
+                              return { ...prev, [aula.id]: novo }
+                            })
+                          }} title="Remover da lista" style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(239,68,68,0.08)', color: '#EF4444' }}>
+                            <X size={11} />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {alertaAberto && (
@@ -1151,7 +1153,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
                       </div>
                     )}
 
-                    {!aulaFutura && (
+                    {!aulaFutura && !somenteLeitura && (
                       <div style={{ display: 'flex', gap: '6px' }}>
                         {STATUS_PRESENCA.map(sp => (
                           <button key={sp.value} onClick={() => updatePresenca(aula.id, aluno.aluno_id, 'status_presenca', sp.value)} style={{
@@ -1169,7 +1171,7 @@ export function AulasCoordenador({ onCelulaVazia }) {
               })}
             </div>
 
-            {adicionandoAluno === aula.id ? (
+            {!somenteLeitura && (adicionandoAluno === aula.id ? (
               <div style={{ marginTop: '10px' }}>
                 <div style={{ position: 'relative', marginBottom: '8px' }}>
                   <input placeholder="Buscar aluno cadastrado..." value={buscaAdicionando}
@@ -1258,9 +1260,9 @@ export function AulasCoordenador({ onCelulaVazia }) {
               }}>
                 <UserPlus size={13} /> Adicionar aluno
               </button>
-            )}
+            ))}
 
-            {!aulaFutura && (
+            {!aulaFutura && !somenteLeitura && (
               <button onClick={() => handleSalvarPresencas(aula.id)} disabled={salvarPresencas.isPending} style={{
                 marginTop: '12px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
                 background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',

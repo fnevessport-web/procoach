@@ -1,24 +1,31 @@
-import { Home, CalendarDays, Users, DollarSign, BarChart3 } from 'lucide-react'
+import { Home, CalendarDays, Users, DollarSign, BarChart3, MessageCircle } from 'lucide-react'
+import { resolverRole, permissoesDoRole } from '../hooks/usePermissions'
 
-export const navItemsAdmin = [
-  { path: '/', icon: Home, label: 'Início' },
-  { path: '/aulas', icon: CalendarDays, label: 'Aulas' },
-  { path: '/cadastros', icon: Users, label: 'Cadastros' },
-  { path: '/financeiro', icon: DollarSign, label: 'Financeiro' },
-  { path: '/kpis', icon: BarChart3, label: 'KPIs' },
-]
+// Itens de navegação derivados das flags de usePermissions — uma fonte só de verdade
+// pra quem vê o quê (BottomNav mobile e Sidebar desktop consomem isso igual).
+export function getNavItems(roleBruto) {
+  const role = resolverRole(roleBruto)
+  const permissoes = permissoesDoRole(roleBruto)
 
-export const navItemsCoordenador = [
-  { path: '/', icon: Home, label: 'Início' },
-  { path: '/aulas', icon: CalendarDays, label: 'Aulas' },
-  { path: '/kpis', icon: BarChart3, label: 'KPIs' },
-]
+  if (role === 'auxiliar') {
+    return [
+      { path: '/aulas', icon: CalendarDays, label: 'Grade' },
+    ]
+  }
 
-export const navItemsProfessor = [
-  { path: '/', icon: Home, label: 'Início' },
-  { path: '/aulas', icon: CalendarDays, label: 'Minhas Aulas' },
-]
+  if (role === 'professor') {
+    return [
+      { path: '/aulas', icon: CalendarDays, label: 'Início' },
+      { path: '/mensagens', icon: MessageCircle, label: 'Mensagens' },
+    ]
+  }
 
-export function getNavItems(role) {
-  return role === 'admin' ? navItemsAdmin : role === 'coordenador' ? navItemsCoordenador : navItemsProfessor
+  const items = [
+    { path: '/', icon: Home, label: 'Início' },
+    { path: '/aulas', icon: CalendarDays, label: 'Aulas' },
+  ]
+  if (permissoes.podeAcessarCadastros) items.push({ path: '/cadastros', icon: Users, label: 'Cadastros' })
+  if (permissoes.podeAcessarFinanceiro) items.push({ path: '/financeiro', icon: DollarSign, label: 'Financeiro' })
+  if (permissoes.podeAcessarKPIs) items.push({ path: '/kpis', icon: BarChart3, label: 'KPIs' })
+  return items
 }
