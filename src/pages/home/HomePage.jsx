@@ -54,7 +54,7 @@ function CardDelta({ label, valor, delta }) {
 
 export function HomePage() {
   const navigate = useNavigate()
-  const { perfil, modalidadeSelecionada, setModalidadeSelecionada } = useAppStore()
+  const { perfil, modalidadeSelecionada } = useAppStore()
   const { data: modalidades, isLoading: loadingModalidades } = useModalidades()
   const { aoVivoAgora, hojeAcumulado, professoresAgora, alertasSemProfessor, isLoading } = useHomeDashboard()
   const role = perfil?.role || 'professor'
@@ -77,7 +77,6 @@ export function HomePage() {
   }
 
   function selectModalidade(mod) {
-    setModalidadeSelecionada(mod)
     navigate(`/modalidade/${encodeURIComponent(mod.nome)}`)
   }
 

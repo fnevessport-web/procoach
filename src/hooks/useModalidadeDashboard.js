@@ -1,17 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { format, startOfMonth, subMonths, differenceInCalendarDays } from 'date-fns'
-import { MODALIDADE_EMPRESA } from '../constants/modalidades'
+import { format, startOfMonth, endOfMonth, subMonths, getDaysInMonth, differenceInCalendarDays } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import {
+  MODALIDADE_EMPRESA, getModalidadeDaAula,
+  horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula, diaSemanaDaData,
+} from '../constants/modalidades'
 
 const CAPACIDADE_TURMA = 4
 const DIAS_SEMANA_HEATMAP = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado']
 const HORAS_HEATMAP = Array.from({ length: 16 }, (_, i) => 6 + i) // 06h..21h
-
-function horarioParaMinutos(hhmm) {
-  if (!hhmm) return null
-  const [h, m] = hhmm.slice(0, 5).split(':').map(Number)
-  return h * 60 + m
-}
 
 function ehPresente(p) {
   return p.status_presenca === 'presente' || p.presente
@@ -21,16 +19,62 @@ function ehFalta(p) {
   return p.status_presenca === 'falta' || p.status_presenca === 'falta_justificada'
 }
 
-export function useModalidadeDashboard(nomeModalidade) {
+function fmt(d) {
+  return format(d, 'yyyy-MM-dd')
+}
+
+// Últimos `qtd` meses (o atual incluso), mais recente primeiro — pros seletores de mês da página
+export function getOpcoesMeses(qtd = 13) {
   const hoje = new Date()
-  const hojeStr = format(hoje, 'yyyy-MM-dd')
-  const inicioMesAtual = startOfMonth(hoje)
-  const inicioMesAtualStr = format(inicioMesAtual, 'yyyy-MM-dd')
-  const inicioMesAnterior = startOfMonth(subMonths(hoje, 1))
-  const diaAtual = hoje.getDate()
-  const fimJanelaAnterior = new Date(inicioMesAnterior)
-  fimJanelaAnterior.setDate(diaAtual)
-  const janelaHistorico = format(inicioMesAnterior, 'yyyy-MM-dd')
+  return Array.from({ length: qtd }, (_, i) => {
+    const d = subMonths(startOfMonth(hoje), i)
+    return { valor: format(d, 'yyyy-MM'), label: format(d, 'MMMM/yyyy', { locale: ptBR }) }
+  })
+}
+
+export function useModalidadeDashboard(nomeModalidade, { mesAtual, mesComparacao } = {}) {
+  const hoje = new Date()
+  const hojeStr = fmt(hoje)
+  const mesAtualStr = mesAtual || format(hoje, 'yyyy-MM')
+  const mesComparacaoStr = mesComparacao || format(subMonths(hoje, 1), 'yyyy-MM')
+
+  const inicioMesAtual = startOfMonth(new Date(mesAtualStr + '-01T12:00:00'))
+  const inicioMesComparacao = startOfMonth(new Date(mesComparacaoStr + '-01T12:00:00'))
+  const ehMesAtualRealCorrente = mesAtualStr === format(hoje, 'yyyy-MM')
+
+  // "Dias no período": mês corrente conta só até hoje; mês fechado conta o mês inteiro
+  const diasNoPeriodo = ehMesAtualRealCorrente ? hoje.getDate() : getDaysInMonth(inicioMesAtual)
+  const fimMesAtual = ehMesAtualRealCorrente ? hoje : endOfMonth(inicioMesAtual)
+  const fimMesComparacao = new Date(inicioMesComparacao)
+  fimMesComparacao.setDate(Math.min(diasNoPeriodo, getDaysInMonth(inicioMesComparacao)))
+
+  // Janela de busca cobre os dois meses selecionados + hoje (pro "ao vivo" e "dias desde a última aula")
+  const janelaInicio = fmt(new Date(Math.min(inicioMesAtual, inicioMesComparacao)))
+  const janelaFim = fmt(new Date(Math.max(fimMesAtual, fimMesComparacao, hoje)))
+
+  const { data: aulasBrutas = [], isLoading: loadingAulas } = useQuery({
+    queryKey: ['modalidade_dashboard_aulas', janelaInicio, janelaFim],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('aulas')
+        .select(`
+          id, data_aula, status_aula, turma_id, observacoes,
+          turmas(nome, horario_inicio, horario_fim, quadras(nome), modalidades(nome)),
+          professores!professor_executou_id(id, nome),
+          presencas(id, presente, status_presenca, aluno_id, alunos(id, nome))
+        `)
+        .gte('data_aula', janelaInicio)
+        .lte('data_aula', janelaFim)
+        .neq('status_aula', 'cancelada')
+        .limit(5000)
+      if (error) throw error
+      return data || []
+    },
+    enabled: !!nomeModalidade,
+  })
+
+  // Turma-linked usa a modalidade da turma; avulsa infere pela quadra (parseada da observação)
+  const aulasModalidade = aulasBrutas.filter(a => getModalidadeDaAula(a) === nomeModalidade)
 
   const { data: modalidade, isLoading: loadingModalidade } = useQuery({
     queryKey: ['modalidade_por_nome', nomeModalidade],
@@ -76,36 +120,15 @@ export function useModalidadeDashboard(nomeModalidade) {
     enabled: !!modalidadeId,
   })
 
-  const { data: aulasModalidade = [], isLoading: loadingAulas } = useQuery({
-    queryKey: ['modalidade_dashboard_aulas', nomeModalidade, janelaHistorico],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('aulas')
-        .select(`
-          id, data_aula, status_aula,
-          turmas!inner(nome, horario_inicio, horario_fim, horario_dia_semana, modalidades!inner(nome)),
-          professores!professor_executou_id(id, nome),
-          presencas(id, presente, status_presenca, aluno_id, alunos(id, nome))
-        `)
-        .eq('turmas.modalidades.nome', nomeModalidade)
-        .gte('data_aula', janelaHistorico)
-        .lte('data_aula', hojeStr)
-        .neq('status_aula', 'cancelada')
-      if (error) throw error
-      return data || []
-    },
-    enabled: !!nomeModalidade,
-  })
-
   const temDados = alunosModalidade.length > 0
   const empresa = MODALIDADE_EMPRESA[nomeModalidade] || null
 
-  // ── Acontecendo agora ──────────────────────────────────────────
+  // ── Acontecendo agora (sempre "agora" de verdade, independente do mês selecionado) ──
   const agoraMin = hoje.getHours() * 60 + hoje.getMinutes()
   const aulasAgora = aulasModalidade.filter(a => {
     if (a.data_aula !== hojeStr) return false
-    const inicio = horarioParaMinutos(a.turmas?.horario_inicio)
-    const fim = horarioParaMinutos(a.turmas?.horario_fim)
+    const inicio = horarioParaMinutos(horarioInicioDaAula(a))
+    const fim = horarioParaMinutos(horarioFimDaAula(a))
     if (inicio == null || fim == null) return false
     return agoraMin >= inicio && agoraMin < fim
   })
@@ -118,7 +141,7 @@ export function useModalidadeDashboard(nomeModalidade) {
     faltas: aulasAgora.reduce((s, a) => s + (a.presencas?.filter(ehFalta).length || 0), 0),
   }
 
-  // ── Visão geral do mês ─────────────────────────────────────────
+  // ── Visão geral do mês / comparação ─────────────────────────────
   function statsPeriodo(inicioStr, fimStr) {
     const emJanela = aulasModalidade.filter(a =>
       a.data_aula >= inicioStr && a.data_aula <= fimStr && a.status_aula === 'dada'
@@ -132,26 +155,29 @@ export function useModalidadeDashboard(nomeModalidade) {
     return { aulas: emJanela.length, presentes, faltas, pct: total > 0 ? Math.round((presentes / total) * 100) : 0 }
   }
 
-  const statsMesAtual = statsPeriodo(inicioMesAtualStr, hojeStr)
-  const statsMesAnterior = statsPeriodo(format(inicioMesAnterior, 'yyyy-MM-dd'), format(fimJanelaAnterior, 'yyyy-MM-dd'))
+  const statsMesAtual = statsPeriodo(fmt(inicioMesAtual), fmt(fimMesAtual))
+  const statsMesComparacao = statsPeriodo(fmt(inicioMesComparacao), fmt(fimMesComparacao))
 
   const mes = {
     alunosAtivos: alunosModalidade.length,
     aulasRealizadas: statsMesAtual.aulas,
     pctAtual: statsMesAtual.pct,
-    pctAnterior: statsMesAnterior.pct,
-    diasComparados: diaAtual,
-    labelMesAtual: format(hoje, 'MMMM'),
-    labelMesAnterior: format(inicioMesAnterior, 'MMMM'),
+    pctComparacao: statsMesComparacao.pct,
+    diasComparados: diasNoPeriodo,
+    labelMesAtual: format(inicioMesAtual, 'MMMM', { locale: ptBR }),
+    labelMesComparacao: format(inicioMesComparacao, 'MMMM', { locale: ptBR }),
+    mesAtualStr,
+    mesComparacaoStr,
   }
 
-  // ── Mapa de calor (dia da semana x horário) ─────────────────────
+  // ── Mapa de calor (dia da semana x horário) — histórico da janela buscada ──
   const bucketCalor = {}
   aulasModalidade.forEach(a => {
-    if (a.status_aula !== 'dada') return
-    const dia = a.turmas?.horario_dia_semana
-    const hora = a.turmas?.horario_inicio ? parseInt(a.turmas.horario_inicio.slice(0, 2), 10) : null
-    if (!dia || hora == null) return
+    if (a.status_aula !== 'dada' || a.data_aula > hojeStr) return
+    const dia = diaSemanaDaData(a.data_aula)
+    const horaStr = horarioInicioDaAula(a)
+    const hora = horaStr ? parseInt(horaStr.slice(0, 2), 10) : null
+    if (!DIAS_SEMANA_HEATMAP.includes(dia) || hora == null) return
     const key = `${dia}-${hora}`
     if (!bucketCalor[key]) bucketCalor[key] = { presentes: 0, faltas: 0 }
     a.presencas?.forEach(p => {
@@ -186,10 +212,10 @@ export function useModalidadeDashboard(nomeModalidade) {
     })
     .sort((a, b) => (a.diaSemana || '').localeCompare(b.diaSemana || '') || a.horario.localeCompare(b.horario))
 
-  // ── Top alunos — frequência (mês atual) ─────────────────────────
+  // ── Top alunos — frequência (mês selecionado) ───────────────────
   const alunoStats = {}
   aulasModalidade.forEach(a => {
-    if (a.status_aula !== 'dada' || a.data_aula < inicioMesAtualStr || a.data_aula > hojeStr) return
+    if (a.status_aula !== 'dada' || a.data_aula < fmt(inicioMesAtual) || a.data_aula > fmt(fimMesAtual)) return
     a.presencas?.forEach(p => {
       if (!p.aluno_id) return
       if (!alunoStats[p.aluno_id]) alunoStats[p.aluno_id] = { nome: p.alunos?.nome || '—', presentes: 0, faltas: 0 }
@@ -204,10 +230,10 @@ export function useModalidadeDashboard(nomeModalidade) {
     })
     .sort((a, b) => b.pct - a.pct || b.aulas - a.aulas)
 
-  // ── Risco de evasão (3+ faltas consecutivas) ────────────────────
+  // ── Risco de evasão (3+ faltas consecutivas, sempre olhando pra hoje) ──
   const registrosPorAluno = {}
   aulasModalidade.forEach(a => {
-    if (a.status_aula !== 'dada') return
+    if (a.status_aula !== 'dada' || a.data_aula > hojeStr) return
     a.presencas?.forEach(p => {
       if (!p.aluno_id) return
       if (!registrosPorAluno[p.aluno_id]) registrosPorAluno[p.aluno_id] = { nome: p.alunos?.nome || '—', registros: [] }
@@ -231,10 +257,10 @@ export function useModalidadeDashboard(nomeModalidade) {
     .filter(Boolean)
     .sort((a, b) => b.faltasConsecutivas - a.faltasConsecutivas)
 
-  // ── Ranking de professores (mês atual) ──────────────────────────
+  // ── Ranking de professores (mês selecionado) ────────────────────
   const profStats = {}
   aulasModalidade.forEach(a => {
-    if (a.data_aula < inicioMesAtualStr || a.data_aula > hojeStr || !a.professores) return
+    if (a.data_aula < fmt(inicioMesAtual) || a.data_aula > fmt(fimMesAtual) || !a.professores) return
     if (!profStats[a.professores.id]) profStats[a.professores.id] = { nome: a.professores.nome, aulas: 0 }
     profStats[a.professores.id].aulas++
   })

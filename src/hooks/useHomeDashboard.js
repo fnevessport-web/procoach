@@ -3,36 +3,12 @@ import { supabase } from '../lib/supabase'
 import { format, subDays, addDays } from 'date-fns'
 import { useProfessores } from './useProfessores'
 import { QUADRAS_EMPRESA } from './useFinanceiro'
+import { parseObservacoes, getQuadraNome, getModalidadeDaAula, horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula } from '../constants/modalidades'
 
 function getEmpresaPorQuadra(quadraNome) {
   if (QUADRAS_EMPRESA.procopio.includes(quadraNome)) return 'procopio'
   if (QUADRAS_EMPRESA.beach_arena.includes(quadraNome)) return 'beach_arena'
   return null
-}
-
-// Aulas avulsas guardam quadra/horario/nivel na string "⚡ Avulsa · quadra · HH:MM · nivel"
-function parseObservacoes(obs) {
-  if (!obs) return { quadra: '', horario: '', nivel: '' }
-  const partes = obs.split('·').map(s => s.trim())
-  return { quadra: partes[1] || '', horario: partes[2] || '', nivel: partes[3] || '' }
-}
-
-function getQuadraNome(aula) {
-  if (aula.turma_id) return aula.turmas?.quadras?.nome || ''
-  return parseObservacoes(aula.observacoes).quadra
-}
-
-const QUADRA_MODALIDADE = {
-  'Quadra 1': 'Tênis', 'Quadra 2': 'Tênis', 'Quadra 3': 'Tênis', 'Quadra 4': 'Tênis',
-  'Quadra de Padel': 'Padel',
-  'Quadra 1 Areia': 'Beach Tennis',
-  'Quadra 3 Areia': 'Futevôlei',
-  'Quadra 5 Areia': 'Vôlei de Praia',
-}
-
-function getModalidadeNome(aula, quadraNome) {
-  if (aula.turma_id) return aula.turmas?.modalidades?.nome || ''
-  return QUADRA_MODALIDADE[quadraNome] || ''
 }
 
 function getTurmaNome(aula) {
@@ -46,30 +22,9 @@ function turmaAtiva(aula) {
   return !!aula.turmas?.turmas_alunos?.some(ta => ta.ativo)
 }
 
-function horarioParaMinutos(hhmm) {
-  if (!hhmm) return null
-  const [h, m] = hhmm.slice(0, 5).split(':').map(Number)
-  return h * 60 + m
-}
-
 function minutosAgora() {
   const agora = new Date()
   return agora.getHours() * 60 + agora.getMinutes()
-}
-
-// Avulsas não têm turma vinculada — horário vem da observação "⚡ Avulsa · quadra · HH:MM · nivel"
-function horarioInicioDaAula(aula) {
-  if (aula.turma_id) return aula.turmas?.horario_inicio || null
-  return parseObservacoes(aula.observacoes).horario || null
-}
-
-// Avulsas ocupam 1 slot de 1h na grade, então assumimos 60min de duração
-function horarioFimDaAula(aula) {
-  if (aula.turma_id) return aula.turmas?.horario_fim || null
-  const inicio = horarioParaMinutos(horarioInicioDaAula(aula))
-  if (inicio == null) return null
-  const fim = inicio + 60
-  return `${String(Math.floor(fim / 60)).padStart(2, '0')}:${String(fim % 60).padStart(2, '0')}`
 }
 
 function aulaEmAndamento(aula) {
@@ -156,7 +111,7 @@ export function useHomeDashboard() {
     .map(a => {
       const quadraNome = getQuadraNome(a)
       const turmaNome = getTurmaNome(a)
-      const modalidadeNome = getModalidadeNome(a, quadraNome)
+      const modalidadeNome = getModalidadeDaAula(a)
       const horarioInicio = horarioInicioDaAula(a)
       const presentes = a.presencas?.filter(p => p.status_presenca === 'presente' || p.presente).length || 0
       const faltas = a.presencas?.filter(p => p.status_presenca === 'falta' || p.status_presenca === 'falta_justificada').length || 0

@@ -1,9 +1,15 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
-import { useModalidadeDashboard } from '../../hooks/useModalidadeDashboard'
+import { useModalidadeDashboard, getOpcoesMeses } from '../../hooks/useModalidadeDashboard'
 import { ICONES_MODALIDADES, EMPRESAS } from '../../constants/modalidades'
 import { Loading } from '../../components/ui/Loading'
+
+const selectStyle = {
+  fontSize: '11px', color: '#F0F2F5', backgroundColor: '#111',
+  border: '1px solid #2a2a2a', borderRadius: '6px', padding: '4px 6px',
+  outline: 'none', textTransform: 'capitalize', cursor: 'pointer',
+}
 
 const DIA_LABEL = { segunda: 'SEG', terca: 'TER', quarta: 'QUA', quinta: 'QUI', sexta: 'SEX', sabado: 'SAB' }
 
@@ -54,11 +60,15 @@ const NIVEL_CALOR = {
 export function ModalidadePage() {
   const { nomeModalidade } = useParams()
   const navigate = useNavigate()
+  const opcoesMeses = getOpcoesMeses()
+  const [mesAtual, setMesAtual] = useState(opcoesMeses[0].valor)
+  const [mesComparacao, setMesComparacao] = useState(opcoesMeses[1].valor)
+
   const {
     modalidade, empresa, temDados, acontecendoAgora, mes,
     mapaCalor, ocupacaoTurmas, topAlunos, riscoEvasao, rankingProfessores,
     isLoading,
-  } = useModalidadeDashboard(nomeModalidade)
+  } = useModalidadeDashboard(nomeModalidade, { mesAtual, mesComparacao })
 
   const icone = ICONES_MODALIDADES[nomeModalidade]
   const empresaLabel = EMPRESAS.find(e => e.valor === empresa)?.label || ''
@@ -68,7 +78,7 @@ export function ModalidadePage() {
 
       {/* Cabeçalho */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0 22px' }}>
-        <button onClick={() => navigate(-1)} style={{
+        <button onClick={() => navigate('/')} style={{
           background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
           color: '#fcc825', display: 'flex', alignItems: 'center', flexShrink: 0,
         }}>
@@ -138,6 +148,14 @@ export function ModalidadePage() {
 
           {/* Visão geral do mês */}
           <Section label="Visão geral do mês">
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              <select value={mesAtual} onChange={e => setMesAtual(e.target.value)} style={{ ...selectStyle, flex: 1 }}>
+                {opcoesMeses.map(o => <option key={o.valor} value={o.valor}>{o.label}</option>)}
+              </select>
+              <select value={mesComparacao} onChange={e => setMesComparacao(e.target.value)} style={{ ...selectStyle, flex: 1 }}>
+                {opcoesMeses.map(o => <option key={o.valor} value={o.valor}>vs. {o.label}</option>)}
+              </select>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
               <div style={cardStyle}>
                 <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Alunos ativos</div>
@@ -153,10 +171,10 @@ export function ModalidadePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '4px' }}>
-                    <span style={{ textTransform: 'capitalize' }}>{mes.labelMesAnterior}</span>
-                    <span style={{ fontWeight: '700', color: '#F0F2F5' }}>{mes.pctAnterior}%</span>
+                    <span style={{ textTransform: 'capitalize' }}>{mes.labelMesComparacao}</span>
+                    <span style={{ fontWeight: '700', color: '#F0F2F5' }}>{mes.pctComparacao}%</span>
                   </div>
-                  <ProgressBar pct={mes.pctAnterior} color="#555" />
+                  <ProgressBar pct={mes.pctComparacao} color="#555" />
                 </div>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '4px' }}>
@@ -167,7 +185,7 @@ export function ModalidadePage() {
                 </div>
               </div>
               <p style={{ fontSize: '10px', color: '#555', margin: '10px 0 0', lineHeight: '1.4' }}>
-                Comparativo proporcional — primeiros {mes.diasComparados} dias de <span style={{ textTransform: 'capitalize' }}>{mes.labelMesAnterior}</span> vs <span style={{ textTransform: 'capitalize' }}>{mes.labelMesAtual}</span>.
+                Comparativo proporcional — primeiros {mes.diasComparados} dias de <span style={{ textTransform: 'capitalize' }}>{mes.labelMesComparacao}</span> vs <span style={{ textTransform: 'capitalize' }}>{mes.labelMesAtual}</span>.
               </p>
             </div>
           </Section>
