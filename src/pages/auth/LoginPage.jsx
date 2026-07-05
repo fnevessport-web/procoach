@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { Input } from '../../components/ui/Input'
 
@@ -8,6 +9,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
+  const [mostrarSenha, setMostrarSenha] = useState(false)
   const [form, setForm] = useState({ email: '', senha: '' })
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -27,13 +29,13 @@ export function LoginPage() {
 
   return (
     <div style={{
-      minHeight: '100vh', width: '100%',
+      height: '100vh', width: '100%',
       backgroundColor: '#110f0f',
       display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: '0 16px',
+      alignItems: 'center', padding: '24px 16px', boxSizing: 'border-box',
+      overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
     }}>
-      <div style={{ width: '100%', maxWidth: '400px' }}>
+      <div style={{ width: '100%', maxWidth: '400px', margin: 'auto 0' }}>
 
         <div style={{ textAlign: 'center', marginBottom: '48px' }}>
           <img src="/images/logoprocoach.png" alt="ProCoach" style={{ height: '60px', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
@@ -44,8 +46,16 @@ export function LoginPage() {
 
         <div style={{ backgroundColor: '#1a1a1a', borderRadius: '20px', border: '1px solid #222', padding: '24px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Input label="E-mail ou CPF" type="text" placeholder="seu@email.com ou seu CPF" value={form.email} onChange={e => update('email', e.target.value)} required />
-            <Input label="Senha" type="password" placeholder="••••••••" value={form.senha} onChange={e => update('senha', e.target.value)} required />
+            <Input label="CPF" type="text" placeholder="Seu CPF" value={form.email} onChange={e => update('email', e.target.value)} required />
+            <div style={{ position: 'relative' }}>
+              <Input label="Senha" type={mostrarSenha ? 'text' : 'password'} placeholder="••••••••" value={form.senha} onChange={e => update('senha', e.target.value)} required />
+              <button type="button" onClick={() => setMostrarSenha(v => !v)} style={{
+                position: 'absolute', right: '10px', bottom: '10px', background: 'none', border: 'none',
+                color: '#555', cursor: 'pointer', padding: '4px', display: 'flex',
+              }}>
+                {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
 
             {erro && (
               <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', fontSize: '13px', color: '#EF4444' }}>

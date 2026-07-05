@@ -150,11 +150,12 @@ export function TrocarSenha() {
 
   return (
     <div style={{
-      minHeight: '100vh', width: '100%', backgroundColor: '#110f0f',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      padding: '24px 16px',
+      height: '100vh', width: '100%', backgroundColor: '#110f0f',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '24px 16px', boxSizing: 'border-box',
+      overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
     }}>
-      <div style={{ width: '100%', maxWidth: precisaOnboarding ? '480px' : '400px' }}>
+      <div style={{ width: '100%', maxWidth: precisaOnboarding ? '480px' : '400px', margin: 'auto 0' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <img src="/images/logoprocoach.png" alt="ProCoach" style={{ height: '52px', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
           <p style={{ color: '#F0F2F5', fontSize: '15px', fontWeight: '600', margin: '0 0 4px' }}>Primeiro acesso</p>
@@ -187,9 +188,12 @@ export function TrocarSenha() {
                   <div><div style={labelStyle}>E-mail</div>
                     <input type="email" style={inputStyle} placeholder="seu@email.com" value={form.email} onChange={e => set('email', e.target.value)} />
                   </div>
-                  <div><div style={labelStyle}>Telefone</div>
-                    <input style={inputStyle} inputMode="numeric" placeholder="+55 (11) 99999-9999"
-                      value={mascararTelefoneBR(form.telefone)} onChange={e => set('telefone', apenasDigitosTelefone(e.target.value))} />
+                  <div><div style={labelStyle}>Telefone (WhatsApp)</div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <span style={{ ...inputStyle, width: 'auto', flexShrink: 0, color: '#888', textAlign: 'center' }}>+55</span>
+                      <input style={{ ...inputStyle, flex: 1 }} inputMode="numeric" placeholder="(11) 99999-9999"
+                        value={mascararTelefoneBR(form.telefone)} onChange={e => set('telefone', apenasDigitosTelefone(e.target.value))} />
+                    </div>
                   </div>
                   <div><div style={labelStyle}>Data de nascimento</div>
                     <input type="date" style={inputStyle} value={form.nascimento} onChange={e => set('nascimento', e.target.value)} />

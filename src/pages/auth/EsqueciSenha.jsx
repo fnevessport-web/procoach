@@ -30,11 +30,12 @@ export function EsqueciSenha() {
 
   return (
     <div style={{
-      minHeight: '100vh', width: '100%', backgroundColor: '#110f0f',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      padding: '0 16px',
+      height: '100vh', width: '100%', backgroundColor: '#110f0f',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '24px 16px', boxSizing: 'border-box',
+      overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
     }}>
-      <div style={{ width: '100%', maxWidth: '400px' }}>
+      <div style={{ width: '100%', maxWidth: '400px', margin: 'auto 0' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <img src="/images/logoprocoach.png" alt="ProCoach" style={{ height: '52px', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
         </div>
