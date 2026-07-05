@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import useAppStore from '../store/useAppStore'
@@ -16,6 +16,10 @@ export async function criarAlerta({ usuarioId, tipo, referenciaId, mensagem, pri
 export function useAlertas() {
   const { user } = useAppStore()
   const qc = useQueryClient()
+  // useAlertas() é usado em mais de um componente ao mesmo tempo (sino + modal de turma
+  // ativada) — cada instância precisa do seu próprio canal, senão a segunda tentativa de
+  // dar .subscribe() num canal com o mesmo nome derruba o app inteiro (sem error boundary).
+  const idInstancia = useRef(Math.random().toString(36).slice(2)).current
 
   const query = useQuery({
     queryKey: ['alertas', user?.id],
@@ -36,13 +40,13 @@ export function useAlertas() {
   useEffect(() => {
     if (!user?.id) return
     const canal = supabase
-      .channel(`alertas_${user.id}`)
+      .channel(`alertas_${user.id}_${idInstancia}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alertas', filter: `usuario_id=eq.${user.id}` }, () => {
         qc.invalidateQueries({ queryKey: ['alertas', user.id] })
       })
       .subscribe()
     return () => { supabase.removeChannel(canal) }
-  }, [user?.id, qc])
+  }, [user?.id, qc, idInstancia])
 
   return query
 }

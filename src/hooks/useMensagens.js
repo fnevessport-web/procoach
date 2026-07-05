@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import useAppStore from '../store/useAppStore'
@@ -28,6 +28,9 @@ export function useConversas() {
   const { user } = useAppStore()
   const { podeVerInboxGeral } = usePermissions()
   const qc = useQueryClient()
+  // nome de canal unico por instancia — evita colisao de subscribe() se o hook
+  // for usado em mais de um lugar montado ao mesmo tempo
+  const idInstancia = useRef(Math.random().toString(36).slice(2)).current
 
   const query = useQuery({
     queryKey: ['conversas', user?.id, podeVerInboxGeral],
@@ -70,13 +73,13 @@ export function useConversas() {
 
   useEffect(() => {
     const canal = supabase
-      .channel('conversas_lista')
+      .channel(`conversas_lista_${idInstancia}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensagens' }, () => {
         qc.invalidateQueries({ queryKey: ['conversas'] })
       })
       .subscribe()
     return () => { supabase.removeChannel(canal) }
-  }, [qc])
+  }, [qc, idInstancia])
 
   return query
 }
@@ -84,6 +87,7 @@ export function useConversas() {
 // Mensagens de uma conversa, com tempo real
 export function useMensagensDaConversa(conversaId) {
   const qc = useQueryClient()
+  const idInstancia = useRef(Math.random().toString(36).slice(2)).current
 
   const query = useQuery({
     queryKey: ['mensagens', conversaId],
@@ -102,13 +106,13 @@ export function useMensagensDaConversa(conversaId) {
   useEffect(() => {
     if (!conversaId) return
     const canal = supabase
-      .channel(`mensagens_${conversaId}`)
+      .channel(`mensagens_${conversaId}_${idInstancia}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensagens', filter: `conversa_id=eq.${conversaId}` }, () => {
         qc.invalidateQueries({ queryKey: ['mensagens', conversaId] })
       })
       .subscribe()
     return () => { supabase.removeChannel(canal) }
-  }, [conversaId, qc])
+  }, [conversaId, qc, idInstancia])
 
   return query
 }
