@@ -18,6 +18,7 @@ import { CadastrosPage } from './pages/cadastros/CadastrosPage'
 import { FinanceiroPage } from './pages/financeiro/FinanceiroPage'
 import { KPIsPage } from './pages/kpis/KPIsPage'
 import { MensagensPage } from './pages/mensagens/MensagensPage'
+import { ModalTurmaAtivada } from './components/ModalTurmaAtivada'
 import { InstallBanner } from './components/ui/InstallBanner'
 import { DisponibilidadePage } from './pages/disponibilidade/DisponibilidadePage'
 
@@ -68,6 +69,7 @@ function AppRouter() {
 
   return (
     <AppLayout>
+      <ModalTurmaAtivada />
       <InstallBanner />
       <Routes>
         <Route path="/" element={homeRoute === '/' ? <HomePage /> : <Navigate to={homeRoute} replace />} />
