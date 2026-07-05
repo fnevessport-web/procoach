@@ -1,4 +1,4 @@
-import { Home, CalendarDays, Users, DollarSign, BarChart3, MessageCircle, ClipboardCheck } from 'lucide-react'
+import { Home, CalendarDays, Users, DollarSign, BarChart3, MessageCircle, ClipboardCheck, LayoutDashboard, User } from 'lucide-react'
 import { resolverRole, permissoesDoRole } from '../hooks/usePermissions'
 
 // Itens de navegação derivados das flags de usePermissions — uma fonte só de verdade
@@ -15,8 +15,10 @@ export function getNavItems(roleBruto) {
 
   if (role === 'professor') {
     return [
-      { path: '/aulas', icon: CalendarDays, label: 'Início' },
+      { path: '/dashboard-professor', icon: LayoutDashboard, label: 'Dashboard' },
+      { path: '/aulas', icon: CalendarDays, label: 'Minhas Aulas' },
       { path: '/mensagens', icon: MessageCircle, label: 'Mensagens' },
+      { path: '/meu-perfil', icon: User, label: 'Meu Perfil' },
     ]
   }
 

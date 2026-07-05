@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil, Lock, KeyRound } from 'lucide-react'
@@ -197,7 +197,7 @@ function ModalDetalhesDia({ professorId, dataStr, onClose }) {
   )
 }
 
-export default function ProfessoresPage() {
+export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   const qc = useQueryClient()
   const { podeVerTodosSalarios, podeEditarCadastros } = usePermissions()
   const { perfil } = useAppStore()
@@ -245,6 +245,13 @@ export default function ProfessoresPage() {
       return data || []
     },
   })
+
+  useEffect(() => {
+    if (autoAbrirProprio && !cardAberto && perfil?.professor_id) {
+      const proprio = professores.find(p => p.id === perfil.professor_id)
+      if (proprio) setCardAberto(proprio)
+    }
+  }, [autoAbrirProprio, professores, perfil?.professor_id])
 
   const { data: modalidades = [] } = useQuery({
     queryKey: ['modalidades'],

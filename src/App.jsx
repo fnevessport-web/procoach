@@ -20,6 +20,8 @@ import { CadastrosPage } from './pages/cadastros/CadastrosPage'
 import { FinanceiroPage } from './pages/financeiro/FinanceiroPage'
 import { KPIsPage } from './pages/kpis/KPIsPage'
 import { MensagensPage } from './pages/mensagens/MensagensPage'
+import { DashboardProfessor } from './pages/professor/DashboardProfessor'
+import { MeuPerfilProfessor } from './pages/professor/MeuPerfilProfessor'
 import { ModalTurmaAtivada } from './components/ModalTurmaAtivada'
 import { InstallBanner } from './components/ui/InstallBanner'
 import { DisponibilidadePage } from './pages/disponibilidade/DisponibilidadePage'
@@ -83,6 +85,8 @@ function AppRouter() {
           <RouteGuard permitido={homeRoute === '/'} homeRoute={homeRoute}><ModalidadePage /></RouteGuard>
         } />
         <Route path="/aulas" element={<AulasPage />} />
+        <Route path="/dashboard-professor" element={<DashboardProfessor />} />
+        <Route path="/meu-perfil" element={<MeuPerfilProfessor />} />
         <Route path="/match" element={
           <RouteGuard permitido={podeValidarAulas} homeRoute={homeRoute}><MatchAulas /></RouteGuard>
         } />

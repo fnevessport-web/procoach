@@ -64,7 +64,7 @@ const PERMISSOES_POR_ROLE = {
     podeVerInboxGeral: false,
     podeVerSino: true,
     podeValidarAulas: false,
-    homeRoute: '/aulas', // "Início" do professor é a grade do dia (AulasProfessor)
+    homeRoute: '/dashboard-professor',
   },
   auxiliar: {
     podeAcessarCadastros: false,

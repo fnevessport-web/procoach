@@ -12,12 +12,12 @@ import { Loading, EmptyState } from '../../components/ui/Loading'
 import { Textarea } from '../../components/ui/Input'
 
 export function AulasProfessor() {
-  const { user } = useAppStore()
+  const { perfil } = useAppStore()
   const [data, setData] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [aulaAtiva, setAulaAtiva] = useState(null)
   const [modalTipo, setModalTipo] = useState(null)
 
-  const { data: aulas, isLoading } = useAulas({ data, professorId: user?.id })
+  const { data: aulas, isLoading } = useAulas({ data, professorId: perfil?.professor_id })
   const confirmar = useConfirmarAulaProfessor()
   const marcarNaoDada = useMarcarNaoDada()
 
