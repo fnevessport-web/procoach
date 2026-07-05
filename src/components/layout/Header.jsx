@@ -1,9 +1,10 @@
-import { Bell, LogOut, ChevronDown, Undo2, Building2 } from 'lucide-react'
+import { LogOut, ChevronDown, Undo2, Building2 } from 'lucide-react'
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
-import { useAulasPendentes } from '../../hooks/useAulas'
 import { useMinhasEmpresas } from '../../hooks/useEmpresas'
+import { usePermissions } from '../../hooks/usePermissions'
+import { SinoAlertas } from '../SinoAlertas'
 import useAppStore from '../../store/useAppStore'
 
 function getIniciais(nome) {
@@ -22,7 +23,7 @@ function getSobrenome(nome) {
 
 export function Header() {
   const { user, perfil, signOut } = useAuth()
-  const { data: pendentes = 0 } = useAulasPendentes()
+  const { podeVerSino } = usePermissions()
   const { data: empresas = [] } = useMinhasEmpresas(user?.id)
   const [menuOpen, setMenuOpen] = useState(false)
   const { modalidadeSelecionada, setModalidadeSelecionada, origemAulas, setOrigemAulas, empresaSelecionada, setEmpresaSelecionada } = useAppStore()
@@ -86,19 +87,7 @@ export function Header() {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {pendentes > 0 && (
-            <div style={{ position: 'relative' }}>
-              <Bell size={20} color="#555" />
-              <span style={{
-                position: 'absolute', top: '-6px', right: '-6px',
-                width: '16px', height: '16px', backgroundColor: '#EF4444',
-                borderRadius: '50%', fontSize: '10px', color: 'white',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold'
-              }}>
-                {pendentes > 9 ? '9+' : pendentes}
-              </span>
-            </div>
-          )}
+          {podeVerSino && <SinoAlertas />}
 
           {empresas.length > 1 && (
             <button

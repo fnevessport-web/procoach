@@ -17,6 +17,8 @@ const PERMISSOES_POR_ROLE = {
     podeEditarAulas: true,
     podeEditarPropriaAula: true,
     podeVerInboxGeral: true,
+    podeVerSino: true,
+    podeValidarAulas: true,
     homeRoute: '/',
   },
   financeiro: {
@@ -30,6 +32,8 @@ const PERMISSOES_POR_ROLE = {
     podeEditarAulas: false,
     podeEditarPropriaAula: false,
     podeVerInboxGeral: false,
+    podeVerSino: true,
+    podeValidarAulas: false,
     homeRoute: '/',
   },
   coordenador: {
@@ -43,6 +47,8 @@ const PERMISSOES_POR_ROLE = {
     podeEditarAulas: true,
     podeEditarPropriaAula: true,
     podeVerInboxGeral: false,
+    podeVerSino: true,
+    podeValidarAulas: true,
     homeRoute: '/',
   },
   professor: {
@@ -56,6 +62,8 @@ const PERMISSOES_POR_ROLE = {
     podeEditarAulas: false,
     podeEditarPropriaAula: true,
     podeVerInboxGeral: false,
+    podeVerSino: true,
+    podeValidarAulas: false,
     homeRoute: '/aulas', // "Início" do professor é a grade do dia (AulasProfessor)
   },
   auxiliar: {
@@ -69,6 +77,8 @@ const PERMISSOES_POR_ROLE = {
     podeEditarAulas: false,
     podeEditarPropriaAula: false,
     podeVerInboxGeral: false,
+    podeVerSino: false,
+    podeValidarAulas: false,
     homeRoute: '/aulas',
   },
 }
