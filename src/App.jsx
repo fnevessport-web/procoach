@@ -6,6 +6,7 @@ import { PageLoading } from './components/ui/Loading'
 import { AppLayout } from './components/layout/AppLayout'
 import { LoginPage } from './pages/auth/LoginPage'
 import { HomePage } from './pages/home/HomePage'
+import { ModalidadePage } from './pages/modalidades/ModalidadePage'
 import { AulasPage } from './pages/aulas/AulasPage'
 import { CadastrosPage } from './pages/cadastros/CadastrosPage'
 import { FinanceiroPage } from './pages/financeiro/FinanceiroPage'
@@ -32,6 +33,7 @@ function AppRouter() {
       <InstallBanner />
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/modalidade/:nomeModalidade" element={<ModalidadePage />} />
         <Route path="/aulas" element={<AulasPage />} />
         {(role === 'admin' || role === 'coordenador') && (
           <>

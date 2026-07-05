@@ -4,26 +4,7 @@ import { useModalidades } from '../../hooks/useModalidades'
 import { useHomeDashboard } from '../../hooks/useHomeDashboard'
 import useAppStore from '../../store/useAppStore'
 import { Loading } from '../../components/ui/Loading'
-
-const EMPRESAS = [
-  { valor: 'procopio', label: 'Procópio' },
-  { valor: 'beach_arena', label: 'Beach Arena' },
-]
-
-const ICONES_MODALIDADES = {
-  'Tênis':          '/images/tenis.png',
-  'Padel':          '/images/padel.png',
-  'Pickleball':     '/images/pickleball.png',
-  'Squash':         '/images/squash.png',
-  'Beach Tennis':   '/images/beachtennis.png',
-  'Futevôlei':      '/images/futevolei.png',
-  'Vôlei de Praia': '/images/voleidepraia.png',
-}
-
-const LOGO_EMPRESA = {
-  procopio: '/images/logoprocopio.png',
-  beach_arena: '/images/logobeacharena.png',
-}
+import { ICONES_MODALIDADES, LOGO_EMPRESA, EMPRESAS } from '../../constants/modalidades'
 
 function getIniciais(nome) {
   if (!nome) return '?'
@@ -96,12 +77,8 @@ export function HomePage() {
   }
 
   function selectModalidade(mod) {
-    if (modalidadeSelecionada?.id === mod.id) {
-      setModalidadeSelecionada(null)
-    } else {
-      setModalidadeSelecionada(mod)
-      navigate('/aulas')
-    }
+    setModalidadeSelecionada(mod)
+    navigate(`/modalidade/${encodeURIComponent(mod.nome)}`)
   }
 
   return (
