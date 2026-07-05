@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { ChevronLeft, Send, MessageCirclePlus, MessageCircle } from 'lucide-react'
 import { format, isToday } from 'date-fns'
 import useAppStore from '../../store/useAppStore'
@@ -192,7 +193,8 @@ function Thread({ conversaId, onVoltar }) {
 }
 
 export function MensagensPage() {
-  const [conversaAberta, setConversaAberta] = useState(null)
+  const location = useLocation()
+  const [conversaAberta, setConversaAberta] = useState(() => location.state?.conversaId || null)
   const [novaConversa, setNovaConversa] = useState(false)
 
   if (conversaAberta) {

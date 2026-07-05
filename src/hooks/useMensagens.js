@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import useAppStore from '../store/useAppStore'
 import { usePermissions } from './usePermissions'
+import { criarAlerta } from './useAlertas'
 
 // Diretório de pessoas pra iniciar conversa — todo mundo com perfil no ProCoach, exceto eu mesmo
 export function useContatos() {
@@ -119,11 +120,55 @@ export function useEnviarMensagem() {
     mutationFn: async ({ conversaId, texto }) => {
       const { error } = await supabase.from('mensagens').insert({ conversa_id: conversaId, autor_id: user.id, texto })
       if (error) throw error
+
+      const { data: participantes } = await supabase
+        .from('conversas_participantes')
+        .select('user_id')
+        .eq('conversa_id', conversaId)
+        .neq('user_id', user.id)
+      for (const p of participantes || []) {
+        await criarAlerta({
+          usuarioId: p.user_id,
+          tipo: 'mensagem_nova',
+          referenciaId: conversaId,
+          prioridade: 'baixa',
+          mensagem: `Nova mensagem de ${user.user_metadata?.nome || 'alguém'}.`,
+        })
+      }
     },
     onSuccess: (_data, { conversaId }) => {
       qc.invalidateQueries({ queryKey: ['mensagens', conversaId] })
       qc.invalidateQueries({ queryKey: ['conversas'] })
     },
+  })
+}
+
+// Acha (ou cria) a conversa direta vinculada a uma aula especifica — pro botao
+// "Discutir esta aula" em qualquer tela que mostra o detalhe de uma aula.
+export function useAbrirConversaDaAula() {
+  const { user } = useAppStore()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ aulaId, outroUserId }) => {
+      const { data: existentes } = await supabase
+        .from('conversas')
+        .select('id, conversas_participantes(user_id)')
+        .eq('aula_id', aulaId)
+
+      for (const c of existentes || []) {
+        const ids = (c.conversas_participantes || []).map(p => p.user_id)
+        if (ids.includes(user.id) && ids.includes(outroUserId)) return c.id
+      }
+
+      const { data: nova, error } = await supabase.from('conversas').insert({ tipo: 'direta', aula_id: aulaId }).select().single()
+      if (error) throw error
+      await supabase.from('conversas_participantes').insert([
+        { conversa_id: nova.id, user_id: user.id },
+        { conversa_id: nova.id, user_id: outroUserId },
+      ])
+      return nova.id
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['conversas'] }),
   })
 }
 

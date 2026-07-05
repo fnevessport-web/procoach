@@ -5,10 +5,12 @@ import {
   startOfWeek, endOfWeek, addDays, isSameMonth, isToday, isSameDay,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Check, X, ExternalLink } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, X, ExternalLink, MessageCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAulasDoMes, useAulas, useConfirmarAulaCoordenador } from '../../hooks/useAulas'
 import { criarAlerta } from '../../hooks/useAlertas'
+import { useAbrirConversaDaAula } from '../../hooks/useMensagens'
+import useAppStore from '../../store/useAppStore'
 import { useQueryClient } from '@tanstack/react-query'
 import { parseObservacoes } from '../../constants/modalidades'
 import { StatusBadge } from '../../components/ui/Badge'
@@ -70,8 +72,26 @@ async function checarDivergenciasAutomaticas(qc) {
 
 function PainelDia({ data, onFechar }) {
   const navigate = useNavigate()
+  const { user } = useAppStore()
   const { data: aulas = [], isLoading } = useAulas({ data })
   const confirmar = useConfirmarAulaCoordenador()
+  const abrirConversaDaAula = useAbrirConversaDaAula()
+
+  async function discutir(aula) {
+    if (!aula.professores?.id) return
+    const { data: perfilProfessor } = await supabase
+      .from('perfis_usuario')
+      .select('user_id')
+      .eq('professor_id', aula.professores.id)
+      .maybeSingle()
+    if (!perfilProfessor?.user_id || perfilProfessor.user_id === user?.id) return
+    try {
+      const conversaId = await abrirConversaDaAula.mutateAsync({ aulaId: aula.id, outroUserId: perfilProfessor.user_id })
+      navigate('/mensagens', { state: { conversaId } })
+    } catch {
+      // migração da coluna aula_id ainda não rodou — sem feedback bloqueante aqui
+    }
+  }
 
   async function validar(aula, confirmada) {
     await confirmar.mutateAsync({ aulaId: aula.id, confirmada })
@@ -142,9 +162,19 @@ function PainelDia({ data, onFechar }) {
                     <StatusBadge status={aula.status} />
                   </div>
 
-                  <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#888', marginBottom: aguardandoAcao ? '10px' : 0 }}>
-                    <span style={{ color: '#1D9E75' }}>✓ {presentes} presentes</span>
-                    <span style={{ color: '#e24b4a' }}>✗ {faltas} faltas</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: aguardandoAcao ? '10px' : 0 }}>
+                    <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#888' }}>
+                      <span style={{ color: '#1D9E75' }}>✓ {presentes} presentes</span>
+                      <span style={{ color: '#e24b4a' }}>✗ {faltas} faltas</span>
+                    </div>
+                    {aula.professores?.id && (
+                      <button onClick={() => discutir(aula)} style={{
+                        display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none',
+                        color: '#555', fontSize: '11px', cursor: 'pointer', padding: '2px',
+                      }}>
+                        <MessageCircle size={12} /> Discutir
+                      </button>
+                    )}
                   </div>
 
                   {aguardandoAcao && (

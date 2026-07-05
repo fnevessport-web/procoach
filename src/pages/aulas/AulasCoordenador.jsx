@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap } from 'lucide-react'
+import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle } from 'lucide-react'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas } from '../../hooks/useAulas'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useProfessores } from '../../hooks/useProfessores'
 import { useQuadras } from '../../hooks/useQuadras'
 import { useNiveis } from '../../hooks/useNiveis'
 import { useModalidades } from '../../hooks/useModalidades'
-import { useLocation } from 'react-router-dom'
+import { useAbrirConversaDaAula } from '../../hooks/useMensagens'
+import { useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
 import { Loading, EmptyState } from '../../components/ui/Loading'
 import { supabase } from '../../lib/supabase'
@@ -94,9 +95,11 @@ function isAulaFutura(dataAula, horarioInicio) {
 }
 
 export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
-  const { modalidadeSelecionada, setOrigemAulas } = useAppStore()
+  const { modalidadeSelecionada, setOrigemAulas, user } = useAppStore()
   const qc = useQueryClient()
   const location = useLocation()
+  const navigate = useNavigate()
+  const abrirConversaDaAula = useAbrirConversaDaAula()
   const [data, setData] = useState(() => location.state?.data || format(new Date(), 'yyyy-MM-dd'))
   const [highlightedAulaId, setHighlightedAulaId] = useState(null)
   const highlightAulaId = location.state?.highlightAulaId
@@ -270,6 +273,25 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
       setEditandoNotas(false)
       toast.success('📋 Observação salva!', { style: toastStyle })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
+
+  async function handleDiscutirAula(aulaAlvo) {
+    if (!aulaAlvo.professores?.id) return
+    const { data: perfilProfessor } = await supabase
+      .from('perfis_usuario')
+      .select('user_id')
+      .eq('professor_id', aulaAlvo.professores.id)
+      .maybeSingle()
+    if (!perfilProfessor?.user_id || perfilProfessor.user_id === user?.id) {
+      toast.error('Não foi possível abrir a conversa com esse professor.', { style: toastStyle })
+      return
+    }
+    try {
+      const conversaId = await abrirConversaDaAula.mutateAsync({ aulaId: aulaAlvo.id, outroUserId: perfilProfessor.user_id })
+      navigate('/mensagens', { state: { conversaId } })
+    } catch {
+      toast.error('Mensagens por aula ainda não disponível — falta rodar uma migração no banco.', { style: toastStyle })
+    }
   }
 
   async function handleSalvarAlertaNivel(aulaId, alunoId) {
@@ -919,6 +941,16 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
                 <X size={20} />
               </button>
             </div>
+
+            {!somenteLeitura && aula.professores?.id && (
+              <button onClick={() => handleDiscutirAula(aula)} style={{
+                display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
+                borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
+                color: '#888', fontSize: '12px', cursor: 'pointer', marginBottom: '14px',
+              }}>
+                <MessageCircle size={12} /> Discutir esta aula
+              </button>
+            )}
 
             {aulaFutura && (
               <div style={{
