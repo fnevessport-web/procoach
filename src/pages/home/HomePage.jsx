@@ -8,10 +8,6 @@ import { Loading } from '../../components/ui/Loading'
 import { FotoProfessor } from '../../components/ui/FotoProfessor'
 import { ICONES_MODALIDADES, LOGO_EMPRESA, EMPRESAS, horarioParaMinutos } from '../../constants/modalidades'
 
-// Tolerância de 10min após o término oficial — mesma usada em useHomeDashboard
-// pra manter a aula em "ao vivo" (intervalo normal entre aulas)
-const TOLERANCIA_FIM_MIN = 10
-
 function useAgoraEmSegundos() {
   const [agora, setAgora] = useState(() => Date.now())
   useEffect(() => {
@@ -40,18 +36,16 @@ function ProgressoAula({ horarioInicio, horarioFim }) {
   const decorridoMin = agoraMin - inicioMin
   const pct = duracaoMin > 0 ? Math.min(100, Math.max(0, (decorridoMin / duracaoMin) * 100)) : 0
 
+  // Nos 10min de tolerância após o término oficial, entra no estado "finalizada"
   const emTolerancia = agoraMin >= fimMin
-  const finalizada = agoraMin >= fimMin + TOLERANCIA_FIM_MIN
   const decorridoSeg = Math.max(0, decorridoMin * 60)
-
-  const cor = emTolerancia ? '#e24b4a' : '#e24b4a'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
       <div style={{ height: '3px', borderRadius: '2px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
         <div style={{
           height: '100%', width: `${pct}%`, borderRadius: '2px',
-          backgroundColor: cor, transition: 'width 1s linear',
+          backgroundColor: '#e24b4a', transition: 'width 1s linear',
         }} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -62,7 +56,7 @@ function ProgressoAula({ horarioInicio, horarioFim }) {
         }}>
           {formataMMSS(decorridoSeg)}
         </span>
-        {finalizada && (
+        {emTolerancia && (
           <span className="pulse-badge" style={{ fontSize: '9px', fontWeight: '700', color: '#e24b4a' }}>
             · aula finalizada
           </span>
