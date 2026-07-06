@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download } from 'lucide-react'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas } from '../../hooks/useAulas'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useProfessores } from '../../hooks/useProfessores'
 import { useQuadras } from '../../hooks/useQuadras'
 import { useNiveis } from '../../hooks/useNiveis'
 import { useModalidades } from '../../hooks/useModalidades'
+import { QUADRAS_EMPRESA } from '../../hooks/useFinanceiro'
 import { useAbrirConversaDaAula } from '../../hooks/useMensagens'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
@@ -73,6 +74,16 @@ function getHorario(aula) {
 function getNivel(aula) {
   if (!aula.turma_id) return parseObservacoes(aula.observacoes).nivel
   return aula.turmas?.niveis?.nome || ''
+}
+
+// Avulsa não tem horario_fim salvo — assume 1h de duração, igual ao resto do app
+function getHorarioFim(aula) {
+  if (aula.turma_id) return aula.turmas?.horario_fim?.slice(0, 5) || ''
+  const inicio = getHorario(aula)
+  if (!inicio) return ''
+  const [h, m] = inicio.split(':').map(Number)
+  const fim = h * 60 + m + 60
+  return `${String(Math.floor(fim / 60)).padStart(2, '0')}:${String(fim % 60).padStart(2, '0')}`
 }
 
 // Avulsas sempre contam como ativas (já nascem com aluno) — turma só conta se tiver aluno ativo matriculado
@@ -200,6 +211,118 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
     const d = dir > 0 ? addDays(dataObj, 1) : subDays(dataObj, 1)
     setData(format(d, 'yyyy-MM-dd'))
     setStatusLocal({})
+  }
+
+  async function exportarPDF() {
+    const toastId = toast.loading('Gerando PDF...', { style: toastStyle })
+    try {
+      const { jsPDF } = await import('jspdf')
+      const { autoTable } = await import('jspdf-autotable')
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const geradoEm = format(new Date(), "dd/MM/yyyy 'às' HH:mm")
+
+      try {
+        const resp = await fetch('/images/logoprocoach.png')
+        const blob = await resp.blob()
+        const logoBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = reject
+          reader.readAsDataURL(blob)
+        })
+        doc.addImage(logoBase64, 'PNG', 40, 20, 100, 30)
+      } catch {}
+
+      doc.setFontSize(17)
+      doc.setTextColor(20, 20, 20)
+      doc.text('Grade de Aulas', pageWidth / 2, 38, { align: 'center' })
+      doc.setFontSize(11)
+      doc.setTextColor(90, 90, 90)
+      doc.text(label.charAt(0).toUpperCase() + label.slice(1), pageWidth / 2, 56, { align: 'center' })
+      doc.setFontSize(8)
+      doc.setTextColor(150, 150, 150)
+      doc.text(`Gerado em ${geradoEm}`, pageWidth - 40, 26, { align: 'right' })
+
+      let cursorY = 82
+      const SECOES = [
+        { chave: 'procopio', titulo: 'PROCÓPIO ARENA', cor: [252, 200, 37], corTexto: [30, 30, 30], quadras: QUADRAS_EMPRESA.procopio },
+        { chave: 'beach_arena', titulo: 'BEACH ARENA', cor: [207, 27, 155], corTexto: [255, 255, 255], quadras: QUADRAS_EMPRESA.beach_arena },
+      ]
+
+      let algumaSecaoImpressa = false
+
+      for (const secao of SECOES) {
+        const aulasSecao = (aulas || []).filter(a => secao.quadras.includes(getQuadraNome(a)))
+        if (aulasSecao.length === 0) continue
+        algumaSecaoImpressa = true
+
+        doc.setFillColor(...secao.cor)
+        doc.rect(40, cursorY, pageWidth - 80, 3, 'F')
+        cursorY += 18
+        doc.setFontSize(13)
+        doc.setTextColor(...secao.cor)
+        doc.text(secao.titulo, 40, cursorY)
+        cursorY += 8
+
+        const horariosOcupados = [...new Set(aulasSecao.map(a => getHorario(a)).filter(Boolean))].sort()
+
+        const head = [['Horário', ...secao.quadras]]
+        const body = horariosOcupados.map(h => {
+          const aulaParaFim = aulasSecao.find(a => getHorario(a) === h)
+          const linha = [`${h} – ${getHorarioFim(aulaParaFim)}`]
+          secao.quadras.forEach(q => {
+            const aula = aulasSecao.find(a => getHorario(a) === h && getQuadraNome(a) === q)
+            if (!aula) { linha.push(''); return }
+            const nivel = getNivel(aula) || (aula.turma_id ? aula.turmas?.nome : 'Avulsa')
+            const professor = aula.professores?.nome || 'Sem professor'
+            const alunos = (aula.presencas || []).filter(p => p.alunos).map(p => p.alunos.nome)
+            linha.push(alunos.length > 0
+              ? `${nivel}\nProf: ${professor}\n\n${alunos.join('\n')}`
+              : `${nivel}\nProf: ${professor}\n\nSem aluno`)
+          })
+          return linha
+        })
+
+        autoTable(doc, {
+          startY: cursorY,
+          head, body,
+          styles: { fontSize: 8, cellPadding: 5, valign: 'top', lineColor: [225, 225, 225], lineWidth: 0.5, textColor: [50, 50, 50] },
+          headStyles: { fillColor: secao.cor, textColor: secao.corTexto, fontStyle: 'bold', fontSize: 9 },
+          columnStyles: { 0: { cellWidth: 65, fontStyle: 'bold', textColor: [20, 20, 20] } },
+          margin: { left: 40, right: 40 },
+          didParseCell: cellData => {
+            if (cellData.section === 'body' && cellData.column.index > 0) {
+              const raw = String(cellData.cell.raw || '')
+              if (!raw || raw.includes('Sem aluno')) {
+                cellData.cell.styles.fillColor = [246, 246, 246]
+                cellData.cell.styles.textColor = [170, 170, 170]
+              }
+            }
+          },
+        })
+        cursorY = doc.lastAutoTable.finalY + 26
+      }
+
+      if (!algumaSecaoImpressa) {
+        doc.setFontSize(12)
+        doc.setTextColor(150, 150, 150)
+        doc.text('Nenhuma aula agendada nesse dia.', pageWidth / 2, cursorY + 20, { align: 'center' })
+      }
+
+      const totalPaginas = doc.internal.getNumberOfPages()
+      for (let i = 1; i <= totalPaginas; i++) {
+        doc.setPage(i)
+        doc.setFontSize(7)
+        doc.setTextColor(160, 160, 160)
+        doc.text(`Gerado pelo ProCoach em ${geradoEm}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 16, { align: 'center' })
+      }
+
+      doc.save(`grade-aulas-${format(dataObj, 'dd-MM-yyyy')}.pdf`)
+      toast.success('PDF gerado!', { id: toastId, style: toastStyle })
+    } catch (err) {
+      toast.error('Erro ao gerar PDF: ' + err.message, { id: toastId, style: toastStyle })
+    }
   }
 
   function abrirAula(aula) {
@@ -659,6 +782,13 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
 
       {/* Botões filtro modalidade + ação em massa */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+        <button onClick={exportarPDF} style={{
+          display: 'flex', alignItems: 'center', gap: '5px',
+          padding: '6px 10px', borderRadius: '8px', border: '1px solid #2a2a2a', cursor: 'pointer',
+          background: '#1a1a1a', color: '#555', fontSize: '11px',
+        }}>
+          <Download size={12} /> PDF
+        </button>
         {/* Filtro modalidade */}
         <div style={{ position: 'relative' }}>
           <button onClick={() => setFiltroGradeAberto(!filtroGradeAberto)} style={{
