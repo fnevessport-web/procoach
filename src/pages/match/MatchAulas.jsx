@@ -73,9 +73,12 @@ async function checarDivergenciasAutomaticas(qc) {
 function PainelDia({ data, onFechar }) {
   const navigate = useNavigate()
   const { user } = useAppStore()
-  const { data: aulas = [], isLoading } = useAulas({ data })
+  const { data: aulasTodas = [], isLoading } = useAulas({ data })
   const confirmar = useConfirmarAulaCoordenador()
   const abrirConversaDaAula = useAbrirConversaDaAula()
+
+  // Match só faz sentido se tem aluno de verdade na aula (avulsa já nasce com aluno)
+  const aulas = aulasTodas.filter(a => !a.turma_id || (a.presencas?.length || 0) > 0)
 
   async function discutir(aula) {
     if (!aula.professores?.id) return
