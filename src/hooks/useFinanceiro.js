@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { logAudit } from '../lib/audit'
 import { format } from 'date-fns'
+import { confirmarAulasElegiveis } from './useAulas'
 
 // ──────────────────────────────────────────────────────────────────────
 // Autorização de pagamento pelo coordenador
@@ -177,6 +178,7 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
     queryKey: ['fin_custos_prof', empresa, dataInicio, dataFim],
     queryFn: async () => {
       if (!empresa || !dataInicio || !dataFim) return []
+      await confirmarAulasElegiveis({ dataInicio, dataFim })
       const { data: aulas, error } = await supabase
         .from('aulas')
         .select(`
@@ -226,6 +228,7 @@ export function useAulasProfessorFinanceiro({ professorId, empresa, dataInicio, 
     queryKey: ['fin_aulas_prof', professorId, empresa, dataInicio, dataFim],
     queryFn: async () => {
       if (!professorId) return []
+      await confirmarAulasElegiveis({ professorId, dataInicio, dataFim })
       const { data: aulas, error } = await supabase
         .from('aulas')
         .select(`

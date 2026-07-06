@@ -18,6 +18,7 @@ import {
   useLiberar,
   useDesautorizar,
 } from '../../hooks/useFinanceiro'
+import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
 import toast from 'react-hot-toast'
@@ -283,6 +284,7 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
   const { data: aulas = [], isLoading } = useQuery({
     queryKey: ['fin_detalhe_dia', professorId, dataStr],
     queryFn: async () => {
+      await confirmarAulasElegiveis({ professorId, dataInicio: dataStr, dataFim: dataStr })
       // 1) busca aulas do dia
       const { data: aulasData, error: e1 } = await supabase
         .from('aulas')

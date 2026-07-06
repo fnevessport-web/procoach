@@ -5,6 +5,7 @@ import { format, addDays, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronRight, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import useAppStore from '../../store/useAppStore'
 import { horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula, diaSemanaDaData } from '../../constants/modalidades'
 import { Loading } from '../../components/ui/Loading'
@@ -88,6 +89,7 @@ export function DashboardProfessor() {
     queryKey: ['dashboard_prof_historico', professorId, hoje],
     enabled: !!professorId,
     queryFn: async () => {
+      await confirmarAulasElegiveis({ professorId, dataFim: hoje })
       const { data, error } = await supabase
         .from('aulas')
         .select('id, data_aula, status_aula, paga_professor')

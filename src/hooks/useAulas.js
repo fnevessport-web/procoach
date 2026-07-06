@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { logAudit } from '../lib/audit'
 import { format } from 'date-fns'
+import { horarioInicioDaAula, horarioParaMinutos } from '../constants/modalidades'
+import { getFeriado } from '../constants/feriados'
 
 export function useAulas({ data, professorId, modalidadeId, status } = {}) {
   return useQuery({
@@ -37,6 +39,44 @@ export function useAulas({ data, professorId, modalidadeId, status } = {}) {
     },
     staleTime: 30000
   })
+}
+
+// Confirma automaticamente (paga_professor=true) toda aula que já tem aluno e cujo horário já
+// passou — ou que caiu num feriado (conta como paga sem precisar esperar o horário, já que
+// ninguém vai dar aula mesmo). Chamado no início de toda tela que soma dinheiro, pra nunca
+// depender de um clique manual — só "Sem Aula"/"Cancelada" (status_aula diferente de 'dada')
+// travam isso, e sempre por ação explícita de alguém.
+export async function confirmarAulasElegiveis({ professorId = null, dataInicio = null, dataFim = null } = {}) {
+  try {
+    let q = supabase
+      .from('aulas')
+      .select('id, data_aula, turma_id, observacoes, turmas(horario_inicio), presencas(id)')
+      .eq('status_aula', 'dada')
+      .or('paga_professor.is.null,paga_professor.eq.false')
+    if (professorId) q = q.eq('professor_executou_id', professorId)
+    if (dataInicio) q = q.gte('data_aula', dataInicio)
+    q = q.lte('data_aula', dataFim || format(new Date(), 'yyyy-MM-dd'))
+
+    const { data: candidatas, error } = await q
+    if (error || !candidatas?.length) return
+
+    const hoje = format(new Date(), 'yyyy-MM-dd')
+    const agoraMin = new Date().getHours() * 60 + new Date().getMinutes()
+
+    const elegiveis = candidatas.filter(a => {
+      if (!a.presencas?.length) return false
+      if (getFeriado(a.data_aula)) return true
+      if (a.data_aula < hoje) return true
+      if (a.data_aula > hoje) return false
+      const inicioMin = horarioParaMinutos(horarioInicioDaAula(a))
+      return inicioMin != null && inicioMin <= agoraMin
+    })
+
+    if (elegiveis.length === 0) return
+    await supabase.from('aulas').update({ paga_professor: true }).in('id', elegiveis.map(a => a.id))
+  } catch {
+    // não trava nenhuma tela por causa disso — no pior caso, tenta de novo no próximo carregamento
+  }
 }
 
 export function useAtualizarStatusAula() {

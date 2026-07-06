@@ -5,6 +5,7 @@ import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Tr
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { usePermissions } from '../../hooks/usePermissions'
+import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import useAppStore from '../../store/useAppStore'
 import toast from 'react-hot-toast'
 import { apenasDigitosCPF, mascararCPF } from '../../lib/cpf'
@@ -267,8 +268,10 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       // status_aula='dada' por uma limitação de constraint no banco, mas isso não
       // significa que já foram dadas de verdade. paga_professor=true é quem realmente
       // confirma que a aula foi fechada/paga (mesmo filtro usado em useFinanceiro.js,
-      // pra esse total bater com a aba Financeiro).
+      // pra esse total bater com a aba Financeiro). Confirma as elegíveis antes de somar,
+      // já que ninguém mais clica manualmente pra isso (ver confirmarAulasElegiveis).
       const hoje = format(new Date(), 'yyyy-MM-dd')
+      await confirmarAulasElegiveis({ professorId: cardAberto.id })
       const { data, error } = await supabase
         .from('aulas')
         .select('data_aula, status_aula, paga_professor, status')
