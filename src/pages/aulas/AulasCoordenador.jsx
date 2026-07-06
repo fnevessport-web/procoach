@@ -1403,11 +1403,15 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                   // Futura + já tem aluno matriculado: destaca com uma cor que não é usada em
                   // mais nada na grade (verde/vermelho/azul/amarelo já têm outro significado),
                   // só pra bater o olho e ver rápido onde já foi matriculado alguém.
-                  const borderColor = st === 'futura' ? (semAluno ? 'rgba(255,255,255,0.06)' : 'rgba(34,211,238,0.3)')
+                  // Sem aluno nenhum: sempre neutro, independente do status_aula — esse campo
+                  // nasce 'dada' por padrão no banco mesmo sem ninguém ter confirmado nada.
+                  const borderColor = semAluno ? 'rgba(255,255,255,0.06)'
+                    : st === 'futura' ? 'rgba(34,211,238,0.3)'
                     : st === 'dada' ? 'rgba(34,197,94,0.3)'
                     : st === 'nao_dada' ? 'rgba(239,68,68,0.3)'
                     : 'rgba(59,130,246,0.3)'
-                  const dotColor = st === 'futura' ? (semAluno ? '#333' : '#22d3ee')
+                  const dotColor = semAluno ? '#333'
+                    : st === 'futura' ? '#22d3ee'
                     : st === 'dada' ? '#22c55e'
                     : st === 'nao_dada' ? '#EF4444'
                     : '#3b82f6'
@@ -1438,7 +1442,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                           {hasReposicao && <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: COR_REPOSICAO, flexShrink: 0 }} />}
                           {hasNotas && <FileText size={8} color="#444" />}
                           {idsComConversa.has(aulaCelula.id) && <MessageCircle size={8} color="#3b82f6" />}
-                          {aulaCelula.status_aula === 'dada' && aulaCelula.paga_professor === true && (
+                          {!semAluno && aulaCelula.status_aula === 'dada' && aulaCelula.paga_professor === true && (
                             <Crown size={9} color="#fcc825" title="Validada e confirmada pro pagamento" />
                           )}
                         </div>
