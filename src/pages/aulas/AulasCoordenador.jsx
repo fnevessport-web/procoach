@@ -249,16 +249,19 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   })
   const idsComConversa = new Set(aulasComConversa)
 
-  // Só usado no modo do professor: lista de gestores pra escolher com quem discutir a aula
+  // Só usado no modo do professor: lista de todo mundo cadastrado pra escolher com quem discutir
+  // a aula (pode ser mais de uma pessoa) — ordenada por nome, sem contar o próprio professor.
   const [escolhendoDestinatario, setEscolhendoDestinatario] = useState(null)
+  const [buscaDestinatario, setBuscaDestinatario] = useState('')
+  const [destinatariosSelecionados, setDestinatariosSelecionados] = useState([])
   const { data: gestores = [] } = useQuery({
-    queryKey: ['gestores_para_discutir'],
+    queryKey: ['gestores_para_discutir', user?.id],
     enabled: !!professorProprioId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('perfis_usuario').select('user_id, nome').in('role', ['admin', 'gestor', 'coordenador'])
+        .from('perfis_usuario').select('user_id, nome').order('nome')
       if (error) throw error
-      return data || []
+      return (data || []).filter(g => g.user_id !== user?.id)
     },
   })
 
@@ -469,6 +472,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
     setEditandoNotas(false)
     setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '' })
     setEscolhendoDestinatario(null)
+    setDestinatariosSelecionados([])
+    setBuscaDestinatario('')
   }
 
   function updatePresenca(aulaId, alunoId, campo, valor) {
@@ -585,15 +590,24 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
     }
   }
 
-  // Professor discutindo a própria aula: pode ter mais de um gestor, então deixa escolher com quem falar
-  async function handleDiscutirComGestor(aulaAlvo, gestorUserId) {
+  // Professor discutindo a própria aula: pode escolher mais de uma pessoa — abre uma conversa
+  // direta com cada uma (o modelo de conversa hoje é sempre 1 pra 1) e navega pra primeira.
+  async function handleDiscutirComGestor(aulaAlvo, destinatarioIds) {
+    if (destinatarioIds.length === 0) return
     try {
-      const conversaId = await abrirConversaDaAula.mutateAsync({ aulaId: aulaAlvo.id, outroUserId: gestorUserId })
-      navigate('/mensagens', { state: { conversaId } })
+      let primeiraConversaId = null
+      for (const destinatarioId of destinatarioIds) {
+        const conversaId = await abrirConversaDaAula.mutateAsync({ aulaId: aulaAlvo.id, outroUserId: destinatarioId })
+        if (!primeiraConversaId) primeiraConversaId = conversaId
+      }
+      if (destinatarioIds.length > 1) toast.success(`Conversa iniciada com ${destinatarioIds.length} pessoas!`, { style: toastStyle })
+      navigate('/mensagens', { state: { conversaId: primeiraConversaId } })
     } catch {
       toast.error('Mensagens por aula ainda não disponível — falta rodar uma migração no banco.', { style: toastStyle })
     } finally {
       setEscolhendoDestinatario(null)
+      setDestinatariosSelecionados([])
+      setBuscaDestinatario('')
     }
   }
 
@@ -1600,18 +1614,56 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
               <div style={{ backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', padding: '10px', marginBottom: '14px' }}>
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Falar sobre essa aula com quem?</div>
                 {gestores.length === 0 ? (
-                  <div style={{ fontSize: '12px', color: '#555' }}>Nenhum gestor cadastrado.</div>
+                  <div style={{ fontSize: '12px', color: '#555' }}>Nenhum outro usuário cadastrado.</div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {gestores.map(g => (
-                      <button key={g.user_id} onClick={() => handleDiscutirComGestor(aula, g.user_id)} style={{
-                        display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '8px',
-                        border: 'none', background: '#1a1a1a', color: '#F0F2F5', fontSize: '13px', cursor: 'pointer', textAlign: 'left',
-                      }}>
-                        <MessageCircle size={13} color="#888" /> {g.nome}
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <input
+                      placeholder="Buscar pessoa..." value={buscaDestinatario}
+                      onChange={e => setBuscaDestinatario(e.target.value)}
+                      style={{ ...inputStyle, marginBottom: '8px' }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '220px', overflowY: 'auto' }}>
+                      {gestores
+                        .filter(g => g.nome.toLowerCase().includes(buscaDestinatario.toLowerCase()))
+                        .map(g => {
+                          const selecionado = destinatariosSelecionados.includes(g.user_id)
+                          return (
+                            <button key={g.user_id} onClick={() => setDestinatariosSelecionados(prev =>
+                              selecionado ? prev.filter(id => id !== g.user_id) : [...prev, g.user_id]
+                            )} style={{
+                              display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '8px',
+                              border: selecionado ? '1px solid rgba(252,200,37,0.4)' : '1px solid transparent',
+                              background: selecionado ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
+                              color: '#F0F2F5', fontSize: '13px', cursor: 'pointer', textAlign: 'left',
+                            }}>
+                              <span style={{
+                                width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
+                                border: selecionado ? 'none' : '1px solid #444',
+                                background: selecionado ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : 'transparent',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                {selecionado && <Check size={11} color="white" />}
+                              </span>
+                              {g.nome}
+                            </button>
+                          )
+                        })}
+                    </div>
+                    <button
+                      onClick={() => handleDiscutirComGestor(aula, destinatariosSelecionados)}
+                      disabled={destinatariosSelecionados.length === 0}
+                      style={{
+                        width: '100%', marginTop: '8px', padding: '9px', borderRadius: '8px', border: 'none',
+                        background: destinatariosSelecionados.length ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
+                        color: destinatariosSelecionados.length ? 'white' : '#555', fontSize: '12px', fontWeight: '600',
+                        cursor: destinatariosSelecionados.length ? 'pointer' : 'not-allowed',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                      }}
+                    >
+                      <MessageCircle size={13} />
+                      {destinatariosSelecionados.length > 1 ? `Enviar para ${destinatariosSelecionados.length} pessoas` : 'Enviar'}
+                    </button>
+                  </>
                 )}
               </div>
             )}
