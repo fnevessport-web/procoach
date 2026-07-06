@@ -1178,9 +1178,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
                   const hasAlerta = temAlertaNivel(aulaCelula)
                   const hasReposicao = temReposicao(aulaCelula)
                   const hasNotas = !!(aulaCelula.notas && aulaCelula.notas.trim())
-                  // Reposição/avulso pontual não entra na matrícula fixa da turma (turmas_alunos),
-                  // mas ainda assim tem alguém indo pra aula — não pode contar como "sem aluno"
-                  const semAluno = !turmaAtiva(aulaCelula) && qtdTotal === 0
+                  // O destaque do card é por ocorrência, não pela turma como um todo — a matrícula
+                  // de um mensalista (turmas_alunos) vale pra turma inteira "pra sempre", mas a
+                  // presença só é preenchida a partir da data em que ele começou. Por isso o sinal
+                  // certo aqui é sempre a presença desse dia específico (qtdTotal), nunca o
+                  // turmaAtiva (que ignora data e acendia até aulas anteriores ao início do aluno).
+                  const semAluno = qtdTotal === 0
                   const semProfessor = !isAv && !aulaCelula.professores
 
                   // Futura + já tem aluno matriculado: destaca com uma cor que não é usada em
