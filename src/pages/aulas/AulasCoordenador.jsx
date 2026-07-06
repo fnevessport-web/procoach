@@ -136,6 +136,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
   const [alertaNivel, setAlertaNivel] = useState({})
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(null)
+  const [editandoNivelTurma, setEditandoNivelTurma] = useState(false)
+  const [novoNivelId, setNovoNivelId] = useState('')
+  const [salvandoNivelTurma, setSalvandoNivelTurma] = useState(false)
   const [modalExportarPDF, setModalExportarPDF] = useState(false)
   const [pdfSomenteComAluno, setPdfSomenteComAluno] = useState(true)
   const [pdfQuadras, setPdfQuadras] = useState(() => [...QUADRAS_EMPRESA.procopio, ...QUADRAS_EMPRESA.beach_arena])
@@ -392,6 +395,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
     setAlertaNivel({})
     setConfirmandoExclusao(false)
     setConfirmandoRemocao(null)
+    setEditandoNivelTurma(false)
+    setNovoNivelId('')
     setEditandoNotas(false)
     setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '' })
   }
@@ -649,6 +654,63 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
       toast.success('Aula atualizada!', { style: toastStyle })
       setEditandoAula(null)
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
+
+  // O nível é um campo da turma (nivel_id), compartilhado por todas as ocorrências — não dá pra
+  // trocar só de uma aula sem separar ela de alguma forma. Por isso, tanto "só essa" quanto "essa
+  // e as futuras" clonam a turma com o nível novo (mesmo horário/quadra/professor/alunos) e só
+  // repontam o turma_id das aulas do escopo escolhido — as aulas de fora do escopo (passadas, ou
+  // futuras se for "só essa") continuam na turma original, preservando o histórico como estava.
+  async function handleEditarNivelTurma(aula, todasFuturas) {
+    if (!novoNivelId) return toast.error('Selecione o nível novo', { style: toastStyle })
+    setSalvandoNivelTurma(true)
+    try {
+      const { data: turmaOriginal, error: erroTurma } = await supabase
+        .from('turmas').select('*').eq('id', aula.turma_id).single()
+      if (erroTurma) throw erroTurma
+
+      const nomeNivelNovo = todosNiveis?.find(n => n.id === novoNivelId)?.nome || ''
+      const partesNome = (turmaOriginal.nome || '').split('·').map(s => s.trim())
+      const novoNome = partesNome.length >= 3
+        ? `${partesNome[0]} · ${partesNome[1]} · ${partesNome[2]} · ${nomeNivelNovo}`
+        : `${turmaOriginal.nome} · ${nomeNivelNovo}`
+
+      const { data: turmaNova, error: erroNovaTurma } = await supabase.from('turmas').insert({
+        modalidade_id: turmaOriginal.modalidade_id,
+        horario_dia_semana: turmaOriginal.horario_dia_semana,
+        horario_inicio: turmaOriginal.horario_inicio,
+        horario_fim: turmaOriginal.horario_fim,
+        quadra_id: turmaOriginal.quadra_id,
+        professor_titular_id: turmaOriginal.professor_titular_id,
+        nivel_id: novoNivelId,
+        nome: novoNome,
+        ativo: true,
+      }).select().single()
+      if (erroNovaTurma) throw erroNovaTurma
+
+      const { data: alunosAtivos } = await supabase
+        .from('turmas_alunos').select('aluno_id').eq('turma_id', aula.turma_id).eq('ativo', true)
+      if (alunosAtivos?.length > 0) {
+        await supabase.from('turmas_alunos').insert(
+          alunosAtivos.map(a => ({ turma_id: turmaNova.id, aluno_id: a.aluno_id, ativo: true }))
+        )
+      }
+
+      let query = supabase.from('aulas').update({ turma_id: turmaNova.id })
+      query = todasFuturas
+        ? query.eq('turma_id', aula.turma_id).gte('data_aula', aula.data_aula)
+        : query.eq('id', aula.id)
+      const { error: erroAulas } = await query
+      if (erroAulas) throw erroAulas
+
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      toast.success(`Nível atualizado pra ${nomeNivelNovo}!`, { style: toastStyle })
+      fecharModal()
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    } finally {
+      setSalvandoNivelTurma(false)
+    }
   }
 
   async function handleExcluirAula(aulaId) {
@@ -1278,14 +1340,52 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
               </button>
             </div>
 
-            {!somenteLeitura && aula.professores?.id && (
-              <button onClick={() => handleDiscutirAula(aula)} style={{
-                display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
-                borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
-                color: '#888', fontSize: '12px', cursor: 'pointer', marginBottom: '14px',
-              }}>
-                <MessageCircle size={12} /> Discutir esta aula
-              </button>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: editandoNivelTurma ? '10px' : '14px' }}>
+              {!somenteLeitura && aula.professores?.id && (
+                <button onClick={() => handleDiscutirAula(aula)} style={{
+                  display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
+                  borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
+                  color: '#888', fontSize: '12px', cursor: 'pointer',
+                }}>
+                  <MessageCircle size={12} /> Discutir esta aula
+                </button>
+              )}
+              {!somenteLeitura && !isAvulsa && !editandoNivelTurma && (
+                <button onClick={() => { setEditandoNivelTurma(true); setNovoNivelId('') }} style={{
+                  display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
+                  borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
+                  color: '#888', fontSize: '12px', cursor: 'pointer',
+                }}>
+                  <Pencil size={12} /> Editar turma
+                </button>
+              )}
+            </div>
+
+            {editandoNivelTurma && (
+              <div style={{ backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', padding: '12px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Novo nível da turma</div>
+                <select value={novoNivelId} onChange={e => setNovoNivelId(e.target.value)} style={inputStyle}>
+                  <option value="">Selecione...</option>
+                  {todosNiveis?.map(n => <option key={n.id} value={n.id}>{n.nome}</option>)}
+                </select>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button onClick={() => handleEditarNivelTurma(aula, false)} disabled={salvandoNivelTurma} style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid rgba(252,200,37,0.4)',
+                    background: 'rgba(252,200,37,0.1)', color: '#fcc825', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+                  }}>
+                    Só essa aula
+                  </button>
+                  <button onClick={() => handleEditarNivelTurma(aula, true)} disabled={salvandoNivelTurma} style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
+                    background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+                  }}>
+                    Essa e as futuras
+                  </button>
+                  <button onClick={() => setEditandoNivelTurma(false)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
             )}
 
             {aulaFutura && (
