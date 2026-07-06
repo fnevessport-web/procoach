@@ -108,7 +108,9 @@ export function useSalvarPresencas() {
         aula_id: aulaId,
         aluno_id: p.aluno_id,
         presente: p.status_presenca === 'presente',
-        status_presenca: p.status_presenca,
+        // Banco só aceita presente/falta/falta_justificada (ou nulo) — nunca string vazia,
+        // senão viola presencas_status_presenca_check.
+        status_presenca: p.status_presenca || null,
         tipo_participacao: p.tipo_participacao || 'mensalista',
       }))
       const { error } = await supabase
