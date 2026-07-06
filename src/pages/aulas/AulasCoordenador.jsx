@@ -310,9 +310,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
         autoTable(doc, {
           startY: cursorY,
           head, body,
+          theme: 'grid',
           styles: { fontSize: 8, cellPadding: 5, valign: 'top', lineColor: COR_LINHA, lineWidth: 0.5, textColor: COR_TEXTO, fillColor: COR_CARD },
           headStyles: { fillColor: secao.cor, textColor: secao.corTexto, fontStyle: 'bold', fontSize: 9 },
-          columnStyles: { 0: { cellWidth: 65, fontStyle: 'bold', textColor: COR_TEXTO } },
+          columnStyles: { 0: { cellWidth: 65, fontStyle: 'bold', textColor: COR_TEXTO, fillColor: COR_CARD } },
+          alternateRowStyles: { fillColor: COR_CARD },
           margin: { left: 40, right: 40 },
           willDrawPage: pintarFundo,
           didParseCell: cellData => {
@@ -1140,7 +1142,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
                   const hasAlerta = temAlertaNivel(aulaCelula)
                   const hasReposicao = temReposicao(aulaCelula)
                   const hasNotas = !!(aulaCelula.notas && aulaCelula.notas.trim())
-                  const semAluno = !turmaAtiva(aulaCelula)
+                  // Reposição/avulso pontual não entra na matrícula fixa da turma (turmas_alunos),
+                  // mas ainda assim tem alguém indo pra aula — não pode contar como "sem aluno"
+                  const semAluno = !turmaAtiva(aulaCelula) && qtdTotal === 0
                   const semProfessor = !isAv && !aulaCelula.professores
 
                   // Futura + já tem aluno matriculado: destaca com uma cor que não é usada em
