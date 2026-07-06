@@ -16,10 +16,11 @@ function getTurmaNome(aula) {
   return aula.turmas?.nome || '—'
 }
 
-// Avulsas sempre contam como ativas (já nascem com aluno) — turma só conta se tiver aluno ativo matriculado
-function turmaAtiva(aula) {
+// Avulsas sempre contam como ativas (já nascem com aluno) — turma só conta se a aula do dia tem alguém presente
+// (usa presenças reais da aula, não a matrícula fixa da turma — pega também alunos de reposição)
+function aulaTemAluno(aula) {
   if (!aula.turma_id) return true
-  return !!aula.turmas?.turmas_alunos?.some(ta => ta.ativo)
+  return (aula.presencas?.length || 0) > 0
 }
 
 function minutosAgora() {
@@ -53,7 +54,7 @@ export function useHomeDashboard() {
         .from('aulas')
         .select(`
           id, data_aula, turma_id, status_aula, observacoes,
-          turmas(nome, horario_inicio, horario_fim, quadras(nome), modalidades(nome, icone_emoji, cor_hex), turmas_alunos(id, ativo)),
+          turmas(nome, horario_inicio, horario_fim, quadras(nome), modalidades(nome, icone_emoji, cor_hex)),
           professores!professor_executou_id(id, nome, foto_url),
           presencas(id, status_presenca, presente)
         `)
@@ -104,7 +105,7 @@ export function useHomeDashboard() {
     staleTime: 60000,
   })
 
-  const aulasAtivasHoje = aulasHoje.filter(turmaAtiva)
+  const aulasAtivasHoje = aulasHoje.filter(aulaTemAluno)
 
   const aoVivoAgora = aulasAtivasHoje
     .filter(aulaEmAndamento)
