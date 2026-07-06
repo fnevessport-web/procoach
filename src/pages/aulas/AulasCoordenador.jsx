@@ -218,6 +218,19 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   })
   const idsComConversa = new Set(aulasComConversa)
 
+  // Só usado no modo do professor: lista de gestores pra escolher com quem discutir a aula
+  const [escolhendoDestinatario, setEscolhendoDestinatario] = useState(null)
+  const { data: gestores = [] } = useQuery({
+    queryKey: ['gestores_para_discutir'],
+    enabled: !!professorProprioId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('perfis_usuario').select('user_id, nome').in('role', ['admin', 'gestor', 'coordenador'])
+      if (error) throw error
+      return data || []
+    },
+  })
+
   useEffect(() => {
     if (!highlightAulaId || !aulas?.length) return
     const aulaAlvo = aulas.find(a => a.id === highlightAulaId)
@@ -419,6 +432,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
     setNovoNivelId('')
     setEditandoNotas(false)
     setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '' })
+    setEscolhendoDestinatario(null)
   }
 
   function updatePresenca(aulaId, alunoId, campo, valor) {
@@ -531,6 +545,18 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       navigate('/mensagens', { state: { conversaId } })
     } catch {
       toast.error('Mensagens por aula ainda não disponível — falta rodar uma migração no banco.', { style: toastStyle })
+    }
+  }
+
+  // Professor discutindo a própria aula: pode ter mais de um gestor, então deixa escolher com quem falar
+  async function handleDiscutirComGestor(aulaAlvo, gestorUserId) {
+    try {
+      const conversaId = await abrirConversaDaAula.mutateAsync({ aulaId: aulaAlvo.id, outroUserId: gestorUserId })
+      navigate('/mensagens', { state: { conversaId } })
+    } catch {
+      toast.error('Mensagens por aula ainda não disponível — falta rodar uma migração no banco.', { style: toastStyle })
+    } finally {
+      setEscolhendoDestinatario(null)
     }
   }
 
@@ -1371,6 +1397,15 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                   <MessageCircle size={12} /> Discutir esta aula
                 </button>
               )}
+              {!somenteLeitura && professorProprioId && (
+                <button onClick={() => setEscolhendoDestinatario(v => v === aula.id ? null : aula.id)} style={{
+                  display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
+                  borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
+                  color: '#888', fontSize: '12px', cursor: 'pointer',
+                }}>
+                  <MessageCircle size={12} /> Discutir esta aula
+                </button>
+              )}
               {!somenteLeitura && !professorProprioId && !isAvulsa && !editandoNivelTurma && (
                 <button onClick={() => { setEditandoNivelTurma(true); setNovoNivelId('') }} style={{
                   display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
@@ -1381,6 +1416,26 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                 </button>
               )}
             </div>
+
+            {escolhendoDestinatario === aula.id && (
+              <div style={{ backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', padding: '10px', marginBottom: '14px' }}>
+                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Falar sobre essa aula com quem?</div>
+                {gestores.length === 0 ? (
+                  <div style={{ fontSize: '12px', color: '#555' }}>Nenhum gestor cadastrado.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {gestores.map(g => (
+                      <button key={g.user_id} onClick={() => handleDiscutirComGestor(aula, g.user_id)} style={{
+                        display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '8px',
+                        border: 'none', background: '#1a1a1a', color: '#F0F2F5', fontSize: '13px', cursor: 'pointer', textAlign: 'left',
+                      }}>
+                        <MessageCircle size={13} color="#888" /> {g.nome}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {editandoNivelTurma && (
               <div style={{ backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', padding: '12px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
