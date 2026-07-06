@@ -117,9 +117,10 @@ export function useHomeDashboard() {
       const turmaNome = getTurmaNome(a)
       const modalidadeNome = getModalidadeDaAula(a)
       const horarioInicio = horarioInicioDaAula(a)
+      const horarioFim = horarioFimDaAula(a)
       const presentes = a.presencas?.filter(p => p.status_presenca === 'presente' || p.presente).length || 0
       const faltas = a.presencas?.filter(p => p.status_presenca === 'falta' || p.status_presenca === 'falta_justificada').length || 0
-      return { ...a, quadraNome, turmaNome, modalidadeNome, horarioInicio, empresa: getEmpresaPorQuadra(quadraNome), presentes, faltas }
+      return { ...a, quadraNome, turmaNome, modalidadeNome, horarioInicio, horarioFim, empresa: getEmpresaPorQuadra(quadraNome), presentes, faltas }
     })
     .sort((a, b) => (a.horarioInicio || '').localeCompare(b.horarioInicio || ''))
 

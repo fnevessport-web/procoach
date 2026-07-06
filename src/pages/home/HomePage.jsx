@@ -1,11 +1,76 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Timer } from 'lucide-react'
 import { useModalidades } from '../../hooks/useModalidades'
 import { useHomeDashboard } from '../../hooks/useHomeDashboard'
 import useAppStore from '../../store/useAppStore'
 import { Loading } from '../../components/ui/Loading'
 import { FotoProfessor } from '../../components/ui/FotoProfessor'
-import { ICONES_MODALIDADES, LOGO_EMPRESA, EMPRESAS } from '../../constants/modalidades'
+import { ICONES_MODALIDADES, LOGO_EMPRESA, EMPRESAS, horarioParaMinutos } from '../../constants/modalidades'
+
+// Tolerância de 10min após o término oficial — mesma usada em useHomeDashboard
+// pra manter a aula em "ao vivo" (intervalo normal entre aulas)
+const TOLERANCIA_FIM_MIN = 10
+
+function useAgoraEmSegundos() {
+  const [agora, setAgora] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setAgora(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  return agora
+}
+
+function formataMMSS(totalSegundos) {
+  const s = Math.max(0, Math.floor(totalSegundos))
+  const mm = Math.floor(s / 60)
+  const ss = s % 60
+  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+}
+
+function ProgressoAula({ horarioInicio, horarioFim }) {
+  const agoraMs = useAgoraEmSegundos()
+  const inicioMin = horarioParaMinutos(horarioInicio)
+  const fimMin = horarioParaMinutos(horarioFim)
+  if (inicioMin == null || fimMin == null) return null
+
+  const agora = new Date(agoraMs)
+  const agoraMin = agora.getHours() * 60 + agora.getMinutes() + agora.getSeconds() / 60
+  const duracaoMin = fimMin - inicioMin
+  const decorridoMin = agoraMin - inicioMin
+  const pct = duracaoMin > 0 ? Math.min(100, Math.max(0, (decorridoMin / duracaoMin) * 100)) : 0
+
+  const emTolerancia = agoraMin >= fimMin
+  const finalizada = agoraMin >= fimMin + TOLERANCIA_FIM_MIN
+  const decorridoSeg = Math.max(0, decorridoMin * 60)
+
+  const cor = emTolerancia ? '#e24b4a' : '#e24b4a'
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <div style={{ height: '3px', borderRadius: '2px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', width: `${pct}%`, borderRadius: '2px',
+          backgroundColor: cor, transition: 'width 1s linear',
+        }} />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <Timer size={10} color={emTolerancia ? '#e24b4a' : '#555'} style={{ flexShrink: 0 }} />
+        <span style={{
+          fontSize: '9px', fontWeight: emTolerancia ? '700' : '400',
+          color: emTolerancia ? '#e24b4a' : '#555', fontVariantNumeric: 'tabular-nums',
+        }}>
+          {formataMMSS(decorridoSeg)}
+        </span>
+        {finalizada && (
+          <span className="pulse-badge" style={{ fontSize: '9px', fontWeight: '700', color: '#e24b4a' }}>
+            · aula finalizada
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function getIniciais(nome) {
   if (!nome) return '?'
@@ -245,6 +310,8 @@ export function HomePage() {
                       ✗ {aula.faltas}
                     </span>
                   </div>
+
+                  <ProgressoAula horarioInicio={aula.horarioInicio} horarioFim={aula.horarioFim} />
                 </div>
               </button>
             ))}
