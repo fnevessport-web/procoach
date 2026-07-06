@@ -28,12 +28,15 @@ function minutosAgora() {
   return agora.getHours() * 60 + agora.getMinutes()
 }
 
+// Tolerância de 10min após o término oficial: é o intervalo normal entre aulas
+// (professor emendando atraso ou só bebendo água antes da próxima) — evita o
+// widget "Ao Vivo" ficar vazio bem no meio desse intervalo.
 function aulaEmAndamento(aula) {
   const inicio = horarioParaMinutos(horarioInicioDaAula(aula))
   const fim = horarioParaMinutos(horarioFimDaAula(aula))
   if (inicio == null || fim == null) return false
   const agora = minutosAgora()
-  return agora >= inicio && agora < fim
+  return agora >= inicio && agora < fim + 10
 }
 
 // Mesma tolerância de 10min usada em AulasCoordenador/useFinanceiro para "aula já começou"
