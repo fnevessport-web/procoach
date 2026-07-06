@@ -430,7 +430,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       inicial[p.aluno_id] = {
         aluno_id: p.aluno_id,
         nome: p.alunos?.nome,
-        status_presenca: p.status_presenca || (p.presente ? 'presente' : 'falta'),
+        status_presenca: p.status_presenca || (p.presente === true ? 'presente' : ''),
         tipo_participacao: p.tipo_participacao || 'mensalista',
         alerta_nivel: alertaPresenca,
         nivel_avaliado_prof: nivelPresenca,
@@ -472,7 +472,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       ...prev,
       [aulaId]: {
         ...prev[aulaId],
-        [aluno.id]: { aluno_id: aluno.id, nome: aluno.nome, status_presenca: 'presente', tipo_participacao: 'mensalista', alerta_nivel: false, nivel_avaliado_prof: '', obs_nivel_prof: '' }
+        [aluno.id]: { aluno_id: aluno.id, nome: aluno.nome, status_presenca: '', tipo_participacao: 'mensalista', alerta_nivel: false, nivel_avaliado_prof: '', obs_nivel_prof: '' }
       }
     }))
     setAlunoRecemAdicionado(aluno.id)
@@ -654,7 +654,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
     for (const aulaFuturaId of idsAulasFuturas) {
       for (const alunoId of alunoIds) {
         if (!jaTem.has(`${aulaFuturaId}_${alunoId}`)) {
-          faltantes.push({ aula_id: aulaFuturaId, aluno_id: alunoId, presente: false, status_presenca: 'presente', tipo_participacao: 'mensalista' })
+          faltantes.push({ aula_id: aulaFuturaId, aluno_id: alunoId, presente: false, status_presenca: '', tipo_participacao: 'mensalista' })
         }
       }
     }
