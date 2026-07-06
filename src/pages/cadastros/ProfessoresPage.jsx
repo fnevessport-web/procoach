@@ -996,7 +996,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   </div>
                 ) : criandoAcesso ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <input placeholder="CPF do professor" value={mascararCPF(formAcesso.cpf)} inputMode="numeric" maxLength={14}
+                    <input placeholder="•••.•••.•••-•• (CPF do professor)" value={mascararCPF(formAcesso.cpf)} inputMode="numeric"
                       onChange={e => setFormAcesso(f => ({ ...f, cpf: apenasDigitosCPF(e.target.value) }))} style={inputStyle} />
                     <div style={{ position: 'relative' }}>
                       <input type={mostrarSenhaAcesso ? 'text' : 'password'} placeholder="Senha inicial (mín. 8 caracteres)" value={formAcesso.senha}
@@ -1338,7 +1338,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
 
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Dados Pessoais</div>
                 <div><div style={labelStyle}>Nascimento</div><input type="date" style={inputStyle} value={form.nascimento} onChange={e => set('nascimento', e.target.value)} /></div>
-                <div><div style={labelStyle}>CPF</div><input style={inputStyle} placeholder="•••.•••.•••-••" inputMode="numeric" maxLength={14} value={mascararCPF(form.cpf)} onChange={e => set('cpf', apenasDigitosCPF(e.target.value))} /></div>
+                <div><div style={labelStyle}>CPF</div><input style={inputStyle} placeholder="•••.•••.•••-••" inputMode="numeric" value={mascararCPF(form.cpf)} onChange={e => set('cpf', apenasDigitosCPF(e.target.value))} /></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div><div style={labelStyle}>Cidade Nasc.</div><input style={inputStyle} placeholder="Cidade" value={form.cidade_nascimento} onChange={e => set('cidade_nascimento', e.target.value)} /></div>
                   <div><div style={labelStyle}>Estado Nasc.</div>
@@ -1480,7 +1480,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     <input style={inputStyle} placeholder="Nome como está no banco..." value={form.nome_titular} onChange={e => { set('nome_titular', e.target.value); set('titular_proprio', false) }} />
                   </div>
                   <div><div style={labelStyle}>CPF do titular</div>
-                    <input style={inputStyle} placeholder="•••.•••.•••-••" inputMode="numeric" maxLength={14} value={mascararCPF(form.cpf_titular)} onChange={e => { set('cpf_titular', apenasDigitosCPF(e.target.value)); set('titular_proprio', false) }} />
+                    <input style={inputStyle} placeholder="•••.•••.•••-••" inputMode="numeric" value={mascararCPF(form.cpf_titular)} onChange={e => { set('cpf_titular', apenasDigitosCPF(e.target.value)); set('titular_proprio', false) }} />
                   </div>
                 </div>
                 {/* Empresa(s) onde atua */}
