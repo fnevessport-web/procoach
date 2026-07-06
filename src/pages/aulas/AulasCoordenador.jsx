@@ -124,6 +124,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
   const [statusLocal, setStatusLocal] = useState({})
   const [alertaNivel, setAlertaNivel] = useState({})
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
+  const [confirmandoRemocao, setConfirmandoRemocao] = useState(null)
   const [notasLocal, setNotasLocal] = useState({})
   const [editandoNotas, setEditandoNotas] = useState(false)
   const [novoAlunoModal, setNovoAlunoModal] = useState({
@@ -230,6 +231,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
     setBuscaAdicionando('')
     setAlertaNivel({})
     setConfirmandoExclusao(false)
+    setConfirmandoRemocao(null)
     setEditandoNotas(false)
     setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '' })
   }
@@ -246,11 +248,64 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
       ...prev,
       [aulaId]: {
         ...prev[aulaId],
-        [aluno.id]: { aluno_id: aluno.id, nome: aluno.nome, status_presenca: 'presente', tipo_participacao: 'avulso', alerta_nivel: false, nivel_avaliado_prof: '', obs_nivel_prof: '' }
+        [aluno.id]: { aluno_id: aluno.id, nome: aluno.nome, status_presenca: 'presente', tipo_participacao: 'mensalista', alerta_nivel: false, nivel_avaliado_prof: '', obs_nivel_prof: '' }
       }
     }))
     setAdicionandoAluno(null)
     setBuscaAdicionando('')
+  }
+
+  function removerAlunoDaListaLocal(aulaId, alunoId) {
+    setPresencasLocal(prev => {
+      const novo = { ...prev[aulaId] }
+      delete novo[alunoId]
+      return { ...prev, [aulaId]: novo }
+    })
+  }
+
+  // Mensalista é matrícula duradoura — pergunta se é só dessa aula ou de todas as futuras
+  // dessa turma antes de remover. Avulso/cortesia/reposição (ou aula sem turma) some direto.
+  function iniciarRemocaoAluno(aula, alunoId) {
+    const presenca = presencasLocal[aula.id]?.[alunoId]
+    if (aula.turma_id && presenca?.tipo_participacao === 'mensalista') {
+      setConfirmandoRemocao({ aulaId: aula.id, turmaId: aula.turma_id, dataAula: aula.data_aula, alunoId, nome: presenca.nome })
+    } else {
+      removerAlunoDaListaLocal(aula.id, alunoId)
+    }
+  }
+
+  async function handleRemoverSomenteEstaAula() {
+    const { aulaId, alunoId } = confirmandoRemocao
+    try {
+      await supabase.from('presencas').delete().eq('aula_id', aulaId).eq('aluno_id', alunoId)
+      removerAlunoDaListaLocal(aulaId, alunoId)
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      toast.success('Aluno removido dessa aula.', { style: toastStyle })
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    } finally {
+      setConfirmandoRemocao(null)
+    }
+  }
+
+  async function handleRemoverTodasFuturas() {
+    const { aulaId, turmaId, dataAula, alunoId } = confirmandoRemocao
+    try {
+      await supabase.from('turmas_alunos').update({ ativo: false }).eq('turma_id', turmaId).eq('aluno_id', alunoId)
+      const { data: aulasFuturas } = await supabase
+        .from('aulas').select('id').eq('turma_id', turmaId).gte('data_aula', dataAula)
+      const idsAulas = (aulasFuturas || []).map(a => a.id)
+      if (idsAulas.length > 0) {
+        await supabase.from('presencas').delete().eq('aluno_id', alunoId).in('aula_id', idsAulas)
+      }
+      removerAlunoDaListaLocal(aulaId, alunoId)
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      toast.success('Aluno removido dessa aula e de todas as futuras da turma.', { style: toastStyle })
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    } finally {
+      setConfirmandoRemocao(null)
+    }
   }
 
   function toggleAlertaNivel(alunoId, alunoData) {
@@ -333,8 +388,47 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
+  // Mensalista = matrícula duradoura: além de salvar a presença nessa aula, vincula o aluno
+  // à turma (turmas_alunos) e completa a presença nas aulas futuras já geradas dessa mesma
+  // turma (que foram criadas antes dessa matrícula, então nunca tiveram esse aluno).
+  async function vincularMensalistasNaTurma(aula, mensalistas) {
+    if (!aula.turma_id || mensalistas.length === 0) return
+    const alunoIds = mensalistas.map(p => p.aluno_id)
+
+    await supabase.from('turmas_alunos').upsert(
+      alunoIds.map(aluno_id => ({ turma_id: aula.turma_id, aluno_id, ativo: true })),
+      { onConflict: 'turma_id,aluno_id' }
+    )
+
+    const { data: aulasFuturas } = await supabase
+      .from('aulas').select('id')
+      .eq('turma_id', aula.turma_id)
+      .gte('data_aula', aula.data_aula)
+      .lte('data_aula', '2026-12-31')
+    const idsAulasFuturas = (aulasFuturas || []).map(a => a.id)
+    if (idsAulasFuturas.length === 0) return
+
+    const { data: presencasExistentes } = await supabase
+      .from('presencas').select('aula_id, aluno_id')
+      .in('aula_id', idsAulasFuturas).in('aluno_id', alunoIds)
+    const jaTem = new Set((presencasExistentes || []).map(p => `${p.aula_id}_${p.aluno_id}`))
+
+    const faltantes = []
+    for (const aulaFuturaId of idsAulasFuturas) {
+      for (const alunoId of alunoIds) {
+        if (!jaTem.has(`${aulaFuturaId}_${alunoId}`)) {
+          faltantes.push({ aula_id: aulaFuturaId, aluno_id: alunoId, presente: false, status_presenca: 'presente', tipo_participacao: 'mensalista' })
+        }
+      }
+    }
+    if (faltantes.length > 0) {
+      await supabase.from('presencas').insert(faltantes)
+    }
+  }
+
   async function handleSalvarPresencas(aulaId) {
     const lista = Object.values(presencasLocal[aulaId] || {})
+    const aula = aulas?.find(a => a.id === aulaId)
     try {
       const { data: presencasAnteriores } = await supabase
         .from('presencas').select('aluno_id').eq('aula_id', aulaId)
@@ -347,6 +441,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
       if (lista.length > 0) {
         await salvarPresencas.mutateAsync({ aulaId, presencas: lista })
       }
+      const mensalistas = lista.filter(p => p.tipo_participacao === 'mensalista')
+      if (aula && mensalistas.length > 0) {
+        await vincularMensalistasNaTurma(aula, mensalistas)
+      }
+      qc.invalidateQueries({ queryKey: ['aulas'] })
       toast.success('✅ Presenças salvas!', { style: toastStyle })
       fecharModal()
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
@@ -1141,18 +1240,31 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
                             style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', color: isReposicao ? COR_REPOSICAO : '#888', cursor: 'pointer', outline: 'none' }}>
                             {TIPO_PARTICIPACAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                           </select>
-                          <button onClick={() => {
-                            setPresencasLocal(prev => {
-                              const novo = { ...prev[aula.id] }
-                              delete novo[aluno.aluno_id]
-                              return { ...prev, [aula.id]: novo }
-                            })
-                          }} title="Remover da lista" style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(239,68,68,0.08)', color: '#EF4444' }}>
+                          <button onClick={() => iniciarRemocaoAluno(aula, aluno.aluno_id)} title="Remover" style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(239,68,68,0.08)', color: '#EF4444' }}>
                             <X size={11} />
                           </button>
                         </div>
                       )}
                     </div>
+
+                    {confirmandoRemocao?.aulaId === aula.id && confirmandoRemocao?.alunoId === aluno.aluno_id && (
+                      <div style={{ backgroundColor: '#1a1a1a', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.3)', padding: '10px', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ fontSize: '11px', color: '#F0F2F5' }}>
+                          {aluno.nome} é mensalista dessa turma — remover só dessa aula ou de todas as futuras?
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={handleRemoverSomenteEstaAula} style={{ flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#888', fontSize: '11px', cursor: 'pointer' }}>
+                            Só essa aula
+                          </button>
+                          <button onClick={handleRemoverTodasFuturas} style={{ flex: 1, padding: '7px', borderRadius: '8px', border: 'none', background: '#EF4444', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
+                            Essa e as futuras
+                          </button>
+                          <button onClick={() => setConfirmandoRemocao(null)} style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {alertaAberto && (
                       <div style={{ backgroundColor: '#1a1a1a', borderRadius: '8px', border: '1px solid rgba(252,200,37,0.2)', padding: '10px', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1294,13 +1406,13 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
               </button>
             ))}
 
-            {!aulaFutura && !somenteLeitura && (
+            {!somenteLeitura && (
               <button onClick={() => handleSalvarPresencas(aula.id)} disabled={salvarPresencas.isPending} style={{
                 marginTop: '12px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
                 background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
                 color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer', boxSizing: 'border-box',
               }}>
-                {salvarPresencas.isPending ? 'Salvando...' : '💾 Salvar Presenças'}
+                {salvarPresencas.isPending ? 'Salvando...' : aulaFutura ? '💾 Salvar alunos da turma' : '💾 Salvar Presenças'}
               </button>
             )}
           </div>
