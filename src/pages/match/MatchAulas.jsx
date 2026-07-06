@@ -121,7 +121,7 @@ function PainelDia({ data, onFechar }) {
       backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex',
     }} onClick={onFechar}>
       <div className="sheet-content" onClick={e => e.stopPropagation()} style={{
-        maxHeight: '85vh', overflowY: 'auto',
+        maxHeight: '85dvh', overflowY: 'auto',
         backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0',
         padding: '20px 16px', boxSizing: 'border-box',
       }}>

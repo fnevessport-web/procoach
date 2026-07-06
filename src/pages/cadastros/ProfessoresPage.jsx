@@ -112,7 +112,7 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-end' }}>
       <div onClick={e => e.stopPropagation()} style={{
         width: '100%', backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0', padding: '20px 16px 32px', boxSizing: 'border-box',
-        maxHeight: '82vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
+        maxHeight: '82dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
       }}>
         <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
@@ -931,7 +931,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
         <div style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }}
           onClick={() => setCardAberto(null)}>
           <div onClick={e => e.stopPropagation()} style={{
-            width: '100%', maxHeight: '94vh', overflowY: 'auto',
+            width: '100%', maxHeight: '94dvh', overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain',
             backgroundColor: '#151515', borderRadius: '20px 20px 0 0',
@@ -1692,7 +1692,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
 
                   {modalAval && (
                     <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }} onClick={() => setModalAval(false)}>
-                      <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box', maxHeight: '80vh', overflowY: 'auto' }}>
+                      <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box', maxHeight: '80dvh', overflowY: 'auto' }}>
                         <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
                         <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '4px' }}>Confirmar avaliação</div>
                         <div style={{ fontSize: '11px', color: '#555', marginBottom: '16px' }}>{cardAberto.nome}</div>
@@ -1815,7 +1815,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       {/* MODAL CRIAR */}
       {modalCriar && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }} onClick={() => setModalCriar(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box', maxHeight: '70vh', overflowY: 'auto' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box', maxHeight: '70dvh', overflowY: 'auto' }}>
             <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
             <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '16px' }}>Novo Professor</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

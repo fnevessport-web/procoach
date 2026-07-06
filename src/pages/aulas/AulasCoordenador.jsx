@@ -1102,7 +1102,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       {modalExportarPDF && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
           onClick={() => setModalExportarPDF(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#1a1a1a', borderRadius: '16px', border: '1px solid #2a2a2a', padding: '20px', width: '100%', maxWidth: '360px', maxHeight: '85vh', overflowY: 'auto' }}>
+          <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#1a1a1a', borderRadius: '16px', border: '1px solid #2a2a2a', padding: '20px', width: '100%', maxWidth: '360px', maxHeight: '85dvh', overflowY: 'auto' }}>
             <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '14px' }}>Exportar grade em PDF</div>
             <button onClick={() => setPdfSomenteComAluno(v => !v)} style={{
               display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '10px',
@@ -1476,7 +1476,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
           display: 'flex',
         }} onClick={fecharModal}>
           <div className="sheet-content" onClick={e => e.stopPropagation()} style={{
-            maxHeight: '90vh', overflowY: 'auto',
+            maxHeight: '90dvh', overflowY: 'auto',
             backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0',
             padding: '20px 16px', boxSizing: 'border-box',
           }}>

@@ -30,7 +30,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }) {
         border: '1px solid #2a2a2a',
         borderRadius: '24px 24px 0 0',
         boxShadow: '0 -8px 40px rgba(0,0,0,0.6)',
-        maxHeight: '90vh',
+        maxHeight: '90dvh',
         display: 'flex',
         flexDirection: 'column',
         animation: 'slideUp 0.3s ease-out',
