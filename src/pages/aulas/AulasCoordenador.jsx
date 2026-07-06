@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown } from 'lucide-react'
@@ -18,6 +19,7 @@ import useAppStore from '../../store/useAppStore'
 import { Loading, EmptyState } from '../../components/ui/Loading'
 import { supabase } from '../../lib/supabase'
 import { logAudit } from '../../lib/audit'
+import { criarAlerta } from '../../hooks/useAlertas'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
@@ -113,7 +115,7 @@ function isAulaFutura(dataAula, horarioInicio) {
 // mostra as próprias aulas e esconde ações de gestor (editar aula, excluir, editar turma, ação em
 // massa). O professor continua podendo confirmar status, discutir a aula e mexer nos alunos.
 export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, professorProprioId = null }) {
-  const { modalidadeSelecionada, setOrigemAulas, user } = useAppStore()
+  const { modalidadeSelecionada, setOrigemAulas, user, setNavRecolhida } = useAppStore()
   const alturaVisivel = useVisualViewportHeight()
   const qc = useQueryClient()
   const location = useLocation()
@@ -124,6 +126,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   const [highlightedAulaId, setHighlightedAulaId] = useState(null)
   const highlightAulaId = location.state?.highlightAulaId
   const fromHome = location.state?.fromHome
+
+  // Segurança: se sair da tela sem fechar o modal (ex: "Discutir esta aula" navega direto
+  // pra Mensagens), garante que o rodapé volte a aparecer normalmente na próxima tela.
+  useEffect(() => {
+    return () => setNavRecolhida(false)
+  }, [])
 
   useEffect(() => {
     if (location.state?.horario) {
@@ -436,6 +444,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
 
   function abrirAula(aula) {
     setAulaModal(aula)
+    setNavRecolhida(true)
     setNotasLocal(prev => ({ ...prev, [aula.id]: aula.notas || '' }))
     setEditandoNotas(false)
     const inicial = {}
@@ -460,6 +469,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
 
   function fecharModal() {
     setAulaModal(null)
+    setNavRecolhida(false)
     setEditandoAula(null)
     setAdicionandoAluno(null)
     setBuscaAdicionando('')
@@ -721,6 +731,22 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
           { turma: getNivel(aula) || aula?.turmas?.nome, horario: getHorario(aula), data: aula?.data_aula },
           { adicionados: nomesAdicionados, removidos: nomesRemovidos }
         )
+
+        // Gestor mexendo na turma de outra pessoa: avisa o professor dono da aula (sino +
+        // realtime). Se o próprio professor mexeu na aula dele, não faz sentido avisar ele mesmo.
+        if (nomesAdicionados.length > 0 && aula?.professores?.id && !professorProprioId) {
+          const { data: perfilProfessor } = await supabase
+            .from('perfis_usuario').select('user_id').eq('professor_id', aula.professores.id).maybeSingle()
+          if (perfilProfessor?.user_id && perfilProfessor.user_id !== user?.id) {
+            await criarAlerta({
+              usuarioId: perfilProfessor.user_id,
+              tipo: 'aluno_adicionado',
+              referenciaId: aulaId,
+              prioridade: 'baixa',
+              mensagem: `${nomesAdicionados.join(', ')} foi incluído na sua aula de ${getHorario(aula)} (${getNivel(aula) || aula?.turmas?.nome || 'avulsa'}).`,
+            })
+          }
+        }
       }
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
@@ -1545,8 +1571,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         </div>
       )}
 
-      {/* Modal */}
-      {aulaModal && (
+      {/* Modal — via portal pro <body>: escapa do contêiner com overflow-y+scroll-touch
+          do .app-main, que no WebKit mobile "prende" filhos position:fixed dentro dele
+          em vez de cobrir a tela toda (bug clássico do Safari/WebKit) */}
+      {aulaModal && createPortal(
         <div className="sheet-overlay" style={{
           position: 'fixed', inset: 0, zIndex: 50,
           backgroundColor: 'rgba(0,0,0,0.7)',
@@ -2115,7 +2143,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
               </button>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

@@ -7,6 +7,7 @@ const useAppStore = create((set) => ({
   origemAulas: null,
   empresaSelecionada: null, // { id, nome, logoUrl, role } — empresa (tenant) ativa na sessão
   sessaoRecuperacao: false, // true quando a sessão veio de um link de "esqueci/resetar senha" — força troca mesmo se primeiro_acesso já for false
+  navRecolhida: false, // true enquanto um modal de tela cheia (ex: cadastrar aluno) está aberto — recolhe o rodapé de navegação numa abinha, liberando espaço vertical
 
   setUser: (user) => set({ user }),
   setPerfil: (perfil) => set({ perfil }),
@@ -14,8 +15,9 @@ const useAppStore = create((set) => ({
   setOrigemAulas: (origem) => set({ origemAulas: origem }),
   setEmpresaSelecionada: (empresa) => set({ empresaSelecionada: empresa }),
   setSessaoRecuperacao: (v) => set({ sessaoRecuperacao: v }),
+  setNavRecolhida: (v) => set({ navRecolhida: v }),
 
-  reset: () => set({ user: null, perfil: null, modalidadeSelecionada: null, origemAulas: null, empresaSelecionada: null, sessaoRecuperacao: false }),
+  reset: () => set({ user: null, perfil: null, modalidadeSelecionada: null, origemAulas: null, empresaSelecionada: null, sessaoRecuperacao: false, navRecolhida: false }),
 }))
 
 export default useAppStore

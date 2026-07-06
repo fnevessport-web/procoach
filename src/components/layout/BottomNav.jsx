@@ -1,14 +1,32 @@
+import { ChevronUp } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
 import { getNavItems } from '../../constants/navItems'
 
 export function BottomNav() {
-  const { perfil } = useAppStore()
+  const { perfil, navRecolhida, setNavRecolhida } = useAppStore()
   const location = useLocation()
   const navigate = useNavigate()
 
   const role = perfil?.role || 'professor'
   const items = getNavItems(role)
+
+  if (navRecolhida) {
+    return (
+      <button
+        onClick={() => setNavRecolhida(false)}
+        aria-label="Mostrar menu"
+        style={{
+          flexShrink: 0, zIndex: 40, width: '100%', border: 'none',
+          backgroundColor: '#110f0f', borderTop: '1px solid #1e1e1e',
+          padding: '6px 0 calc(6px + env(safe-area-inset-bottom))',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+        }}
+      >
+        <ChevronUp size={16} color="#333" />
+      </button>
+    )
+  }
 
   return (
     <nav className="bottom-nav" style={{
