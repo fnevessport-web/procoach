@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown } from 'lucide-react'
 import { horarioParaMinutos } from '../../constants/modalidades'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas } from '../../hooks/useAulas'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
@@ -1438,6 +1438,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                           {hasReposicao && <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: COR_REPOSICAO, flexShrink: 0 }} />}
                           {hasNotas && <FileText size={8} color="#444" />}
                           {idsComConversa.has(aulaCelula.id) && <MessageCircle size={8} color="#3b82f6" />}
+                          {aulaCelula.status_aula === 'dada' && aulaCelula.paga_professor === true && (
+                            <Crown size={9} color="#fcc825" title="Validada e confirmada pro pagamento" />
+                          )}
                         </div>
                       </div>
                       <div style={{ fontSize: '11px', fontWeight: '600', color: aulaEhFutura ? '#444' : '#F0F2F5', lineHeight: '1.3', marginBottom: '4px' }}>

@@ -128,10 +128,14 @@ export function useConfirmarAulaCoordenador() {
         novoStatus = 'confirmada_coord'
       }
 
+      // Validar no Match é a confirmação de pagamento: passa a contar no financeiro
+      // (useFinanceiro.js e o total do professor em Cadastros exigem paga_professor=true).
+      // Não validar bloqueia o pagamento até a divergência ser resolvida.
       const { data, error } = await supabase
         .from('aulas')
         .update({
           status: novoStatus,
+          paga_professor: confirmada,
           observacoes: observacoes || anterior.observacoes,
           atualizado_em: new Date().toISOString()
         })
@@ -143,7 +147,12 @@ export function useConfirmarAulaCoordenador() {
       await logAudit('aulas', aulaId, 'UPDATE', anterior, data)
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['aulas'] })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      qc.invalidateQueries({ queryKey: ['aulas_professor'] })
+      qc.invalidateQueries({ queryKey: ['fin_custos_prof'] })
+      qc.invalidateQueries({ queryKey: ['fin_aulas_prof'] })
+    }
   })
 }
 
