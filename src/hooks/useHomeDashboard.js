@@ -150,7 +150,7 @@ export function useHomeDashboard() {
   const professoresAtivos = (todosProfessores || []).filter(p => p.ativo !== false)
 
   const professoresAgora = professoresAtivos.map(prof => {
-    const aulaAtual = aulasHoje.find(a => a.professores?.id === prof.id && aulaEmAndamento(a))
+    const aulaAtual = aulasHoje.find(a => a.professores?.id === prof.id && aulaTemAluno(a) && aulaEmAndamento(a))
     if (aulaAtual) {
       return { ...prof, status: 'ativo', aula: aulaAtual, quadraNome: getQuadraNome(aulaAtual) }
     }
