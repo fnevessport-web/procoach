@@ -14,7 +14,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
 import { Loading, EmptyState } from '../../components/ui/Loading'
 import { supabase } from '../../lib/supabase'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
 const STATUS_AULA = [
@@ -105,7 +105,10 @@ function isAulaFutura(dataAula, horarioInicio) {
   return agora < inicioAula
 }
 
-export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
+// professorProprioId: modo "Minhas Aulas" do professor — mesmo layout/modal do gestor, mas só
+// mostra as próprias aulas e esconde ações de gestor (editar aula, excluir, editar turma, ação em
+// massa). O professor continua podendo confirmar status, discutir a aula e mexer nos alunos.
+export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, professorProprioId = null }) {
   const { modalidadeSelecionada, setOrigemAulas, user } = useAppStore()
   const qc = useQueryClient()
   const location = useLocation()
@@ -188,7 +191,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
     }
   }
 
-  const { data: aulas, isLoading } = useAulas({ data, modalidadeId: modalidadeSelecionada?.id })
+  const { data: aulas, isLoading } = useAulas(
+    professorProprioId
+      ? { data, professorId: professorProprioId }
+      : { data, modalidadeId: modalidadeSelecionada?.id }
+  )
   const { data: todosAlunos, refetch: refetchAlunos } = useAlunos()
   const { professores: todoProfessores } = useProfessores(null)
   const { data: todasQuadras } = useQuadras(null)
@@ -197,6 +204,19 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
   const salvarAluno = useSalvarAluno()
   const atualizarStatus = useAtualizarStatusAula()
   const salvarPresencas = useSalvarPresencas()
+
+  // Pra mostrar um ícone discreto de mensagem no card de aulas que já têm uma conversa aberta
+  const idsAulasDoDia = (aulas || []).map(a => a.id)
+  const { data: aulasComConversa = [] } = useQuery({
+    queryKey: ['aulas_com_conversa', idsAulasDoDia],
+    enabled: idsAulasDoDia.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('conversas').select('aula_id').in('aula_id', idsAulasDoDia)
+      if (error) throw error
+      return (data || []).map(c => c.aula_id)
+    },
+  })
+  const idsComConversa = new Set(aulasComConversa)
 
   useEffect(() => {
     if (!highlightAulaId || !aulas?.length) return
@@ -929,7 +949,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
         </div>
 
         {/* Ação em massa */}
-        {!somenteLeitura && totalAulas > 0 && !isFuturo && (
+        {!somenteLeitura && !professorProprioId && totalAulas > 0 && !isFuturo && (
           <button
             onClick={() => setModalMassa('menu')}
             title="Ação em massa"
@@ -1285,6 +1305,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
                           {hasAlerta && <span style={{ fontSize: '9px' }}>⚠️</span>}
                           {hasReposicao && <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: COR_REPOSICAO, flexShrink: 0 }} />}
                           {hasNotas && <FileText size={8} color="#444" />}
+                          {idsComConversa.has(aulaCelula.id) && <MessageCircle size={8} color="#3b82f6" />}
                         </div>
                       </div>
                       <div style={{ fontSize: '11px', fontWeight: '600', color: aulaEhFutura ? '#444' : '#F0F2F5', lineHeight: '1.3', marginBottom: '4px' }}>
@@ -1341,7 +1362,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: editandoNivelTurma ? '10px' : '14px' }}>
-              {!somenteLeitura && aula.professores?.id && (
+              {!somenteLeitura && !professorProprioId && aula.professores?.id && (
                 <button onClick={() => handleDiscutirAula(aula)} style={{
                   display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
                   borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
@@ -1350,7 +1371,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
                   <MessageCircle size={12} /> Discutir esta aula
                 </button>
               )}
-              {!somenteLeitura && !isAvulsa && !editandoNivelTurma && (
+              {!somenteLeitura && !professorProprioId && !isAvulsa && !editandoNivelTurma && (
                 <button onClick={() => { setEditandoNivelTurma(true); setNovoNivelId('') }} style={{
                   display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
                   borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
@@ -1398,7 +1419,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
               </div>
             )}
 
-            {isAvulsa && !somenteLeitura && (
+            {isAvulsa && !somenteLeitura && !professorProprioId && (
               <div style={{ marginBottom: '12px' }}>
                 {estaEditando ? (
                   <div style={{
