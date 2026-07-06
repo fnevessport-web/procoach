@@ -265,13 +265,16 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
     queryFn: async () => {
       // Só conta aula que já aconteceu (data_aula <= hoje) — aulas futuras já nascem com
       // status_aula='dada' por uma limitação de constraint no banco, mas isso não
-      // significa que já foram dadas de verdade.
+      // significa que já foram dadas de verdade. paga_professor=true é quem realmente
+      // confirma que a aula foi fechada/paga (mesmo filtro usado em useFinanceiro.js,
+      // pra esse total bater com a aba Financeiro).
       const hoje = format(new Date(), 'yyyy-MM-dd')
       const { data, error } = await supabase
         .from('aulas')
         .select('data_aula, status_aula, paga_professor, status')
         .eq('professor_executou_id', cardAberto.id)
         .eq('status_aula', 'dada')
+        .eq('paga_professor', true)
         .lte('data_aula', hoje)
         .order('data_aula', { ascending: true })
       if (error) throw error
