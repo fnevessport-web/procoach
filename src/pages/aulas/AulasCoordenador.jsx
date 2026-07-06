@@ -4,7 +4,7 @@ import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown } from 'lucide-react'
 import { horarioParaMinutos } from '../../constants/modalidades'
 import { getFeriado } from '../../constants/feriados'
-import { useAulas, useAtualizarStatusAula, useSalvarPresencas } from '../../hooks/useAulas'
+import { useAulas, useAtualizarStatusAula, useSalvarPresencas, confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useProfessores } from '../../hooks/useProfessores'
 import { useQuadras } from '../../hooks/useQuadras'
@@ -207,6 +207,14 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       : { data, modalidadeId: modalidadeSelecionada?.id }
   )
   const { data: todosAlunos, refetch: refetchAlunos } = useAlunos()
+
+  // Sem isso, uma aula com aluno e horário já passado ficava mostrando "Confirmada" ticada
+  // (status_aula já nasce assim) mas "Aula não paga" embaixo — incoerente, porque a confirmação
+  // de pagamento só rodava nas telas financeiras. Roda aqui também, sempre que troca de dia.
+  useEffect(() => {
+    confirmarAulasElegiveis({ professorId: professorProprioId, dataInicio: data, dataFim: data })
+      .then(() => qc.invalidateQueries({ queryKey: ['aulas'] }))
+  }, [data, professorProprioId])
   const { professores: todoProfessores } = useProfessores(null)
   const { data: todasQuadras } = useQuadras(null)
   const { data: todosNiveis } = useNiveis(null)
