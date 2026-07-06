@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, F
 import { horarioParaMinutos } from '../../constants/modalidades'
 import { getFeriado } from '../../constants/feriados'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas, confirmarAulasElegiveis } from '../../hooks/useAulas'
+import { useVisualViewportHeight } from '../../hooks/useVisualViewportHeight'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useProfessores } from '../../hooks/useProfessores'
 import { useQuadras } from '../../hooks/useQuadras'
@@ -113,6 +114,7 @@ function isAulaFutura(dataAula, horarioInicio) {
 // massa). O professor continua podendo confirmar status, discutir a aula e mexer nos alunos.
 export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, professorProprioId = null }) {
   const { modalidadeSelecionada, setOrigemAulas, user } = useAppStore()
+  const alturaVisivel = useVisualViewportHeight()
   const qc = useQueryClient()
   const location = useLocation()
   const navigate = useNavigate()
@@ -1168,7 +1170,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       {modalExportarPDF && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
           onClick={() => setModalExportarPDF(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#1a1a1a', borderRadius: '16px', border: '1px solid #2a2a2a', padding: '20px', width: '100%', maxWidth: '360px', maxHeight: '85dvh', overflowY: 'auto' }}>
+          <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#1a1a1a', borderRadius: '16px', border: '1px solid #2a2a2a', padding: '20px', width: '100%', maxWidth: '360px', maxHeight: `${Math.round(alturaVisivel * 0.85)}px`, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '14px' }}>Exportar grade em PDF</div>
             <button onClick={() => setPdfSomenteComAluno(v => !v)} style={{
               display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '10px',
@@ -1551,7 +1553,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
           display: 'flex',
         }} onClick={fecharModal}>
           <div className="sheet-content" onClick={e => e.stopPropagation()} style={{
-            maxHeight: '90dvh', overflowY: 'auto',
+            maxHeight: `${Math.round(alturaVisivel * 0.9)}px`, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
             backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0',
             padding: '20px 16px', boxSizing: 'border-box',
           }}>
