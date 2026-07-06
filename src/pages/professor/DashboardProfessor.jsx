@@ -48,7 +48,6 @@ export function DashboardProfessor() {
   const agora = new Date()
   const mesAtual = agora.getMonth() + 1
   const anoAtual = agora.getFullYear()
-  const hojeSemana = DIAS_SEMANA[(agora.getDay() + 6) % 7]
 
   const { data: professor, isLoading: loadingProf } = useQuery({
     queryKey: ['dashboard_prof_perfil', professorId],
@@ -161,16 +160,15 @@ export function DashboardProfessor() {
     return turmasProprias.find(t => t.horario_dia_semana === dia && t.horario_inicio?.slice(0, 5) === horario)
   }
 
-  function corCelula(turma) {
-    if (!turma) return null
-    if (turma.ativo === false) return { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.35)', dot: '#EF4444' }
-    const temAluno = turma.turmas_alunos?.some(ta => ta.ativo)
-    if (!temAluno) return { bg: 'rgba(252,200,37,0.1)', border: 'rgba(252,200,37,0.3)', dot: '#fcc825' }
-    return { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.3)', dot: '#22c55e' }
-  }
-
   function qtdAlunosAtivos(turma) {
     return turma.turmas_alunos?.filter(ta => ta.ativo).length || 0
+  }
+
+  // Fundo sempre cinza — só a borda muda: verde com aluno, amarelo turma sua vazia, vermelho removida
+  function corBordaCelula(turma) {
+    if (!turma) return 'transparent'
+    if (turma.ativo === false) return 'rgba(239,68,68,0.5)'
+    return qtdAlunosAtivos(turma) > 0 ? 'rgba(34,197,94,0.5)' : 'rgba(252,200,37,0.5)'
   }
 
   // Individual lota com 1 aluno; turma em grupo tem 4 vagas — quanto mais perto de lotar, mais quente a cor
@@ -349,33 +347,35 @@ export function DashboardProfessor() {
                 </div>
                 {DIAS_SEMANA.map(dia => {
                   const turma = getCelula(dia, horario)
-                  const cor = corCelula(turma)
+                  const temAluno = turma && turma.ativo !== false && qtdAlunosAtivos(turma) > 0
                   return (
                     <button
                       key={`${dia}-${horario}`}
                       onClick={() => turma && setCelulaAtiva({ turma, dia, horario })}
                       disabled={!turma}
                       style={{
-                        height: '42px', borderRadius: '6px', cursor: turma ? 'pointer' : 'default',
-                        backgroundColor: cor ? cor.bg : 'rgba(255,255,255,0.02)',
-                        border: cor ? `1px solid ${cor.border}` : '1px solid transparent',
+                        minHeight: '46px', borderRadius: '6px', cursor: turma ? 'pointer' : 'default',
+                        backgroundColor: turma ? '#1a1a1a' : 'rgba(255,255,255,0.02)',
+                        border: `1px solid ${corBordaCelula(turma)}`,
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                        gap: '3px', padding: '2px', overflow: 'hidden',
+                        gap: '3px', padding: '3px', overflow: 'hidden', boxSizing: 'border-box',
                       }}
                     >
                       {turma && (
                         <>
-                          <span style={{ fontSize: '8px', color: '#ccc', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                          <span style={{ fontSize: '8px', color: '#ccc', lineHeight: 1.2, textAlign: 'center', wordBreak: 'break-word', maxWidth: '100%' }}>
                             {turma.niveis?.nome || turma.nome}
                           </span>
-                          <span style={{
-                            width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0,
-                            backgroundColor: corVagas(turma), color: '#110f0f',
-                            fontSize: '9px', fontWeight: '800', lineHeight: 1,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            {qtdAlunosAtivos(turma)}
-                          </span>
+                          {temAluno && (
+                            <span style={{
+                              width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0,
+                              backgroundColor: corVagas(turma), color: '#110f0f',
+                              fontSize: '9px', fontWeight: '800', lineHeight: 1,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              {qtdAlunosAtivos(turma)}
+                            </span>
+                          )}
                         </>
                       )}
                     </button>
@@ -386,24 +386,19 @@ export function DashboardProfessor() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '14px', marginTop: '10px', flexWrap: 'wrap' }}>
-          <Legenda cor="#22c55e" label="Confirmada" />
-          <Legenda cor="#fcc825" label="Sem aluno" />
-          <Legenda cor="#EF4444" label="Removida" />
+          <Legenda tipo="borda" cor="#22c55e" label="Borda: tem aluno" />
+          <Legenda tipo="borda" cor="#fcc825" label="Borda: sua turma, vazia" />
+          <Legenda tipo="borda" cor="#EF4444" label="Borda: removida" />
         </div>
         <div style={{ display: 'flex', gap: '14px', marginTop: '6px', flexWrap: 'wrap' }}>
-          <Legenda cor="#22c55e" label="Nº alunos: bastante vaga" />
-          <Legenda cor="#fcc825" label="Nº alunos: poucas vagas" />
-          <Legenda cor="#EF4444" label="Nº alunos: lotada" />
+          <Legenda cor="#22c55e" label="Bolinha: ainda tem vaga" />
+          <Legenda cor="#fcc825" label="Bolinha: 2-3 alunos" />
+          <Legenda cor="#EF4444" label="Bolinha: lotada" />
         </div>
       </div>
 
       {celulaAtiva && (
-        <ModalCelula
-          celulaAtiva={celulaAtiva}
-          ehHoje={celulaAtiva.dia === hojeSemana}
-          onClose={() => setCelulaAtiva(null)}
-          onIrParaAulas={() => navigate('/aulas')}
-        />
+        <ModalCelula celulaAtiva={celulaAtiva} onClose={() => setCelulaAtiva(null)} />
       )}
     </div>
   )
@@ -420,10 +415,14 @@ function CardResumoDia({ titulo, valor, cor, pulsando, onClick }) {
   )
 }
 
-function Legenda({ cor, label }) {
+function Legenda({ cor, label, tipo }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <span style={{ width: '9px', height: '9px', borderRadius: '3px', backgroundColor: cor }} />
+      <span style={
+        tipo === 'borda'
+          ? { width: '9px', height: '9px', borderRadius: '3px', border: `1.5px solid ${cor}` }
+          : { width: '9px', height: '9px', borderRadius: '50%', backgroundColor: cor }
+      } />
       <span style={{ fontSize: '11px', color: '#888' }}>{label}</span>
     </div>
   )
@@ -467,7 +466,7 @@ function MesExpandidoDetalhe({ mes, ano, aulas, valorAula, onClose, onSelecionar
   )
 }
 
-function ModalCelula({ celulaAtiva, ehHoje, onClose, onIrParaAulas }) {
+function ModalCelula({ celulaAtiva, onClose }) {
   const { turma, horario } = celulaAtiva
   const alunos = (turma.turmas_alunos || []).filter(t => t.ativo && t.alunos)
   return (
@@ -491,15 +490,6 @@ function ModalCelula({ celulaAtiva, ehHoje, onClose, onIrParaAulas }) {
           </div>
         )}
         {turma.ativo === false && <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '6px' }}>Turma removida</div>}
-        {ehHoje && turma.ativo !== false && (
-          <button onClick={onIrParaAulas} style={{
-            width: '100%', marginTop: '14px', padding: '12px', borderRadius: '10px', border: 'none',
-            background: 'linear-gradient(135deg, #fcc825, #d28c3c, #cf1b9b)', color: 'white',
-            fontSize: '13px', fontWeight: '700', cursor: 'pointer',
-          }}>
-            Confirmar presença em Minhas Aulas
-          </button>
-        )}
       </div>
     </div>
   )

@@ -109,10 +109,12 @@ export function HomePage() {
       {/* Ao vivo agora */}
       <div style={{ marginBottom: '26px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="pulse-badge" style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#e24b4a' }} />
-            <h2 style={{ fontSize: '12px', fontWeight: '700', color: '#888', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Ao vivo agora · {aoVivoFiltrado.length} {aoVivoFiltrado.length === 1 ? 'aula' : 'aulas'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+            {aoVivoFiltrado.length > 0 && (
+              <span className="pulse-badge" style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#e24b4a', boxShadow: '0 0 8px rgba(226,75,74,0.7)' }} />
+            )}
+            <h2 style={{ fontSize: '12px', fontWeight: '700', color: aoVivoFiltrado.length > 0 ? '#e24b4a' : '#888', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {aoVivoFiltrado.length > 0 ? 'AO VIVO' : 'Ao vivo agora'} · {aoVivoFiltrado.length} {aoVivoFiltrado.length === 1 ? 'aula' : 'aulas'}
             </h2>
           </div>
 

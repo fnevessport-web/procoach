@@ -110,7 +110,10 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-end' }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0', padding: '20px 16px 32px', boxSizing: 'border-box', maxHeight: '82vh', display: 'flex', flexDirection: 'column' }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: '100%', backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0', padding: '20px 16px 32px', boxSizing: 'border-box',
+        maxHeight: '82vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
+      }}>
         <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <div>
@@ -122,7 +125,7 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
           </button>
         </div>
 
-        <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {isLoading ? (
             <div style={{ textAlign: 'center', color: '#555', fontSize: '13px', padding: '24px' }}>Carregando...</div>
           ) : aulas.map(aula => {
@@ -1157,6 +1160,23 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                         <div style={{ fontSize: '12px', fontWeight: '600', color: '#cf1b9b' }}>{MESES[mesSelecionado.mes - 1]}/{mesSelecionado.ano} · {qtd} aulas · R${valor.toFixed(2).replace('.', ',')}</div>
                         <button onClick={() => setMesSelecionado(null)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}><X size={14} /></button>
                       </div>
+
+                      {(() => {
+                        const boleto = boletos.find(b => b.mes === mesSelecionado.mes && b.ano === mesSelecionado.ano)
+                        return (
+                          <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                            <label style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', backgroundColor: boleto?.boleto_url ? 'rgba(34,197,94,0.1)' : '#111', color: boleto?.boleto_url ? '#22c55e' : '#555', outline: boleto?.boleto_url ? '1px solid rgba(34,197,94,0.3)' : '1px dashed #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                              <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadBoleto(e, mesSelecionado.mes, mesSelecionado.ano)} />
+                              <Upload size={11} />{boleto?.boleto_url ? 'Boleto ✓' : 'Boleto'}
+                            </label>
+                            <label style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', backgroundColor: boleto?.nf_url ? 'rgba(34,197,94,0.1)' : '#111', color: boleto?.nf_url ? '#22c55e' : '#555', outline: boleto?.nf_url ? '1px solid rgba(34,197,94,0.3)' : '1px dashed #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                              <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadNF(e, mesSelecionado.mes, mesSelecionado.ano)} />
+                              <FileText size={11} />{boleto?.nf_url ? 'NF ✓' : 'NF'}
+                            </label>
+                          </div>
+                        )
+                      })()}
+
                       {diasComAula.length === 0 ? (
                         <div style={{ fontSize: '12px', color: '#444', textAlign: 'center', marginBottom: '8px' }}>Nenhuma aula confirmada</div>
                       ) : (
@@ -1215,9 +1235,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
               {[
                 { key: 'perfil', label: 'Dados' },
                 { key: 'financeiro', label: 'Financeiro' },
-                { key: 'avaliacoes', label: 'Avaliações' },
+                { key: 'avaliacoes', label: 'Avaliações', somenteGestor: true },
                 { key: 'disponibilidade', label: 'Grade' },
-              ].map(a => (
+              ].filter(a => !a.somenteGestor || podeVerTodosSalarios).map(a => (
                 <button key={a.key} onClick={() => setAba(a.key)} style={{ flex: 1, padding: '8px', borderRadius: '7px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer', background: aba === a.key ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : 'transparent', color: aba === a.key ? 'white' : '#555' }}>{a.label}</button>
               ))}
             </div>
@@ -1518,30 +1538,20 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   {salvando ? 'Salvando...' : '💾 Salvar dados bancários'}
                 </button>
 
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '8px' }}>Histórico de pagamentos</div>
+                <div>
+                  <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '8px', marginBottom: '4px' }}>Histórico de pagamentos</div>
+                  <div style={{ fontSize: '10px', color: '#444', marginBottom: '10px' }}>Clique num mês na grade "Aulas por mês" acima pra ver o resumo e anexar boleto/NF.</div>
+                </div>
 
                 {mesesFinanceiro.map(({ mes, ano }) => {
                   const { qtd, valor } = calcularGanhosMes(mes, ano)
                   if (qtd === 0) return null
-                  const boleto = boletos.find(b => b.mes === mes && b.ano === ano)
                   return (
-                    <div key={`${mes}-${ano}`} style={{ backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '12px 14px', border: mes === mesAtual && ano === anoAtual ? '1px solid rgba(252,200,37,0.2)' : '1px solid #222' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <div style={{ fontSize: '13px', fontWeight: '700', color: mes === mesAtual && ano === anoAtual ? '#fcc825' : '#F0F2F5' }}>{MESES[mes - 1]}/{ano}</div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '14px', fontWeight: '700', color: '#22c55e' }}>R$ {valor.toFixed(2).replace('.', ',')}</div>
-                          <div style={{ fontSize: '10px', color: '#555' }}>{qtd} aulas</div>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <label style={{ flex: 1, padding: '6px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', backgroundColor: boleto?.boleto_url ? 'rgba(34,197,94,0.1)' : '#111', color: boleto?.boleto_url ? '#22c55e' : '#555', outline: boleto?.boleto_url ? '1px solid rgba(34,197,94,0.3)' : '1px dashed #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                          <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadBoleto(e, mes, ano)} />
-                          <Upload size={11} />{boleto?.boleto_url ? 'Boleto ✓' : 'Boleto'}
-                        </label>
-                        <label style={{ flex: 1, padding: '6px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', backgroundColor: boleto?.nf_url ? 'rgba(34,197,94,0.1)' : '#111', color: boleto?.nf_url ? '#22c55e' : '#555', outline: boleto?.nf_url ? '1px solid rgba(34,197,94,0.3)' : '1px dashed #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                          <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadNF(e, mes, ano)} />
-                          <FileText size={11} />{boleto?.nf_url ? 'NF ✓' : 'NF'}
-                        </label>
+                    <div key={`${mes}-${ano}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: '10px', padding: '10px 14px', border: mes === mesAtual && ano === anoAtual ? '1px solid rgba(252,200,37,0.2)' : '1px solid #222' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: mes === mesAtual && ano === anoAtual ? '#fcc825' : '#F0F2F5' }}>{MESES[mes - 1]}/{ano}</div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#22c55e' }}>R$ {valor.toFixed(2).replace('.', ',')}</div>
+                        <div style={{ fontSize: '10px', color: '#555' }}>{qtd} aulas</div>
                       </div>
                     </div>
                   )
