@@ -22,6 +22,7 @@ import { KPIsPage } from './pages/kpis/KPIsPage'
 import { MensagensPage } from './pages/mensagens/MensagensPage'
 import { DashboardProfessor } from './pages/professor/DashboardProfessor'
 import { MeuPerfilProfessor } from './pages/professor/MeuPerfilProfessor'
+import { MeusAlunosProfessor } from './pages/professor/MeusAlunosProfessor'
 import { ModalTurmaAtivada } from './components/ModalTurmaAtivada'
 import { InstallBanner } from './components/ui/InstallBanner'
 import { DisponibilidadePage } from './pages/disponibilidade/DisponibilidadePage'
@@ -87,6 +88,7 @@ function AppRouter() {
         <Route path="/aulas" element={<AulasPage />} />
         <Route path="/dashboard-professor" element={<DashboardProfessor />} />
         <Route path="/meu-perfil" element={<MeuPerfilProfessor />} />
+        <Route path="/meus-alunos" element={<MeusAlunosProfessor />} />
         <Route path="/match" element={
           <RouteGuard permitido={podeValidarAulas} homeRoute={homeRoute}><MatchAulas /></RouteGuard>
         } />

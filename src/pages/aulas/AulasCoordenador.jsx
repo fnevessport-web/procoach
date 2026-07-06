@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download } from 'lucide-react'
+import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock } from 'lucide-react'
+import { horarioParaMinutos } from '../../constants/modalidades'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas } from '../../hooks/useAulas'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useProfessores } from '../../hooks/useProfessores'
@@ -131,6 +132,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
 
   const [aulaModal, setAulaModal] = useState(null)
   const [presencasLocal, setPresencasLocal] = useState({})
+  const [alunosOriginais, setAlunosOriginais] = useState(new Set())
+  const [alunoRecemAdicionado, setAlunoRecemAdicionado] = useState(null)
   const [adicionandoAluno, setAdicionandoAluno] = useState(null)
   const [buscaAdicionando, setBuscaAdicionando] = useState('')
   const [editandoAula, setEditandoAula] = useState(null)
@@ -142,6 +145,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   const [editandoNivelTurma, setEditandoNivelTurma] = useState(false)
   const [novoNivelId, setNovoNivelId] = useState('')
   const [salvandoNivelTurma, setSalvandoNivelTurma] = useState(false)
+  const [editandoHorarioAula, setEditandoHorarioAula] = useState(false)
+  const [novoHorarioMover, setNovoHorarioMover] = useState('')
+  const [novaQuadraMoverId, setNovaQuadraMoverId] = useState('')
+  const [salvandoHorarioAula, setSalvandoHorarioAula] = useState(false)
   const [modalExportarPDF, setModalExportarPDF] = useState(false)
   const [pdfSomenteComAluno, setPdfSomenteComAluno] = useState(true)
   const [pdfQuadras, setPdfQuadras] = useState(() => [...QUADRAS_EMPRESA.procopio, ...QUADRAS_EMPRESA.beach_arena])
@@ -431,6 +438,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       }
     })
     setPresencasLocal(prev => ({ ...prev, [aula.id]: inicial }))
+    setAlunosOriginais(new Set(Object.keys(inicial)))
+    setAlunoRecemAdicionado(null)
   }
 
   function fecharModal() {
@@ -443,6 +452,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
     setConfirmandoRemocao(null)
     setEditandoNivelTurma(false)
     setNovoNivelId('')
+    setEditandoHorarioAula(false)
+    setNovoHorarioMover('')
+    setNovaQuadraMoverId('')
     setEditandoNotas(false)
     setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '' })
     setEscolhendoDestinatario(null)
@@ -463,6 +475,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         [aluno.id]: { aluno_id: aluno.id, nome: aluno.nome, status_presenca: 'presente', tipo_participacao: 'mensalista', alerta_nivel: false, nivel_avaliado_prof: '', obs_nivel_prof: '' }
       }
     }))
+    setAlunoRecemAdicionado(aluno.id)
     setAdicionandoAluno(null)
     setBuscaAdicionando('')
   }
@@ -769,6 +782,73 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       toast.error(err.message, { style: toastStyle })
     } finally {
       setSalvandoNivelTurma(false)
+    }
+  }
+
+  // Mesmo mecanismo de handleEditarNivelTurma (clona a turma trocando o campo que muda e reaponta
+  // aulas.turma_id no escopo escolhido), só que aqui o campo que muda é o horário (e opcionalmente
+  // a quadra) em vez do nível. "Sempre" não precisa clonar — atualiza a turma original direto, já
+  // que não há necessidade de preservar duas versões (diferente do nível, que fica no histórico).
+  async function handleMoverHorarioAula(aula, todasFuturas) {
+    if (!novoHorarioMover) return toast.error('Selecione o novo horário', { style: toastStyle })
+    setSalvandoHorarioAula(true)
+    try {
+      const { data: turmaOriginal, error: erroTurma } = await supabase
+        .from('turmas').select('*').eq('id', aula.turma_id).single()
+      if (erroTurma) throw erroTurma
+
+      const quadraDestinoId = novaQuadraMoverId || turmaOriginal.quadra_id
+      const quadraDestinoNome = todasQuadras?.find(q => q.id === quadraDestinoId)?.nome || getQuadraNome(aula)
+
+      const conflito = aulas?.find(a =>
+        a.id !== aula.id && a.data_aula === aula.data_aula &&
+        getHorario(a) === novoHorarioMover && getQuadraNome(a) === quadraDestinoNome
+      )
+      if (conflito) return toast.error(`Já tem aula nesse horário na ${quadraDestinoNome}`, { style: toastStyle })
+
+      const duracaoMin = horarioParaMinutos(turmaOriginal.horario_fim) - horarioParaMinutos(turmaOriginal.horario_inicio)
+      const inicioMin = horarioParaMinutos(novoHorarioMover)
+      const fimMin = inicioMin + duracaoMin
+      const novoHorarioFim = `${String(Math.floor(fimMin / 60)).padStart(2, '0')}:${String(fimMin % 60).padStart(2, '0')}`
+
+      if (todasFuturas) {
+        const { error } = await supabase.from('turmas').update({
+          horario_inicio: `${novoHorarioMover}:00`, horario_fim: `${novoHorarioFim}:00`, quadra_id: quadraDestinoId,
+        }).eq('id', turmaOriginal.id)
+        if (error) throw error
+      } else {
+        const { data: turmaNova, error: erroNovaTurma } = await supabase.from('turmas').insert({
+          modalidade_id: turmaOriginal.modalidade_id,
+          horario_dia_semana: turmaOriginal.horario_dia_semana,
+          horario_inicio: `${novoHorarioMover}:00`,
+          horario_fim: `${novoHorarioFim}:00`,
+          quadra_id: quadraDestinoId,
+          professor_titular_id: turmaOriginal.professor_titular_id,
+          nivel_id: turmaOriginal.nivel_id,
+          nome: turmaOriginal.nome,
+          ativo: true,
+        }).select().single()
+        if (erroNovaTurma) throw erroNovaTurma
+
+        const { data: alunosAtivos } = await supabase
+          .from('turmas_alunos').select('aluno_id').eq('turma_id', aula.turma_id).eq('ativo', true)
+        if (alunosAtivos?.length > 0) {
+          await supabase.from('turmas_alunos').insert(
+            alunosAtivos.map(a => ({ turma_id: turmaNova.id, aluno_id: a.aluno_id, ativo: true }))
+          )
+        }
+
+        const { error: erroAula } = await supabase.from('aulas').update({ turma_id: turmaNova.id }).eq('id', aula.id)
+        if (erroAula) throw erroAula
+      }
+
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      toast.success(`Aula movida pra ${novoHorarioMover}!`, { style: toastStyle })
+      fecharModal()
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    } finally {
+      setSalvandoHorarioAula(false)
     }
   }
 
@@ -1441,6 +1521,15 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                   <Pencil size={12} /> Editar turma
                 </button>
               )}
+              {!somenteLeitura && !professorProprioId && !isAvulsa && !editandoHorarioAula && (
+                <button onClick={() => { setEditandoHorarioAula(true); setNovoHorarioMover(''); setNovaQuadraMoverId('') }} style={{
+                  display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
+                  borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
+                  color: '#888', fontSize: '12px', cursor: 'pointer',
+                }}>
+                  <Clock size={12} /> Mover horário
+                </button>
+              )}
             </div>
 
             {escolhendoDestinatario === aula.id && (
@@ -1484,6 +1573,38 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                     Essa e as futuras
                   </button>
                   <button onClick={() => setEditandoNivelTurma(false)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {editandoHorarioAula && (
+              <div style={{ backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', padding: '12px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Novo horário</div>
+                <select value={novoHorarioMover} onChange={e => setNovoHorarioMover(e.target.value)} style={inputStyle}>
+                  <option value="">Selecione...</option>
+                  {horariosGrade.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quadra (opcional — deixa igual se não mudar)</div>
+                <select value={novaQuadraMoverId} onChange={e => setNovaQuadraMoverId(e.target.value)} style={inputStyle}>
+                  <option value="">{getQuadraNome(aula)} (mesma quadra)</option>
+                  {todasQuadras?.map(q => <option key={q.id} value={q.id}>{q.nome}</option>)}
+                </select>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button onClick={() => handleMoverHorarioAula(aula, false)} disabled={salvandoHorarioAula} style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid rgba(252,200,37,0.4)',
+                    background: 'rgba(252,200,37,0.1)', color: '#fcc825', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+                  }}>
+                    Só essa aula
+                  </button>
+                  <button onClick={() => handleMoverHorarioAula(aula, true)} disabled={salvandoHorarioAula} style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
+                    background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+                  }}>
+                    Sempre
+                  </button>
+                  <button onClick={() => setEditandoHorarioAula(false)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>
                     Cancelar
                   </button>
                 </div>
@@ -1650,10 +1771,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                 const temAlerta = aluno.alerta_nivel
                 const alertaAberto = alertaNivel[aluno.aluno_id]
                 const isReposicao = aluno.tipo_participacao === 'reposicao'
+                const ehNovo = alunoRecemAdicionado === aluno.aluno_id && !alunosOriginais.has(String(aluno.aluno_id))
                 return (
                   <div key={aluno.aluno_id} style={{
                     borderRadius: '10px', padding: '10px 12px', boxSizing: 'border-box',
-                    border: isReposicao ? `1px solid rgba(59,130,246,0.3)` : temAlerta ? '1px solid rgba(252,200,37,0.25)' : '1px solid transparent',
+                    border: ehNovo ? '1px solid rgba(252,200,37,0.5)' : isReposicao ? `1px solid rgba(59,130,246,0.3)` : temAlerta ? '1px solid rgba(252,200,37,0.25)' : '1px solid transparent',
                     backgroundColor: isReposicao ? 'rgba(59,130,246,0.05)' : '#111',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -1685,6 +1807,26 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                         </div>
                       )}
                     </div>
+
+                    {ehNovo && !somenteLeitura && (
+                      <div style={{ marginBottom: '10px' }}>
+                        <div style={{ fontSize: '11px', color: '#fcc825', fontWeight: '600', marginBottom: '6px' }}>
+                          Novo aluno — como é a participação dele(a)?
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {TIPO_PARTICIPACAO.filter(t => t.value !== 'cortesia').map(t => (
+                            <button key={t.value} onClick={() => updatePresenca(aula.id, aluno.aluno_id, 'tipo_participacao', t.value)} style={{
+                              flex: 1, padding: '8px 4px', borderRadius: '8px', border: 'none',
+                              fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                              backgroundColor: aluno.tipo_participacao === t.value ? 'rgba(252,200,37,0.15)' : '#1a1a1a',
+                              color: aluno.tipo_participacao === t.value ? '#fcc825' : '#888',
+                              outline: aluno.tipo_participacao === t.value ? '1px solid #fcc825' : 'none',
+                              boxSizing: 'border-box',
+                            }}>{t.label}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {confirmandoRemocao?.aulaId === aula.id && confirmandoRemocao?.alunoId === aluno.aluno_id && (
                       <div style={{ backgroundColor: '#1a1a1a', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.3)', padding: '10px', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
