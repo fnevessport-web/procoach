@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil, Lock, KeyRound, Eye, EyeOff } from 'lucide-react'
+import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil, Lock, KeyRound, Eye, EyeOff, MoreVertical, Ban, RotateCcw } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { usePermissions } from '../../hooks/usePermissions'
@@ -180,6 +180,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   const { podeVerTodosSalarios, podeEditarCadastros } = usePermissions()
   const { perfil } = useAppStore()
   const [cardAberto, setCardAberto] = useState(null)
+  const [menuCardId, setMenuCardId] = useState(null)
   const [aba, setAba] = useState('perfil')
   const [modalCriar, setModalCriar] = useState(false)
   const [form, setForm] = useState(FORM_VAZIO)
@@ -428,6 +429,34 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
     setAba('perfil')
     setMesSelecionado(null)
     setNovasNotas({ nota_a: 0, nota_b: 0, nota_c: 0, nota_d: 0, nota_e: 0, observacao: '' })
+  }
+
+  async function toggleAtivoProfessor(prof) {
+    setMenuCardId(null)
+    const novoAtivo = prof.ativo === false
+    const acao = novoAtivo ? 'reativar' : 'inativar'
+    if (!confirm(`Tem certeza que quer ${acao} ${prof.nome}?`)) return
+    const { error } = await supabase.from('professores').update({ ativo: novoAtivo }).eq('id', prof.id)
+    if (error) {
+      toast.error('Erro ao atualizar professor')
+      return
+    }
+    toast.success(novoAtivo ? 'Professor reativado' : 'Professor inativado')
+    qc.invalidateQueries({ queryKey: ['professores'] })
+  }
+
+  async function excluirProfessorPermanente(prof) {
+    setMenuCardId(null)
+    if (!confirm(`Excluir permanentemente ${prof.nome}? Essa ação não pode ser desfeita — se o professor já tiver aulas, turmas ou pagamentos vinculados, prefira "Inativar" em vez de excluir.`)) return
+    if (!confirm('Tem certeza mesmo? Essa é a última confirmação.')) return
+    const { error } = await supabase.from('professores').delete().eq('id', prof.id)
+    if (error) {
+      toast.error('Não foi possível excluir: esse professor tem dados vinculados (aulas, turmas, pagamentos). Use "Inativar" em vez de excluir.')
+      return
+    }
+    toast.success('Professor excluído permanentemente')
+    if (cardAberto?.id === prof.id) setCardAberto(null)
+    qc.invalidateQueries({ queryKey: ['professores'] })
   }
 
   async function handleSalvar() {
@@ -803,7 +832,60 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             }
             return true
           }).map(prof => (
-            <div key={prof.id} onClick={() => abrirCard(prof)} className="professor-card">
+            <div key={prof.id} onClick={() => abrirCard(prof)} className="professor-card" style={{ position: 'relative' }}>
+              {podeEditarCadastros && (
+                <>
+                  <button
+                    onClick={e => { e.stopPropagation(); setMenuCardId(menuCardId === prof.id ? null : prof.id) }}
+                    style={{
+                      position: 'absolute', top: '4px', right: '4px', zIndex: 2,
+                      background: 'none', border: 'none', color: '#555', cursor: 'pointer',
+                      padding: '4px', display: 'flex', borderRadius: '6px',
+                    }}
+                  >
+                    <MoreVertical size={16} />
+                  </button>
+
+                  {menuCardId === prof.id && (
+                    <>
+                      <div style={{ position: 'fixed', inset: 0, zIndex: 3 }} onClick={e => { e.stopPropagation(); setMenuCardId(null) }} />
+                      <div
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                          position: 'absolute', top: '30px', right: '4px', zIndex: 4,
+                          width: '170px', backgroundColor: '#1e1e1e', border: '1px solid #2a2a2a',
+                          borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', overflow: 'hidden',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <button
+                          onClick={() => toggleAtivoProfessor(prof)}
+                          style={{
+                            width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+                            padding: '10px 12px', fontSize: '12px', color: '#F0F2F5',
+                            backgroundColor: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
+                          }}
+                        >
+                          {prof.ativo === false ? <RotateCcw size={13} /> : <Ban size={13} />}
+                          {prof.ativo === false ? 'Reativar professor' : 'Inativar professor'}
+                        </button>
+                        <button
+                          onClick={() => excluirProfessorPermanente(prof)}
+                          style={{
+                            width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+                            padding: '10px 12px', fontSize: '12px', color: '#e24b4a',
+                            backgroundColor: 'transparent', border: 'none', borderTop: '1px solid #2a2a2a', cursor: 'pointer', textAlign: 'left',
+                          }}
+                        >
+                          <Trash2 size={13} />
+                          Excluir permanente
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
               <div className="professor-avatar" style={{
                 margin: '0 auto 10px',
                 borderRadius: '50%',
