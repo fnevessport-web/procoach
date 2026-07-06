@@ -8,11 +8,30 @@ import { usePermissions } from '../../hooks/usePermissions'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import useAppStore from '../../store/useAppStore'
 import toast from 'react-hot-toast'
-import { apenasDigitosCPF, mascararCPF } from '../../lib/cpf'
+import { apenasDigitosCPF, mascararCPF, cpfParaEmailSintetico } from '../../lib/cpf'
 import { buscarCep } from '../../lib/cep'
 import { BANCOS, ESTADOS } from '../../constants/geografia'
 
 const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']
+
+// Resumo minimalista de uma linha do audit_log — cobre os formatos gravados em
+// AulasCoordenador.jsx (aluno adicionado/removido, status manual, nível/horário da turma)
+function formatarHistorico(log) {
+  const dn = log.dados_novos || {}
+  if (dn.adicionados?.length || dn.removidos?.length) {
+    const partes = []
+    if (dn.adicionados?.length) partes.push(`Adicionou ${dn.adicionados.join(', ')}`)
+    if (dn.removidos?.length) partes.push(`Removeu ${dn.removidos.join(', ')}`)
+    return partes.join(' · ')
+  }
+  if (dn.status_aula) {
+    const label = dn.status_aula === 'nao_dada' ? 'Sem Aula' : dn.status_aula === 'cancelada' ? 'Cancelada' : dn.status_aula
+    return `Marcou aula como "${label}"`
+  }
+  if (dn.nivel) return `Mudou nível da turma pra ${dn.nivel} (${dn.escopo})`
+  if (dn.horario) return `Moveu aula pra ${dn.horario}${dn.quadra ? ' · ' + dn.quadra : ''} (${dn.escopo})`
+  return `Alterou ${log.tabela}`
+}
 
 const CRITERIOS = [
   { key: 'nota_a', label: 'Qualidade no Atendimento' },
@@ -255,6 +274,22 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
         .select('*')
         .eq('professor_id', cardAberto.id)
         .order('data_avaliacao', { ascending: false })
+      if (error) throw error
+      return data || []
+    },
+  })
+
+  const { data: historicoProf = [] } = useQuery({
+    queryKey: ['audit_log_professor', cardAberto?.cpf],
+    enabled: !!cardAberto?.cpf && podeVerTodosSalarios,
+    queryFn: async () => {
+      const emailProf = cpfParaEmailSintetico(cardAberto.cpf)
+      const { data, error } = await supabase
+        .from('audit_log')
+        .select('*')
+        .eq('usuario', emailProf)
+        .order('criado_em', { ascending: false })
+        .limit(50)
       if (error) throw error
       return data || []
     },
@@ -1308,6 +1343,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 { key: 'financeiro', label: 'Financeiro' },
                 { key: 'avaliacoes', label: 'Avaliações', somenteGestor: true },
                 { key: 'disponibilidade', label: 'Grade' },
+                { key: 'historico', label: 'Histórico', somenteGestor: true },
               ].filter(a => !a.somenteGestor || podeVerTodosSalarios).map(a => (
                 <button key={a.key} onClick={() => setAba(a.key)} style={{ flex: 1, padding: '8px', borderRadius: '7px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer', background: aba === a.key ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : 'transparent', color: aba === a.key ? 'white' : '#555' }}>{a.label}</button>
               ))}
@@ -1783,6 +1819,23 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     Professor ainda não preencheu a disponibilidade
                   </div>
                 )}
+              </div>
+            )}
+
+            {aba === 'historico' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {historicoProf.length === 0 ? (
+                  <div style={{ textAlign: 'center', fontSize: '12px', color: '#444', padding: '20px' }}>
+                    Nenhuma ação registrada ainda.
+                  </div>
+                ) : historicoProf.map(log => (
+                  <div key={log.id} style={{ backgroundColor: '#111', borderRadius: '10px', padding: '10px 12px', border: '1px solid #1e1e1e' }}>
+                    <div style={{ fontSize: '12px', color: '#F0F2F5' }}>{formatarHistorico(log)}</div>
+                    <div style={{ fontSize: '10px', color: '#555', marginTop: '4px' }}>
+                      {format(new Date(log.criado_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

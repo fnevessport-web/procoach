@@ -16,6 +16,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
 import { Loading, EmptyState } from '../../components/ui/Loading'
 import { supabase } from '../../lib/supabase'
+import { logAudit } from '../../lib/audit'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
@@ -684,6 +685,20 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       if (aula && mensalistas.length > 0) {
         await vincularMensalistasNaTurma(aula, mensalistas)
       }
+
+      const idsAdicionados = idsAtuais.filter(id => !idsAnteriores.includes(id))
+      if (idsAdicionados.length > 0 || idsRemovidos.length > 0) {
+        const nomesAdicionados = lista.filter(p => idsAdicionados.includes(p.aluno_id)).map(p => p.nome)
+        const nomesRemovidos = (aula?.presencas || [])
+          .filter(p => idsRemovidos.includes(p.aluno_id))
+          .map(p => p.alunos?.nome)
+          .filter(Boolean)
+        await logAudit('aulas', aulaId, 'UPDATE',
+          { turma: getNivel(aula) || aula?.turmas?.nome, horario: getHorario(aula), data: aula?.data_aula },
+          { adicionados: nomesAdicionados, removidos: nomesRemovidos }
+        )
+      }
+
       qc.invalidateQueries({ queryKey: ['aulas'] })
       toast.success('✅ Presenças salvas!', { style: toastStyle })
       fecharModal()
@@ -696,6 +711,13 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
     setStatusLocal(prev => ({ ...prev, [aulaId]: statusAula }))
     try {
       await atualizarStatus.mutateAsync({ aulaId, statusAula, pagaProfessor })
+      if (statusAula !== 'dada') {
+        const aula = aulas?.find(a => a.id === aulaId)
+        await logAudit('aulas', aulaId, 'UPDATE',
+          { turma: getNivel(aula) || aula?.turmas?.nome, horario: getHorario(aula), data: aula?.data_aula },
+          { status_aula: statusAula }
+        )
+      }
       toast.success('Status atualizado!', { style: toastStyle })
     } catch (err) {
       setStatusLocal(prev => ({ ...prev, [aulaId]: undefined }))
@@ -777,6 +799,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       const { error: erroAulas } = await query
       if (erroAulas) throw erroAulas
 
+      await logAudit('turmas', turmaOriginal.id, 'UPDATE',
+        { nivel: turmaOriginal.nome },
+        { nivel: nomeNivelNovo, escopo: todasFuturas ? 'essa e as futuras' : 'só essa aula', data: aula.data_aula }
+      )
+
       qc.invalidateQueries({ queryKey: ['aulas'] })
       toast.success(`Nível atualizado pra ${nomeNivelNovo}!`, { style: toastStyle })
       fecharModal()
@@ -843,6 +870,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         const { error: erroAula } = await supabase.from('aulas').update({ turma_id: turmaNova.id }).eq('id', aula.id)
         if (erroAula) throw erroAula
       }
+
+      await logAudit('turmas', turmaOriginal.id, 'UPDATE',
+        { horario: turmaOriginal.horario_inicio?.slice(0, 5), quadra: getQuadraNome(aula) },
+        { horario: novoHorarioMover, quadra: quadraDestinoNome, escopo: todasFuturas ? 'sempre' : 'só essa aula', data: aula.data_aula }
+      )
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
       toast.success(`Aula movida pra ${novoHorarioMover}!`, { style: toastStyle })
