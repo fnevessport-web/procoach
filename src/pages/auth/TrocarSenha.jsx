@@ -99,10 +99,17 @@ export function TrocarSenha() {
     set('cref_url', publicUrl)
   }
 
+  const regrasSenha = {
+    tamanho: senha.length >= 8,
+    maiuscula: /[A-Z]/.test(senha),
+    numero: /[0-9]/.test(senha),
+  }
+  const senhaValida = regrasSenha.tamanho && regrasSenha.maiuscula && regrasSenha.numero
+
   async function handleSubmit(e) {
     e.preventDefault()
     setErro('')
-    if (senha.length < 8) return setErro('A senha precisa ter pelo menos 8 caracteres')
+    if (!senhaValida) return setErro('A senha precisa ter pelo menos 8 caracteres, 1 letra maiúscula e 1 número')
     if (senha !== confirmacao) return setErro('As senhas não coincidem')
 
     if (precisaOnboarding) {
@@ -177,6 +184,11 @@ export function TrocarSenha() {
                 }}>
                   {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '-8px' }}>
+                <span style={{ fontSize: '11px', color: regrasSenha.tamanho ? '#22c55e' : '#555' }}>8 caracteres</span>
+                <span style={{ fontSize: '11px', color: regrasSenha.maiuscula ? '#22c55e' : '#555' }}>1 letra maiúscula</span>
+                <span style={{ fontSize: '11px', color: regrasSenha.numero ? '#22c55e' : '#555' }}>1 número</span>
               </div>
               <Input label="Confirmar nova senha" type={mostrarSenha ? 'text' : 'password'} placeholder="Repita a senha" value={confirmacao} onChange={e => setConfirmacao(e.target.value)} required />
 

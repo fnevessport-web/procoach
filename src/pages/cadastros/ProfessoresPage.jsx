@@ -80,7 +80,7 @@ function PixCopiavel({ pix }) {
   )
 }
 
-function ModalDetalhesDia({ professorId, dataStr, onClose }) {
+export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
   const { data: aulas = [], isLoading } = useQuery({
     queryKey: ['aulas_dia_prof_detalhe', professorId, dataStr],
     queryFn: async () => {

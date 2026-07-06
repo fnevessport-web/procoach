@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase'
 import useAppStore from '../../store/useAppStore'
 import { horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula } from '../../constants/modalidades'
 import { Loading } from '../../components/ui/Loading'
+import { ModalDetalhesDia } from '../cadastros/ProfessoresPage'
 
 const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']
 const DIAS_SEMANA = ['segunda','terca','quarta','quinta','sexta','sabado','domingo']
@@ -39,6 +40,7 @@ export function DashboardProfessor() {
   const professorId = perfil?.professor_id
 
   const [mesExpandido, setMesExpandido] = useState(null)
+  const [diaSelecionado, setDiaSelecionado] = useState(null)
   const [celulaAtiva, setCelulaAtiva] = useState(null)
 
   const hoje = format(new Date(), 'yyyy-MM-dd')
@@ -86,7 +88,7 @@ export function DashboardProfessor() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('aulas')
-        .select('data_aula, status, status_aula')
+        .select('id, data_aula, status, status_aula')
         .eq('professor_executou_id', professorId)
         .eq('status_aula', 'dada')
         .lte('data_aula', hoje)
@@ -112,7 +114,7 @@ export function DashboardProfessor() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('turmas')
-        .select('*, modalidades(nome, icone_emoji, cor_hex), niveis(nome), quadras(nome), turmas_alunos(id, ativo)')
+        .select('*, modalidades(nome, icone_emoji, cor_hex), niveis(nome), quadras(nome), turmas_alunos(id, ativo, alunos(nome))')
         .eq('professor_titular_id', professorId)
       if (error) throw error
       return data || []
@@ -129,15 +131,19 @@ export function DashboardProfessor() {
       return d.getMonth() + 1 === mes && d.getFullYear() === ano
     })
     const qtd = doMes.length
-    const qtdValidado = doMes.filter(a => a.status === 'match' || a.status === 'confirmada_coord').length
-    const qtdAguardandoMatch = doMes.filter(a => a.status === 'confirmada_professor').length
+    // Só "match" é considerado fechado de verdade; confirmada_coord/confirmada_professor já
+    // aconteceram mas ainda não passaram pelo match cruzado das duas partes
+    const qtdMatch = doMes.filter(a => a.status === 'match').length
+    const qtdSemMatch = doMes.filter(a => a.status === 'confirmada_coord' || a.status === 'confirmada_professor').length
     const valorAula = professor?.valor_aula || 0
-    const valorValidado = qtdValidado * valorAula
-    const valorAguardandoMatch = qtdAguardandoMatch * valorAula
     const valorExtras = pagamentosExtras
       .filter(p => p.mes === mes && p.ano === ano)
       .reduce((acc, p) => acc + (p.valor || 0), 0)
-    return { qtd, qtdValidado, qtdAguardandoMatch, valorValidado: valorValidado + valorExtras, valorAguardandoMatch }
+    return {
+      qtd, qtdMatch, qtdSemMatch,
+      valorMatch: qtdMatch * valorAula + valorExtras,
+      valorSemMatch: qtdSemMatch * valorAula,
+    }
   }
 
   const ganhosMesAtual = calcularGanhosMes(mesAtual, anoAtual)
@@ -163,6 +169,21 @@ export function DashboardProfessor() {
     return { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.3)', dot: '#22c55e' }
   }
 
+  function qtdAlunosAtivos(turma) {
+    return turma.turmas_alunos?.filter(ta => ta.ativo).length || 0
+  }
+
+  // Individual lota com 1 aluno; turma em grupo tem 4 vagas — quanto mais perto de lotar, mais quente a cor
+  function corVagas(turma) {
+    const qtd = qtdAlunosAtivos(turma)
+    const individual = turma.niveis?.nome === 'Individual'
+    if (individual) return qtd >= 1 ? '#EF4444' : '#22c55e'
+    if (qtd >= 4) return '#EF4444'
+    if (qtd >= 2) return '#fcc825'
+    if (qtd === 1) return '#22c55e'
+    return '#444'
+  }
+
   if (loadingProf || !professor) return <Loading text="Carregando painel..." />
 
   const modalidadeLabel = professor.modalidades?.nome || ''
@@ -171,7 +192,13 @@ export function DashboardProfessor() {
     <div className="fade-in">
       {/* Header pessoal */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '22px' }}>
-        <div style={{ position: 'relative', width: 120, height: 120, flexShrink: 0 }}>
+        <a
+          href={professor.foto_url || undefined}
+          target={professor.foto_url ? '_blank' : undefined}
+          rel="noreferrer"
+          title={professor.foto_url ? 'Abrir foto em tamanho real' : undefined}
+          style={{ position: 'relative', width: 120, height: 120, flexShrink: 0, cursor: professor.foto_url ? 'pointer' : 'default' }}
+        >
           <div style={{ width: 120, height: 120, borderRadius: '50%', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', padding: '3px', boxSizing: 'border-box' }}>
             <div style={{ width: '100%', height: '100%', borderRadius: '50%', border: '2px solid #110f0f', boxSizing: 'border-box', overflow: 'hidden', backgroundColor: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {professor.foto_url
@@ -188,11 +215,14 @@ export function DashboardProfessor() {
               borderRadius: '50%', backgroundColor: '#22c55e', border: '3px solid #110f0f',
             }} />
           )}
-        </div>
+        </a>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '22px', fontWeight: '600', color: '#F0F2F5', lineHeight: 1.2 }}>
             {professor.apelido || professor.nome}
           </div>
+          {professor.apelido && (
+            <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>{professor.nome}</div>
+          )}
           <div style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>{modalidadeLabel}</div>
           {aoVivoAgora.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
@@ -206,9 +236,9 @@ export function DashboardProfessor() {
       {/* 3 cards do dia */}
       {loadingAulas ? <Loading /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
-          <CardResumoDia titulo="Aulas Hoje" valor={aulasHojeTodas.length} cor="#fcc825" />
-          <CardResumoDia titulo="Ao Vivo Agora" valor={aoVivoAgora.length} cor="#22c55e" pulsando={aoVivoAgora.length > 0} />
-          <CardResumoDia titulo="Amanhã" valor={aulasAmanha.length} cor="#3b82f6" />
+          <CardResumoDia titulo="Aulas Hoje" valor={aulasHojeTodas.length} cor="#fcc825" onClick={() => navigate('/aulas')} />
+          <CardResumoDia titulo="Ao Vivo Agora" valor={aoVivoAgora.length} cor="#22c55e" pulsando={aoVivoAgora.length > 0} onClick={() => navigate('/aulas')} />
+          <CardResumoDia titulo="Amanhã" valor={aulasAmanha.length} cor="#3b82f6" onClick={() => navigate('/aulas', { state: { data: amanha } })} />
         </div>
       )}
 
@@ -217,14 +247,14 @@ export function DashboardProfessor() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-              {MESES[mesAtual - 1]} {anoAtual} · {ganhosMesAtual.qtdValidado + ganhosMesAtual.qtdAguardandoMatch} aulas
+              {MESES[mesAtual - 1]} {anoAtual} · {ganhosMesAtual.qtdMatch + ganhosMesAtual.qtdSemMatch} aulas
             </div>
             <div style={{ fontSize: '26px', fontWeight: '800', color: '#fcc825' }}>
-              R$ {ganhosMesAtual.valorValidado.toFixed(2).replace('.', ',')}
+              R$ {ganhosMesAtual.valorMatch.toFixed(2).replace('.', ',')}
             </div>
-            {ganhosMesAtual.valorAguardandoMatch > 0 && (
-              <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
-                R$ {ganhosMesAtual.valorAguardandoMatch.toFixed(2).replace('.', ',')} aguardando match
+            {ganhosMesAtual.valorSemMatch > 0 && (
+              <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                R$ {ganhosMesAtual.valorSemMatch.toFixed(2).replace('.', ',')} confirmadas, aguardando match
               </div>
             )}
           </div>
@@ -282,14 +312,24 @@ export function DashboardProfessor() {
           <MesExpandidoDetalhe
             mes={mesExpandido.mes}
             ano={mesExpandido.ano}
+            valorAula={professor?.valor_aula || 0}
             aulas={aulasHistorico.filter(a => {
               const d = new Date(a.data_aula + 'T12:00')
               return d.getMonth() + 1 === mesExpandido.mes && d.getFullYear() === mesExpandido.ano
             })}
             onClose={() => setMesExpandido(null)}
+            onSelecionarDia={dataStr => setDiaSelecionado(dataStr)}
           />
         )}
       </div>
+
+      {diaSelecionado && (
+        <ModalDetalhesDia
+          professorId={professorId}
+          dataStr={diaSelecionado}
+          onClose={() => setDiaSelecionado(null)}
+        />
+      )}
 
       {/* Grade semanal */}
       <div>
@@ -310,20 +350,35 @@ export function DashboardProfessor() {
                 {DIAS_SEMANA.map(dia => {
                   const turma = getCelula(dia, horario)
                   const cor = corCelula(turma)
-                  const ehHoje = dia === hojeSemana
                   return (
                     <button
                       key={`${dia}-${horario}`}
                       onClick={() => turma && setCelulaAtiva({ turma, dia, horario })}
                       disabled={!turma}
                       style={{
-                        height: '30px', borderRadius: '6px', cursor: turma ? 'pointer' : 'default',
+                        height: '42px', borderRadius: '6px', cursor: turma ? 'pointer' : 'default',
                         backgroundColor: cor ? cor.bg : 'rgba(255,255,255,0.02)',
                         border: cor ? `1px solid ${cor.border}` : '1px solid transparent',
-                        outline: ehHoje ? '1px solid rgba(252,200,37,0.5)' : 'none',
-                        outlineOffset: '-1px',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        gap: '3px', padding: '2px', overflow: 'hidden',
                       }}
-                    />
+                    >
+                      {turma && (
+                        <>
+                          <span style={{ fontSize: '8px', color: '#ccc', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                            {turma.niveis?.nome || turma.nome}
+                          </span>
+                          <span style={{
+                            width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0,
+                            backgroundColor: corVagas(turma), color: '#110f0f',
+                            fontSize: '9px', fontWeight: '800', lineHeight: 1,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {qtdAlunosAtivos(turma)}
+                          </span>
+                        </>
+                      )}
+                    </button>
                   )
                 })}
               </Fragment>
@@ -334,6 +389,11 @@ export function DashboardProfessor() {
           <Legenda cor="#22c55e" label="Confirmada" />
           <Legenda cor="#fcc825" label="Sem aluno" />
           <Legenda cor="#EF4444" label="Removida" />
+        </div>
+        <div style={{ display: 'flex', gap: '14px', marginTop: '6px', flexWrap: 'wrap' }}>
+          <Legenda cor="#22c55e" label="Nº alunos: bastante vaga" />
+          <Legenda cor="#fcc825" label="Nº alunos: poucas vagas" />
+          <Legenda cor="#EF4444" label="Nº alunos: lotada" />
         </div>
       </div>
 
@@ -349,14 +409,14 @@ export function DashboardProfessor() {
   )
 }
 
-function CardResumoDia({ titulo, valor, cor, pulsando }) {
+function CardResumoDia({ titulo, valor, cor, pulsando, onClick }) {
   return (
-    <div style={{ backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '14px 10px', border: '1px solid #2a2a2a', textAlign: 'center' }}>
+    <button onClick={onClick} style={{ backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '14px 10px', border: '1px solid #2a2a2a', textAlign: 'center', cursor: 'pointer' }}>
       <div style={{ fontSize: '24px', fontWeight: '800', color: cor, lineHeight: 1 }} className={pulsando ? 'pulse-badge' : ''}>
         {valor}
       </div>
       <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '6px' }}>{titulo}</div>
-    </div>
+    </button>
   )
 }
 
@@ -369,26 +429,38 @@ function Legenda({ cor, label }) {
   )
 }
 
-function MesExpandidoDetalhe({ mes, ano, aulas, onClose }) {
-  const ordenadas = [...aulas].sort((a, b) => a.data_aula.localeCompare(b.data_aula))
+function MesExpandidoDetalhe({ mes, ano, aulas, valorAula, onClose, onSelecionarDia }) {
+  const porDia = {}
+  aulas.forEach(a => { (porDia[a.data_aula] ||= []).push(a) })
+  const dias = Object.keys(porDia).sort((a, b) => b.localeCompare(a))
+
   return (
     <div style={{ backgroundColor: '#1a1a1a', borderRadius: '12px', border: '1px solid #2a2a2a', padding: '14px', marginTop: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-        <span style={{ fontSize: '12px', fontWeight: '700', color: '#F0F2F5' }}>{MESES[mes - 1]} {ano} · {ordenadas.length} aulas</span>
+        <span style={{ fontSize: '12px', fontWeight: '700', color: '#F0F2F5' }}>{MESES[mes - 1]} {ano} · {aulas.length} aulas</span>
         <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}><X size={16} /></button>
       </div>
-      {ordenadas.length === 0 ? (
+      {dias.length === 0 ? (
         <p style={{ fontSize: '12px', color: '#555' }}>Nenhuma aula dada nesse mês.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '220px', overflowY: 'auto' }}>
-          {ordenadas.map((a, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#888', padding: '6px 8px', borderRadius: '8px', backgroundColor: '#111' }}>
-              <span>{format(new Date(a.data_aula + 'T12:00'), "dd 'de' MMM", { locale: ptBR })}</span>
-              <span style={{ color: a.status === 'match' || a.status === 'confirmada_coord' ? '#22c55e' : '#fcc825' }}>
-                {a.status === 'match' || a.status === 'confirmada_coord' ? 'Validada' : 'Aguardando match'}
-              </span>
-            </div>
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
+          {dias.map(dataStr => {
+            const doDia = porDia[dataStr]
+            return (
+              <button key={dataStr} onClick={() => onSelecionarDia(dataStr)} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                fontSize: '12px', color: '#F0F2F5', padding: '10px 12px', borderRadius: '8px',
+                backgroundColor: '#111', border: '1px solid #222', cursor: 'pointer', textAlign: 'left',
+              }}>
+                <span style={{ textTransform: 'capitalize' }}>{format(new Date(dataStr + 'T12:00'), "dd 'de' MMM", { locale: ptBR })}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ color: '#888' }}>{doDia.length} aula{doDia.length !== 1 ? 's' : ''}</span>
+                  <span style={{ color: '#fcc825', fontWeight: '600' }}>R$ {(doDia.length * valorAula).toFixed(2).replace('.', ',')}</span>
+                  <ChevronRight size={14} color="#555" />
+                </span>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
@@ -397,17 +469,27 @@ function MesExpandidoDetalhe({ mes, ano, aulas, onClose }) {
 
 function ModalCelula({ celulaAtiva, ehHoje, onClose, onIrParaAulas }) {
   const { turma, horario } = celulaAtiva
+  const alunos = (turma.turmas_alunos || []).filter(t => t.ativo && t.alunos)
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#1a1a1a', borderRadius: '16px', border: '1px solid #2a2a2a', padding: '20px', width: '100%', maxWidth: '340px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>{turma.nome}</div>
-            <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{turma.niveis?.nome} · {turma.quadras?.nome}</div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>{turma.niveis?.nome || turma.nome}</div>
+            <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{turma.quadras?.nome}</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}><X size={18} /></button>
         </div>
-        <div style={{ fontSize: '13px', color: '#F0F2F5', marginBottom: '4px' }}>{horario} — {turma.turmas_alunos?.filter(t => t.ativo).length || 0} aluno(s)</div>
+        <div style={{ fontSize: '13px', color: '#F0F2F5', marginBottom: '10px' }}>{horario} — {alunos.length} aluno(s)</div>
+        {alunos.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '4px' }}>
+            {alunos.map(a => (
+              <div key={a.id} style={{ fontSize: '13px', color: '#ccc', padding: '8px 10px', borderRadius: '8px', backgroundColor: '#111' }}>
+                {a.alunos.nome}
+              </div>
+            ))}
+          </div>
+        )}
         {turma.ativo === false && <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '6px' }}>Turma removida</div>}
         {ehHoje && turma.ativo !== false && (
           <button onClick={onIrParaAulas} style={{
