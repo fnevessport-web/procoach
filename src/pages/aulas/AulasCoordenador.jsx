@@ -1582,6 +1582,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         }} onClick={fecharModal}>
           <div className="sheet-content" onClick={e => e.stopPropagation()} style={{
             maxHeight: `${Math.round(alturaVisivel * 0.9)}px`, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain', touchAction: 'pan-y',
             backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0',
             padding: '20px 16px', boxSizing: 'border-box',
           }}>
