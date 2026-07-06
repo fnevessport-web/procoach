@@ -51,7 +51,7 @@ export function LoginPage() {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <Input
-              label="CPF" type="text" inputMode="numeric" placeholder="Seu CPF"
+              label="CPF ou e-mail" type="text" placeholder="Seu CPF (professor) ou e-mail (gestor)"
               name="username" autoComplete="username"
               value={form.email} onChange={e => update('email', e.target.value)} required
             />
