@@ -136,6 +136,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
   const [alertaNivel, setAlertaNivel] = useState({})
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(null)
+  const [modalExportarPDF, setModalExportarPDF] = useState(false)
+  const [pdfSomenteComAluno, setPdfSomenteComAluno] = useState(true)
   const [notasLocal, setNotasLocal] = useState({})
   const [editandoNotas, setEditandoNotas] = useState(false)
   const [novoAlunoModal, setNovoAlunoModal] = useState({
@@ -213,14 +215,33 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
     setStatusLocal({})
   }
 
-  async function exportarPDF() {
+  async function exportarPDF(somenteComAluno) {
     const toastId = toast.loading('Gerando PDF...', { style: toastStyle })
     try {
       const { jsPDF } = await import('jspdf')
       const { autoTable } = await import('jspdf-autotable')
       const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
       const pageWidth = doc.internal.pageSize.getWidth()
+      const pageHeight = doc.internal.pageSize.getHeight()
       const geradoEm = format(new Date(), "dd/MM/yyyy 'às' HH:mm")
+
+      // Tela dark igual ao app — feito pra ver no celular/computador, não pra imprimir
+      const COR_FUNDO = [17, 15, 15]
+      const COR_CARD = [26, 26, 26]
+      const COR_LINHA = [42, 42, 42]
+      const COR_TEXTO = [230, 232, 235]
+      const COR_TEXTO_SUAVE = [150, 150, 150]
+
+      const paginasPintadas = new Set()
+      function pintarFundo() {
+        const pagAtual = doc.internal.getCurrentPageInfo().pageNumber
+        if (paginasPintadas.has(pagAtual)) return
+        paginasPintadas.add(pagAtual)
+        doc.setFillColor(...COR_FUNDO)
+        doc.rect(0, 0, pageWidth, pageHeight, 'F')
+      }
+
+      pintarFundo()
 
       try {
         const resp = await fetch('/images/logoprocoach.png')
@@ -235,13 +256,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
       } catch {}
 
       doc.setFontSize(17)
-      doc.setTextColor(20, 20, 20)
+      doc.setTextColor(...COR_TEXTO)
       doc.text('Grade de Aulas', pageWidth / 2, 38, { align: 'center' })
       doc.setFontSize(11)
-      doc.setTextColor(90, 90, 90)
+      doc.setTextColor(...COR_TEXTO_SUAVE)
       doc.text(label.charAt(0).toUpperCase() + label.slice(1), pageWidth / 2, 56, { align: 'center' })
       doc.setFontSize(8)
-      doc.setTextColor(150, 150, 150)
       doc.text(`Gerado em ${geradoEm}`, pageWidth - 40, 26, { align: 'right' })
 
       let cursorY = 82
@@ -253,7 +273,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
       let algumaSecaoImpressa = false
 
       for (const secao of SECOES) {
-        const aulasSecao = (aulas || []).filter(a => secao.quadras.includes(getQuadraNome(a)))
+        let aulasSecao = (aulas || []).filter(a => secao.quadras.includes(getQuadraNome(a)))
+        if (somenteComAluno) {
+          aulasSecao = aulasSecao.filter(a => (a.presencas || []).some(p => p.alunos))
+        }
         if (aulasSecao.length === 0) continue
         algumaSecaoImpressa = true
 
@@ -287,16 +310,17 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
         autoTable(doc, {
           startY: cursorY,
           head, body,
-          styles: { fontSize: 8, cellPadding: 5, valign: 'top', lineColor: [225, 225, 225], lineWidth: 0.5, textColor: [50, 50, 50] },
+          styles: { fontSize: 8, cellPadding: 5, valign: 'top', lineColor: COR_LINHA, lineWidth: 0.5, textColor: COR_TEXTO, fillColor: COR_CARD },
           headStyles: { fillColor: secao.cor, textColor: secao.corTexto, fontStyle: 'bold', fontSize: 9 },
-          columnStyles: { 0: { cellWidth: 65, fontStyle: 'bold', textColor: [20, 20, 20] } },
+          columnStyles: { 0: { cellWidth: 65, fontStyle: 'bold', textColor: COR_TEXTO } },
           margin: { left: 40, right: 40 },
+          willDrawPage: pintarFundo,
           didParseCell: cellData => {
             if (cellData.section === 'body' && cellData.column.index > 0) {
               const raw = String(cellData.cell.raw || '')
               if (!raw || raw.includes('Sem aluno')) {
-                cellData.cell.styles.fillColor = [246, 246, 246]
-                cellData.cell.styles.textColor = [170, 170, 170]
+                cellData.cell.styles.fillColor = [21, 21, 21]
+                cellData.cell.styles.textColor = [90, 90, 90]
               }
             }
           },
@@ -306,16 +330,19 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
 
       if (!algumaSecaoImpressa) {
         doc.setFontSize(12)
-        doc.setTextColor(150, 150, 150)
-        doc.text('Nenhuma aula agendada nesse dia.', pageWidth / 2, cursorY + 20, { align: 'center' })
+        doc.setTextColor(...COR_TEXTO_SUAVE)
+        doc.text(
+          somenteComAluno ? 'Nenhuma turma com aluno matriculado nesse dia.' : 'Nenhuma aula agendada nesse dia.',
+          pageWidth / 2, cursorY + 20, { align: 'center' }
+        )
       }
 
       const totalPaginas = doc.internal.getNumberOfPages()
       for (let i = 1; i <= totalPaginas; i++) {
         doc.setPage(i)
         doc.setFontSize(7)
-        doc.setTextColor(160, 160, 160)
-        doc.text(`Gerado pelo ProCoach em ${geradoEm}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 16, { align: 'center' })
+        doc.setTextColor(...COR_TEXTO_SUAVE)
+        doc.text(`Gerado pelo ProCoach em ${geradoEm}`, pageWidth / 2, pageHeight - 16, { align: 'center' })
       }
 
       doc.save(`grade-aulas-${format(dataObj, 'dd-MM-yyyy')}.pdf`)
@@ -782,7 +809,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
 
       {/* Botões filtro modalidade + ação em massa */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-        <button onClick={exportarPDF} style={{
+        <button onClick={() => setModalExportarPDF(true)} style={{
           display: 'flex', alignItems: 'center', gap: '5px',
           padding: '6px 10px', borderRadius: '8px', border: '1px solid #2a2a2a', cursor: 'pointer',
           background: '#1a1a1a', color: '#555', fontSize: '11px',
@@ -848,6 +875,40 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
       </div>
 
       {/* Modal ação em massa */}
+      {modalExportarPDF && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+          onClick={() => setModalExportarPDF(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#1a1a1a', borderRadius: '16px', border: '1px solid #2a2a2a', padding: '20px', width: '100%', maxWidth: '340px' }}>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '14px' }}>Exportar grade em PDF</div>
+            <button onClick={() => setPdfSomenteComAluno(v => !v)} style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '10px',
+              border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left',
+              background: pdfSomenteComAluno ? 'rgba(252,200,37,0.1)' : '#111',
+              outline: pdfSomenteComAluno ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+              color: pdfSomenteComAluno ? '#fcc825' : '#888',
+            }}>
+              <span style={{ fontSize: '16px' }}>{pdfSomenteComAluno ? '✓' : '○'}</span>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: '600' }}>Só aulas com aluno</div>
+                <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>Oculta turmas vazias, pra não confundir os professores</div>
+              </div>
+            </button>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button onClick={() => setModalExportarPDF(false)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer' }}>
+                Cancelar
+              </button>
+              <button onClick={() => { setModalExportarPDF(false); exportarPDF(pdfSomenteComAluno) }} style={{
+                flex: 2, padding: '10px', borderRadius: '10px', border: 'none',
+                background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+              }}>
+                <Download size={14} /> Gerar PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalMassa && (
         <div className="sheet-overlay" style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex' }}
           onClick={() => { setModalMassa(null); setAcaoMassa(null) }}>
