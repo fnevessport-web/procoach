@@ -200,6 +200,19 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   const { professores: todoProfessores } = useProfessores(null)
   const { data: todasQuadras } = useQuadras(null)
   const { data: todosNiveis } = useNiveis(null)
+
+  // Minhas Aulas do professor só mostra as quadras das modalidades dele — não faz sentido
+  // um professor de Tênis ver colunas de Padel ou da Beach Arena.
+  const { data: modalidadesDoProfessor = [] } = useQuery({
+    queryKey: ['modalidades_do_professor', professorProprioId],
+    enabled: !!professorProprioId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('professores').select('modalidade_id, modalidades_ids').eq('id', professorProprioId).maybeSingle()
+      if (error) throw error
+      return data?.modalidades_ids?.length ? data.modalidades_ids : (data?.modalidade_id ? [data.modalidade_id] : [])
+    },
+  })
   const { data: modalidades } = useModalidades()
   const salvarAluno = useSalvarAluno()
   const atualizarStatus = useAtualizarStatusAula()
@@ -811,21 +824,32 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
 
   const todasQuadrasNomes = (todasQuadras?.map(q => q.nome) || [])
 
+  function quadraCombinaComModalidade(q, nomeModalidade) {
+    if (nomeModalidade === 'Tênis') return ['Quadra 1', 'Quadra 2', 'Quadra 3', 'Quadra 4'].includes(q)
+    if (nomeModalidade === 'Padel') return q === 'Quadra de Padel'
+    if (nomeModalidade === 'Beach Tênis') return q === 'Quadra 1 Areia'
+    if (nomeModalidade === 'Futevôlei') return q === 'Quadra 3 Areia'
+    if (nomeModalidade === 'Vôlei de Praia') return q === 'Quadra 5 Areia'
+    return false
+  }
+
   const quadrasFiltradasPorModalidade = filtroModalidadeGrade === 'todas'
     ? todasQuadrasNomes
-    : todasQuadrasNomes.filter(q => {
-        if (filtroModalidadeGrade === 'Tênis') return ['Quadra 1', 'Quadra 2', 'Quadra 3', 'Quadra 4'].includes(q)
-        if (filtroModalidadeGrade === 'Padel') return q === 'Quadra de Padel'
-        if (filtroModalidadeGrade === 'Beach Tênis') return q === 'Quadra 1 Areia'
-        if (filtroModalidadeGrade === 'Futevôlei') return q === 'Quadra 3 Areia'
-        if (filtroModalidadeGrade === 'Vôlei de Praia') return q === 'Quadra 5 Areia'
-        return false
-      })
+    : todasQuadrasNomes.filter(q => quadraCombinaComModalidade(q, filtroModalidadeGrade))
+
+  // No modo "Minhas Aulas" do professor, só entram as quadras das modalidades dele
+  const nomesModalidadesProfessor = professorProprioId
+    ? modalidadesDoProfessor.map(id => modalidades?.find(m => m.id === id)?.nome).filter(Boolean)
+    : null
+  const quadrasDoProfessor = nomesModalidadesProfessor
+    ? todasQuadrasNomes.filter(q => nomesModalidadesProfessor.some(nome => quadraCombinaComModalidade(q, nome)))
+    : null
 
   const gruposParaGrade = GRUPOS_EMPRESA.map(g => ({
     ...g,
     quadras: g.quadras.filter(q => todasQuadrasNomes.includes(q) &&
-      (filtroModalidadeGrade === 'todas' || quadrasFiltradasPorModalidade.includes(q)))
+      (filtroModalidadeGrade === 'todas' || quadrasFiltradasPorModalidade.includes(q)) &&
+      (!quadrasDoProfessor || quadrasDoProfessor.includes(q)))
   })).filter(g => g.quadras.length > 0)
 
   const quadrasParaGrade = gruposParaGrade.flatMap(g => g.quadras)
@@ -934,7 +958,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         }}>
           <Download size={12} /> PDF
         </button>
-        {/* Filtro modalidade */}
+        {/* Filtro modalidade — no modo do professor já filtra automático pelas modalidades dele */}
+        {!professorProprioId && (
         <div style={{ position: 'relative' }}>
           <button onClick={() => setFiltroGradeAberto(!filtroGradeAberto)} style={{
             display: 'flex', alignItems: 'center', gap: '5px',
@@ -973,6 +998,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
             </>
           )}
         </div>
+        )}
 
         {/* Ação em massa */}
         {!somenteLeitura && !professorProprioId && totalAulas > 0 && !isFuturo && (

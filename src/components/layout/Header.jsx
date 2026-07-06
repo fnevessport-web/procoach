@@ -50,7 +50,7 @@ export function Header() {
       WebkitBackdropFilter: 'blur(12px)',
       borderBottom: '0.5px solid rgba(255,255,255,0.06)',
     }}>
-      <div className="header-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px' }}>
+      <div className="header-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', gap: '8px', minWidth: 0 }}>
 
         <img
           src="/images/logoprocoach.png"
@@ -86,7 +86,7 @@ export function Header() {
           </button>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flexShrink: 1 }}>
           {podeVerSino && <SinoAlertas />}
 
           {empresas.length > 1 && (
@@ -118,30 +118,34 @@ export function Header() {
             </button>
           )}
 
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', minWidth: 0, flexShrink: 1 }}>
             <button
               onClick={() => setMenuOpen(!menuOpen)}
               style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '6px 10px', borderRadius: '10px',
+                display: 'flex', alignItems: 'center', gap: '5px',
+                padding: '5px 8px', borderRadius: '10px',
                 backgroundColor: '#1a1a1a', border: '1px solid #1e1e1e',
-                cursor: 'pointer'
+                cursor: 'pointer', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box',
               }}
             >
               <div style={{
-                width: '24px', height: '24px', borderRadius: '50%',
+                width: '22px', height: '22px', borderRadius: '50%',
                 background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
               }}>
-                <span style={{ fontSize: '10px', fontWeight: '700', color: 'white' }}>
+                <span style={{ fontSize: '9px', fontWeight: '700', color: 'white' }}>
                   {iniciais}
                 </span>
               </div>
-              <span style={{ fontSize: '12px', color: '#555', fontWeight: '400' }}>
+              <span style={{
+                fontSize: '11px', color: '#555', fontWeight: '400',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                maxWidth: '64px', minWidth: 0,
+              }}>
                 {perfil?.nome?.split(' ')[0] || 'Usuário'}
               </span>
-              <ChevronDown size={12} color="#333" />
+              <ChevronDown size={12} color="#333" style={{ flexShrink: 0 }} />
             </button>
 
             {menuOpen && (
