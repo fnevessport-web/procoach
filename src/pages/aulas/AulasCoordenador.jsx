@@ -3,6 +3,7 @@ import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown } from 'lucide-react'
 import { horarioParaMinutos } from '../../constants/modalidades'
+import { getFeriado } from '../../constants/feriados'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas } from '../../hooks/useAulas'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useProfessores } from '../../hooks/useProfessores'
@@ -116,6 +117,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   const navigate = useNavigate()
   const abrirConversaDaAula = useAbrirConversaDaAula()
   const [data, setData] = useState(() => location.state?.data || format(new Date(), 'yyyy-MM-dd'))
+  const feriado = getFeriado(data)
   const [highlightedAulaId, setHighlightedAulaId] = useState(null)
   const highlightAulaId = location.state?.highlightAulaId
   const fromHome = location.state?.fromHome
@@ -1029,6 +1031,16 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         </button>
       </div>
 
+      {feriado && (
+        <div style={{
+          backgroundColor: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)',
+          borderRadius: '10px', padding: '10px 14px', marginBottom: '12px',
+          fontSize: '12px', color: '#a855f7',
+        }}>
+          🎉 Feriado — {feriado}: aulas de hoje com aluno já contam como pagas, ninguém vai dar aula.
+        </div>
+      )}
+
       {/* Botões filtro modalidade + ação em massa */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
         <button onClick={() => setModalExportarPDF(true)} style={{
@@ -1405,12 +1417,17 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                   // só pra bater o olho e ver rápido onde já foi matriculado alguém.
                   // Sem aluno nenhum: sempre neutro, independente do status_aula — esse campo
                   // nasce 'dada' por padrão no banco mesmo sem ninguém ter confirmado nada.
-                  const borderColor = semAluno ? 'rgba(255,255,255,0.06)'
+                  // Feriado com aluno: cor própria (roxo) — já conta como paga, mas ninguém vai
+                  // dar aula de verdade, então não faz sentido misturar com o verde de "dada".
+                  const ehFeriadoComAluno = !!feriado && !semAluno
+                  const borderColor = ehFeriadoComAluno ? 'rgba(168,85,247,0.4)'
+                    : semAluno ? 'rgba(255,255,255,0.06)'
                     : st === 'futura' ? 'rgba(34,211,238,0.3)'
                     : st === 'dada' ? 'rgba(34,197,94,0.3)'
                     : st === 'nao_dada' ? 'rgba(239,68,68,0.3)'
                     : 'rgba(59,130,246,0.3)'
-                  const dotColor = semAluno ? '#333'
+                  const dotColor = ehFeriadoComAluno ? '#a855f7'
+                    : semAluno ? '#333'
                     : st === 'futura' ? '#22d3ee'
                     : st === 'dada' ? '#22c55e'
                     : st === 'nao_dada' ? '#EF4444'
