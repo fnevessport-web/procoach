@@ -1,12 +1,12 @@
 import { useState, Fragment } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { format, addDays } from 'date-fns'
+import { format, addDays, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronRight, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import useAppStore from '../../store/useAppStore'
-import { horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula } from '../../constants/modalidades'
+import { horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula, diaSemanaDaData } from '../../constants/modalidades'
 import { Loading } from '../../components/ui/Loading'
 import { ModalDetalhesDia } from '../cadastros/ProfessoresPage'
 
@@ -28,10 +28,12 @@ function aulaEmAndamento(aula) {
   return agora >= inicio && agora < fim
 }
 
-// Avulsas sempre contam como ativas; turma só conta se tiver aluno ativo matriculado
-function turmaAtiva(aula) {
+// Conta pela presença real daquela ocorrência (inclui reposição), não pela matrícula fixa
+// da turma — uma aula com só um aluno de reposição não tem ninguém em turmas_alunos, mas
+// ainda assim é uma aula de verdade acontecendo.
+function aulaTemAluno(aula) {
   if (!aula.turma_id) return true
-  return !!aula.turmas?.turmas_alunos?.some(ta => ta.ativo)
+  return (aula.presencas?.length || 0) > 0
 }
 
 export function DashboardProfessor() {
@@ -120,8 +122,40 @@ export function DashboardProfessor() {
     },
   })
 
-  const aulasHojeTodas = aulasHojeAmanha.filter(a => a.data_aula === hoje).filter(turmaAtiva)
-  const aulasAmanha = aulasHojeAmanha.filter(a => a.data_aula === amanha).filter(turmaAtiva)
+  // Aulas de verdade dessa semana (seg-dom) — é daqui que vem quem realmente está
+  // presente (inclusive reposição) e se algum horário foi trocado pra outra turma
+  // (via "Editar turma > só essa aula"), coisa que a matrícula fixa não mostra.
+  const inicioSemana = startOfWeek(new Date(), { weekStartsOn: 1 })
+  const inicioSemanaStr = format(inicioSemana, 'yyyy-MM-dd')
+  const fimSemanaStr = format(addDays(inicioSemana, 6), 'yyyy-MM-dd')
+  const { data: aulasDaSemana = [] } = useQuery({
+    queryKey: ['dashboard_prof_semana', professorId, inicioSemanaStr],
+    enabled: !!professorId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('aulas')
+        .select(`
+          id, data_aula, turma_id,
+          turmas(nome, horario_inicio, niveis(nome), quadras(nome)),
+          presencas(id, status_presenca, tipo_participacao, alunos(nome))
+        `)
+        .eq('professor_executou_id', professorId)
+        .gte('data_aula', inicioSemanaStr)
+        .lte('data_aula', fimSemanaStr)
+        .neq('status_aula', 'cancelada')
+      if (error) throw error
+      return data || []
+    },
+  })
+  const aulaSemanaPorSlot = {}
+  aulasDaSemana.forEach(a => {
+    const dia = diaSemanaDaData(a.data_aula)
+    const horarioSlot = a.turmas?.horario_inicio?.slice(0, 5)
+    if (dia && horarioSlot) aulaSemanaPorSlot[`${dia}_${horarioSlot}`] = a
+  })
+
+  const aulasHojeTodas = aulasHojeAmanha.filter(a => a.data_aula === hoje).filter(aulaTemAluno)
+  const aulasAmanha = aulasHojeAmanha.filter(a => a.data_aula === amanha).filter(aulaTemAluno)
   const aoVivoAgora = aulasHojeTodas.filter(aulaEmAndamento)
 
   function calcularGanhosMes(mes, ano) {
@@ -160,21 +194,39 @@ export function DashboardProfessor() {
     return turmasProprias.find(t => t.horario_dia_semana === dia && t.horario_inicio?.slice(0, 5) === horario)
   }
 
-  function qtdAlunosAtivos(turma) {
-    return turma.turmas_alunos?.filter(ta => ta.ativo).length || 0
-  }
+  // Junta o padrão recorrente da turma (pra saber o nome "normal" do horário) com a aula
+  // de verdade dessa semana (pra saber quem está presente de fato, inclusive reposição, e
+  // se esse horário específico virou outra coisa via "Editar turma > só essa aula").
+  function getInfoCelula(dia, horario) {
+    const turmaRecorrente = getCelula(dia, horario)
+    const aulaSemana = aulaSemanaPorSlot[`${dia}_${horario}`]
+    if (!turmaRecorrente && !aulaSemana) return null
 
-  // Fundo sempre cinza — só a borda muda: verde com aluno, amarelo turma sua vazia, vermelho removida
-  function corBordaCelula(turma) {
-    if (!turma) return 'transparent'
-    if (turma.ativo === false) return 'rgba(239,68,68,0.5)'
-    return qtdAlunosAtivos(turma) > 0 ? 'rgba(34,197,94,0.5)' : 'rgba(252,200,37,0.5)'
+    const presencas = (aulaSemana?.presencas || []).filter(p => p.alunos)
+    const presencasRegulares = presencas.filter(p => p.tipo_participacao !== 'reposicao')
+    const presencasReposicao = presencas.filter(p => p.tipo_participacao === 'reposicao')
+    const ehOverride = !!(aulaSemana && turmaRecorrente && aulaSemana.turma_id !== turmaRecorrente.id)
+    const removida = turmaRecorrente?.ativo === false
+
+    let corBorda
+    if (removida) corBorda = 'rgba(239,68,68,0.5)'
+    else if (ehOverride) corBorda = 'rgba(59,130,246,0.6)'
+    else if (presencasRegulares.length > 0 || presencasReposicao.length > 0) corBorda = 'rgba(34,197,94,0.5)'
+    else corBorda = 'rgba(252,200,37,0.5)'
+
+    const nomeRecorrente = turmaRecorrente?.niveis?.nome || turmaRecorrente?.nome || ''
+    const nomeEfetivo = aulaSemana?.turmas?.niveis?.nome || aulaSemana?.turmas?.nome || ''
+    const individual = (turmaRecorrente?.niveis?.nome === 'Individual') || (aulaSemana?.turmas?.niveis?.nome === 'Individual')
+
+    return {
+      turmaRecorrente, aulaSemana, ehOverride, removida, corBorda, individual,
+      presencasRegulares, presencasReposicao, nomeRecorrente, nomeEfetivo,
+      quadraNome: aulaSemana?.turmas?.quadras?.nome || turmaRecorrente?.quadras?.nome || '',
+    }
   }
 
   // Individual lota com 1 aluno; turma em grupo tem 4 vagas — quanto mais perto de lotar, mais quente a cor
-  function corVagas(turma) {
-    const qtd = qtdAlunosAtivos(turma)
-    const individual = turma.niveis?.nome === 'Individual'
+  function corContagem(qtd, individual) {
     if (individual) return qtd >= 1 ? '#EF4444' : '#22c55e'
     if (qtd >= 4) return '#EF4444'
     if (qtd >= 2) return '#fcc825'
@@ -346,35 +398,49 @@ export function DashboardProfessor() {
                   {horario}
                 </div>
                 {DIAS_SEMANA.map(dia => {
-                  const turma = getCelula(dia, horario)
-                  const temAluno = turma && turma.ativo !== false && qtdAlunosAtivos(turma) > 0
+                  const info = getInfoCelula(dia, horario)
                   return (
                     <button
                       key={`${dia}-${horario}`}
-                      onClick={() => turma && setCelulaAtiva({ turma, dia, horario })}
-                      disabled={!turma}
+                      onClick={() => info && setCelulaAtiva({ info, horario })}
+                      disabled={!info}
                       style={{
-                        minHeight: '46px', borderRadius: '6px', cursor: turma ? 'pointer' : 'default',
-                        backgroundColor: turma ? '#1a1a1a' : 'rgba(255,255,255,0.02)',
-                        border: `1px solid ${corBordaCelula(turma)}`,
+                        minHeight: '46px', borderRadius: '6px', cursor: info ? 'pointer' : 'default',
+                        backgroundColor: info ? '#1a1a1a' : 'rgba(255,255,255,0.02)',
+                        border: `1px solid ${info ? info.corBorda : 'transparent'}`,
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                        gap: '3px', padding: '3px', overflow: 'hidden', boxSizing: 'border-box',
+                        gap: '2px', padding: '3px', overflow: 'hidden', boxSizing: 'border-box',
                       }}
                     >
-                      {turma && (
+                      {info && (
                         <>
-                          <span style={{ fontSize: '8px', color: '#ccc', lineHeight: 1.2, textAlign: 'center', wordBreak: 'break-word', maxWidth: '100%' }}>
-                            {turma.niveis?.nome || turma.nome}
-                          </span>
-                          {temAluno && (
-                            <span style={{
-                              width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0,
-                              backgroundColor: corVagas(turma), color: '#110f0f',
-                              fontSize: '9px', fontWeight: '800', lineHeight: 1,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}>
-                              {qtdAlunosAtivos(turma)}
+                          {info.ehOverride ? (
+                            <>
+                              <span style={{ fontSize: '8px', color: '#777', textDecoration: 'line-through', lineHeight: 1.2, textAlign: 'center', wordBreak: 'break-word', maxWidth: '100%' }}>
+                                {info.nomeRecorrente}
+                              </span>
+                              <span style={{ fontSize: '7px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                                {info.nomeEfetivo}
+                              </span>
+                            </>
+                          ) : (
+                            <span style={{ fontSize: '8px', color: '#ccc', lineHeight: 1.2, textAlign: 'center', wordBreak: 'break-word', maxWidth: '100%' }}>
+                              {info.nomeRecorrente || info.nomeEfetivo}
                             </span>
+                          )}
+                          {(info.presencasRegulares.length > 0 || info.presencasReposicao.length > 0) && (
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '1px' }}>
+                              {info.presencasRegulares.length > 0 && (
+                                <span style={{ fontSize: '10px', fontWeight: '700', color: '#ddd', borderBottom: `2px solid ${corContagem(info.presencasRegulares.length, info.individual)}`, paddingBottom: '1px' }}>
+                                  {info.presencasRegulares.length}
+                                </span>
+                              )}
+                              {info.presencasReposicao.length > 0 && (
+                                <span style={{ fontSize: '10px', fontWeight: '700', color: '#ddd', borderBottom: '2px solid #3b82f6', paddingBottom: '1px' }}>
+                                  {info.presencasReposicao.length}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </>
                       )}
@@ -388,12 +454,14 @@ export function DashboardProfessor() {
         <div style={{ display: 'flex', gap: '14px', marginTop: '10px', flexWrap: 'wrap' }}>
           <Legenda tipo="borda" cor="#22c55e" label="Borda: tem aluno" />
           <Legenda tipo="borda" cor="#fcc825" label="Borda: sua turma, vazia" />
+          <Legenda tipo="borda" cor="#3b82f6" label="Borda: virou outra aula hoje" />
           <Legenda tipo="borda" cor="#EF4444" label="Borda: removida" />
         </div>
         <div style={{ display: 'flex', gap: '14px', marginTop: '6px', flexWrap: 'wrap' }}>
-          <Legenda cor="#22c55e" label="Bolinha: ainda tem vaga" />
-          <Legenda cor="#fcc825" label="Bolinha: 2-3 alunos" />
-          <Legenda cor="#EF4444" label="Bolinha: lotada" />
+          <Legenda tipo="sublinhado" cor="#22c55e" label="Nº: ainda tem vaga" />
+          <Legenda tipo="sublinhado" cor="#fcc825" label="Nº: poucas vagas" />
+          <Legenda tipo="sublinhado" cor="#EF4444" label="Nº: lotada" />
+          <Legenda tipo="sublinhado" cor="#3b82f6" label="Nº: reposição" />
         </div>
       </div>
 
@@ -418,11 +486,13 @@ function CardResumoDia({ titulo, valor, cor, pulsando, onClick }) {
 function Legenda({ cor, label, tipo }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <span style={
-        tipo === 'borda'
-          ? { width: '9px', height: '9px', borderRadius: '3px', border: `1.5px solid ${cor}` }
-          : { width: '9px', height: '9px', borderRadius: '50%', backgroundColor: cor }
-      } />
+      {tipo === 'borda' ? (
+        <span style={{ width: '9px', height: '9px', borderRadius: '3px', border: `1.5px solid ${cor}` }} />
+      ) : tipo === 'sublinhado' ? (
+        <span style={{ fontSize: '10px', fontWeight: '700', color: '#ddd', borderBottom: `2px solid ${cor}`, paddingBottom: '1px' }}>2</span>
+      ) : (
+        <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: cor }} />
+      )}
       <span style={{ fontSize: '11px', color: '#888' }}>{label}</span>
     </div>
   )
@@ -467,29 +537,39 @@ function MesExpandidoDetalhe({ mes, ano, aulas, valorAula, onClose, onSelecionar
 }
 
 function ModalCelula({ celulaAtiva, onClose }) {
-  const { turma, horario } = celulaAtiva
-  const alunos = (turma.turmas_alunos || []).filter(t => t.ativo && t.alunos)
+  const { info, horario } = celulaAtiva
+  const nomeExibir = info.ehOverride ? info.nomeEfetivo : (info.nomeRecorrente || info.nomeEfetivo)
+  const totalAlunos = info.presencasRegulares.length + info.presencasReposicao.length
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#1a1a1a', borderRadius: '16px', border: '1px solid #2a2a2a', padding: '20px', width: '100%', maxWidth: '340px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>{turma.niveis?.nome || turma.nome}</div>
-            <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{turma.quadras?.nome}</div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>{nomeExibir}</div>
+            {info.ehOverride && (
+              <div style={{ fontSize: '11px', color: '#3b82f6', marginTop: '2px' }}>Substituindo {info.nomeRecorrente} nessa semana</div>
+            )}
+            <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{info.quadraNome}</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}><X size={18} /></button>
         </div>
-        <div style={{ fontSize: '13px', color: '#F0F2F5', marginBottom: '10px' }}>{horario} — {alunos.length} aluno(s)</div>
-        {alunos.length > 0 && (
+        <div style={{ fontSize: '13px', color: '#F0F2F5', marginBottom: '10px' }}>{horario} — {totalAlunos} aluno(s)</div>
+        {(info.presencasRegulares.length > 0 || info.presencasReposicao.length > 0) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '4px' }}>
-            {alunos.map(a => (
-              <div key={a.id} style={{ fontSize: '13px', color: '#ccc', padding: '8px 10px', borderRadius: '8px', backgroundColor: '#111' }}>
-                {a.alunos.nome}
+            {info.presencasRegulares.map(p => (
+              <div key={p.id} style={{ fontSize: '13px', color: '#ccc', padding: '8px 10px', borderRadius: '8px', backgroundColor: '#111' }}>
+                {p.alunos.nome}
+              </div>
+            ))}
+            {info.presencasReposicao.map(p => (
+              <div key={p.id} style={{ fontSize: '13px', color: '#ccc', padding: '8px 10px', borderRadius: '8px', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                {p.alunos.nome}
+                <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(59,130,246,0.15)', color: '#3b82f6', fontWeight: '600' }}>reposição</span>
               </div>
             ))}
           </div>
         )}
-        {turma.ativo === false && <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '6px' }}>Turma removida</div>}
+        {info.removida && <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '6px' }}>Turma removida</div>}
       </div>
     </div>
   )
