@@ -49,6 +49,7 @@ export function Header() {
       backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)',
       borderBottom: '0.5px solid rgba(255,255,255,0.06)',
+      paddingTop: 'env(safe-area-inset-top)',
     }}>
       <div className="header-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', gap: '8px', minWidth: 0 }}>
 
