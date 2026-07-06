@@ -9,7 +9,6 @@ import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useQuadras } from '../../hooks/useQuadras'
 import { useNiveis } from '../../hooks/useNiveis'
 import { useModalidades } from '../../hooks/useModalidades'
-import { StatusBadge } from '../../components/ui/Badge'
 import { Modal } from '../../components/ui/Modal'
 import { Input, Select } from '../../components/ui/Input'
 import { Loading, EmptyState } from '../../components/ui/Loading'
@@ -93,7 +92,6 @@ export function AulasAdmin() {
       }}>
         {[
           { key: 'hoje', label: 'Por Dia' },
-          { key: 'divergencias', label: '🔴 Diverg.' },
           { key: 'reposicoes', label: '↩ Reposição', count: totalReposicoes },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
@@ -118,9 +116,7 @@ export function AulasAdmin() {
 
       {tab === 'hoje'
         ? <AulasCoordenador onCelulaVazia={handleCelulaVazia} />
-        : tab === 'reposicoes'
-        ? <AulasReposicoes />
-        : <AulasDivergencias />
+        : <AulasReposicoes />
       }
 
       {/* Menu normal */}
@@ -393,33 +389,6 @@ function ModalCopiarGrade({ open, onClose }) {
   )
 }
 
-function AulasDivergencias() {
-  const { data: aulas, isLoading } = useAulas({ status: 'divergencia' })
-  if (isLoading) return <Loading />
-  if (!aulas?.length) return <EmptyState icon="✅" title="Nenhuma divergência" description="Todas as aulas estão com match!" />
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {aulas.map(aula => (
-        <div key={aula.id} style={{
-          backgroundColor: '#1a1a1a', borderRadius: '12px',
-          border: '1px solid rgba(239,68,68,0.3)', padding: '14px 16px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                <span style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '14px' }}>{aula.turmas?.nome}</span>
-              </div>
-              <div style={{ fontSize: '12px', color: '#555' }}>
-                {format(new Date(aula.data_aula + 'T12:00'), "dd/MM/yyyy", { locale: ptBR })} • Prof: {aula.professores?.nome}
-              </div>
-            </div>
-            <StatusBadge status={aula.status} />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
 
 function calcReposicaoStatus(dataAula) {
   if (!dataAula) return { diasRestantes: null, cor: '#3b82f6', progresso: 100, label: '' }

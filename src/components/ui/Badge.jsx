@@ -17,16 +17,3 @@ export function Badge({ children, variant = 'default', className = '' }) {
     </span>
   )
 }
-
-export function StatusBadge({ status }) {
-  const map = {
-    pendente: { variant: 'warning', label: '🟡 Pendente' },
-    confirmada_professor: { variant: 'info', label: '📝 Prof. Confirmou' },
-    confirmada_coord: { variant: 'accent', label: '📋 Coord. Confirmou' },
-    match: { variant: 'success', label: '✅ Match' },
-    divergencia: { variant: 'danger', label: '🔴 Divergência' },
-    nao_dada: { variant: 'default', label: '❌ Não Dada' },
-  }
-  const { variant, label } = map[status] || { variant: 'default', label: status }
-  return <Badge variant={variant}>{label}</Badge>
-}

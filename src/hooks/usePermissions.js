@@ -18,7 +18,6 @@ const PERMISSOES_POR_ROLE = {
     podeEditarPropriaAula: true,
     podeVerInboxGeral: true,
     podeVerSino: true,
-    podeValidarAulas: true,
     homeRoute: '/',
   },
   financeiro: {
@@ -33,7 +32,6 @@ const PERMISSOES_POR_ROLE = {
     podeEditarPropriaAula: false,
     podeVerInboxGeral: false,
     podeVerSino: true,
-    podeValidarAulas: false,
     homeRoute: '/',
   },
   coordenador: {
@@ -48,7 +46,6 @@ const PERMISSOES_POR_ROLE = {
     podeEditarPropriaAula: true,
     podeVerInboxGeral: false,
     podeVerSino: true,
-    podeValidarAulas: true,
     homeRoute: '/',
   },
   professor: {
@@ -63,7 +60,6 @@ const PERMISSOES_POR_ROLE = {
     podeEditarPropriaAula: true,
     podeVerInboxGeral: false,
     podeVerSino: true,
-    podeValidarAulas: false,
     homeRoute: '/dashboard-professor',
   },
   auxiliar: {
@@ -78,7 +74,6 @@ const PERMISSOES_POR_ROLE = {
     podeEditarPropriaAula: false,
     podeVerInboxGeral: false,
     podeVerSino: false,
-    podeValidarAulas: false,
     homeRoute: '/aulas',
   },
 }

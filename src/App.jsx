@@ -15,7 +15,6 @@ import { SelecionarEmpresaPage } from './pages/auth/SelecionarEmpresaPage'
 import { HomePage } from './pages/home/HomePage'
 import { ModalidadePage } from './pages/modalidades/ModalidadePage'
 import { AulasPage } from './pages/aulas/AulasPage'
-import { MatchAulas } from './pages/match/MatchAulas'
 import { CadastrosPage } from './pages/cadastros/CadastrosPage'
 import { FinanceiroPage } from './pages/financeiro/FinanceiroPage'
 import { KPIsPage } from './pages/kpis/KPIsPage'
@@ -74,7 +73,7 @@ function AppRouter() {
     return <SelecionarEmpresaPage empresas={empresas} onSelecionar={setEmpresaSelecionada} />
   }
 
-  const { homeRoute, podeAcessarCadastros, podeAcessarFinanceiro, podeAcessarKPIs, podeValidarAulas } = permissoes
+  const { homeRoute, podeAcessarCadastros, podeAcessarFinanceiro, podeAcessarKPIs } = permissoes
 
   return (
     <AppLayout>
@@ -89,9 +88,6 @@ function AppRouter() {
         <Route path="/dashboard-professor" element={<DashboardProfessor />} />
         <Route path="/meu-perfil" element={<MeuPerfilProfessor />} />
         <Route path="/meus-alunos" element={<MeusAlunosProfessor />} />
-        <Route path="/match" element={
-          <RouteGuard permitido={podeValidarAulas} homeRoute={homeRoute}><MatchAulas /></RouteGuard>
-        } />
         <Route path="/mensagens" element={<MensagensPage />} />
         <Route path="/cadastros" element={
           <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
