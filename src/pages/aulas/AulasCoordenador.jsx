@@ -138,6 +138,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(null)
   const [modalExportarPDF, setModalExportarPDF] = useState(false)
   const [pdfSomenteComAluno, setPdfSomenteComAluno] = useState(true)
+  const [pdfQuadras, setPdfQuadras] = useState(() => [...QUADRAS_EMPRESA.procopio, ...QUADRAS_EMPRESA.beach_arena])
+
+  function toggleQuadraPdf(quadra) {
+    setPdfQuadras(prev => prev.includes(quadra) ? prev.filter(q => q !== quadra) : [...prev, quadra])
+  }
   const [notasLocal, setNotasLocal] = useState({})
   const [editandoNotas, setEditandoNotas] = useState(false)
   const [novoAlunoModal, setNovoAlunoModal] = useState({
@@ -215,7 +220,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
     setStatusLocal({})
   }
 
-  async function exportarPDF(somenteComAluno) {
+  async function exportarPDF(somenteComAluno, quadrasSelecionadas) {
     const toastId = toast.loading('Gerando PDF...', { style: toastStyle })
     try {
       const { jsPDF } = await import('jspdf')
@@ -266,14 +271,17 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
 
       let cursorY = 82
       const SECOES = [
-        { chave: 'procopio', titulo: 'PROCÓPIO ARENA', cor: [252, 200, 37], corTexto: [30, 30, 30], quadras: QUADRAS_EMPRESA.procopio },
+        { chave: 'procopio', titulo: 'PROCOPIO', cor: [252, 200, 37], corTexto: [30, 30, 30], quadras: QUADRAS_EMPRESA.procopio },
         { chave: 'beach_arena', titulo: 'BEACH ARENA', cor: [207, 27, 155], corTexto: [255, 255, 255], quadras: QUADRAS_EMPRESA.beach_arena },
       ]
 
       let algumaSecaoImpressa = false
 
       for (const secao of SECOES) {
-        let aulasSecao = (aulas || []).filter(a => secao.quadras.includes(getQuadraNome(a)))
+        const quadrasIncluidas = secao.quadras.filter(q => quadrasSelecionadas.includes(q))
+        if (quadrasIncluidas.length === 0) continue
+
+        let aulasSecao = (aulas || []).filter(a => quadrasIncluidas.includes(getQuadraNome(a)))
         if (somenteComAluno) {
           aulasSecao = aulasSecao.filter(a => (a.presencas || []).some(p => p.alunos))
         }
@@ -290,11 +298,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
 
         const horariosOcupados = [...new Set(aulasSecao.map(a => getHorario(a)).filter(Boolean))].sort()
 
-        const head = [['Horário', ...secao.quadras]]
+        const head = [['Horário', ...quadrasIncluidas]]
         const body = horariosOcupados.map(h => {
           const aulaParaFim = aulasSecao.find(a => getHorario(a) === h)
           const linha = [`${h} – ${getHorarioFim(aulaParaFim)}`]
-          secao.quadras.forEach(q => {
+          quadrasIncluidas.forEach(q => {
             const aula = aulasSecao.find(a => getHorario(a) === h && getQuadraNome(a) === q)
             if (!aula) { linha.push(''); return }
             const nivel = getNivel(aula) || (aula.turma_id ? aula.turmas?.nome : 'Avulsa')
@@ -876,11 +884,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
         )}
       </div>
 
-      {/* Modal ação em massa */}
+      {/* Modal exportar PDF */}
       {modalExportarPDF && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
           onClick={() => setModalExportarPDF(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#1a1a1a', borderRadius: '16px', border: '1px solid #2a2a2a', padding: '20px', width: '100%', maxWidth: '340px' }}>
+          <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#1a1a1a', borderRadius: '16px', border: '1px solid #2a2a2a', padding: '20px', width: '100%', maxWidth: '360px', maxHeight: '85vh', overflowY: 'auto' }}>
             <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '14px' }}>Exportar grade em PDF</div>
             <button onClick={() => setPdfSomenteComAluno(v => !v)} style={{
               display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '10px',
@@ -895,13 +903,41 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
                 <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>Oculta turmas vazias, pra não confundir os professores</div>
               </div>
             </button>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+
+            <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '16px 0 8px' }}>Quadras</div>
+            {[
+              { titulo: 'Procopio', quadras: QUADRAS_EMPRESA.procopio },
+              { titulo: 'Beach Arena', quadras: QUADRAS_EMPRESA.beach_arena },
+            ].map(grupo => (
+              <div key={grupo.titulo} style={{ marginBottom: '10px' }}>
+                <div style={{ fontSize: '10px', color: '#666', marginBottom: '6px' }}>{grupo.titulo}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  {grupo.quadras.map(q => {
+                    const selecionada = pdfQuadras.includes(q)
+                    return (
+                      <button key={q} onClick={() => toggleQuadraPdf(q)} style={{
+                        padding: '7px 8px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                        background: selecionada ? '#fcc825' : '#111',
+                        outline: selecionada ? 'none' : '1px solid #2a2a2a',
+                        color: selecionada ? '#110f0f' : '#555',
+                        fontSize: '11px', fontWeight: selecionada ? '700' : '400', textAlign: 'left',
+                      }}>
+                        {q}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
               <button onClick={() => setModalExportarPDF(false)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer' }}>
                 Cancelar
               </button>
-              <button onClick={() => { setModalExportarPDF(false); exportarPDF(pdfSomenteComAluno) }} style={{
+              <button onClick={() => { setModalExportarPDF(false); exportarPDF(pdfSomenteComAluno, pdfQuadras) }} disabled={pdfQuadras.length === 0} style={{
                 flex: 2, padding: '10px', borderRadius: '10px', border: 'none',
-                background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600',
+                cursor: pdfQuadras.length === 0 ? 'not-allowed' : 'pointer', opacity: pdfQuadras.length === 0 ? 0.5 : 1,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
               }}>
                 <Download size={14} /> Gerar PDF
