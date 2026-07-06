@@ -90,9 +90,10 @@ export function DashboardProfessor() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('aulas')
-        .select('id, data_aula, status, status_aula')
+        .select('id, data_aula, status_aula, paga_professor')
         .eq('professor_executou_id', professorId)
         .eq('status_aula', 'dada')
+        .eq('paga_professor', true)
         .lte('data_aula', hoje)
       if (error) throw error
       return data || []
@@ -165,19 +166,11 @@ export function DashboardProfessor() {
       return d.getMonth() + 1 === mes && d.getFullYear() === ano
     })
     const qtd = doMes.length
-    // Só "match" é considerado fechado de verdade; confirmada_coord/confirmada_professor já
-    // aconteceram mas ainda não passaram pelo match cruzado das duas partes
-    const qtdMatch = doMes.filter(a => a.status === 'match').length
-    const qtdSemMatch = doMes.filter(a => a.status === 'confirmada_coord' || a.status === 'confirmada_professor').length
     const valorAula = professor?.valor_aula || 0
     const valorExtras = pagamentosExtras
       .filter(p => p.mes === mes && p.ano === ano)
       .reduce((acc, p) => acc + (p.valor || 0), 0)
-    return {
-      qtd, qtdMatch, qtdSemMatch,
-      valorMatch: qtdMatch * valorAula + valorExtras,
-      valorSemMatch: qtdSemMatch * valorAula,
-    }
+    return { qtd, valor: qtd * valorAula + valorExtras }
   }
 
   const ganhosMesAtual = calcularGanhosMes(mesAtual, anoAtual)
@@ -298,16 +291,11 @@ export function DashboardProfessor() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-              {MESES[mesAtual - 1]} {anoAtual} · {ganhosMesAtual.qtdMatch + ganhosMesAtual.qtdSemMatch} aulas
+              {MESES[mesAtual - 1]} {anoAtual} · {ganhosMesAtual.qtd} aulas
             </div>
             <div style={{ fontSize: '26px', fontWeight: '800', color: '#fcc825' }}>
-              R$ {ganhosMesAtual.valorMatch.toFixed(2).replace('.', ',')}
+              R$ {ganhosMesAtual.valor.toFixed(2).replace('.', ',')}
             </div>
-            {ganhosMesAtual.valorSemMatch > 0 && (
-              <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                R$ {ganhosMesAtual.valorSemMatch.toFixed(2).replace('.', ',')} confirmadas, aguardando match
-              </div>
-            )}
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '28px', fontWeight: '900', color: '#F0F2F5', lineHeight: 1 }}>{totalAulas}</div>

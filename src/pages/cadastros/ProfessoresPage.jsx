@@ -603,24 +603,12 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       return d.getMonth() + 1 === mes && d.getFullYear() === ano
     })
     const qtd = doMes.length
-    // Validado pelo coordenador (match = professor confirmou + coordenador validou;
-    // confirmada_coord = coordenador ja confirmou direto, sem passar pelo app do professor)
-    const qtdValidado = doMes.filter(a => a.status === 'match' || a.status === 'confirmada_coord').length
-    // Professor ja confirmou no app, mas o coordenador ainda nao validou no Match de Aulas
-    const qtdAguardandoMatch = doMes.filter(a => a.status === 'confirmada_professor').length
-
     const valorAula = cardAberto?.valor_aula || 0
     const valorAulas = qtd * valorAula
-    const valorValidado = qtdValidado * valorAula
-    const valorAguardandoMatch = qtdAguardandoMatch * valorAula
     const valorExtras = pagamentosExtras
       .filter(p => p.mes === mes && p.ano === ano)
       .reduce((acc, p) => acc + (p.valor || 0), 0)
-    return {
-      qtd, valor: valorAulas + valorExtras, valorAulas, valorExtras,
-      qtdValidado, valorValidado: valorValidado + valorExtras,
-      qtdAguardandoMatch, valorAguardandoMatch,
-    }
+    return { qtd, valor: valorAulas + valorExtras, valorAulas, valorExtras }
   }
 
   async function handleSalvarExtra() {
@@ -1137,12 +1125,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{labelMesMostrar} · {ganhosMostrar.qtd} aulas</div>
-                  <div style={{ fontSize: '24px', fontWeight: '800', color: '#fcc825' }}>R$ {ganhosMostrar.valorValidado.toFixed(2).replace('.', ',')}</div>
-                  {ganhosMostrar.valorAguardandoMatch > 0 && (
-                    <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
-                      R$ {ganhosMostrar.valorAguardandoMatch.toFixed(2).replace('.', ',')} aguardando match
-                    </div>
-                  )}
+                  <div style={{ fontSize: '24px', fontWeight: '800', color: '#fcc825' }}>R$ {ganhosMostrar.valor.toFixed(2).replace('.', ',')}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ textAlign: 'right' }}>
