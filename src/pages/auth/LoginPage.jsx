@@ -44,11 +44,23 @@ export function LoginPage() {
           </p>
         </div>
 
-        <div style={{ backgroundColor: '#1a1a1a', borderRadius: '20px', border: '1px solid #222', padding: '24px' }}>
+        <form
+          onSubmit={handleSubmit}
+          autoComplete="on"
+          style={{ backgroundColor: '#1a1a1a', borderRadius: '20px', border: '1px solid #222', padding: '24px' }}
+        >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Input label="CPF" type="text" placeholder="Seu CPF" value={form.email} onChange={e => update('email', e.target.value)} required />
+            <Input
+              label="CPF" type="text" inputMode="numeric" placeholder="Seu CPF"
+              name="username" autoComplete="username"
+              value={form.email} onChange={e => update('email', e.target.value)} required
+            />
             <div style={{ position: 'relative' }}>
-              <Input label="Senha" type={mostrarSenha ? 'text' : 'password'} placeholder="••••••••" value={form.senha} onChange={e => update('senha', e.target.value)} required />
+              <Input
+                label="Senha" type={mostrarSenha ? 'text' : 'password'} placeholder="••••••••"
+                name="password" autoComplete="current-password"
+                value={form.senha} onChange={e => update('senha', e.target.value)} required
+              />
               <button type="button" onClick={() => setMostrarSenha(v => !v)} style={{
                 position: 'absolute', right: '10px', bottom: '10px', background: 'none', border: 'none',
                 color: '#555', cursor: 'pointer', padding: '4px', display: 'flex',
@@ -63,7 +75,7 @@ export function LoginPage() {
               </div>
             )}
 
-            <button onClick={handleSubmit} disabled={loading} style={{
+            <button type="submit" disabled={loading} style={{
               width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
               background: 'linear-gradient(135deg, #fcc825, #d28c3c, #cf1b9b)',
               color: 'white', fontSize: '15px', fontWeight: '600',
@@ -80,7 +92,7 @@ export function LoginPage() {
               Esqueci minha senha
             </button>
           </div>
-        </div>
+        </form>
 
         <p style={{ textAlign: 'center', fontSize: '10px', color: '#222', marginTop: '24px', letterSpacing: '2px' }}>
           POWERED BY FNEVESSPORT
