@@ -952,11 +952,14 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false }) {
                   const semAluno = !turmaAtiva(aulaCelula)
                   const semProfessor = !isAv && !aulaCelula.professores
 
-                  const borderColor = st === 'futura' ? 'rgba(255,255,255,0.06)'
+                  // Futura + já tem aluno matriculado: destaca com uma cor que não é usada em
+                  // mais nada na grade (verde/vermelho/azul/amarelo já têm outro significado),
+                  // só pra bater o olho e ver rápido onde já foi matriculado alguém.
+                  const borderColor = st === 'futura' ? (semAluno ? 'rgba(255,255,255,0.06)' : 'rgba(34,211,238,0.3)')
                     : st === 'dada' ? 'rgba(34,197,94,0.3)'
                     : st === 'nao_dada' ? 'rgba(239,68,68,0.3)'
                     : 'rgba(59,130,246,0.3)'
-                  const dotColor = st === 'futura' ? '#333'
+                  const dotColor = st === 'futura' ? (semAluno ? '#333' : '#22d3ee')
                     : st === 'dada' ? '#22c55e'
                     : st === 'nao_dada' ? '#EF4444'
                     : '#3b82f6'
