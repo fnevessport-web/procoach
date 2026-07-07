@@ -603,7 +603,12 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
         }),
       })
       const resultado = await resp.json()
-      if (!resp.ok) throw new Error(resultado.error || 'Erro ao criar acesso')
+      if (!resp.ok) {
+        // Login falhou depois do cadastro já criado — desfaz o cadastro pra não deixar
+        // duplicata órfã (sem isso, cada nova tentativa empilhava mais um registro igual).
+        await supabase.from('professores').delete().eq('id', novoProf.id)
+        throw new Error(resultado.error || 'Erro ao criar acesso')
+      }
 
       toast.success(`${tipo.label} cadastrado! Já pode entrar com o CPF e a senha.`)
       qc.invalidateQueries({ queryKey: ['professores'] })

@@ -78,7 +78,12 @@ export default async function handler(req, res) {
       nome,
       primeiro_acesso: primeiroAcesso ?? true,
     })
-    if (erroPerfil) return res.status(400).json({ error: erroPerfil.message })
+    if (erroPerfil) {
+      // Sem isso, o login fica órfão (sem perfil) e trava qualquer nova tentativa com
+      // esse CPF, porque o e-mail sintético já estaria "registrado" pro Supabase Auth.
+      await admin.auth.admin.deleteUser(novoUsuario.user.id)
+      return res.status(400).json({ error: erroPerfil.message })
+    }
 
     await admin.from('professores').update({ cpf: cpfDigitos }).eq('id', professorId)
 
