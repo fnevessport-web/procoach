@@ -14,6 +14,12 @@ const SELECT_AULAS = `
 
 const DIAS_TABELA_HEATMAP = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado']
 
+// Mesma convenção usada no painel do professor (DashboardProfessor.jsx): turma
+// individual lota com 1 aluno, turma em grupo lota com 4 — não existe coluna de
+// capacidade no banco, é regra fixa do produto.
+const VAGAS_INDIVIDUAL = 1
+const VAGAS_GRUPO = 4
+
 function parseObsNivel(obs) {
   if (!obs) return ''
   const partes = obs.split('·').map(s => s.trim())
@@ -54,6 +60,11 @@ function contarOcorrenciasPorDiaSemana(periodoInicio, periodoFim) {
 // MÉDIA dessas somas semanais pelo número de vezes que aquele dia da semana
 // ocorreu no período (ex.: soma das 5 segundas-feiras dividida por 5) — e não uma
 // média por sessão, que sub-contaria slots com turmas simultâneas.
+//
+// A "força" da célula (usada pra colorir o mapa) é a OCUPAÇÃO — inscritos sobre
+// vagas totais do slot — não o número bruto de gente. Uma turma em grupo cheia (4)
+// + individual cheia (1) = 5 pessoas em 5 vagas = 100% cheio, mesmo peso que duas
+// turmas em grupo cheias (4+4=8 pessoas em 8 vagas, também 100%).
 function construirHeatmapTenis(aulas, periodoInicio, periodoFim) {
   const porDataHora = {}
   aulas.forEach(a => {
@@ -63,20 +74,24 @@ function construirHeatmapTenis(aulas, periodoInicio, periodoFim) {
     const hora = horaStr.slice(0, 2)
     const chave = `${a.data_aula}_${hora}`
     const inscritos = (a.presencas || []).length
-    if (!porDataHora[chave]) porDataHora[chave] = { data: a.data_aula, hora, total: 0, grupo: 0, individual: 0 }
+    const individual = isAulaIndividual(a)
+    const vagas = individual ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
+    if (!porDataHora[chave]) porDataHora[chave] = { data: a.data_aula, hora, total: 0, grupo: 0, individual: 0, vagasTotal: 0 }
     porDataHora[chave].total += inscritos
-    if (isAulaIndividual(a)) porDataHora[chave].individual += inscritos
+    porDataHora[chave].vagasTotal += vagas
+    if (individual) porDataHora[chave].individual += inscritos
     else porDataHora[chave].grupo += inscritos
   })
 
   const baldes = {}
-  Object.values(porDataHora).forEach(({ data, hora, total, grupo, individual }) => {
+  Object.values(porDataHora).forEach(({ data, hora, total, grupo, individual, vagasTotal }) => {
     const dia = diaSemanaDaData(data)
     const chave = `${dia}_${hora}`
-    if (!baldes[chave]) baldes[chave] = { somaTotal: 0, somaGrupo: 0, somaIndividual: 0 }
+    if (!baldes[chave]) baldes[chave] = { somaTotal: 0, somaGrupo: 0, somaIndividual: 0, somaVagas: 0 }
     baldes[chave].somaTotal += total
     baldes[chave].somaGrupo += grupo
     baldes[chave].somaIndividual += individual
+    baldes[chave].somaVagas += vagasTotal
   })
 
   const contagemDiaSemana = contarOcorrenciasPorDiaSemana(periodoInicio, periodoFim)
@@ -94,9 +109,15 @@ function construirHeatmapTenis(aulas, periodoInicio, periodoFim) {
     const denom = contagemDiaSemana[d] || 1
     horas.forEach(h => {
       const b = baldes[`${d}_${h}`]
-      celulas[d][h] = b
-        ? { media: b.somaTotal / denom, mediaGrupo: b.somaGrupo / denom, mediaIndividual: b.somaIndividual / denom }
-        : null
+      if (!b) { celulas[d][h] = null; return }
+      const mediaVagas = b.somaVagas / denom
+      celulas[d][h] = {
+        media: b.somaTotal / denom,
+        mediaGrupo: b.somaGrupo / denom,
+        mediaIndividual: b.somaIndividual / denom,
+        mediaVagas,
+        ocupacao: mediaVagas > 0 ? Math.min(1, (b.somaTotal / denom) / mediaVagas) : 0,
+      }
     })
   })
 

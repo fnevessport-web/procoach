@@ -295,7 +295,7 @@ export async function exportarRelatorioPDF(rel, periodo, { empresa }) {
     tituloSecao('Mapa de calor de demanda — Tênis')
     fontePadrao('normal', 8)
     doc.setTextColor(...COR_TEXTO_SUAVE)
-    doc.text('Alunos inscritos (presença + falta) por dia e horário — turmas simultâneas somadas, depois média pelas semanas do mês', margem, cursorY, { maxWidth: pageWidth - margem * 2 })
+    doc.text('Cor = % de ocupação das vagas do horário (grupo cheio + individual cheio pesa igual a duas turmas em grupo cheias). Número = média de inscritos.', margem, cursorY, { maxWidth: pageWidth - margem * 2 })
     cursorY += 20
 
     const larguraRotulo = 32
@@ -311,14 +311,6 @@ export async function exportarRelatorioPDF(rel, periodo, { empresa }) {
     })
     cursorY += 10
 
-    const valores = []
-    heatmap.horas.forEach(h => heatmap.dias.forEach(d => {
-      const c = heatmap.celulas[d][h]
-      if (c) valores.push(c.media)
-    }))
-    const minV = Math.min(...valores)
-    const maxV = Math.max(...valores)
-
     heatmap.horas.forEach(hora => {
       garantirEspaco(rowH + 4)
       fontePadrao('bold', 8)
@@ -332,11 +324,12 @@ export async function exportarRelatorioPDF(rel, periodo, { empresa }) {
           doc.roundedRect(x, cursorY, colW - 3, rowH - 3, 4, 4, 'F')
           return
         }
-        const t = maxV > minV ? (cel.media - minV) / (maxV - minV) : 0.5
-        const cor = interpolarCor(COR_CREME, COR_VINHO, t)
+        // A cor reflete OCUPAÇÃO (inscritos / vagas do slot), não o número bruto —
+        // assim um slot grupo+individual cheio pesa igual a dois grupos cheios.
+        const cor = interpolarCor(COR_CREME, COR_VINHO, cel.ocupacao)
         doc.setFillColor(...cor)
         doc.roundedRect(x, cursorY, colW - 3, rowH - 3, 4, 4, 'F')
-        const corTexto = t > 0.55 ? COR_BRANCO : COR_TINTA
+        const corTexto = cel.ocupacao > 0.55 ? COR_BRANCO : COR_TINTA
         fonteDestaque(12)
         doc.setTextColor(...corTexto)
         doc.text(cel.media.toFixed(1), x + (colW - 3) / 2, cursorY + rowH / 2 - 3, { align: 'center' })
