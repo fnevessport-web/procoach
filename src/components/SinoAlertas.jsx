@@ -6,12 +6,12 @@ import { ptBR } from 'date-fns/locale'
 import { useAlertas, useMarcarAlertaLido, useMarcarTodosAlertasLidos } from '../hooks/useAlertas'
 
 const ROTA_POR_TIPO = {
-  aula_pendente_validacao: '/match',
-  divergencia_aberta: '/match',
   mensagem_nova: '/mensagens',
   turma_ativada: '/aulas',
   aluno_incluido: '/aulas',
+  aluno_adicionado: '/aulas',
   aluno_removido: '/aulas',
+  esqueci_senha: '/cadastros',
 }
 
 const COR_PRIORIDADE = { alta: '#e24b4a', media: '#fcc825', baixa: '#555' }
