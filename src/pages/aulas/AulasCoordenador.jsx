@@ -1057,6 +1057,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   const aulaFutura = aula ? isAulaFutura(aula.data_aula, getHorario(aula)) : false
   const statusAtual = aula ? (aulaFutura ? 'futura' : (statusLocal[aula.id] || aula.status_aula || 'dada')) : 'dada'
   const isAvulsa = aula ? !aula.turma_id : false
+  // Professor titular daquela turma específica pode mexer no horário mesmo estando no modo
+  // "Minhas Aulas" (professorProprioId) — gestor sempre pode, independente de titularidade.
+  const ehTitularDaTurma = aula ? aula.turmas?.professor_titular_id === professorProprioId : false
   const estaEditando = aula ? editandoAula === aula.id : false
   const notasAula = aula ? (notasLocal[aula.id] ?? aula.notas ?? '') : ''
   const alunosBusca = buscaAdicionando.length >= 1
@@ -1630,7 +1633,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                   <Pencil size={12} /> Editar turma
                 </button>
               )}
-              {!somenteLeitura && !professorProprioId && !isAvulsa && !editandoHorarioAula && (
+              {!somenteLeitura && (!professorProprioId || ehTitularDaTurma) && !isAvulsa && !editandoHorarioAula && (
                 <button onClick={() => { setEditandoHorarioAula(true); setNovoHorarioMover(''); setNovaQuadraMoverId('') }} style={{
                   display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
                   borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
