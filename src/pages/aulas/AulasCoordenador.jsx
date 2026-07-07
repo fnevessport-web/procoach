@@ -29,6 +29,8 @@ const STATUS_AULA = [
   { value: 'cancelada', label: '🌧️ Cancelada', paga: false },
 ]
 
+const MOTIVOS_CANCELAMENTO = ['Chuva', 'Falta do professor', 'Manutenção da quadra', 'Outro']
+
 const STATUS_PRESENCA = [
   { value: 'presente', label: 'Presente', color: '#22c55e' },
   { value: 'falta', label: 'Falta', color: '#EF4444' },
@@ -171,6 +173,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   }
   const [notasLocal, setNotasLocal] = useState({})
   const [editandoNotas, setEditandoNotas] = useState(false)
+  const [mostrarMotivoCancelamento, setMostrarMotivoCancelamento] = useState(false)
+  const [motivoCancelamentoMassa, setMotivoCancelamentoMassa] = useState('')
   const [novoAlunoModal, setNovoAlunoModal] = useState({
     show: false, nome: '', telefone: '', nivel: '',
     menor_idade: false, nome_responsavel: '',
@@ -189,7 +193,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         const pagaProfessor = acaoMassa !== 'cancelar'
         const statusPresenca = acaoMassa === 'confirmar' ? 'presente' : acaoMassa === 'sem_aula' ? 'falta' : 'falta_justificada'
 
-        await supabase.from('aulas').update({ status_aula: statusAula, paga_professor: pagaProfessor }).eq('id', a.id)
+        await supabase.from('aulas').update({
+          status_aula: statusAula,
+          paga_professor: pagaProfessor,
+          motivo_cancelamento: acaoMassa === 'cancelar' ? (motivoCancelamentoMassa || null) : null,
+        }).eq('id', a.id)
 
         if (a.presencas && a.presencas.length > 0) {
           await supabase.from('presencas').update({ status_presenca: statusPresenca, presente: acaoMassa === 'confirmar' }).eq('aula_id', a.id)
@@ -204,6 +212,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       )
       setModalMassa(null)
       setAcaoMassa(null)
+      setMotivoCancelamentoMassa('')
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
     } finally {
@@ -486,6 +495,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
     setEscolhendoDestinatario(null)
     setDestinatariosSelecionados([])
     setBuscaDestinatario('')
+    setMostrarMotivoCancelamento(false)
   }
 
   function updatePresenca(aulaId, alunoId, campo, valor) {
@@ -755,17 +765,18 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
-  async function handleStatusAula(aulaId, statusAula) {
+  async function handleStatusAula(aulaId, statusAula, motivoCancelamento) {
     if (isFuturo) return toast.error('Aula futura — aguarde o dia da aula', { style: toastStyle })
     const pagaProfessor = STATUS_AULA.find(s => s.value === statusAula)?.paga ?? true
     setStatusLocal(prev => ({ ...prev, [aulaId]: statusAula }))
+    setMostrarMotivoCancelamento(false)
     try {
-      await atualizarStatus.mutateAsync({ aulaId, statusAula, pagaProfessor })
+      await atualizarStatus.mutateAsync({ aulaId, statusAula, pagaProfessor, motivoCancelamento })
       if (statusAula !== 'dada') {
         const aula = aulas?.find(a => a.id === aulaId)
         await logAudit('aulas', aulaId, 'UPDATE',
           { turma: getNivel(aula) || aula?.turmas?.nome, horario: getHorario(aula), data: aula?.data_aula },
-          { status_aula: statusAula }
+          { status_aula: statusAula, motivo_cancelamento: statusAula === 'cancelada' ? motivoCancelamento : undefined }
         )
       }
       toast.success('Status atualizado!', { style: toastStyle })
@@ -1312,15 +1323,31 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                     {aulasFiltradas.length} aulas · {aulasFiltradas.reduce((acc, a) => acc + (a.presencas?.length || 0), 0)} alunos serão atualizados
                   </div>
                 </div>
+                {acaoMassa === 'cancelar' && (
+                  <div style={{ marginBottom: '14px' }}>
+                    <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Motivo do cancelamento</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {MOTIVOS_CANCELAMENTO.map(m => (
+                        <button key={m} onClick={() => setMotivoCancelamentoMassa(m)} style={{
+                          padding: '8px 10px', borderRadius: '8px', border: 'none',
+                          fontSize: '11px', fontWeight: '500', cursor: 'pointer',
+                          background: motivoCancelamentoMassa === m ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#111',
+                          color: motivoCancelamentoMassa === m ? 'white' : '#555',
+                        }}>{m}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={() => setModalMassa('menu')} style={{
                     flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #2a2a2a',
                     background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer',
                   }}>Voltar</button>
-                  <button onClick={handleAcaoMassa} disabled={executandoMassa} style={{
+                  <button onClick={handleAcaoMassa} disabled={executandoMassa || (acaoMassa === 'cancelar' && !motivoCancelamentoMassa)} style={{
                     flex: 2, padding: '12px', borderRadius: '10px', border: 'none',
                     background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
                     color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                    opacity: (acaoMassa === 'cancelar' && !motivoCancelamentoMassa) ? 0.5 : 1,
                   }}>
                     {executandoMassa ? 'Aplicando...' : 'Confirmar'}
                   </button>
@@ -1909,7 +1936,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                 <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status da Aula</div>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   {STATUS_AULA.map(s => (
-                    <button key={s.value} onClick={() => handleStatusAula(aula.id, s.value)} style={{
+                    <button key={s.value} onClick={() => {
+                      if (s.value === 'cancelada') setMostrarMotivoCancelamento(true)
+                      else { setMostrarMotivoCancelamento(false); handleStatusAula(aula.id, s.value) }
+                    }} style={{
                       flex: 1, padding: '8px 4px', borderRadius: '8px', border: 'none',
                       fontSize: '11px', fontWeight: '500', cursor: 'pointer',
                       background: statusAtual === s.value ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#111',
@@ -1918,10 +1948,27 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                     }}>{s.label}</button>
                   ))}
                 </div>
+                {mostrarMotivoCancelamento && (
+                  <div style={{ marginTop: '8px', padding: '10px', borderRadius: '8px', backgroundColor: '#111', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px' }}>Motivo do cancelamento:</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {MOTIVOS_CANCELAMENTO.map(m => (
+                        <button key={m} onClick={() => handleStatusAula(aula.id, 'cancelada', m)} style={{
+                          padding: '8px 10px', borderRadius: '8px', border: 'none',
+                          fontSize: '11px', fontWeight: '500', cursor: 'pointer',
+                          background: '#1a1a1a', color: '#F0F2F5',
+                        }}>{m}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div style={{ fontSize: '11px', color: '#555', marginTop: '6px' }}>
                   💰 Professor: <span style={{ color: aula.paga_professor ? '#22c55e' : '#EF4444' }}>
                     {aula.paga_professor ? 'Aula paga' : 'Aula não paga'}
                   </span>
+                  {statusAtual === 'cancelada' && aula.motivo_cancelamento && (
+                    <span> · Motivo: {aula.motivo_cancelamento}</span>
+                  )}
                 </div>
               </div>
             )}

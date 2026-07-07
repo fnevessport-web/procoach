@@ -1,134 +1,187 @@
 import { useState } from 'react'
-import { format, startOfMonth, endOfMonth } from 'date-fns'
-import { TrendingUp, TrendingDown } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { useKPIs } from '../../hooks/useKPIs'
+import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { TrendingUp, TrendingDown, Download } from 'lucide-react'
+import { useRelatorioMensal, buscarRelatorioMensal } from '../../hooks/useRelatorioMensal'
 import { useModalidades } from '../../hooks/useModalidades'
+import { EMPRESAS } from '../../constants/modalidades'
 import { Input, Select } from '../../components/ui/Input'
 import { Loading } from '../../components/ui/Loading'
+import { exportarRelatorioPDF } from '../../lib/relatorioPdf'
+import toast from 'react-hot-toast'
 
-const KPI_ICONS = {
-  totalAulas:    '/images/totaldeaulas.png',
-  comMatch:      '/images/commatch.png',
-  divergencias:  '/images/divergencia.png',
-  taxaPresenca:  '/images/taxadepresença.png',
-  naoDadas:      '/images/naodadas.png',
-  substituicoes: '/images/substituição.png',
-}
+const toastStyle = { background: '#1a1a1a', color: '#F0F2F5', border: '1px solid #2a2a2a' }
 
 export function KPIsPage() {
   const [periodoInicio, setPeriodoInicio] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
   const [periodoFim, setPeriodoFim] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
-  const [modalidadeId, setModalidadeId] = useState('')
+  const [empresa, setEmpresa] = useState('')
+  const [modalidade, setModalidade] = useState('')
+  const [gerandoPdf, setGerandoPdf] = useState(null)
   const { data: modalidades } = useModalidades()
-  const { data: kpis, isLoading } = useKPIs({ periodoInicio, periodoFim, modalidadeId: modalidadeId || null })
+  const { data: rel, isLoading } = useRelatorioMensal({
+    periodoInicio, periodoFim, empresa: empresa || null, modalidade: modalidade || null,
+  })
+
+  function selecionarMesAtual() {
+    setPeriodoInicio(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
+    setPeriodoFim(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
+  }
+  function selecionarMesPassado() {
+    const mesPassado = subMonths(new Date(), 1)
+    setPeriodoInicio(format(startOfMonth(mesPassado), 'yyyy-MM-dd'))
+    setPeriodoFim(format(endOfMonth(mesPassado), 'yyyy-MM-dd'))
+  }
+
+  // Cada unidade sempre vira um PDF separado — independe do filtro de Unidade da tela.
+  async function handleExportarPDF(empresaAlvo) {
+    setGerandoPdf(empresaAlvo)
+    try {
+      const dados = await buscarRelatorioMensal({ periodoInicio, periodoFim, empresa: empresaAlvo, modalidade: null })
+      await exportarRelatorioPDF(dados, { inicio: periodoInicio, fim: periodoFim }, { empresa: empresaAlvo })
+      toast.success('PDF gerado!', { style: toastStyle })
+    } catch (err) {
+      toast.error('Erro ao gerar PDF: ' + err.message, { style: toastStyle })
+    } finally {
+      setGerandoPdf(null)
+    }
+  }
 
   return (
     <div className="fade-in" style={{ width: '100%', boxSizing: 'border-box' }}>
-      <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', marginBottom: '20px' }}>
-        Dashboard KPIs
-      </h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', gap: '10px' }}>
+        <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
+          Relatório Mensal
+        </h1>
+      </div>
+
+      {rel && (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+          {EMPRESAS.map(e => (
+            <button key={e.valor} onClick={() => handleExportarPDF(e.valor)} disabled={!!gerandoPdf} style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 12px',
+              borderRadius: '10px', border: '1px solid #2a2a2a', background: '#1a1a1a',
+              color: '#F0F2F5', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+              opacity: gerandoPdf && gerandoPdf !== e.valor ? 0.5 : 1,
+            }}>
+              <Download size={13} /> {gerandoPdf === e.valor ? 'Gerando...' : `Exportar ${e.label}`}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Filtros */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', width: '100%', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={selecionarMesAtual} style={{
+            flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid #2a2a2a',
+            background: '#1a1a1a', color: '#888', fontSize: '12px', cursor: 'pointer',
+          }}>Mês atual</button>
+          <button onClick={selecionarMesPassado} style={{
+            flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid #2a2a2a',
+            background: '#1a1a1a', color: '#888', fontSize: '12px', cursor: 'pointer',
+          }}>Mês passado</button>
+        </div>
         <Input type="date" label="De" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)} />
         <Input type="date" label="Até" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} />
-        <Select label="Modalidade" value={modalidadeId} onChange={e => setModalidadeId(e.target.value)}>
+        <Select label="Unidade" value={empresa} onChange={e => setEmpresa(e.target.value)}>
+          <option value="">Ambas</option>
+          {EMPRESAS.map(e => <option key={e.valor} value={e.valor}>{e.label}</option>)}
+        </Select>
+        <Select label="Modalidade" value={modalidade} onChange={e => setModalidade(e.target.value)}>
           <option value="">Todas</option>
-          {modalidades?.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+          {modalidades?.map(m => <option key={m.id} value={m.nome}>{m.nome}</option>)}
         </Select>
       </div>
 
-      {isLoading ? <Loading /> : kpis ? (
+      {isLoading ? <Loading /> : rel ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', boxSizing: 'border-box' }}>
 
+          <SectionTitle>Resumo executivo</SectionTitle>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <KpiCard icon={KPI_ICONS.totalAulas} label="Total de Aulas" value={kpis.totalAulas} dot="#fcc825" />
-            <KpiCard icon={KPI_ICONS.comMatch} label="Com Match" value={kpis.totalMatch} dot="#22c55e" />
-            <KpiCard icon={KPI_ICONS.divergencias} label="Divergências" value={kpis.totalDivergencias} dot="#EF4444" />
-            <KpiCard icon={KPI_ICONS.taxaPresenca} label="Taxa Presença" value={`${kpis.taxaPresenca}%`} dot="#cf1b9b" />
-            <KpiCard icon={KPI_ICONS.naoDadas} label="Não Dadas" value={kpis.totalNaoDadas} dot="#d28c3c" />
-            <KpiCard icon={KPI_ICONS.substituicoes} label="Substituições" value={kpis.totalSubs} dot="#7c3aed" />
+            <KpiCard emoji="📅" label="Aulas Programadas" value={rel.aulasProgramadas} dot="#fcc825" />
+            <KpiCard emoji="✅" label="Aulas Dadas" value={rel.aulasDadas} dot="#22c55e" />
+            <KpiCard emoji="🌧️" label="Canceladas" value={rel.aulasCanceladas} dot="#3b82f6" />
+            <KpiCard emoji="🈳" label="Sem Aluno" value={rel.aulasSemAluno} dot="#888" />
+            <KpiCard emoji="📈" label="Taxa Realização" value={`${rel.taxaRealizacao}%`} dot="#cf1b9b" />
+            <KpiCard emoji="🎉" label="Aulas em Feriado" value={rel.aulasEmFeriado} dot="#a855f7" />
           </div>
 
-          {kpis.variacaoPerc !== null && (
-            <div style={{
-              padding: '16px', borderRadius: '16px',
-              backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)',
-              width: '100%', boxSizing: 'border-box',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontSize: '12px', color: '#555' }}>Comparativo vs. mês anterior</div>
-                  <div style={{ fontSize: '13px', color: '#F0F2F5', marginTop: '4px' }}>
-                    {kpis.matchAtual} aulas vs {kpis.matchAnterior} anterior
-                  </div>
-                </div>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '4px',
-                  fontSize: '18px', fontWeight: '700',
-                  color: kpis.variacaoPerc >= 0 ? '#22c55e' : '#EF4444'
-                }}>
-                  {kpis.variacaoPerc >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
-                  {kpis.variacaoPerc > 0 ? '+' : ''}{kpis.variacaoPerc}%
-                </div>
-              </div>
-            </div>
+          <SectionTitle>Participação dos associados</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <KpiCard emoji="🙋" label="Alunos Únicos" value={rel.alunosUnicos} dot="#fcc825" />
+            <KpiCard emoji="👍" label="Presenças" value={rel.presentes} dot="#22c55e" />
+            <KpiCard emoji="👎" label="Faltas" value={rel.faltas} dot="#EF4444" />
+            <KpiCard emoji="📄" label="Falta Justificada" value={rel.faltasJustificadas} dot="#d28c3c" />
+          </div>
+          <div style={{
+            padding: '16px', borderRadius: '16px', backgroundColor: '#1a1a1a',
+            border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <span style={{ fontSize: '13px', color: '#F0F2F5' }}>Taxa de presença</span>
+            <span style={{ fontSize: '20px', fontWeight: '700', color: '#cf1b9b' }}>{rel.taxaPresenca}%</span>
+          </div>
+
+          {/* Cancelamentos por motivo */}
+          {Object.keys(rel.motivosCancelamento).length > 0 && (
+            <Bloco titulo="🌧️ Cancelamentos por motivo">
+              <BarrasProporcao
+                itens={Object.entries(rel.motivosCancelamento).map(([nome, total]) => ({ nome, total }))}
+                total={rel.aulasCanceladas}
+              />
+            </Bloco>
           )}
 
-          {kpis.profsMaisAulas?.length > 0 && (
-            <div style={{
-              padding: '16px', borderRadius: '16px',
-              backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)',
-              width: '100%', boxSizing: 'border-box',
-            }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5', marginBottom: '12px' }}>
-                🏆 Professores por Aulas
-              </div>
-              <ResponsiveContainer width="100%" height={160}>
-                <BarChart data={kpis.profsMaisAulas} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                  <XAxis dataKey="nome" tick={{ fill: '#555', fontSize: 10 }} tickFormatter={v => v?.split(' ')[0]} />
-                  <YAxis tick={{ fill: '#555', fontSize: 10 }} />
-                  <Tooltip
-                    contentStyle={{ background: '#1a1a1a', border: '1px solid #222', borderRadius: 8 }}
-                    labelStyle={{ color: '#F0F2F5' }}
-                    itemStyle={{ color: '#fcc825' }}
-                  />
-                  <Bar dataKey="total" fill="#fcc825" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          {/* Perfil de uso */}
+          {Object.keys(rel.porTipoParticipacao).length > 0 && (
+            <Bloco titulo="👥 Perfil de uso">
+              <BarrasProporcao
+                itens={Object.entries(rel.porTipoParticipacao).map(([nome, total]) => ({ nome: rotuloTipo(nome), total }))}
+                total={Object.values(rel.porTipoParticipacao).reduce((a, b) => a + b, 0)}
+              />
+            </Bloco>
           )}
 
-          {kpis.porModalidade?.length > 0 && (
-            <div style={{
-              padding: '16px', borderRadius: '16px',
-              backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)',
-              width: '100%', boxSizing: 'border-box',
-            }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5', marginBottom: '12px' }}>
-                📊 Frequência por Modalidade
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {kpis.porModalidade.map(m => (
-                  <div key={m.nome} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ fontSize: '12px', color: '#F0F2F5' }}>{m.nome}</span>
-                        <span style={{ fontSize: '11px', color: '#555' }}>{m.match}/{m.total}</span>
-                      </div>
-                      <div style={{ height: '4px', borderRadius: '2px', backgroundColor: '#222' }}>
-                        <div style={{
-                          height: '100%', borderRadius: '2px',
-                          width: `${m.total > 0 ? (m.match / m.total) * 100 : 0}%`,
-                          background: 'linear-gradient(90deg, #fcc825, #cf1b9b)',
-                        }} />
-                      </div>
-                    </div>
+          {/* Por modalidade */}
+          {rel.porModalidade.length > 0 && (
+            <Bloco titulo="📊 Uso por modalidade">
+              <BarrasProporcao
+                itens={rel.porModalidade.map(m => ({ nome: m.nome, total: m.aulas }))}
+                total={rel.aulasProgramadas}
+              />
+            </Bloco>
+          )}
+
+          {/* Por unidade */}
+          {rel.porEmpresa.length > 1 && (
+            <Bloco titulo="🏟️ Uso por unidade">
+              <BarrasProporcao
+                itens={rel.porEmpresa.map(e => ({ nome: rotuloEmpresa(e.empresa), total: e.aulas }))}
+                total={rel.aulasProgramadas}
+              />
+            </Bloco>
+          )}
+
+          {/* Comparação com mês anterior */}
+          <SectionTitle>Comparação com o mês anterior</SectionTitle>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <ComparativoLinha label="Aulas dadas" atual={rel.aulasDadas} anterior={rel.comparativo.aulasDadasAnterior} variacao={rel.comparativo.variacaoAulasDadas} />
+            <ComparativoLinha label="Taxa de presença" atual={`${rel.taxaPresenca}%`} anterior={`${rel.comparativo.taxaPresencaAnterior}%`} variacao={rel.comparativo.variacaoTaxaPresenca} />
+            <ComparativoLinha label="Alunos únicos" atual={rel.alunosUnicos} anterior={rel.comparativo.alunosUnicosAnterior} variacao={rel.comparativo.variacaoAlunosUnicos} />
+          </div>
+
+          {/* Ranking de professores */}
+          {rel.rankingProfessores.length > 0 && (
+            <Bloco titulo="🏆 Aulas por professor">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {rel.rankingProfessores.map(p => (
+                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                    <span style={{ color: '#F0F2F5' }}>{p.nome}</span>
+                    <span style={{ color: '#888' }}>{p.total} aulas</span>
                   </div>
                 ))}
               </div>
-            </div>
+            </Bloco>
           )}
         </div>
       ) : null}
@@ -136,7 +189,82 @@ export function KPIsPage() {
   )
 }
 
-function KpiCard({ icon, label, value, dot }) {
+function SectionTitle({ children }) {
+  return (
+    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '6px' }}>
+      {children}
+    </div>
+  )
+}
+
+function Bloco({ titulo, children }) {
+  return (
+    <div style={{
+      padding: '16px', borderRadius: '16px',
+      backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)',
+      width: '100%', boxSizing: 'border-box',
+    }}>
+      <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5', marginBottom: '12px' }}>{titulo}</div>
+      {children}
+    </div>
+  )
+}
+
+function BarrasProporcao({ itens, total }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {itens.sort((a, b) => b.total - a.total).map(item => (
+        <div key={item.nome}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '12px', color: '#F0F2F5' }}>{item.nome}</span>
+            <span style={{ fontSize: '11px', color: '#555' }}>{item.total}{total > 0 ? ` (${Math.round((item.total / total) * 100)}%)` : ''}</span>
+          </div>
+          <div style={{ height: '4px', borderRadius: '2px', backgroundColor: '#222' }}>
+            <div style={{
+              height: '100%', borderRadius: '2px',
+              width: `${total > 0 ? (item.total / total) * 100 : 0}%`,
+              background: 'linear-gradient(90deg, #fcc825, #cf1b9b)',
+            }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ComparativoLinha({ label, atual, anterior, variacao }) {
+  return (
+    <div style={{
+      padding: '14px 16px', borderRadius: '14px', backgroundColor: '#1a1a1a',
+      border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    }}>
+      <div>
+        <div style={{ fontSize: '12px', color: '#555' }}>{label}</div>
+        <div style={{ fontSize: '13px', color: '#F0F2F5', marginTop: '4px' }}>{atual} vs {anterior} anterior</div>
+      </div>
+      {variacao !== null && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '4px', fontSize: '16px', fontWeight: '700',
+          color: variacao >= 0 ? '#22c55e' : '#EF4444',
+        }}>
+          {variacao >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+          {variacao > 0 ? '+' : ''}{variacao}%
+        </div>
+      )}
+    </div>
+  )
+}
+
+function rotuloTipo(tipo) {
+  const rotulos = { mensalista: 'Mensalista', reposicao: 'Reposição', avulso: 'Avulso', cortesia: 'Cortesia' }
+  return rotulos[tipo] || tipo
+}
+
+function rotuloEmpresa(empresa) {
+  return empresa === 'procopio' ? 'Procópio' : empresa === 'beach_arena' ? 'Beach Arena' : 'Outro'
+}
+
+function KpiCard({ emoji, label, value, dot }) {
   return (
     <div style={{
       padding: '16px', borderRadius: '16px',
@@ -146,7 +274,7 @@ function KpiCard({ icon, label, value, dot }) {
       boxSizing: 'border-box',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <img src={icon} alt={label} style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+        <span style={{ fontSize: '22px', lineHeight: 1 }}>{emoji}</span>
         <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dot }} />
       </div>
       <div style={{ fontSize: '26px', fontWeight: '700', color: '#F0F2F5' }}>{value}</div>

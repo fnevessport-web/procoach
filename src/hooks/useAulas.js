@@ -82,12 +82,13 @@ export async function confirmarAulasElegiveis({ professorId = null, dataInicio =
 export function useAtualizarStatusAula() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ aulaId, statusAula, pagaProfessor }) => {
+    mutationFn: async ({ aulaId, statusAula, pagaProfessor, motivoCancelamento }) => {
       const { data, error } = await supabase
         .from('aulas')
         .update({
           status_aula: statusAula,
           paga_professor: pagaProfessor,
+          motivo_cancelamento: statusAula === 'cancelada' ? (motivoCancelamento || null) : null,
           atualizado_em: new Date().toISOString()
         })
         .eq('id', aulaId)

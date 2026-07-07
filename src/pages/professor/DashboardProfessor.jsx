@@ -38,10 +38,13 @@ function aulaTemAluno(aula) {
   return (aula.presencas?.length || 0) > 0
 }
 
-export function DashboardProfessor() {
+// professorIdProp: usado quando o gestor abre o painel de um professor específico
+// (dentro do card dele em Cadastros) — nesse caso não é "o meu painel", é uma visão
+// somente-leitura do painel de outra pessoa, com os mesmos dados em tempo real.
+export function DashboardProfessor({ professorIdProp } = {}) {
   const navigate = useNavigate()
   const { perfil } = useAppStore()
-  const professorId = perfil?.professor_id
+  const professorId = professorIdProp || perfil?.professor_id
 
   const [mesExpandido, setMesExpandido] = useState(null)
   const [diaSelecionado, setDiaSelecionado] = useState(null)
