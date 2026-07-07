@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, endOfMonth, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash } from 'lucide-react'
@@ -417,6 +417,7 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
 
 export function FinanceiroPage() {
   const now = new Date()
+  const qc = useQueryClient()
   const location = useLocation()
   const savedFin = location.state?.financeiroState
 
@@ -576,6 +577,42 @@ export function FinanceiroPage() {
       await desfazerPagamento.mutateAsync({ professorId: professorSel.id, mes, ano: anoSel })
       toast.success('Pagamento desmarcado', { style: toastStyle })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
+
+  // Gestor anexando direto por aqui — alguns professores têm dificuldade de subir o
+  // arquivo, então o gestor pode fazer por eles sem precisar ir em Cadastros.
+  async function handleUploadBoleto(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !professorSel?.id) return
+    try {
+      const path = `professores/${professorSel.id}/boleto_${anoSel}_${mes}.pdf`
+      const { error: upErr } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
+      await supabase.from('boletos_professor').upsert({
+        professor_id: professorSel.id, mes, ano: anoSel, boleto_url: publicUrl, status: 'pendente',
+      }, { onConflict: 'professor_id,mes,ano' })
+      qc.invalidateQueries({ queryKey: ['boletos', professorSel.id] })
+      toast.success('Boleto anexado!', { style: toastStyle })
+    } catch (err) { toast.error('Erro ao anexar boleto: ' + err.message, { style: toastStyle }) }
+  }
+
+  async function handleUploadNF(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !professorSel?.id) return
+    try {
+      const path = `professores/${professorSel.id}/nf_${anoSel}_${mes}.pdf`
+      const { error: upErr } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
+      await supabase.from('boletos_professor').upsert({
+        professor_id: professorSel.id, mes, ano: anoSel, nf_url: publicUrl,
+      }, { onConflict: 'professor_id,mes,ano' })
+      qc.invalidateQueries({ queryKey: ['boletos', professorSel.id] })
+      toast.success('NF anexada!', { style: toastStyle })
+    } catch (err) { toast.error('Erro ao anexar NF: ' + err.message, { style: toastStyle }) }
   }
 
   function navegarEmpresa(id) {
@@ -1038,22 +1075,32 @@ export function FinanceiroPage() {
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               {boletoMes?.boleto_url ? (
-                <a href={boletoMes.boleto_url} target="_blank" rel="noreferrer" style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                  padding: '10px', borderRadius: '10px',
-                  border: '1px solid rgba(96,165,250,0.3)', backgroundColor: 'rgba(96,165,250,0.06)',
-                  color: '#60a5fa', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
-                }}>
-                  <FileText size={14} /> Ver boleto
-                </a>
+                <>
+                  <a href={boletoMes.boleto_url} target="_blank" rel="noreferrer" style={{
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    padding: '10px', borderRadius: '10px',
+                    border: '1px solid rgba(96,165,250,0.3)', backgroundColor: 'rgba(96,165,250,0.06)',
+                    color: '#60a5fa', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
+                  }}>
+                    <FileText size={14} /> Ver boleto
+                  </a>
+                  <label style={{
+                    flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '10px', borderRadius: '10px', border: '1px solid #2a2a2a', cursor: 'pointer', color: '#555',
+                  }}>
+                    <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadBoleto} />
+                    <Upload size={14} />
+                  </label>
+                </>
               ) : (
-                <div style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                <label style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                   padding: '10px', borderRadius: '10px', border: '1px dashed #2a2a2a',
-                  color: '#555', fontSize: '12px',
+                  color: '#888', fontSize: '12px', cursor: 'pointer',
                 }}>
-                  Sem boleto
-                </div>
+                  <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadBoleto} />
+                  <Upload size={13} /> Anexar boleto
+                </label>
               )}
               {!pagamentoConfirmado ? (
                 <button onClick={handleConfirmarPagamento} disabled={confirmarPagamento.isPending} style={{
@@ -1090,24 +1137,34 @@ export function FinanceiroPage() {
             NF — {MESES_ABREV[mesSel]}/{anoSel}
           </div>
           {boletoMes?.nf_url ? (
-            <a href={boletoMes.nf_url} target="_blank" rel="noreferrer" style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '10px 14px', borderRadius: '10px',
-              border: '1px solid rgba(252,200,37,0.3)', backgroundColor: 'rgba(252,200,37,0.06)',
-              color: '#fcc825', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
-            }}>
-              <FileText size={14} /> Ver Nota Fiscal
-              <ExternalLink size={12} style={{ marginLeft: 'auto' }} />
-            </a>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <a href={boletoMes.nf_url} target="_blank" rel="noreferrer" style={{
+                flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '10px 14px', borderRadius: '10px',
+                border: '1px solid rgba(252,200,37,0.3)', backgroundColor: 'rgba(252,200,37,0.06)',
+                color: '#fcc825', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
+              }}>
+                <FileText size={14} /> Ver Nota Fiscal
+                <ExternalLink size={12} style={{ marginLeft: 'auto' }} />
+              </a>
+              <label style={{
+                flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '10px', borderRadius: '10px', border: '1px solid #2a2a2a', cursor: 'pointer', color: '#555',
+              }}>
+                <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadNF} />
+                <Upload size={14} />
+              </label>
+            </div>
           ) : (
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            <label style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
               padding: '10px', borderRadius: '10px',
               border: '1px dashed rgba(252,200,37,0.15)',
-              color: '#444', fontSize: '12px',
+              color: '#888', fontSize: '12px', cursor: 'pointer',
             }}>
-              Nenhuma NF enviada
-            </div>
+              <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadNF} />
+              <Upload size={13} /> Anexar NF
+            </label>
           )}
         </div>
 
