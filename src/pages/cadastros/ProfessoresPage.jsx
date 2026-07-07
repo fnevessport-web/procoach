@@ -11,6 +11,7 @@ import toast from 'react-hot-toast'
 import { apenasDigitosCPF, mascararCPF, cpfParaEmailSintetico } from '../../lib/cpf'
 import { buscarCep } from '../../lib/cep'
 import { BANCOS, ESTADOS } from '../../constants/geografia'
+import { DashboardProfessor } from '../professor/DashboardProfessor'
 
 const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']
 
@@ -1421,14 +1422,21 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', backgroundColor: '#111', borderRadius: '10px', padding: '4px' }}>
               {[
                 { key: 'perfil', label: 'Dados' },
+                { key: 'painel', label: 'Painel', somenteProfessor: true },
                 { key: 'financeiro', label: 'Financeiro' },
                 { key: 'avaliacoes', label: 'Avaliações', somenteGestor: true },
                 { key: 'disponibilidade', label: 'Grade' },
                 { key: 'historico', label: 'Histórico', somenteGestor: true },
-              ].filter(a => !a.somenteGestor || podeVerTodosSalarios).map(a => (
+              ].filter(a => (!a.somenteGestor || podeVerTodosSalarios) && (!a.somenteProfessor || cardAberto.funcao === 'professor')).map(a => (
                 <button key={a.key} onClick={() => setAba(a.key)} style={{ flex: 1, padding: '8px', borderRadius: '7px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer', background: aba === a.key ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : 'transparent', color: aba === a.key ? 'white' : '#555' }}>{a.label}</button>
               ))}
             </div>
+
+            {/* ABA PAINEL — mesmo painel em tempo real que o próprio professor vê (grade
+                semanal, ao vivo agora, ganhos), só que o gestor está só olhando. */}
+            {aba === 'painel' && cardAberto.funcao === 'professor' && (
+              <DashboardProfessor professorIdProp={cardAberto.id} />
+            )}
 
             {/* ABA DADOS */}
             {aba === 'perfil' && (
