@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Acesso não permitido' })
   }
 
-  const { professorId, nome, cpf, senha } = req.body || {}
+  const { professorId, nome, cpf, senha, role, primeiroAcesso } = req.body || {}
   const cpfDigitos = String(cpf || '').replace(/\D/g, '')
   if (!professorId || cpfDigitos.length !== 11 || !senha) {
     return res.status(400).json({ error: 'Informe um CPF válido (11 dígitos) e uma senha' })
@@ -46,6 +46,11 @@ export default async function handler(req, res) {
   if (String(senha).length < 8) {
     return res.status(400).json({ error: 'A senha precisa ter pelo menos 8 caracteres' })
   }
+  // 'gestor' é o nome usado na UI; 'admin' é o valor histórico gravado no banco (ver
+  // usePermissions.js). Só aceita os 4 tipos que o cadastro oferece — nunca confia em
+  // qualquer outro valor vindo do corpo da requisição.
+  const ROLES_VALIDOS = { professor: 'professor', gestor: 'admin', financeiro: 'financeiro', auxiliar: 'auxiliar' }
+  const roleFinal = ROLES_VALIDOS[role] || 'professor'
 
   // Login do professor é o CPF, não e-mail. Usamos um e-mail sintético (nunca enviado de
   // verdade) só pra satisfazer o Supabase Auth, que exige e-mail como identificador — isso
@@ -69,9 +74,9 @@ export default async function handler(req, res) {
     const { error: erroPerfil } = await admin.from('perfis_usuario').insert({
       user_id: novoUsuario.user.id,
       professor_id: professorId,
-      role: 'professor',
+      role: roleFinal,
       nome,
-      primeiro_acesso: true,
+      primeiro_acesso: primeiroAcesso ?? true,
     })
     if (erroPerfil) return res.status(400).json({ error: erroPerfil.message })
 

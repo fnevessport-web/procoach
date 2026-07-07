@@ -52,6 +52,16 @@ const labelStyle = {
   letterSpacing: '0.5px', marginBottom: '4px',
 }
 
+// Tipo de colaborador escolhido no cadastro -> funcao (label exibido no card) + role
+// (permissão real, ver src/hooks/usePermissions.js). 'gestor' na UI = 'admin' no banco
+// (valor histórico), mesma coisa que a API /api/criar-professor-usuario já resolve.
+const TIPOS_COLABORADOR = [
+  { value: 'professor', label: 'Professor', funcao: 'professor' },
+  { value: 'gestor', label: 'Gestor', funcao: 'gerente' },
+  { value: 'financeiro', label: 'Financeiro', funcao: 'financeiro' },
+  { value: 'auxiliar', label: 'Auxiliar', funcao: 'auxiliar' },
+]
+
 const FORM_VAZIO = {
   id: null, nome: '', email: '', telefone: '', instagram: '', apelido: '',
   tem_cref: false, numero_cref: '', cref_url: '',
@@ -205,6 +215,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   const [modalCriar, setModalCriar] = useState(false)
   const [form, setForm] = useState(FORM_VAZIO)
   const [salvando, setSalvando] = useState(false)
+  const [tipoColaborador, setTipoColaborador] = useState(null)
+  const [cpfNovoColaborador, setCpfNovoColaborador] = useState('')
+  const [senhaNovoColaborador, setSenhaNovoColaborador] = useState('')
   const [novasNotas, setNovasNotas] = useState({ nota_a: 0, nota_b: 0, nota_c: 0, nota_d: 0, nota_e: 0, observacao: '' })
   const [salvandoAval, setSalvandoAval] = useState(false)
   const [modalAval, setModalAval] = useState(false)
@@ -547,6 +560,63 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       }
     } catch (err) { alert('Erro: ' + err.message) }
     finally { setSalvando(false) }
+  }
+
+  // Cadastro de colaborador novo (qualquer tipo) já com acesso pronto num passo só —
+  // cria a linha em `professores` (aparece no diretório, com foto/função) e na sequência
+  // chama a mesma API de criar login usada pelo "Criar acesso" dentro do card, passando
+  // o role certo. primeiroAcesso:false porque o gestor já está entregando a senha pronta
+  // pra pessoa, sem burocracia de troca no primeiro login.
+  async function handleCriarColaborador() {
+    const cpfDigitos = apenasDigitosCPF(cpfNovoColaborador)
+    if (!form.nome.trim()) return toast.error('Preencha o nome')
+    if (!tipoColaborador) return toast.error('Escolha o tipo de colaborador')
+    if (cpfDigitos.length !== 11) return toast.error('CPF precisa ter 11 dígitos')
+    if (senhaNovoColaborador.length < 8) return toast.error('Senha precisa ter pelo menos 8 caracteres')
+
+    const tipo = TIPOS_COLABORADOR.find(t => t.value === tipoColaborador)
+    setSalvando(true)
+    try {
+      const { data: novoProf, error: erroProf } = await supabase.from('professores').insert({
+        nome: form.nome.trim(),
+        telefone: form.telefone || null,
+        email: form.email || null,
+        cpf: cpfDigitos,
+        funcao: tipo.funcao,
+        modalidade_id: tipoColaborador === 'professor' ? (form.modalidades_ids?.[0] || null) : null,
+        modalidades_ids: tipoColaborador === 'professor' && form.modalidades_ids?.length > 0 ? form.modalidades_ids : null,
+        ativo: true,
+      }).select().single()
+      if (erroProf) throw erroProf
+
+      const { data: { session } } = await supabase.auth.getSession()
+      const resp = await fetch('/api/criar-professor-usuario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({
+          professorId: novoProf.id,
+          nome: form.nome.trim(),
+          cpf: cpfDigitos,
+          senha: senhaNovoColaborador,
+          role: tipoColaborador,
+          primeiroAcesso: false,
+        }),
+      })
+      const resultado = await resp.json()
+      if (!resp.ok) throw new Error(resultado.error || 'Erro ao criar acesso')
+
+      toast.success(`${tipo.label} cadastrado! Já pode entrar com o CPF e a senha.`)
+      qc.invalidateQueries({ queryKey: ['professores'] })
+      setModalCriar(false)
+      setForm(FORM_VAZIO)
+      setTipoColaborador(null)
+      setCpfNovoColaborador('')
+      setSenhaNovoColaborador('')
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setSalvando(false)
+    }
   }
 
   async function handleUploadFoto(e) {
@@ -1366,6 +1436,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     <select style={inputStyle} value={form.funcao} onChange={e => set('funcao', e.target.value)}>
                       <option value="professor">Professor</option>
                       <option value="gerente">Gerente</option>
+                      <option value="financeiro">Financeiro</option>
                       <option value="auxiliar">Auxiliar de Quadra</option>
                       <option value="coordenador">Coordenador</option>
                     </select></div>
@@ -1853,40 +1924,66 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
 
       {/* MODAL CRIAR */}
       {modalCriar && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }} onClick={() => setModalCriar(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box', maxHeight: '70dvh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }} onClick={() => { setModalCriar(false); setTipoColaborador(null); setCpfNovoColaborador(''); setSenhaNovoColaborador('') }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box', maxHeight: '85dvh', overflowY: 'auto' }}>
             <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
-            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '16px' }}>Novo Professor</div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '16px' }}>Novo Colaborador</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <input style={inputStyle} placeholder="Nome completo *" value={form.nome} onChange={e => set('nome', e.target.value)} />
-              <input style={inputStyle} placeholder="Telefone (WhatsApp)" value={form.telefone} onChange={e => set('telefone', e.target.value)} />
-              <input style={inputStyle} placeholder="E-mail" value={form.email} onChange={e => set('email', e.target.value)} />
               <div>
-                <div style={labelStyle}>Modalidades</div>
+                <div style={labelStyle}>Tipo de colaborador *</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  {modalidades.map(m => {
-                    const selecionada = (form.modalidades_ids || []).includes(m.id)
-                    return (
-                      <button key={m.id} type="button" onClick={() => {
-                        const atual = form.modalidades_ids || []
-                        set('modalidades_ids', selecionada ? atual.filter(id => id !== m.id) : [...atual, m.id])
-                      }} style={{
-                        padding: '8px 4px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                        background: selecionada ? '#fcc825' : '#111',
-                        outline: selecionada ? 'none' : '1px solid #2a2a2a',
-                        color: selecionada ? '#110f0f' : '#555',
-                        fontSize: '11px', fontWeight: selecionada ? '700' : '400',
-                        textAlign: 'center', lineHeight: 1.3,
-                      }}>
-                        {m.nome}
-                      </button>
-                    )
-                  })}
+                  {TIPOS_COLABORADOR.map(t => (
+                    <button key={t.value} type="button" onClick={() => setTipoColaborador(t.value)} style={{
+                      padding: '10px 4px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                      background: tipoColaborador === t.value ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#111',
+                      outline: tipoColaborador === t.value ? 'none' : '1px solid #2a2a2a',
+                      color: tipoColaborador === t.value ? 'white' : '#888',
+                      fontSize: '12px', fontWeight: tipoColaborador === t.value ? '700' : '400',
+                      textAlign: 'center',
+                    }}>
+                      {t.label}
+                    </button>
+                  ))}
                 </div>
               </div>
+
+              <input style={inputStyle} placeholder="Nome completo *" value={form.nome} onChange={e => set('nome', e.target.value)} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <input style={inputStyle} placeholder="•••.•••.•••-•• (CPF) *" value={mascararCPF(cpfNovoColaborador)} onChange={e => setCpfNovoColaborador(apenasDigitosCPF(e.target.value))} />
+                <input style={inputStyle} type="password" placeholder="Senha de acesso *" value={senhaNovoColaborador} onChange={e => setSenhaNovoColaborador(e.target.value)} />
+              </div>
+              <input style={inputStyle} placeholder="Telefone (WhatsApp)" value={form.telefone} onChange={e => set('telefone', e.target.value)} />
+              <input style={inputStyle} placeholder="E-mail" value={form.email} onChange={e => set('email', e.target.value)} />
+
+              {tipoColaborador === 'professor' && (
+                <div>
+                  <div style={labelStyle}>Modalidades</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {modalidades.map(m => {
+                      const selecionada = (form.modalidades_ids || []).includes(m.id)
+                      return (
+                        <button key={m.id} type="button" onClick={() => {
+                          const atual = form.modalidades_ids || []
+                          set('modalidades_ids', selecionada ? atual.filter(id => id !== m.id) : [...atual, m.id])
+                        }} style={{
+                          padding: '8px 4px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                          background: selecionada ? '#fcc825' : '#111',
+                          outline: selecionada ? 'none' : '1px solid #2a2a2a',
+                          color: selecionada ? '#110f0f' : '#555',
+                          fontSize: '11px', fontWeight: selecionada ? '700' : '400',
+                          textAlign: 'center', lineHeight: 1.3,
+                        }}>
+                          {m.nome}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                <button onClick={() => setModalCriar(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
-                <button onClick={handleSalvar} disabled={salvando || !form.nome.trim()} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                <button onClick={() => { setModalCriar(false); setTipoColaborador(null); setCpfNovoColaborador(''); setSenhaNovoColaborador('') }} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={handleCriarColaborador} disabled={salvando || !form.nome.trim() || !tipoColaborador} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                   {salvando ? 'Salvando...' : 'Cadastrar'}
                 </button>
               </div>
