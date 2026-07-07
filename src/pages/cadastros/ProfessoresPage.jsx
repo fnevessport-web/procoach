@@ -1111,10 +1111,12 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     </div>
                   )
                 })()}
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '34px', fontWeight: '900', color: '#fcc825', lineHeight: 1 }}>{totalAulas}</div>
-                  <div style={{ fontSize: '8px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1.3 }}>Total de<br/>Aulas</div>
-                </div>
+                {cardAberto.funcao === 'professor' && (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '34px', fontWeight: '900', color: '#fcc825', lineHeight: 1 }}>{totalAulas}</div>
+                    <div style={{ fontSize: '8px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1.3 }}>Total de<br/>Aulas</div>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -1233,6 +1235,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
               </div>
             )}
 
+            {/* Acompanhamento de aulas/ganhos — só faz sentido pra quem é pago por aula (professor).
+                Colaborador CLT (gestor/financeiro/auxiliar) recebe salário fixo, editável na aba Dados. */}
+            {cardAberto.funcao === 'professor' && (<>
             {/* Financeiro resumo topo */}
             <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '14px 16px', border: '1px solid rgba(252,200,37,0.15)', marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
@@ -1408,8 +1413,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                       )}
                     </div>
                   )
-                })()} 
+                })()}
             </div>
+            </>)}
 
             {/* Abas */}
             <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', backgroundColor: '#111', borderRadius: '10px', padding: '4px' }}>
