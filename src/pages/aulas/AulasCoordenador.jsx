@@ -1842,11 +1842,24 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
               </div>
             )}
 
-            {!isAvulsa && !aulaFutura && !somenteLeitura && (
-              <div style={{ marginBottom: '12px' }}>
-                <button onClick={() => setEditandoNotas(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: notasAula ? '1px solid rgba(255,255,255,0.15)' : '1px solid #2a2a2a', background: 'none', color: notasAula ? '#aaa' : '#555', fontSize: '12px', cursor: 'pointer' }}>
-                  <FileText size={12} /> {notasAula ? 'Ver nota' : 'Observação'}
-                </button>
+            {!isAvulsa && !somenteLeitura && (!professorProprioId || ehTitularDaTurma) && (
+              <div style={{ marginBottom: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {!aulaFutura && (
+                  <button onClick={() => setEditandoNotas(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: notasAula ? '1px solid rgba(255,255,255,0.15)' : '1px solid #2a2a2a', background: 'none', color: notasAula ? '#aaa' : '#555', fontSize: '12px', cursor: 'pointer' }}>
+                    <FileText size={12} /> {notasAula ? 'Ver nota' : 'Observação'}
+                  </button>
+                )}
+                {!confirmandoExclusao ? (
+                  <button onClick={() => setConfirmandoExclusao(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.3)', background: 'none', color: '#EF4444', fontSize: '12px', cursor: 'pointer' }}>
+                    🗑️ Excluir aula
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '6px 10px', borderRadius: '8px', backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
+                    <span style={{ fontSize: '11px', color: '#EF4444' }}>Confirmar?</span>
+                    <button onClick={() => handleExcluirAula(aula.id)} style={{ padding: '3px 8px', borderRadius: '6px', border: 'none', backgroundColor: '#EF4444', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Sim</button>
+                    <button onClick={() => setConfirmandoExclusao(false)} style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>Não</button>
+                  </div>
+                )}
               </div>
             )}
 
