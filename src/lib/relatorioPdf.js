@@ -295,13 +295,13 @@ export async function exportarRelatorioPDF(rel, periodo, { empresa }) {
     tituloSecao('Mapa de calor de demanda — Tênis')
     fontePadrao('normal', 8)
     doc.setTextColor(...COR_TEXTO_SUAVE)
-    doc.text('Média de pessoas atendidas por sessão, por dia e horário (quadras simultâneas já entram na média)', margem, cursorY)
-    cursorY += 14
+    doc.text('Alunos inscritos (presença + falta) por dia e horário — turmas simultâneas somadas, depois média pelas semanas do mês', margem, cursorY, { maxWidth: pageWidth - margem * 2 })
+    cursorY += 20
 
     const larguraRotulo = 32
     const larguraTotal = pageWidth - margem * 2 - larguraRotulo
     const colW = larguraTotal / heatmap.dias.length
-    const rowH = 28
+    const rowH = 34
 
     garantirEspaco(rowH + 16)
     fontePadrao('bold', 8)
@@ -337,11 +337,11 @@ export async function exportarRelatorioPDF(rel, periodo, { empresa }) {
         doc.setFillColor(...cor)
         doc.roundedRect(x, cursorY, colW - 3, rowH - 3, 4, 4, 'F')
         const corTexto = t > 0.55 ? COR_BRANCO : COR_TINTA
-        fonteDestaque(10.5)
+        fonteDestaque(12)
         doc.setTextColor(...corTexto)
-        doc.text(cel.media.toFixed(1), x + (colW - 3) / 2, cursorY + rowH / 2 - 1, { align: 'center' })
+        doc.text(cel.media.toFixed(1), x + (colW - 3) / 2, cursorY + rowH / 2 - 3, { align: 'center' })
         fontePadrao('normal', 5.5)
-        doc.text(`${cel.sessoes} sessões`, x + (colW - 3) / 2, cursorY + rowH / 2 + 8, { align: 'center' })
+        doc.text(`G(${cel.mediaGrupo.toFixed(1)}) | I(${cel.mediaIndividual.toFixed(1)})`, x + (colW - 3) / 2, cursorY + rowH / 2 + 10, { align: 'center' })
       })
       cursorY += rowH
     })
