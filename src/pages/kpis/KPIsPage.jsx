@@ -1,27 +1,32 @@
 import { useState } from 'react'
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import { TrendingUp, TrendingDown, Download } from 'lucide-react'
-import { useRelatorioMensal, buscarRelatorioMensal, buscarRelatorioPresencaAlunos } from '../../hooks/useRelatorioMensal'
+import { useRelatorioMensal, buscarRelatorioCompleto } from '../../hooks/useRelatorioMensal'
 import { useModalidades } from '../../hooks/useModalidades'
-import { EMPRESAS } from '../../constants/modalidades'
-import { Input, Select } from '../../components/ui/Input'
+import { EMPRESAS, MODALIDADE_EMPRESA, ICONES_MODALIDADES } from '../../constants/modalidades'
+import { Input } from '../../components/ui/Input'
 import { Loading } from '../../components/ui/Loading'
-import { exportarRelatorioPDF, exportarRelatorioPresencaPDF, exportarRelatorioPresencaPNG } from '../../lib/relatorioPdf'
+import { exportarRelatorioCompletoPDF, exportarRelatorioCompletoPNG } from '../../lib/relatorioPdf'
 import toast from 'react-hot-toast'
 
 const toastStyle = { background: '#1a1a1a', color: '#F0F2F5', border: '1px solid #2a2a2a' }
+const COR_UNIDADE = { procopio: '#fcc825', beach_arena: '#cf1b9b' }
 
 export function KPIsPage() {
   const [periodoInicio, setPeriodoInicio] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
   const [periodoFim, setPeriodoFim] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
-  const [empresa, setEmpresa] = useState('')
-  const [modalidade, setModalidade] = useState('')
-  const [gerandoPdf, setGerandoPdf] = useState(null)
-  const [gerandoPresenca, setGerandoPresenca] = useState(null)
+  const [unidadesSelecionadas, setUnidadesSelecionadas] = useState([])
+  const [modalidadesSelecionadas, setModalidadesSelecionadas] = useState([])
+  const [gerando, setGerando] = useState(null)
   const { data: modalidades } = useModalidades()
+
+  const modalidadesDisponiveis = (modalidades || []).filter(m => unidadesSelecionadas.includes(MODALIDADE_EMPRESA[m.nome]))
+
+  // Preview ao vivo dos cards: com 1 unidade marcada, mostra só ela; com 0 ou 2, mostra as duas
+  // combinadas (mesma leitura que "Ambas" tinha no dropdown antigo).
+  const empresaPreview = unidadesSelecionadas.length === 1 ? unidadesSelecionadas[0] : null
   const { data: rel, isLoading } = useRelatorioMensal({
-    periodoInicio, periodoFim, empresa: empresa || null, modalidade: modalidade || null,
+    periodoInicio, periodoFim, empresa: empresaPreview, modalidades: modalidadesSelecionadas,
   })
 
   function selecionarMesAtual() {
@@ -34,47 +39,52 @@ export function KPIsPage() {
     setPeriodoFim(format(endOfMonth(mesPassado), 'yyyy-MM-dd'))
   }
 
-  // Cada unidade sempre vira um PDF separado — independe do filtro de Unidade da tela.
-  async function handleExportarPDF(empresaAlvo) {
-    setGerandoPdf(empresaAlvo)
-    try {
-      const dados = await buscarRelatorioMensal({ periodoInicio, periodoFim, empresa: empresaAlvo, modalidade: null })
-      await exportarRelatorioPDF(dados, { inicio: periodoInicio, fim: periodoFim }, { empresa: empresaAlvo })
-      toast.success('PDF gerado!', { style: toastStyle })
-    } catch (err) {
-      toast.error('Erro ao gerar PDF: ' + err.message, { style: toastStyle })
-    } finally {
-      setGerandoPdf(null)
-    }
+  function toggleUnidade(valor) {
+    const proximo = unidadesSelecionadas.includes(valor)
+      ? unidadesSelecionadas.filter(v => v !== valor)
+      : [...unidadesSelecionadas, valor]
+    setUnidadesSelecionadas(proximo)
+    // Some a unidade, some junto as modalidades dela que estavam marcadas — evita ficar com
+    // filtro de modalidade "órfão" de uma unidade que não tá mais selecionada.
+    setModalidadesSelecionadas(prev => prev.filter(nome => proximo.includes(MODALIDADE_EMPRESA[nome])))
   }
 
-  // Lista de presença por aluno, separada por modalidade, pra unidade inteira no período
-  // selecionado. Se o filtro de Modalidade da tela estiver marcado (não "Todas"), o export sai
-  // só com aquela modalidade — senão traz todas juntas, em seções. PDF serve pra imprimir/
-  // enviar; PNG (fundo transparente, em partes por modalidade) serve pra colar direto dentro de
-  // outro relatório em alta resolução.
-  async function handleExportarPresenca(empresaAlvo, formato) {
-    const chave = `${empresaAlvo}-${formato}`
-    setGerandoPresenca(chave)
+  function toggleModalidade(nome) {
+    setModalidadesSelecionadas(prev => prev.includes(nome) ? prev.filter(v => v !== nome) : [...prev, nome])
+  }
+
+  // Um relatório completo por unidade marcada (capa + resumo + mapa de calor de cada
+  // modalidade em escopo + presença por aluno) — se marcar as duas unidades, gera os dois de
+  // uma vez, cada um com sua própria capa/logo, em vez de misturar tudo num documento só.
+  async function handleGerar(formato) {
+    if (unidadesSelecionadas.length === 0) {
+      return toast.error('Selecione Procópio, Beach Arena ou as duas', { style: toastStyle })
+    }
+    setGerando(formato)
     try {
-      const dados = await buscarRelatorioPresencaAlunos({ periodoInicio, periodoFim, empresa: empresaAlvo })
-      if (modalidade) dados.porModalidade = dados.porModalidade.filter(g => g.modalidade === modalidade)
+      let totalImagens = 0
+      for (const empresaAlvo of unidadesSelecionadas) {
+        const modalidadesDaUnidade = modalidadesSelecionadas.filter(m => MODALIDADE_EMPRESA[m] === empresaAlvo)
+        const filtroModalidades = modalidadesSelecionadas.length > 0 ? modalidadesDaUnidade : null
+        const dados = await buscarRelatorioCompleto({ periodoInicio, periodoFim, empresa: empresaAlvo, modalidades: filtroModalidades })
+        if (formato === 'pdf') await exportarRelatorioCompletoPDF(dados, { empresa: empresaAlvo })
+        else totalImagens += await exportarRelatorioCompletoPNG(dados, { empresa: empresaAlvo })
+      }
       if (formato === 'pdf') {
-        await exportarRelatorioPresencaPDF(dados.porModalidade, dados.periodo, { empresa: empresaAlvo })
-        toast.success('PDF gerado!', { style: toastStyle })
+        toast.success(unidadesSelecionadas.length > 1 ? 'PDFs gerados!' : 'PDF gerado!', { style: toastStyle })
       } else {
-        const total = await exportarRelatorioPresencaPNG(dados.porModalidade, dados.periodo, { empresa: empresaAlvo })
-        toast.success(
-          total > 1 ? `${total} imagens PNG geradas — baixadas num .zip!` : `${total} imagem PNG gerada!`,
-          { style: toastStyle }
-        )
+        toast.success(totalImagens > 1 ? `${totalImagens} imagens geradas — baixadas num .zip!` : 'Imagem gerada!', { style: toastStyle })
       }
     } catch (err) {
       toast.error('Erro ao gerar relatório: ' + err.message, { style: toastStyle })
     } finally {
-      setGerandoPresenca(null)
+      setGerando(null)
     }
   }
+
+  const mesInicio = periodoInicio.slice(0, 7)
+  const mesFim = periodoFim.slice(0, 7)
+  const periodoSuspeito = mesInicio !== mesFim
 
   return (
     <div className="fade-in" style={{ width: '100%', boxSizing: 'border-box' }}>
@@ -84,10 +94,66 @@ export function KPIsPage() {
         </h1>
       </div>
 
-      {/* Filtros — ficam ANTES dos botões de exportar de propósito: assim o período que vai
-          pro relatório é sempre o último que a pessoa viu e confirmou, não um valor que
-          ficou selecionado de uma visita anterior à página. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px', width: '100%', boxSizing: 'border-box' }}>
+      {/* 1. Unidade — sempre o primeiro passo. Pode marcar as duas. */}
+      <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Unidade</div>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+        {EMPRESAS.map(e => {
+          const ativo = unidadesSelecionadas.includes(e.valor)
+          const cor = COR_UNIDADE[e.valor]
+          return (
+            <button key={e.valor} onClick={() => toggleUnidade(e.valor)} style={{
+              flex: 1, padding: '18px', borderRadius: '14px', border: 'none', cursor: 'pointer',
+              background: ativo ? cor : '#1a1a1a',
+              outline: ativo ? 'none' : '1px solid #2a2a2a',
+              color: ativo ? (e.valor === 'procopio' ? '#110f0f' : 'white') : '#888',
+              fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px',
+            }}>
+              {e.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* 2. Modalidade — só aparece depois de escolher unidade; nenhuma marcada = todas. */}
+      {unidadesSelecionadas.length > 0 && (
+        <>
+          <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Modalidade <span style={{ textTransform: 'none', color: '#444' }}>(nenhuma marcada = todas)</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '20px' }}>
+            {modalidadesDisponiveis.map(m => {
+              const ativo = modalidadesSelecionadas.includes(m.nome)
+              const cor = COR_UNIDADE[MODALIDADE_EMPRESA[m.nome]]
+              const icone = ICONES_MODALIDADES[m.nome]
+              return (
+                <button key={m.id} onClick={() => toggleModalidade(m.nome)} style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '10px 4px',
+                  borderRadius: '10px', border: 'none', cursor: 'pointer',
+                  background: ativo ? cor : '#1a1a1a',
+                  outline: ativo ? 'none' : '1px solid #2a2a2a',
+                }}>
+                  {icone && (
+                    <img src={icone} alt="" style={{
+                      width: '22px', height: '22px', objectFit: 'contain',
+                      filter: ativo ? 'invert(1)' : 'none', opacity: ativo ? 1 : 0.6,
+                    }} />
+                  )}
+                  <span style={{
+                    fontSize: '10px', fontWeight: '600', textAlign: 'center', lineHeight: 1.2,
+                    color: ativo ? (MODALIDADE_EMPRESA[m.nome] === 'procopio' ? '#110f0f' : 'white') : '#888',
+                  }}>
+                    {m.nome}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {/* 3. Data */}
+      <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Período</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px', width: '100%', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={selecionarMesAtual} style={{
             flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid #2a2a2a',
@@ -100,80 +166,40 @@ export function KPIsPage() {
         </div>
         <Input type="date" label="De" value={periodoInicio} onChange={e => e.target.value && setPeriodoInicio(e.target.value)} />
         <Input type="date" label="Até" value={periodoFim} onChange={e => e.target.value && setPeriodoFim(e.target.value)} />
-        <Select label="Unidade" value={empresa} onChange={e => setEmpresa(e.target.value)}>
-          <option value="">Ambas</option>
-          {EMPRESAS.map(e => <option key={e.valor} value={e.valor}>{e.label}</option>)}
-        </Select>
-        <Select label="Modalidade" value={modalidade} onChange={e => setModalidade(e.target.value)}>
-          <option value="">Todas</option>
-          {modalidades?.map(m => <option key={m.id} value={m.nome}>{m.nome}</option>)}
-        </Select>
       </div>
 
-      {/* Confirmação visível do período que será usado — pega justamente o caso de alguém
-          digitar uma data inválida (ex: 31/06) no input nativo: o navegador rejeita em
-          silêncio e mantém o valor antigo, então sem isso aqui a pessoa não teria como notar
-          antes de exportar um período errado. */}
-      {(() => {
-        const mesInicio = periodoInicio.slice(0, 7)
-        const mesFim = periodoFim.slice(0, 7)
-        const suspeito = mesInicio !== mesFim
-        return (
-          <div style={{
-            padding: '10px 14px', borderRadius: '10px', marginBottom: '20px',
-            backgroundColor: suspeito ? 'rgba(239,68,68,0.08)' : '#1a1a1a',
-            border: suspeito ? '1px solid rgba(239,68,68,0.35)' : '1px solid #2a2a2a',
-            fontSize: '12px', color: suspeito ? '#EF4444' : '#888',
-          }}>
-            Período selecionado: <strong>{format(new Date(periodoInicio + 'T12:00'), 'dd/MM/yyyy')} a {format(new Date(periodoFim + 'T12:00'), 'dd/MM/yyyy')}</strong>
-            {suspeito && ' — atenção: as datas caem em meses diferentes, confira se é isso mesmo antes de exportar.'}
-          </div>
-        )
-      })()}
+      {/* Confirmação visível do período que será usado — pega o caso de alguém digitar uma
+          data inválida (ex: 31/06) no input nativo: o navegador rejeita em silêncio e mantém
+          o valor antigo, sem avisar visualmente. */}
+      <div style={{
+        padding: '10px 14px', borderRadius: '10px', marginBottom: '20px',
+        backgroundColor: periodoSuspeito ? 'rgba(239,68,68,0.08)' : '#1a1a1a',
+        border: periodoSuspeito ? '1px solid rgba(239,68,68,0.35)' : '1px solid #2a2a2a',
+        fontSize: '12px', color: periodoSuspeito ? '#EF4444' : '#888',
+      }}>
+        Período selecionado: <strong>{format(new Date(periodoInicio + 'T12:00'), 'dd/MM/yyyy')} a {format(new Date(periodoFim + 'T12:00'), 'dd/MM/yyyy')}</strong>
+        {periodoSuspeito && ' — atenção: as datas caem em meses diferentes, confira se é isso mesmo antes de gerar.'}
+      </div>
 
-      {rel && (
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-          {EMPRESAS.map(e => (
-            <button key={e.valor} onClick={() => handleExportarPDF(e.valor)} disabled={!!gerandoPdf} style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 12px',
-              borderRadius: '10px', border: '1px solid #2a2a2a', background: '#1a1a1a',
-              color: '#F0F2F5', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-              opacity: gerandoPdf && gerandoPdf !== e.valor ? 0.5 : 1,
-            }}>
-              <Download size={13} /> {gerandoPdf === e.valor ? 'Gerando...' : `Exportar ${e.label}`}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {rel && (
-        <div style={{ marginBottom: '20px' }}>
-          <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px' }}>
-            {modalidade ? `Presença por aluno — só ${modalidade}` : 'Presença por aluno (todas as modalidades, em seções)'}
-          </div>
-          {EMPRESAS.map(e => (
-            <div key={e.valor} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-              <div style={{ flex: 1, fontSize: '12px', color: '#888', display: 'flex', alignItems: 'center' }}>{e.label}</div>
-              <button onClick={() => handleExportarPresenca(e.valor, 'pdf')} disabled={!!gerandoPresenca} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 14px',
-                borderRadius: '10px', border: '1px solid rgba(252,200,37,0.3)', background: 'rgba(252,200,37,0.06)',
-                color: '#fcc825', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-                opacity: gerandoPresenca && gerandoPresenca !== `${e.valor}-pdf` ? 0.5 : 1,
-              }}>
-                <Download size={13} /> {gerandoPresenca === `${e.valor}-pdf` ? 'Gerando...' : 'PDF'}
-              </button>
-              <button onClick={() => handleExportarPresenca(e.valor, 'png')} disabled={!!gerandoPresenca} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 14px',
-                borderRadius: '10px', border: '1px solid rgba(207,27,155,0.3)', background: 'rgba(207,27,155,0.06)',
-                color: '#cf1b9b', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-                opacity: gerandoPresenca && gerandoPresenca !== `${e.valor}-png` ? 0.5 : 1,
-              }}>
-                <Download size={13} /> {gerandoPresenca === `${e.valor}-png` ? 'Gerando...' : 'PNG'}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* 4. Gerar */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+        <button onClick={() => handleGerar('pdf')} disabled={!!gerando} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px',
+          borderRadius: '12px', border: 'none', cursor: unidadesSelecionadas.length === 0 ? 'not-allowed' : 'pointer',
+          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '14px', fontWeight: '700',
+          opacity: gerando && gerando !== 'pdf' ? 0.5 : 1,
+        }}>
+          <Download size={16} /> {gerando === 'pdf' ? 'Gerando PDF...' : 'Gerar Relatório em PDF'}
+        </button>
+        <button onClick={() => handleGerar('png')} disabled={!!gerando} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px',
+          borderRadius: '12px', border: '1px solid #2a2a2a', cursor: unidadesSelecionadas.length === 0 ? 'not-allowed' : 'pointer',
+          background: '#1a1a1a', color: '#F0F2F5', fontSize: '14px', fontWeight: '700',
+          opacity: gerando && gerando !== 'png' ? 0.5 : 1,
+        }}>
+          <Download size={16} /> {gerando === 'png' ? 'Gerando PNG...' : 'Gerar Relatório em PNG (via ZIP)'}
+        </button>
+      </div>
 
       {isLoading ? <Loading /> : rel ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', boxSizing: 'border-box' }}>

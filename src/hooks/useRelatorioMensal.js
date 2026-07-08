@@ -21,6 +21,10 @@ function empresaDaAula(aula) {
   return null
 }
 
+function modalidadesDaEmpresa(empresa) {
+  return Object.entries(MODALIDADE_EMPRESA).filter(([, e]) => e === empresa).map(([nome]) => nome)
+}
+
 function agregar(aulas) {
   const aulasFiltradas = aulas || []
 
@@ -102,62 +106,10 @@ function agregar(aulas) {
   }
 }
 
-export async function buscarRelatorioMensal({ periodoInicio, periodoFim, empresa, modalidade } = {}) {
-  const inicio = periodoInicio || format(startOfMonth(new Date()), 'yyyy-MM-dd')
-  const fim = periodoFim || format(endOfMonth(new Date()), 'yyyy-MM-dd')
-  const inicioAnterior = format(startOfMonth(subMonths(new Date(inicio + 'T12:00'), 1)), 'yyyy-MM-dd')
-  const fimAnterior = format(endOfMonth(subMonths(new Date(inicio + 'T12:00'), 1)), 'yyyy-MM-dd')
-
-  const [{ data: aulas, error: erroAtual }, { data: aulasAnterior, error: erroAnterior }] = await Promise.all([
-    supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicio).lte('data_aula', fim),
-    supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicioAnterior).lte('data_aula', fimAnterior),
-  ])
-  if (erroAtual) throw erroAtual
-  if (erroAnterior) throw erroAnterior
-
-  const filtrar = (lista) => lista
-    .filter(a => !empresa || empresaDaAula(a) === empresa)
-    .filter(a => !modalidade || getModalidadeDaAula(a) === modalidade)
-
-  const atual = agregar(filtrar(aulas))
-  const anterior = agregar(filtrar(aulasAnterior))
-
-  function variacao(chaveAtual, chaveAnterior) {
-    if (!chaveAnterior) return null
-    return Math.round(((chaveAtual - chaveAnterior) / chaveAnterior) * 100)
-  }
-
-  return {
-    ...atual,
-    comparativo: {
-      aulasDadasAnterior: anterior.aulasDadas,
-      taxaPresencaAnterior: anterior.taxaPresenca,
-      alunosUnicosAnterior: anterior.alunosUnicos,
-      variacaoAulasDadas: variacao(atual.aulasDadas, anterior.aulasDadas),
-      variacaoTaxaPresenca: variacao(atual.taxaPresenca, anterior.taxaPresenca),
-      variacaoAlunosUnicos: variacao(atual.alunosUnicos, anterior.alunosUnicos),
-    },
-    heatmapTenis: construirHeatmapOcupacao(aulas || [], inicio, fim, 'Tênis'),
-    periodo: { inicio, fim },
-  }
-}
-
 // Lista de presença por aluno, separada por modalidade — pra cada aluno que teve pelo menos
-// uma presença marcada no período, conta quantas aulas ficou vinculado, quantas presenças e
-// faltas teve, e sinaliza risco de evasão quando a presença cai demais. Ignora o filtro de
-// modalidade da tela de propósito: o objetivo aqui é justamente separar tudo por modalidade
-// num relatório só, igual pedido ("todos os nomes separado por modalidade").
-export async function buscarRelatorioPresencaAlunos({ periodoInicio, periodoFim, empresa } = {}) {
-  const inicio = periodoInicio || format(startOfMonth(new Date()), 'yyyy-MM-dd')
-  const fim = periodoFim || format(endOfMonth(new Date()), 'yyyy-MM-dd')
-
-  const { data: aulas, error } = await supabase
-    .from('aulas').select(SELECT_AULAS)
-    .gte('data_aula', inicio).lte('data_aula', fim)
-  if (error) throw error
-
-  const aulasFiltradas = (aulas || []).filter(a => !empresa || empresaDaAula(a) === empresa)
-
+// uma presença marcada no período, conta quantas aulas ficou vinculado, quantas presenças,
+// faltas e reposições teve, e sinaliza risco de evasão quando a presença cai demais.
+function construirPresencaPorAluno(aulasFiltradas) {
   const porModalidade = {}
   aulasFiltradas.forEach(a => {
     const modalidade = getModalidadeDaAula(a) || 'Sem modalidade'
@@ -215,12 +167,109 @@ export async function buscarRelatorioPresencaAlunos({ periodoInicio, periodoFim,
     })
     .sort((a, b) => a.modalidade.localeCompare(b.modalidade, 'pt-BR'))
 
-  return { periodo: { inicio, fim }, porModalidade: resultado }
+  return resultado
 }
 
-export function useRelatorioMensal({ periodoInicio, periodoFim, empresa, modalidade } = {}) {
+// Versão "leve" — só o resumo executivo, usada pelos cards ao vivo da tela (useRelatorioMensal).
+// `modalidades` é um array (vazio/undefined = todas as modalidades da empresa selecionada, ou
+// todas de todas as empresas se `empresa` também não vier).
+export async function buscarRelatorioMensal({ periodoInicio, periodoFim, empresa, modalidades } = {}) {
+  const inicio = periodoInicio || format(startOfMonth(new Date()), 'yyyy-MM-dd')
+  const fim = periodoFim || format(endOfMonth(new Date()), 'yyyy-MM-dd')
+  const inicioAnterior = format(startOfMonth(subMonths(new Date(inicio + 'T12:00'), 1)), 'yyyy-MM-dd')
+  const fimAnterior = format(endOfMonth(subMonths(new Date(inicio + 'T12:00'), 1)), 'yyyy-MM-dd')
+
+  const [{ data: aulas, error: erroAtual }, { data: aulasAnterior, error: erroAnterior }] = await Promise.all([
+    supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicio).lte('data_aula', fim),
+    supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicioAnterior).lte('data_aula', fimAnterior),
+  ])
+  if (erroAtual) throw erroAtual
+  if (erroAnterior) throw erroAnterior
+
+  const filtrar = (lista) => (lista || [])
+    .filter(a => !empresa || empresaDaAula(a) === empresa)
+    .filter(a => !modalidades || modalidades.length === 0 || modalidades.includes(getModalidadeDaAula(a)))
+
+  const atual = agregar(filtrar(aulas))
+  const anterior = agregar(filtrar(aulasAnterior))
+
+  function variacao(chaveAtual, chaveAnterior) {
+    if (!chaveAnterior) return null
+    return Math.round(((chaveAtual - chaveAnterior) / chaveAnterior) * 100)
+  }
+
+  return {
+    ...atual,
+    comparativo: {
+      aulasDadasAnterior: anterior.aulasDadas,
+      taxaPresencaAnterior: anterior.taxaPresenca,
+      alunosUnicosAnterior: anterior.alunosUnicos,
+      variacaoAulasDadas: variacao(atual.aulasDadas, anterior.aulasDadas),
+      variacaoTaxaPresenca: variacao(atual.taxaPresenca, anterior.taxaPresenca),
+      variacaoAlunosUnicos: variacao(atual.alunosUnicos, anterior.alunosUnicos),
+    },
+    periodo: { inicio, fim },
+  }
+}
+
+// Busca única e completa pra exportar o relatório de uma unidade: resumo executivo, mapa de
+// calor de cada modalidade em escopo (com dado — modalidade sem nenhuma aula no período não
+// gera página vazia) e a lista de presença por aluno separada por modalidade. Tudo a partir de
+// uma única consulta de aulas do período, pra não repetir a mesma busca 3x nos exports.
+export async function buscarRelatorioCompleto({ periodoInicio, periodoFim, empresa, modalidades } = {}) {
+  const inicio = periodoInicio || format(startOfMonth(new Date()), 'yyyy-MM-dd')
+  const fim = periodoFim || format(endOfMonth(new Date()), 'yyyy-MM-dd')
+  const inicioAnterior = format(startOfMonth(subMonths(new Date(inicio + 'T12:00'), 1)), 'yyyy-MM-dd')
+  const fimAnterior = format(endOfMonth(subMonths(new Date(inicio + 'T12:00'), 1)), 'yyyy-MM-dd')
+
+  const [{ data: aulas, error: erroAtual }, { data: aulasAnterior, error: erroAnterior }] = await Promise.all([
+    supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicio).lte('data_aula', fim),
+    supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicioAnterior).lte('data_aula', fimAnterior),
+  ])
+  if (erroAtual) throw erroAtual
+  if (erroAnterior) throw erroAnterior
+
+  const modalidadesEmEscopo = modalidades && modalidades.length > 0 ? modalidades : modalidadesDaEmpresa(empresa)
+
+  const filtrar = (lista) => (lista || [])
+    .filter(a => !empresa || empresaDaAula(a) === empresa)
+    .filter(a => modalidadesEmEscopo.includes(getModalidadeDaAula(a)))
+
+  const aulasFiltradas = filtrar(aulas)
+  const aulasAnteriorFiltradas = filtrar(aulasAnterior)
+
+  const atual = agregar(aulasFiltradas)
+  const anterior = agregar(aulasAnteriorFiltradas)
+
+  function variacao(chaveAtual, chaveAnterior) {
+    if (!chaveAnterior) return null
+    return Math.round(((chaveAtual - chaveAnterior) / chaveAnterior) * 100)
+  }
+
+  const resumo = {
+    ...atual,
+    comparativo: {
+      aulasDadasAnterior: anterior.aulasDadas,
+      taxaPresencaAnterior: anterior.taxaPresenca,
+      alunosUnicosAnterior: anterior.alunosUnicos,
+      variacaoAulasDadas: variacao(atual.aulasDadas, anterior.aulasDadas),
+      variacaoTaxaPresenca: variacao(atual.taxaPresenca, anterior.taxaPresenca),
+      variacaoAlunosUnicos: variacao(atual.alunosUnicos, anterior.alunosUnicos),
+    },
+  }
+
+  const heatmaps = modalidadesEmEscopo
+    .map(modalidade => ({ modalidade, heatmap: construirHeatmapOcupacao(aulasFiltradas, inicio, fim, modalidade) }))
+    .filter(({ heatmap }) => heatmap.dias.length > 0 && heatmap.horas.length > 0)
+
+  const presenca = { porModalidade: construirPresencaPorAluno(aulasFiltradas) }
+
+  return { resumo, heatmaps, presenca, periodo: { inicio, fim }, empresa }
+}
+
+export function useRelatorioMensal({ periodoInicio, periodoFim, empresa, modalidades } = {}) {
   return useQuery({
-    queryKey: ['relatorio-mensal', periodoInicio, periodoFim, empresa, modalidade],
-    queryFn: () => buscarRelatorioMensal({ periodoInicio, periodoFim, empresa, modalidade }),
+    queryKey: ['relatorio-mensal', periodoInicio, periodoFim, empresa, modalidades],
+    queryFn: () => buscarRelatorioMensal({ periodoInicio, periodoFim, empresa, modalidades }),
   })
 }
