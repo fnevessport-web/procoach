@@ -16,6 +16,7 @@ export function getNavItems(roleBruto) {
   if (role === 'leitura') {
     return [
       { path: '/', icon: Home, label: 'Início' },
+      { path: '/relatorios-leitura', icon: FileBarChart, label: 'Relatórios' },
     ]
   }
 
