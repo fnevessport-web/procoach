@@ -64,6 +64,34 @@ function interpolarCor(c1, c2, t) {
   return c1.map((v, i) => Math.round(v + (c2[i] - v) * t))
 }
 
+// As logos de unidade (logoprocopio.png, logobeacharena.png) são a marca completa: ícone em
+// cima + nome da unidade escrito embaixo. Pro selo circular do cabeçalho a gente só quer o
+// ícone — usar o arquivo inteiro esmagado num quadrado pequeno distorce tudo e fica ilegível.
+// Recorta os ~74% de cima (onde fica só o ícone, antes do texto começar) e um miolo horizontal
+// (as duas marcas têm o ícone centralizado, com bastante margem transparente nas laterais)
+// pra chegar perto de um recorte quadrado do próprio desenho.
+async function carregarIconeLogo(url, maxLado) {
+  const resp = await fetch(url)
+  const blob = await resp.blob()
+  const bitmap = await createImageBitmap(blob)
+  const sx = Math.round(bitmap.width * 0.26)
+  const sy = 0
+  const sw = Math.round(bitmap.width * 0.48)
+  const sh = Math.round(bitmap.height * 0.71)
+  const escala = Math.min(1, maxLado / Math.max(sw, sh))
+  const w = Math.max(1, Math.round(sw * escala))
+  const h = Math.max(1, Math.round(sh * escala))
+  const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(w, h) : document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, w, h)
+  const dataUrl = canvas.convertToBlob
+    ? await blobParaDataUrl(await canvas.convertToBlob({ type: 'image/png' }))
+    : canvas.toDataURL('image/png')
+  return { dataUrl, aspecto: sw / sh }
+}
+
 export async function exportarRelatorioPDF(rel, periodo, { empresa }) {
   const { jsPDF } = await import('jspdf')
   const { autoTable } = await import('jspdf-autotable')
@@ -74,10 +102,10 @@ export async function exportarRelatorioPDF(rel, periodo, { empresa }) {
 
   // Carrega assets uma única vez (textura, logo da unidade, ícones de modalidade, fonte de destaque)
   let texturaBase64 = null
-  let logoBase64 = null
+  let logoIcone = null
   const iconesBase64 = []
   try { texturaBase64 = await carregarImagemRedimensionada('/images/bg-texture.png', 900, 'image/jpeg', 0.5) } catch {}
-  try { logoBase64 = await carregarImagemRedimensionada(LOGO_EMPRESA[empresa], 160, 'image/png') } catch {}
+  try { logoIcone = await carregarIconeLogo(LOGO_EMPRESA[empresa], 160) } catch {}
   for (const src of ICONES_EMPRESA[empresa] || []) {
     try { iconesBase64.push(await carregarImagemRedimensionada(src, 64, 'image/png')) } catch {}
   }
@@ -130,8 +158,13 @@ export async function exportarRelatorioPDF(rel, periodo, { empresa }) {
     const raio = 18
     doc.setFillColor(...COR_TINTA)
     doc.circle(cx, cy, raio, 'F')
-    if (logoBase64) {
-      try { doc.addImage(logoBase64, 'PNG', cx - 13, cy - 13, 26, 26) } catch {}
+    if (logoIcone) {
+      try {
+        const lado = 24
+        const lw = logoIcone.aspecto >= 1 ? lado : lado * logoIcone.aspecto
+        const lh = logoIcone.aspecto >= 1 ? lado / logoIcone.aspecto : lado
+        doc.addImage(logoIcone.dataUrl, 'PNG', cx - lw / 2, cy - lh / 2, lw, lh)
+      } catch {}
     }
     fontePadrao('bold', 15)
     doc.setTextColor(...COR_TINTA)
@@ -428,9 +461,9 @@ export async function exportarRelatorioPresencaPDF(porModalidade, periodo, { emp
   const margem = 40
 
   let texturaBase64 = null
-  let logoBase64 = null
+  let logoIcone = null
   try { texturaBase64 = await carregarImagemRedimensionada('/images/bg-texture.png', 900, 'image/jpeg', 0.5) } catch {}
-  try { logoBase64 = await carregarImagemRedimensionada(LOGO_EMPRESA[empresa], 160, 'image/png') } catch {}
+  try { logoIcone = await carregarIconeLogo(LOGO_EMPRESA[empresa], 160) } catch {}
 
   const nomeEmpresa = NOME_EMPRESA[empresa] || empresa
   const periodoLabel = `${format(new Date(periodo.inicio + 'T12:00'), 'dd/MM/yyyy')} a ${format(new Date(periodo.fim + 'T12:00'), 'dd/MM/yyyy')}`
@@ -461,8 +494,13 @@ export async function exportarRelatorioPresencaPDF(porModalidade, periodo, { emp
     const raio = 18
     doc.setFillColor(...COR_TINTA)
     doc.circle(cx, cy, raio, 'F')
-    if (logoBase64) {
-      try { doc.addImage(logoBase64, 'PNG', cx - 13, cy - 13, 26, 26) } catch {}
+    if (logoIcone) {
+      try {
+        const lado = 24
+        const lw = logoIcone.aspecto >= 1 ? lado : lado * logoIcone.aspecto
+        const lh = logoIcone.aspecto >= 1 ? lado / logoIcone.aspecto : lado
+        doc.addImage(logoIcone.dataUrl, 'PNG', cx - lw / 2, cy - lh / 2, lw, lh)
+      } catch {}
     }
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(15)
@@ -516,17 +554,17 @@ export async function exportarRelatorioPresencaPDF(porModalidade, periodo, { emp
     garantirEspaco(60)
     autoTable(doc, {
       startY: cursorY,
-      head: [['Aluno', 'Aulas', 'Presenças', 'Faltas', '% Presença', 'Observação']],
-      body: alunos.map(a => [a.nome, String(a.aulasVinculadas), String(a.presentes), String(a.faltas), `${a.pctPresenca}%`, a.risco || '—']),
+      head: [['Aluno', 'Aulas', 'Presenças', 'Faltas', 'Falta Just.', '% Presença', 'Observação']],
+      body: alunos.map(a => [a.nome, String(a.aulasVinculadas), String(a.presentes), String(a.faltas), String(a.faltasJustificadas), `${a.pctPresenca}%`, a.risco || '—']),
       theme: 'plain',
       styles: { fontSize: 8.5, cellPadding: 6, valign: 'middle', textColor: COR_TINTA, lineColor: [215, 210, 200], lineWidth: 0.5 },
       headStyles: { fillColor: COR_MARINHO, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 8 },
       alternateRowStyles: { fillColor: [249, 247, 243] },
-      columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' } },
+      columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' } },
       margin: { left: margem, right: margem },
       willDrawPage: pintarFundo,
       didParseCell(data) {
-        if (data.section !== 'body' || data.column.index !== 5) return
+        if (data.section !== 'body' || data.column.index !== 6) return
         const texto = String(data.cell.raw || '')
         if (texto.includes('Risco alto')) { data.cell.styles.textColor = COR_VERMELHO; data.cell.styles.fontStyle = 'bold' }
         else if (texto.includes('Atenção')) data.cell.styles.textColor = COR_LARANJA
@@ -557,4 +595,157 @@ export async function exportarRelatorioPresencaPDF(porModalidade, periodo, { emp
   }
 
   doc.save(`presenca-alunos-${empresa}-${periodo.inicio}-a-${periodo.fim}.pdf`)
+}
+
+function rgb(cor) { return `rgb(${cor[0]}, ${cor[1]}, ${cor[2]})` }
+
+const LINHAS_POR_PAGINA_PNG = 32
+
+function slugificar(texto) {
+  return texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
+function baixarBlob(blob, nomeArquivo) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nomeArquivo
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 5000)
+}
+
+function corRisco(texto) {
+  if (texto.includes('Risco alto')) return { color: rgb(COR_VERMELHO), fontWeight: '700' }
+  if (texto.includes('Atenção')) return { color: rgb(COR_LARANJA) }
+  return {}
+}
+
+// Cada "página" de imagem sempre desenha o mesmo número de linhas (preenchendo com linhas
+// vazias/invisíveis quando sobra menos gente no último bloco), pra todo PNG gerado sair com
+// exatamente a mesma altura — importante pra colar lado a lado num relatório externo sem ficar
+// com tamanhos desencontrados.
+function montarPaginaHtml({ alunos, modalidade, parte, totalPartes, nomeEmpresa, logoDataUrl, logoAspecto, periodoLabel, geradoEm }) {
+  const container = document.createElement('div')
+  container.style.cssText = `
+    width: 850px; box-sizing: border-box; padding: 28px 32px;
+    font-family: Helvetica, Arial, sans-serif; color: ${rgb(COR_TINTA)};
+    display: flex; flex-direction: column; background: transparent;
+  `
+
+  const lw = logoAspecto >= 1 ? 34 : 34 * logoAspecto
+  const lh = logoAspecto >= 1 ? 34 / logoAspecto : 34
+  container.innerHTML = `
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <div style="width:52px; height:52px; border-radius:50%; background:${rgb(COR_TINTA)}; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+          ${logoDataUrl ? `<img src="${logoDataUrl}" style="width:${lw}px; height:${lh}px;" />` : ''}
+        </div>
+        <div>
+          <div style="font-size:19px; font-weight:700;">RELATÓRIO DE PRESENÇA</div>
+          <div style="font-size:13px; font-style:italic; color:${rgb(COR_TEXTO_SUAVE)};">${nomeEmpresa.toUpperCase()}</div>
+        </div>
+      </div>
+      <div style="text-align:right; font-size:10px; color:${rgb(COR_TEXTO_SUAVE)};">
+        <div>Período: ${periodoLabel}</div>
+        <div>Gerado em ${geradoEm}</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:4px; margin-bottom:16px;">
+      ${CORES_CHIP.map(c => `<div style="flex:1; height:4px; background:${rgb(c)};"></div>`).join('')}
+    </div>
+    <div style="font-size:13px; font-weight:700; text-transform:uppercase; border-bottom:1px solid ${rgb(COR_TEXTO_SUAVE)}; padding-bottom:6px; margin-bottom:12px;">
+      ${modalidade} — ${alunos.length} aluno${alunos.length === 1 ? '' : 's'}${totalPartes > 1 ? ` (parte ${parte}/${totalPartes})` : ''}
+    </div>
+    <table style="width:100%; border-collapse:collapse; font-size:11px; table-layout:fixed;">
+      <thead>
+        <tr style="background:${rgb(COR_MARINHO)}; color:${rgb(COR_BRANCO)};">
+          <th style="text-align:left; padding:8px 10px; font-size:10px; width:38%;">Aluno</th>
+          <th style="padding:8px 4px; font-size:10px; width:9%;">Aulas</th>
+          <th style="padding:8px 4px; font-size:10px; width:11%;">Presenças</th>
+          <th style="padding:8px 4px; font-size:10px; width:9%;">Faltas</th>
+          <th style="padding:8px 4px; font-size:10px; width:11%;">Falta Just.</th>
+          <th style="padding:8px 4px; font-size:10px; width:10%;">% Presença</th>
+          <th style="text-align:left; padding:8px 10px; font-size:10px; width:22%;">Observação</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${Array.from({ length: LINHAS_POR_PAGINA_PNG }, (_, i) => {
+          const a = alunos[i]
+          if (!a) return `<tr style="height:28px;"><td colspan="7"></td></tr>`
+          const risco = a.risco || '—'
+          const estiloRisco = corRisco(risco)
+          const bgLinha = i % 2 === 1 ? 'rgba(0,0,0,0.03)' : 'transparent'
+          return `
+            <tr style="background:${bgLinha}; height:28px;">
+              <td style="padding:6px 10px; border-bottom:1px solid rgba(0,0,0,0.08);">${a.nome}</td>
+              <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${a.aulasVinculadas}</td>
+              <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${a.presentes}</td>
+              <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${a.faltas}</td>
+              <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${a.faltasJustificadas}</td>
+              <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${a.pctPresenca}%</td>
+              <td style="padding:6px 10px; border-bottom:1px solid rgba(0,0,0,0.08); font-size:10px; color:${estiloRisco.color || rgb(COR_TINTA)}; font-weight:${estiloRisco.fontWeight || '400'};">${risco}</td>
+            </tr>`
+        }).join('')}
+      </tbody>
+    </table>
+    <div style="margin-top:14px; text-align:center; font-size:9px; color:${rgb(COR_TEXTO_SUAVE)};">Gerado pelo ProCoach em ${geradoEm}</div>
+  `
+  return container
+}
+
+// Mesma lista de presença do PDF, só que exportada como PNG com fundo transparente — pra colar
+// direto num relatório externo em alta resolução. Como uma modalidade grande (ex: Tênis com
+// 165 alunos) não caberia numa imagem só de forma legível, quebra em várias páginas do mesmo
+// tamanho/fonte, igual quebraria em várias páginas no PDF — só que cada página vira um PNG.
+export async function exportarRelatorioPresencaPNG(porModalidade, periodo, { empresa }) {
+  const { default: html2canvas } = await import('html2canvas')
+
+  let logoDataUrl = null
+  let logoAspecto = 1
+  try {
+    const logo = await carregarIconeLogo(LOGO_EMPRESA[empresa], 200)
+    logoDataUrl = logo.dataUrl
+    logoAspecto = logo.aspecto
+  } catch {}
+
+  const nomeEmpresa = NOME_EMPRESA[empresa] || empresa
+  const periodoLabel = `${format(new Date(periodo.inicio + 'T12:00'), 'dd/MM/yyyy')} a ${format(new Date(periodo.fim + 'T12:00'), 'dd/MM/yyyy')}`
+  const geradoEm = format(new Date(), "dd/MM/yyyy 'às' HH:mm")
+
+  const palco = document.createElement('div')
+  palco.style.cssText = 'position: fixed; top: 0; left: -99999px; z-index: -1;'
+  document.body.appendChild(palco)
+
+  try {
+    let contadorArquivo = 0
+    for (const grupo of porModalidade) {
+      const totalPartes = Math.max(1, Math.ceil(grupo.alunos.length / LINHAS_POR_PAGINA_PNG))
+      for (let parte = 1; parte <= totalPartes; parte++) {
+        const inicio = (parte - 1) * LINHAS_POR_PAGINA_PNG
+        const alunosPagina = grupo.alunos.slice(inicio, inicio + LINHAS_POR_PAGINA_PNG)
+
+        const elemento = montarPaginaHtml({
+          alunos: alunosPagina, modalidade: grupo.modalidade, parte, totalPartes,
+          nomeEmpresa, logoDataUrl, logoAspecto, periodoLabel, geradoEm,
+        })
+        palco.appendChild(elemento)
+
+        const canvas = await html2canvas(elemento, { backgroundColor: null, scale: 3 })
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+        palco.removeChild(elemento)
+
+        contadorArquivo++
+        const sufixoParte = totalPartes > 1 ? `-parte${parte}de${totalPartes}` : ''
+        const nomeArquivo = `presenca-${slugificar(grupo.modalidade)}${sufixoParte}-${empresa}-${periodo.inicio}-a-${periodo.fim}.png`
+        baixarBlob(blob, nomeArquivo)
+        // Espaça os downloads pro navegador não bloquear como pop-up em massa
+        await new Promise(r => setTimeout(r, 350))
+      }
+    }
+    return contadorArquivo
+  } finally {
+    document.body.removeChild(palco)
+  }
 }

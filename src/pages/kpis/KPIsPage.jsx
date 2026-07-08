@@ -7,7 +7,7 @@ import { useModalidades } from '../../hooks/useModalidades'
 import { EMPRESAS } from '../../constants/modalidades'
 import { Input, Select } from '../../components/ui/Input'
 import { Loading } from '../../components/ui/Loading'
-import { exportarRelatorioPDF, exportarRelatorioPresencaPDF } from '../../lib/relatorioPdf'
+import { exportarRelatorioPDF, exportarRelatorioPresencaPDF, exportarRelatorioPresencaPNG } from '../../lib/relatorioPdf'
 import toast from 'react-hot-toast'
 
 const toastStyle = { background: '#1a1a1a', color: '#F0F2F5', border: '1px solid #2a2a2a' }
@@ -18,7 +18,7 @@ export function KPIsPage() {
   const [empresa, setEmpresa] = useState('')
   const [modalidade, setModalidade] = useState('')
   const [gerandoPdf, setGerandoPdf] = useState(null)
-  const [gerandoPdfPresenca, setGerandoPdfPresenca] = useState(null)
+  const [gerandoPresenca, setGerandoPresenca] = useState(null)
   const { data: modalidades } = useModalidades()
   const { data: rel, isLoading } = useRelatorioMensal({
     periodoInicio, periodoFim, empresa: empresa || null, modalidade: modalidade || null,
@@ -50,17 +50,25 @@ export function KPIsPage() {
 
   // Lista de presença por aluno, separada por modalidade — sempre pra unidade inteira no
   // período selecionado, igual o relatório executivo acima (independe do filtro de Modalidade
-  // da tela, já que o objetivo é justamente juntar todas as modalidades num PDF só, em seções).
-  async function handleExportarPresencaPDF(empresaAlvo) {
-    setGerandoPdfPresenca(empresaAlvo)
+  // da tela, já que o objetivo é justamente juntar todas as modalidades num relatório só, em
+  // seções). PDF serve pra imprimir/enviar; PNG (fundo transparente, em partes por modalidade)
+  // serve pra colar direto dentro de outro relatório em alta resolução.
+  async function handleExportarPresenca(empresaAlvo, formato) {
+    const chave = `${empresaAlvo}-${formato}`
+    setGerandoPresenca(chave)
     try {
       const dados = await buscarRelatorioPresencaAlunos({ periodoInicio, periodoFim, empresa: empresaAlvo })
-      await exportarRelatorioPresencaPDF(dados.porModalidade, dados.periodo, { empresa: empresaAlvo })
-      toast.success('PDF gerado!', { style: toastStyle })
+      if (formato === 'pdf') {
+        await exportarRelatorioPresencaPDF(dados.porModalidade, dados.periodo, { empresa: empresaAlvo })
+        toast.success('PDF gerado!', { style: toastStyle })
+      } else {
+        const total = await exportarRelatorioPresencaPNG(dados.porModalidade, dados.periodo, { empresa: empresaAlvo })
+        toast.success(`${total} imagem${total === 1 ? '' : 's'} PNG gerada${total === 1 ? '' : 's'}!`, { style: toastStyle })
+      }
     } catch (err) {
-      toast.error('Erro ao gerar PDF: ' + err.message, { style: toastStyle })
+      toast.error('Erro ao gerar relatório: ' + err.message, { style: toastStyle })
     } finally {
-      setGerandoPdfPresenca(null)
+      setGerandoPresenca(null)
     }
   }
 
@@ -88,16 +96,28 @@ export function KPIsPage() {
       )}
 
       {rel && (
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px' }}>Presença por aluno (separado por modalidade)</div>
           {EMPRESAS.map(e => (
-            <button key={e.valor} onClick={() => handleExportarPresencaPDF(e.valor)} disabled={!!gerandoPdfPresenca} style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 12px',
-              borderRadius: '10px', border: '1px solid rgba(252,200,37,0.3)', background: 'rgba(252,200,37,0.06)',
-              color: '#fcc825', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-              opacity: gerandoPdfPresenca && gerandoPdfPresenca !== e.valor ? 0.5 : 1,
-            }}>
-              <Download size={13} /> {gerandoPdfPresenca === e.valor ? 'Gerando...' : `Presença por aluno — ${e.label}`}
-            </button>
+            <div key={e.valor} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ flex: 1, fontSize: '12px', color: '#888', display: 'flex', alignItems: 'center' }}>{e.label}</div>
+              <button onClick={() => handleExportarPresenca(e.valor, 'pdf')} disabled={!!gerandoPresenca} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 14px',
+                borderRadius: '10px', border: '1px solid rgba(252,200,37,0.3)', background: 'rgba(252,200,37,0.06)',
+                color: '#fcc825', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                opacity: gerandoPresenca && gerandoPresenca !== `${e.valor}-pdf` ? 0.5 : 1,
+              }}>
+                <Download size={13} /> {gerandoPresenca === `${e.valor}-pdf` ? 'Gerando...' : 'PDF'}
+              </button>
+              <button onClick={() => handleExportarPresenca(e.valor, 'png')} disabled={!!gerandoPresenca} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 14px',
+                borderRadius: '10px', border: '1px solid rgba(207,27,155,0.3)', background: 'rgba(207,27,155,0.06)',
+                color: '#cf1b9b', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                opacity: gerandoPresenca && gerandoPresenca !== `${e.valor}-png` ? 0.5 : 1,
+              }}>
+                <Download size={13} /> {gerandoPresenca === `${e.valor}-png` ? 'Gerando...' : 'PNG'}
+              </button>
+            </div>
           ))}
         </div>
       )}

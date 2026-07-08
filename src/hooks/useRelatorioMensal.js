@@ -166,14 +166,19 @@ export async function buscarRelatorioPresencaAlunos({ periodoInicio, periodoFim,
     ;(a.presencas || []).forEach(p => {
       if (!p.aluno_id) return
       if (!grupo[p.aluno_id]) {
-        grupo[p.aluno_id] = { nome: p.alunos?.nome || 'Aluno sem nome', aulasVinculadas: 0, presentes: 0, faltas: 0, registros: [] }
+        grupo[p.aluno_id] = { nome: p.alunos?.nome || 'Aluno sem nome', aulasVinculadas: 0, presentes: 0, faltas: 0, faltasJustificadas: 0, registros: [] }
       }
       const registro = grupo[p.aluno_id]
       registro.aulasVinculadas++
       const presente = p.status_presenca === 'presente'
-      const falta = p.status_presenca === 'falta' || p.status_presenca === 'falta_justificada'
+      const falta = p.status_presenca === 'falta'
+      const faltaJustificada = p.status_presenca === 'falta_justificada'
       if (presente) registro.presentes++
       else if (falta) registro.faltas++
+      else if (faltaJustificada) registro.faltasJustificadas++
+      // Falta justificada (aula cancelada por chuva, atestado etc.) não é culpa do aluno —
+      // não entra na % de presença nem na sequência de risco de evasão, como se a aula não
+      // tivesse acontecido pra fins dessas duas contas.
       if (presente || falta) registro.registros.push({ data: a.data_aula, presente })
     })
   })
@@ -196,7 +201,7 @@ export async function buscarRelatorioPresencaAlunos({ periodoInicio, periodoFim,
           }
 
           let risco = ''
-          if (totalMarcado === 0) risco = 'Sem presença confirmada'
+          if (totalMarcado === 0) risco = a.faltasJustificadas > 0 ? 'Só aulas canceladas/justificadas no período' : 'Sem presença confirmada'
           else if (faltasConsecutivas >= 3) risco = `Risco alto de evasão — ${faltasConsecutivas} faltas seguidas`
           else if (pctPresenca < 75) risco = 'Atenção — presença baixa'
           return { ...a, pctPresenca, risco }
