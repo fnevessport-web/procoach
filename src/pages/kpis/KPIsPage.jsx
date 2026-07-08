@@ -44,6 +44,15 @@ export function KPIsPage() {
     setPeriodoFim(format(endOfMonth(mesPassado), 'yyyy-MM-dd'))
   }
 
+  // Pra pintar o botão certo de amarelo: compara o período atual com o que cada
+  // botão gera, em vez de guardar um estado à parte (assim continua certo mesmo
+  // se a pessoa mexer nos campos De/Até na mão e "cair" exatamente num dos dois).
+  const mesPassadoRef = subMonths(new Date(), 1)
+  const ehMesAtual = periodoInicio === format(startOfMonth(new Date()), 'yyyy-MM-dd')
+    && periodoFim === format(new Date(), 'yyyy-MM-dd')
+  const ehMesPassado = periodoInicio === format(startOfMonth(mesPassadoRef), 'yyyy-MM-dd')
+    && periodoFim === format(endOfMonth(mesPassadoRef), 'yyyy-MM-dd')
+
   function toggleUnidade(valor) {
     const proximo = unidadesSelecionadas.includes(valor)
       ? unidadesSelecionadas.filter(v => v !== valor)
@@ -161,12 +170,18 @@ export function KPIsPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px', width: '100%', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={selecionarMesAtual} style={{
-            flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid #2a2a2a',
-            background: '#1a1a1a', color: '#888', fontSize: '12px', cursor: 'pointer',
+            flex: 1, padding: '8px', borderRadius: '10px', border: 'none',
+            outline: ehMesAtual ? 'none' : '1px solid #2a2a2a',
+            background: ehMesAtual ? '#fcc825' : '#1a1a1a',
+            color: ehMesAtual ? '#110f0f' : '#888',
+            fontSize: '12px', fontWeight: ehMesAtual ? '700' : '400', cursor: 'pointer',
           }}>Mês atual</button>
           <button onClick={selecionarMesPassado} style={{
-            flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid #2a2a2a',
-            background: '#1a1a1a', color: '#888', fontSize: '12px', cursor: 'pointer',
+            flex: 1, padding: '8px', borderRadius: '10px', border: 'none',
+            outline: ehMesPassado ? 'none' : '1px solid #2a2a2a',
+            background: ehMesPassado ? '#fcc825' : '#1a1a1a',
+            color: ehMesPassado ? '#110f0f' : '#888',
+            fontSize: '12px', fontWeight: ehMesPassado ? '700' : '400', cursor: 'pointer',
           }}>Mês passado</button>
         </div>
         <Input type="date" label="De" value={periodoInicio} onChange={e => e.target.value && setPeriodoInicio(e.target.value)} />
