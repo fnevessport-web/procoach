@@ -64,7 +64,10 @@ export function KPIsPage() {
         toast.success('PDF gerado!', { style: toastStyle })
       } else {
         const total = await exportarRelatorioPresencaPNG(dados.porModalidade, dados.periodo, { empresa: empresaAlvo })
-        toast.success(`${total} imagem${total === 1 ? '' : 's'} PNG gerada${total === 1 ? '' : 's'}!`, { style: toastStyle })
+        toast.success(
+          total > 1 ? `${total} imagens PNG geradas — baixadas num .zip!` : `${total} imagem PNG gerada!`,
+          { style: toastStyle }
+        )
       }
     } catch (err) {
       toast.error('Erro ao gerar relatório: ' + err.message, { style: toastStyle })

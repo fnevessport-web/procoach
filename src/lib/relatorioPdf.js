@@ -719,7 +719,7 @@ export async function exportarRelatorioPresencaPNG(porModalidade, periodo, { emp
   document.body.appendChild(palco)
 
   try {
-    let contadorArquivo = 0
+    const arquivos = []
     for (const grupo of porModalidade) {
       const totalPartes = Math.max(1, Math.ceil(grupo.alunos.length / LINHAS_POR_PAGINA_PNG))
       for (let parte = 1; parte <= totalPartes; parte++) {
@@ -736,15 +736,25 @@ export async function exportarRelatorioPresencaPNG(porModalidade, periodo, { emp
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
         palco.removeChild(elemento)
 
-        contadorArquivo++
         const sufixoParte = totalPartes > 1 ? `-parte${parte}de${totalPartes}` : ''
         const nomeArquivo = `presenca-${slugificar(grupo.modalidade)}${sufixoParte}-${empresa}-${periodo.inicio}-a-${periodo.fim}.png`
-        baixarBlob(blob, nomeArquivo)
-        // Espaça os downloads pro navegador não bloquear como pop-up em massa
-        await new Promise(r => setTimeout(r, 350))
+        arquivos.push({ nomeArquivo, blob })
       }
     }
-    return contadorArquivo
+
+    // O navegador bloqueia downloads múltiplos disparados em sequência (só o primeiro passa
+    // como "pop-up"), então com mais de 1 imagem empacota tudo num .zip só — com 1 imagem só,
+    // baixa o PNG direto sem essa camada extra.
+    if (arquivos.length > 1) {
+      const { default: JSZip } = await import('jszip')
+      const zip = new JSZip()
+      arquivos.forEach(({ nomeArquivo, blob }) => zip.file(nomeArquivo, blob))
+      const zipBlob = await zip.generateAsync({ type: 'blob' })
+      baixarBlob(zipBlob, `presenca-alunos-${empresa}-${periodo.inicio}-a-${periodo.fim}.zip`)
+    } else if (arquivos.length === 1) {
+      baixarBlob(arquivos[0].blob, arquivos[0].nomeArquivo)
+    }
+    return arquivos.length
   } finally {
     document.body.removeChild(palco)
   }
