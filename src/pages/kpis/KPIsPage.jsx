@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { TrendingUp, TrendingDown, Download } from 'lucide-react'
-import { useRelatorioMensal, buscarRelatorioMensal } from '../../hooks/useRelatorioMensal'
+import { useRelatorioMensal, buscarRelatorioMensal, buscarRelatorioPresencaAlunos } from '../../hooks/useRelatorioMensal'
 import { useModalidades } from '../../hooks/useModalidades'
 import { EMPRESAS } from '../../constants/modalidades'
 import { Input, Select } from '../../components/ui/Input'
 import { Loading } from '../../components/ui/Loading'
-import { exportarRelatorioPDF } from '../../lib/relatorioPdf'
+import { exportarRelatorioPDF, exportarRelatorioPresencaPDF } from '../../lib/relatorioPdf'
 import toast from 'react-hot-toast'
 
 const toastStyle = { background: '#1a1a1a', color: '#F0F2F5', border: '1px solid #2a2a2a' }
@@ -18,6 +18,7 @@ export function KPIsPage() {
   const [empresa, setEmpresa] = useState('')
   const [modalidade, setModalidade] = useState('')
   const [gerandoPdf, setGerandoPdf] = useState(null)
+  const [gerandoPdfPresenca, setGerandoPdfPresenca] = useState(null)
   const { data: modalidades } = useModalidades()
   const { data: rel, isLoading } = useRelatorioMensal({
     periodoInicio, periodoFim, empresa: empresa || null, modalidade: modalidade || null,
@@ -47,6 +48,22 @@ export function KPIsPage() {
     }
   }
 
+  // Lista de presença por aluno, separada por modalidade — sempre pra unidade inteira no
+  // período selecionado, igual o relatório executivo acima (independe do filtro de Modalidade
+  // da tela, já que o objetivo é justamente juntar todas as modalidades num PDF só, em seções).
+  async function handleExportarPresencaPDF(empresaAlvo) {
+    setGerandoPdfPresenca(empresaAlvo)
+    try {
+      const dados = await buscarRelatorioPresencaAlunos({ periodoInicio, periodoFim, empresa: empresaAlvo })
+      await exportarRelatorioPresencaPDF(dados.porModalidade, dados.periodo, { empresa: empresaAlvo })
+      toast.success('PDF gerado!', { style: toastStyle })
+    } catch (err) {
+      toast.error('Erro ao gerar PDF: ' + err.message, { style: toastStyle })
+    } finally {
+      setGerandoPdfPresenca(null)
+    }
+  }
+
   return (
     <div className="fade-in" style={{ width: '100%', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', gap: '10px' }}>
@@ -56,7 +73,7 @@ export function KPIsPage() {
       </div>
 
       {rel && (
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
           {EMPRESAS.map(e => (
             <button key={e.valor} onClick={() => handleExportarPDF(e.valor)} disabled={!!gerandoPdf} style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 12px',
@@ -65,6 +82,21 @@ export function KPIsPage() {
               opacity: gerandoPdf && gerandoPdf !== e.valor ? 0.5 : 1,
             }}>
               <Download size={13} /> {gerandoPdf === e.valor ? 'Gerando...' : `Exportar ${e.label}`}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {rel && (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+          {EMPRESAS.map(e => (
+            <button key={e.valor} onClick={() => handleExportarPresencaPDF(e.valor)} disabled={!!gerandoPdfPresenca} style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 12px',
+              borderRadius: '10px', border: '1px solid rgba(252,200,37,0.3)', background: 'rgba(252,200,37,0.06)',
+              color: '#fcc825', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+              opacity: gerandoPdfPresenca && gerandoPdfPresenca !== e.valor ? 0.5 : 1,
+            }}>
+              <Download size={13} /> {gerandoPdfPresenca === e.valor ? 'Gerando...' : `Presença por aluno — ${e.label}`}
             </button>
           ))}
         </div>

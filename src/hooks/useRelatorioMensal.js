@@ -9,7 +9,7 @@ const SELECT_AULAS = `
   id, data_aula, status_aula, motivo_cancelamento, turma_id, observacoes, professor_executou_id,
   professores!professor_executou_id(nome),
   turmas(nome, quadra_id, quadras(nome), modalidade_id, modalidades(nome), horario_inicio, nivel_id, niveis(nome)),
-  presencas(id, aluno_id, status_presenca, tipo_participacao)
+  presencas(id, aluno_id, status_presenca, tipo_participacao, alunos(nome))
 `
 
 function empresaDaAula(aula) {
@@ -140,6 +140,73 @@ export async function buscarRelatorioMensal({ periodoInicio, periodoFim, empresa
     heatmapTenis: construirHeatmapOcupacao(aulas || [], inicio, fim, 'Tênis'),
     periodo: { inicio, fim },
   }
+}
+
+// Lista de presença por aluno, separada por modalidade — pra cada aluno que teve pelo menos
+// uma presença marcada no período, conta quantas aulas ficou vinculado, quantas presenças e
+// faltas teve, e sinaliza risco de evasão quando a presença cai demais. Ignora o filtro de
+// modalidade da tela de propósito: o objetivo aqui é justamente separar tudo por modalidade
+// num relatório só, igual pedido ("todos os nomes separado por modalidade").
+export async function buscarRelatorioPresencaAlunos({ periodoInicio, periodoFim, empresa } = {}) {
+  const inicio = periodoInicio || format(startOfMonth(new Date()), 'yyyy-MM-dd')
+  const fim = periodoFim || format(endOfMonth(new Date()), 'yyyy-MM-dd')
+
+  const { data: aulas, error } = await supabase
+    .from('aulas').select(SELECT_AULAS)
+    .gte('data_aula', inicio).lte('data_aula', fim)
+  if (error) throw error
+
+  const aulasFiltradas = (aulas || []).filter(a => !empresa || empresaDaAula(a) === empresa)
+
+  const porModalidade = {}
+  aulasFiltradas.forEach(a => {
+    const modalidade = getModalidadeDaAula(a) || 'Sem modalidade'
+    if (!porModalidade[modalidade]) porModalidade[modalidade] = {}
+    const grupo = porModalidade[modalidade]
+    ;(a.presencas || []).forEach(p => {
+      if (!p.aluno_id) return
+      if (!grupo[p.aluno_id]) {
+        grupo[p.aluno_id] = { nome: p.alunos?.nome || 'Aluno sem nome', aulasVinculadas: 0, presentes: 0, faltas: 0, registros: [] }
+      }
+      const registro = grupo[p.aluno_id]
+      registro.aulasVinculadas++
+      const presente = p.status_presenca === 'presente'
+      const falta = p.status_presenca === 'falta' || p.status_presenca === 'falta_justificada'
+      if (presente) registro.presentes++
+      else if (falta) registro.faltas++
+      if (presente || falta) registro.registros.push({ data: a.data_aula, presente })
+    })
+  })
+
+  const resultado = Object.entries(porModalidade)
+    .map(([modalidade, alunosMap]) => {
+      const alunos = Object.values(alunosMap)
+        .map(({ registros, ...a }) => {
+          const totalMarcado = a.presentes + a.faltas
+          const pctPresenca = totalMarcado > 0 ? Math.round((a.presentes / totalMarcado) * 100) : 0
+
+          // Mesmo critério de "risco de evasão" já usado no painel da modalidade
+          // (useModalidadeDashboard.js) — 3+ faltas seguidas, olhando pra trás a partir da
+          // aula mais recente do período — só que aqui restrito ao mês do relatório.
+          const ordenado = [...registros].sort((x, y) => y.data.localeCompare(x.data))
+          let faltasConsecutivas = 0
+          for (const r of ordenado) {
+            if (r.presente) break
+            faltasConsecutivas++
+          }
+
+          let risco = ''
+          if (totalMarcado === 0) risco = 'Sem presença confirmada'
+          else if (faltasConsecutivas >= 3) risco = `Risco alto de evasão — ${faltasConsecutivas} faltas seguidas`
+          else if (pctPresenca < 75) risco = 'Atenção — presença baixa'
+          return { ...a, pctPresenca, risco }
+        })
+        .sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR'))
+      return { modalidade, alunos }
+    })
+    .sort((a, b) => a.modalidade.localeCompare(b.modalidade, 'pt-BR'))
+
+  return { periodo: { inicio, fim }, porModalidade: resultado }
 }
 
 export function useRelatorioMensal({ periodoInicio, periodoFim, empresa, modalidade } = {}) {

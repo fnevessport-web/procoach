@@ -413,3 +413,148 @@ export async function exportarRelatorioPDF(rel, periodo, { empresa }) {
 
   doc.save(`relatorio-${empresa}-${periodo.inicio}-a-${periodo.fim}.pdf`)
 }
+
+// Lista extensa de presença por aluno (nome, aulas vinculadas, presenças, faltas, % de
+// presença e observação de risco de evasão), com uma tabela por modalidade. Tem seus próprios
+// helpers de layout (em vez de reaproveitar os de exportarRelatorioPDF, que ficam presos no
+// escopo daquela função) porque o conteúdo aqui é uma lista tabular simples, não o relatório
+// executivo com chips/heatmap.
+export async function exportarRelatorioPresencaPDF(porModalidade, periodo, { empresa }) {
+  const { jsPDF } = await import('jspdf')
+  const { autoTable } = await import('jspdf-autotable')
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margem = 40
+
+  let texturaBase64 = null
+  let logoBase64 = null
+  try { texturaBase64 = await carregarImagemRedimensionada('/images/bg-texture.png', 900, 'image/jpeg', 0.5) } catch {}
+  try { logoBase64 = await carregarImagemRedimensionada(LOGO_EMPRESA[empresa], 160, 'image/png') } catch {}
+
+  const nomeEmpresa = NOME_EMPRESA[empresa] || empresa
+  const periodoLabel = `${format(new Date(periodo.inicio + 'T12:00'), 'dd/MM/yyyy')} a ${format(new Date(periodo.fim + 'T12:00'), 'dd/MM/yyyy')}`
+  const geradoEm = format(new Date(), "dd/MM/yyyy 'às' HH:mm")
+
+  const paginasPintadas = new Set()
+  function pintarFundo() {
+    const n = doc.internal.getCurrentPageInfo().pageNumber
+    if (paginasPintadas.has(n)) return
+    paginasPintadas.add(n)
+    doc.setFillColor(...COR_CREME)
+    doc.rect(0, 0, pageWidth, pageHeight, 'F')
+    if (texturaBase64) {
+      try {
+        doc.saveGraphicsState()
+        doc.setGState(new doc.GState({ opacity: 0.45 }))
+        doc.addImage(texturaBase64, 'JPEG', 0, 0, pageWidth, pageHeight)
+        doc.restoreGraphicsState()
+      } catch {}
+    }
+  }
+
+  let cursorY = margem
+
+  function cabecalho() {
+    const cx = margem + 18
+    const cy = 40
+    const raio = 18
+    doc.setFillColor(...COR_TINTA)
+    doc.circle(cx, cy, raio, 'F')
+    if (logoBase64) {
+      try { doc.addImage(logoBase64, 'PNG', cx - 13, cy - 13, 26, 26) } catch {}
+    }
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(15)
+    doc.setTextColor(...COR_TINTA)
+    doc.text('RELATÓRIO DE PRESENÇA', cx + raio + 12, cy - 3)
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(10)
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    doc.text(nomeEmpresa.toUpperCase(), cx + raio + 12, cy + 11)
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+    doc.text(`Período: ${periodoLabel}`, pageWidth - margem, 26, { align: 'right' })
+    doc.text(`Gerado em ${geradoEm}`, pageWidth - margem, 37, { align: 'right' })
+
+    const faixaY = 70
+    const faixaW = (pageWidth - margem * 2) / 4
+    CORES_CHIP.forEach((cor, i) => {
+      doc.setFillColor(...cor)
+      doc.rect(margem + i * faixaW, faixaY, faixaW - 3, 4, 'F')
+    })
+    return faixaY + 26
+  }
+
+  function novaPagina() {
+    doc.addPage()
+    pintarFundo()
+    cursorY = cabecalho()
+  }
+
+  function garantirEspaco(altura) {
+    if (cursorY + altura > pageHeight - 50) novaPagina()
+  }
+
+  pintarFundo()
+  cursorY = cabecalho()
+
+  function tituloSecao(texto) {
+    garantirEspaco(30)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(...COR_TINTA)
+    doc.text(texto.toUpperCase(), margem, cursorY)
+    doc.setDrawColor(...COR_TEXTO_SUAVE)
+    doc.setLineWidth(0.5)
+    doc.line(margem, cursorY + 5, pageWidth - margem, cursorY + 5)
+    cursorY += 24
+  }
+
+  function tabelaPresenca(alunos) {
+    garantirEspaco(60)
+    autoTable(doc, {
+      startY: cursorY,
+      head: [['Aluno', 'Aulas', 'Presenças', 'Faltas', '% Presença', 'Observação']],
+      body: alunos.map(a => [a.nome, String(a.aulasVinculadas), String(a.presentes), String(a.faltas), `${a.pctPresenca}%`, a.risco || '—']),
+      theme: 'plain',
+      styles: { fontSize: 8.5, cellPadding: 6, valign: 'middle', textColor: COR_TINTA, lineColor: [215, 210, 200], lineWidth: 0.5 },
+      headStyles: { fillColor: COR_MARINHO, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: [249, 247, 243] },
+      columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' } },
+      margin: { left: margem, right: margem },
+      willDrawPage: pintarFundo,
+      didParseCell(data) {
+        if (data.section !== 'body' || data.column.index !== 5) return
+        const texto = String(data.cell.raw || '')
+        if (texto.includes('Risco alto')) { data.cell.styles.textColor = COR_VERMELHO; data.cell.styles.fontStyle = 'bold' }
+        else if (texto.includes('Atenção')) data.cell.styles.textColor = COR_LARANJA
+      },
+    })
+    cursorY = doc.lastAutoTable.finalY + 20
+  }
+
+  if (porModalidade.length === 0) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(11)
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    doc.text('Nenhum aluno com presença registrada no período.', margem, cursorY)
+  }
+
+  porModalidade.forEach(grupo => {
+    tituloSecao(`${grupo.modalidade} — ${grupo.alunos.length} aluno${grupo.alunos.length === 1 ? '' : 's'}`)
+    tabelaPresenca(grupo.alunos)
+  })
+
+  const totalPaginas = doc.internal.getNumberOfPages()
+  for (let i = 1; i <= totalPaginas; i++) {
+    doc.setPage(i)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    doc.text(`Gerado pelo ProCoach em ${geradoEm}`, pageWidth / 2, pageHeight - 16, { align: 'center' })
+  }
+
+  doc.save(`presenca-alunos-${empresa}-${periodo.inicio}-a-${periodo.fim}.pdf`)
+}
