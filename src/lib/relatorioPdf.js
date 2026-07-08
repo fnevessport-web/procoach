@@ -550,11 +550,15 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
     )
   }
 
-  // ---------- Mapa de calor de cada modalidade em escopo — sempre em página nova ----------
-  if (heatmaps.length > 0) {
+  // ---------- Mapa de calor de cada modalidade em escopo — cada um sempre em página nova ----------
+  // Importante ser por modalidade, não só antes da seção inteira: o mapa do Tênis (16 linhas de
+  // horário) quase sempre enche a página sozinho, e se o do Padel entrasse em seguida sem sua
+  // própria quebra, o título "Mapa de calor — Padel" ficava sobrando no rodapé dessa página e a
+  // grade em si só começava na página seguinte, já sem o título junto.
+  heatmaps.forEach(({ modalidade, heatmap }) => {
     novaPagina()
-    heatmaps.forEach(({ modalidade, heatmap }) => desenharHeatmap(heatmap, modalidade))
-  }
+    desenharHeatmap(heatmap, modalidade)
+  })
 
   // ---------- Presença por aluno, separada por modalidade — sempre em página nova ----------
   novaPagina()
