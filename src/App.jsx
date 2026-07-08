@@ -73,7 +73,7 @@ function AppRouter() {
     return <SelecionarEmpresaPage empresas={empresas} onSelecionar={setEmpresaSelecionada} />
   }
 
-  const { homeRoute, podeAcessarCadastros, podeAcessarFinanceiro, podeAcessarKPIs } = permissoes
+  const { role, homeRoute, podeAcessarCadastros, podeAcessarFinanceiro, podeAcessarKPIs } = permissoes
 
   return (
     <AppLayout>
@@ -85,10 +85,18 @@ function AppRouter() {
           <RouteGuard permitido={homeRoute === '/'} homeRoute={homeRoute}><ModalidadePage /></RouteGuard>
         } />
         <Route path="/aulas" element={<AulasPage />} />
-        <Route path="/dashboard-professor" element={<DashboardProfessor />} />
-        <Route path="/meu-perfil" element={<MeuPerfilProfessor />} />
-        <Route path="/meus-alunos" element={<MeusAlunosProfessor />} />
-        <Route path="/mensagens" element={<MensagensPage />} />
+        <Route path="/dashboard-professor" element={
+          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><DashboardProfessor /></RouteGuard>
+        } />
+        <Route path="/meu-perfil" element={
+          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MeuPerfilProfessor /></RouteGuard>
+        } />
+        <Route path="/meus-alunos" element={
+          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MeusAlunosProfessor /></RouteGuard>
+        } />
+        <Route path="/mensagens" element={
+          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MensagensPage /></RouteGuard>
+        } />
         <Route path="/cadastros" element={
           <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
         } />

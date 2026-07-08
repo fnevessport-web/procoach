@@ -76,6 +76,20 @@ const PERMISSOES_POR_ROLE = {
     podeVerSino: false,
     homeRoute: '/aulas',
   },
+  leitura: {
+    podeAcessarCadastros: false,
+    podeEditarCadastros: false,
+    podeCadastrarAluno: false,
+    podeVerTodosSalarios: false,
+    podeAcessarFinanceiro: false,
+    podeEditarFinanceiro: false,
+    podeAcessarKPIs: false,
+    podeEditarAulas: false,
+    podeEditarPropriaAula: false,
+    podeVerInboxGeral: false,
+    podeVerSino: false,
+    homeRoute: '/',
+  },
 }
 
 export function resolverRole(roleBruto) {
