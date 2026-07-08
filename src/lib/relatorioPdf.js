@@ -235,7 +235,9 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
     }
   }
 
-  // ---------- Página 0: capa (arte pronta) + data/hora do relatório, minimalista no rodapé ----------
+  // ---------- Página 0: capa (arte pronta) + data/hora do relatório, minimalista no canto
+  // superior esquerdo, na mesma altura do lockup BEYOND | unidade que já vem impresso na capa
+  // (medido na própria arte: a faixa da logo fica a ~7,6% do topo da página) ----------
   if (capaBase64) {
     try {
       doc.addImage(capaBase64, 'JPEG', 0, 0, pageWidth, pageHeight)
@@ -243,7 +245,7 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
       doc.setGState(new doc.GState({ opacity: 0.85 }))
       fontePadrao('normal', 8)
       doc.setTextColor(...COR_BRANCO)
-      doc.text(`Relatório gerado em ${geradoEm}`, pageWidth - margem, pageHeight - 18, { align: 'right' })
+      doc.text(`Relatório gerado em ${geradoEm}`, margem, pageHeight * 0.076)
       doc.restoreGraphicsState()
     } catch {}
     doc.addPage()
@@ -844,7 +846,8 @@ function montarPaginaPresencaHtml({ alunos, modalidade, parte, totalPartes, nome
   return container
 }
 
-// Capa em PNG: a arte pronta (foto) + data/hora do relatório, minimalista, no canto inferior —
+// Capa em PNG: a arte pronta (foto) + data/hora do relatório, minimalista, no canto superior
+// esquerdo (mesma altura do lockup BEYOND | unidade já impresso na arte, ~7,6% do topo) —
 // desenhada direto num <canvas> (sem html2canvas) pra manter nitidez de foto e texto sem
 // depender de carregamento de fonte no DOM.
 async function gerarCapaPngBlob(empresa, geradoEm) {
@@ -856,8 +859,8 @@ async function gerarCapaPngBlob(empresa, geradoEm) {
   ctx.drawImage(bitmap, 0, 0)
   ctx.font = `${Math.round(bitmap.width * 0.014)}px Helvetica, Arial, sans-serif`
   ctx.fillStyle = 'rgba(255,255,255,0.85)'
-  ctx.textAlign = 'right'
-  ctx.fillText(`Relatório gerado em ${geradoEm}`, bitmap.width - bitmap.width * 0.045, bitmap.height - bitmap.height * 0.018)
+  ctx.textAlign = 'left'
+  ctx.fillText(`Relatório gerado em ${geradoEm}`, bitmap.width * 0.045, bitmap.height * 0.076)
   return canvas.convertToBlob
     ? await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.9 })
     : await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9))
