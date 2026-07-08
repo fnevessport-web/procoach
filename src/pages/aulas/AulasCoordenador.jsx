@@ -159,6 +159,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(null)
   const [editandoNivelTurma, setEditandoNivelTurma] = useState(false)
   const [novoNivelId, setNovoNivelId] = useState('')
+  const [novoProfessorTurmaId, setNovoProfessorTurmaId] = useState('')
   const [salvandoNivelTurma, setSalvandoNivelTurma] = useState(false)
   const [editandoHorarioAula, setEditandoHorarioAula] = useState(false)
   const [novoHorarioMover, setNovoHorarioMover] = useState('')
@@ -813,20 +814,22 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
-  // O nível é um campo da turma (nivel_id), compartilhado por todas as ocorrências — não dá pra
-  // trocar só de uma aula sem separar ela de alguma forma. Por isso, tanto "só essa" quanto "essa
-  // e as futuras" clonam a turma com o nível novo (mesmo horário/quadra/professor/alunos) e só
-  // repontam o turma_id das aulas do escopo escolhido — as aulas de fora do escopo (passadas, ou
-  // futuras se for "só essa") continuam na turma original, preservando o histórico como estava.
+  // O nível (e o professor titular) é um campo da turma, compartilhado por todas as ocorrências —
+  // não dá pra trocar só de uma aula sem separar ela de alguma forma. Por isso, tanto "só essa"
+  // quanto "essa e as futuras" clonam a turma com o nível/professor novos (mesmo horário/quadra/
+  // alunos) e só repontam o turma_id das aulas do escopo escolhido — as aulas de fora do escopo
+  // (passadas, ou futuras se for "só essa") continuam na turma original, preservando o histórico.
   async function handleEditarNivelTurma(aula, todasFuturas) {
-    if (!novoNivelId) return toast.error('Selecione o nível novo', { style: toastStyle })
+    if (!novoNivelId && !novoProfessorTurmaId) return toast.error('Selecione o nível novo ou o professor novo', { style: toastStyle })
     setSalvandoNivelTurma(true)
     try {
       const { data: turmaOriginal, error: erroTurma } = await supabase
         .from('turmas').select('*').eq('id', aula.turma_id).single()
       if (erroTurma) throw erroTurma
 
-      const nomeNivelNovo = todosNiveis?.find(n => n.id === novoNivelId)?.nome || ''
+      const nivelIdFinal = novoNivelId || turmaOriginal.nivel_id
+      const professorIdFinal = novoProfessorTurmaId || turmaOriginal.professor_titular_id
+      const nomeNivelNovo = todosNiveis?.find(n => n.id === nivelIdFinal)?.nome || ''
       const partesNome = (turmaOriginal.nome || '').split('·').map(s => s.trim())
       const novoNome = partesNome.length >= 3
         ? `${partesNome[0]} · ${partesNome[1]} · ${partesNome[2]} · ${nomeNivelNovo}`
@@ -838,8 +841,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         horario_inicio: turmaOriginal.horario_inicio,
         horario_fim: turmaOriginal.horario_fim,
         quadra_id: turmaOriginal.quadra_id,
-        professor_titular_id: turmaOriginal.professor_titular_id,
-        nivel_id: novoNivelId,
+        professor_titular_id: professorIdFinal,
+        nivel_id: nivelIdFinal,
         nome: novoNome,
         ativo: true,
       }).select().single()
@@ -860,13 +863,18 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       const { error: erroAulas } = await query
       if (erroAulas) throw erroAulas
 
+      const nomeProfessorNovo = todoProfessores?.find(p => p.id === professorIdFinal)?.nome || ''
+      const nomeProfessorAntigo = todoProfessores?.find(p => p.id === turmaOriginal.professor_titular_id)?.nome || ''
       await logAudit('turmas', turmaOriginal.id, 'UPDATE',
-        { nivel: turmaOriginal.nome },
-        { nivel: nomeNivelNovo, escopo: todasFuturas ? 'essa e as futuras' : 'só essa aula', data: aula.data_aula }
+        { nivel: turmaOriginal.nome, professor: nomeProfessorAntigo },
+        { nivel: nomeNivelNovo, professor: nomeProfessorNovo, escopo: todasFuturas ? 'essa e as futuras' : 'só essa aula', data: aula.data_aula }
       )
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
-      toast.success(`Nível atualizado pra ${nomeNivelNovo}!`, { style: toastStyle })
+      const mudancas = []
+      if (novoNivelId && novoNivelId !== turmaOriginal.nivel_id) mudancas.push(`nível pra ${nomeNivelNovo}`)
+      if (novoProfessorTurmaId && novoProfessorTurmaId !== turmaOriginal.professor_titular_id) mudancas.push(`professor pra ${nomeProfessorNovo}`)
+      toast.success(mudancas.length > 0 ? `Turma atualizada: ${mudancas.join(' e ')}!` : 'Turma atualizada!', { style: toastStyle })
       fecharModal()
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
@@ -1652,7 +1660,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                 </button>
               )}
               {!somenteLeitura && !professorProprioId && !isAvulsa && !editandoNivelTurma && (
-                <button onClick={() => { setEditandoNivelTurma(true); setNovoNivelId('') }} style={{
+                <button onClick={() => { setEditandoNivelTurma(true); setNovoNivelId(''); setNovoProfessorTurmaId('') }} style={{
                   display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
                   borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
                   color: '#888', fontSize: '12px', cursor: 'pointer',
@@ -1731,10 +1739,15 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
 
             {editandoNivelTurma && (
               <div style={{ backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', padding: '12px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Novo nível da turma</div>
+                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nível da turma</div>
                 <select value={novoNivelId} onChange={e => setNovoNivelId(e.target.value)} style={inputStyle}>
-                  <option value="">Selecione...</option>
+                  <option value="">{getNivel(aula) || 'Sem nível'} (manter)</option>
                   {todosNiveis?.map(n => <option key={n.id} value={n.id}>{n.nome}</option>)}
+                </select>
+                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Professor</div>
+                <select value={novoProfessorTurmaId} onChange={e => setNovoProfessorTurmaId(e.target.value)} style={inputStyle}>
+                  <option value="">{aula.turmas?.professor_titular_id ? (todoProfessores?.find(p => p.id === aula.turmas.professor_titular_id)?.nome || 'Professor atual') : 'Selecione...'} (manter)</option>
+                  {todoProfessores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button onClick={() => handleEditarNivelTurma(aula, false)} disabled={salvandoNivelTurma} style={{
