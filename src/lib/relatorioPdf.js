@@ -13,7 +13,11 @@ const COR_VERMELHO = [176, 54, 54]
 const CORES_CHIP = [COR_SALVIA, COR_LARANJA, COR_VINHO, COR_MARINHO]
 
 const NOME_EMPRESA = { procopio: 'Procópio Arena', beach_arena: 'Beach Arena' }
-const LOGO_EMPRESA = { procopio: '/images/logoprocopio.png', beach_arena: '/images/logobeacharena.png' }
+// Versões pretas das marcas, pensadas pra página clara do relatório (fundo creme) — em vez do
+// selo circular escuro com o ícone branco de antes, o cabeçalho vira um lockup minimalista:
+// logo do clube (BEYOND) + linha fina + logo da unidade, lado a lado.
+const LOGO_BEYOND_PRETO = '/images/logobeyond_preto.png'
+const LOGO_UNIDADE_PRETO = { procopio: '/images/logoprocopio_preto.png', beach_arena: '/images/logobeacharena_preto.png' }
 const ICONES_EMPRESA = {
   procopio: ['/images/tenis.png', '/images/padel.png', '/images/squash.png', '/images/pickleball.png'],
   beach_arena: ['/images/beachtennis.png', '/images/futevolei.png', '/images/voleidepraia.png'],
@@ -64,20 +68,37 @@ function interpolarCor(c1, c2, t) {
   return c1.map((v, i) => Math.round(v + (c2[i] - v) * t))
 }
 
-// As logos de unidade (logoprocopio.png, logobeacharena.png) são a marca completa: ícone em
-// cima + nome da unidade escrito embaixo. Pro selo circular do cabeçalho a gente só quer o
-// ícone — usar o arquivo inteiro esmagado num quadrado pequeno distorce tudo e fica ilegível.
-// Recorta os ~74% de cima (onde fica só o ícone, antes do texto começar) e um miolo horizontal
-// (as duas marcas têm o ícone centralizado, com bastante margem transparente nas laterais)
-// pra chegar perto de um recorte quadrado do próprio desenho.
-async function carregarIconeLogo(url, maxLado) {
+// As logos pretas (logobeyond_preto.png etc.) vêm num canvas quadrado com bastante margem
+// transparente ao redor do desenho, e cada uma numa proporção bem diferente (BEYOND é um
+// wordmark bem largo e baixo; Procópio e Beach Arena são ícone+texto empilhados, mais altos
+// que largos). Em vez de um recorte fixo por fração, acha de verdade a caixa do que não é
+// transparente (via getImageData) e recorta só nela — assim cada logo entra no lockup do
+// cabeçalho do tamanho relativo certo, sem sobrar moldura vazia nem distorcer nada.
+async function carregarLogoAutoCrop(url, maxLado) {
   const resp = await fetch(url)
   const blob = await resp.blob()
   const bitmap = await createImageBitmap(blob)
-  const sx = Math.round(bitmap.width * 0.26)
-  const sy = 0
-  const sw = Math.round(bitmap.width * 0.48)
-  const sh = Math.round(bitmap.height * 0.71)
+
+  const amostra = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(bitmap.width, bitmap.height) : document.createElement('canvas')
+  amostra.width = bitmap.width
+  amostra.height = bitmap.height
+  const actx = amostra.getContext('2d')
+  actx.drawImage(bitmap, 0, 0)
+  const { data } = actx.getImageData(0, 0, bitmap.width, bitmap.height)
+
+  let minX = bitmap.width, minY = bitmap.height, maxX = 0, maxY = 0
+  for (let y = 0; y < bitmap.height; y += 2) {
+    for (let x = 0; x < bitmap.width; x += 2) {
+      if (data[(y * bitmap.width + x) * 4 + 3] > 10) {
+        if (x < minX) minX = x
+        if (x > maxX) maxX = x
+        if (y < minY) minY = y
+        if (y > maxY) maxY = y
+      }
+    }
+  }
+  const sw = Math.max(1, maxX - minX)
+  const sh = Math.max(1, maxY - minY)
   const escala = Math.min(1, maxLado / Math.max(sw, sh))
   const w = Math.max(1, Math.round(sw * escala))
   const h = Math.max(1, Math.round(sh * escala))
@@ -85,11 +106,35 @@ async function carregarIconeLogo(url, maxLado) {
   canvas.width = w
   canvas.height = h
   const ctx = canvas.getContext('2d')
-  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, w, h)
+  ctx.drawImage(bitmap, minX, minY, sw, sh, 0, 0, w, h)
   const dataUrl = canvas.convertToBlob
     ? await blobParaDataUrl(await canvas.convertToBlob({ type: 'image/png' }))
     : canvas.toDataURL('image/png')
   return { dataUrl, aspecto: sw / sh }
+}
+
+// Desenha o lockup BEYOND | logo da unidade a partir da margem esquerda, alinhado verticalmente
+// no meio da altura reservada, e devolve o X onde o texto do título deve começar.
+function desenharLockupLogos(doc, { logoBeyond, logoUnidade, x, yTopo, altura, corLinha }) {
+  let cursorX = x
+  if (logoBeyond) {
+    const w = altura * logoBeyond.aspecto
+    try { doc.addImage(logoBeyond.dataUrl, 'PNG', cursorX, yTopo, w, altura) } catch {}
+    cursorX += w
+  }
+  if (logoBeyond && logoUnidade) {
+    cursorX += 12
+    doc.setDrawColor(...corLinha)
+    doc.setLineWidth(0.6)
+    doc.line(cursorX, yTopo - 2, cursorX, yTopo + altura + 2)
+    cursorX += 12
+  }
+  if (logoUnidade) {
+    const w = altura * logoUnidade.aspecto
+    try { doc.addImage(logoUnidade.dataUrl, 'PNG', cursorX, yTopo, w, altura) } catch {}
+    cursorX += w
+  }
+  return cursorX + 16
 }
 
 export async function exportarRelatorioPDF(rel, periodo, { empresa }) {
@@ -100,12 +145,14 @@ export async function exportarRelatorioPDF(rel, periodo, { empresa }) {
   const pageHeight = doc.internal.pageSize.getHeight()
   const margem = 40
 
-  // Carrega assets uma única vez (textura, logo da unidade, ícones de modalidade, fonte de destaque)
+  // Carrega assets uma única vez (textura, logos do cabeçalho, ícones de modalidade, fonte de destaque)
   let texturaBase64 = null
-  let logoIcone = null
+  let logoBeyond = null
+  let logoUnidade = null
   const iconesBase64 = []
   try { texturaBase64 = await carregarImagemRedimensionada('/images/bg-texture.png', 900, 'image/jpeg', 0.5) } catch {}
-  try { logoIcone = await carregarIconeLogo(LOGO_EMPRESA[empresa], 160) } catch {}
+  try { logoBeyond = await carregarLogoAutoCrop(LOGO_BEYOND_PRETO, 260) } catch {}
+  try { logoUnidade = await carregarLogoAutoCrop(LOGO_UNIDADE_PRETO[empresa], 260) } catch {}
   for (const src of ICONES_EMPRESA[empresa] || []) {
     try { iconesBase64.push(await carregarImagemRedimensionada(src, 64, 'image/png')) } catch {}
   }
@@ -153,25 +200,16 @@ export async function exportarRelatorioPDF(rel, periodo, { empresa }) {
   let cursorY = margem
 
   function cabecalho() {
-    const cx = margem + 18
-    const cy = 40
-    const raio = 18
-    doc.setFillColor(...COR_TINTA)
-    doc.circle(cx, cy, raio, 'F')
-    if (logoIcone) {
-      try {
-        const lado = 24
-        const lw = logoIcone.aspecto >= 1 ? lado : lado * logoIcone.aspecto
-        const lh = logoIcone.aspecto >= 1 ? lado / logoIcone.aspecto : lado
-        doc.addImage(logoIcone.dataUrl, 'PNG', cx - lw / 2, cy - lh / 2, lw, lh)
-      } catch {}
-    }
+    const alturaLogo = 22
+    const yTopoLogo = 22
+    const textoX = desenharLockupLogos(doc, { logoBeyond, logoUnidade, x: margem, yTopo: yTopoLogo, altura: alturaLogo, corLinha: COR_TEXTO_SUAVE })
+    const cyTexto = yTopoLogo + alturaLogo / 2
     fontePadrao('bold', 15)
     doc.setTextColor(...COR_TINTA)
-    doc.text('RELATÓRIO EXECUTIVO', cx + raio + 12, cy - 3)
+    doc.text('RELATÓRIO EXECUTIVO', textoX, cyTexto - 3)
     fontePadrao('italic', 10)
     doc.setTextColor(...COR_TEXTO_SUAVE)
-    doc.text(nomeEmpresa.toUpperCase(), cx + raio + 12, cy + 11)
+    doc.text(nomeEmpresa.toUpperCase(), textoX, cyTexto + 11)
 
     fontePadrao('normal', 7.5)
     doc.setTextColor(...COR_TEXTO_SUAVE)
@@ -461,9 +499,11 @@ export async function exportarRelatorioPresencaPDF(porModalidade, periodo, { emp
   const margem = 40
 
   let texturaBase64 = null
-  let logoIcone = null
+  let logoBeyond = null
+  let logoUnidade = null
   try { texturaBase64 = await carregarImagemRedimensionada('/images/bg-texture.png', 900, 'image/jpeg', 0.5) } catch {}
-  try { logoIcone = await carregarIconeLogo(LOGO_EMPRESA[empresa], 160) } catch {}
+  try { logoBeyond = await carregarLogoAutoCrop(LOGO_BEYOND_PRETO, 260) } catch {}
+  try { logoUnidade = await carregarLogoAutoCrop(LOGO_UNIDADE_PRETO[empresa], 260) } catch {}
 
   const nomeEmpresa = NOME_EMPRESA[empresa] || empresa
   const periodoLabel = `${format(new Date(periodo.inicio + 'T12:00'), 'dd/MM/yyyy')} a ${format(new Date(periodo.fim + 'T12:00'), 'dd/MM/yyyy')}`
@@ -489,27 +529,18 @@ export async function exportarRelatorioPresencaPDF(porModalidade, periodo, { emp
   let cursorY = margem
 
   function cabecalho() {
-    const cx = margem + 18
-    const cy = 40
-    const raio = 18
-    doc.setFillColor(...COR_TINTA)
-    doc.circle(cx, cy, raio, 'F')
-    if (logoIcone) {
-      try {
-        const lado = 24
-        const lw = logoIcone.aspecto >= 1 ? lado : lado * logoIcone.aspecto
-        const lh = logoIcone.aspecto >= 1 ? lado / logoIcone.aspecto : lado
-        doc.addImage(logoIcone.dataUrl, 'PNG', cx - lw / 2, cy - lh / 2, lw, lh)
-      } catch {}
-    }
+    const alturaLogo = 22
+    const yTopoLogo = 22
+    const textoX = desenharLockupLogos(doc, { logoBeyond, logoUnidade, x: margem, yTopo: yTopoLogo, altura: alturaLogo, corLinha: COR_TEXTO_SUAVE })
+    const cyTexto = yTopoLogo + alturaLogo / 2
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(15)
     doc.setTextColor(...COR_TINTA)
-    doc.text('RELATÓRIO DE PRESENÇA', cx + raio + 12, cy - 3)
+    doc.text('RELATÓRIO DE PRESENÇA', textoX, cyTexto - 3)
     doc.setFont('helvetica', 'italic')
     doc.setFontSize(10)
     doc.setTextColor(...COR_TEXTO_SUAVE)
-    doc.text(nomeEmpresa.toUpperCase(), cx + raio + 12, cy + 11)
+    doc.text(nomeEmpresa.toUpperCase(), textoX, cyTexto + 11)
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7.5)
@@ -626,7 +657,7 @@ function corRisco(texto) {
 // vazias/invisíveis quando sobra menos gente no último bloco), pra todo PNG gerado sair com
 // exatamente a mesma altura — importante pra colar lado a lado num relatório externo sem ficar
 // com tamanhos desencontrados.
-function montarPaginaHtml({ alunos, modalidade, parte, totalPartes, nomeEmpresa, logoDataUrl, logoAspecto, periodoLabel, geradoEm }) {
+function montarPaginaHtml({ alunos, modalidade, parte, totalPartes, nomeEmpresa, logoBeyond, logoUnidade, periodoLabel, geradoEm }) {
   const container = document.createElement('div')
   container.style.cssText = `
     width: 850px; box-sizing: border-box; padding: 28px 32px;
@@ -634,13 +665,18 @@ function montarPaginaHtml({ alunos, modalidade, parte, totalPartes, nomeEmpresa,
     display: flex; flex-direction: column; background: transparent;
   `
 
-  const lw = logoAspecto >= 1 ? 34 : 34 * logoAspecto
-  const lh = logoAspecto >= 1 ? 34 / logoAspecto : 34
+  // Mesmo lockup minimalista do PDF: logo do clube (BEYOND) + linha fina + logo da unidade,
+  // ambos pretos, lado a lado — sem selo/fundo, direto na página clara.
+  const alturaLogo = 26
+  const wBeyond = logoBeyond ? alturaLogo * logoBeyond.aspecto : 0
+  const wUnidade = logoUnidade ? alturaLogo * logoUnidade.aspecto : 0
   container.innerHTML = `
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-      <div style="display:flex; align-items:center; gap:14px;">
-        <div style="width:52px; height:52px; border-radius:50%; background:${rgb(COR_TINTA)}; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
-          ${logoDataUrl ? `<img src="${logoDataUrl}" style="width:${lw}px; height:${lh}px;" />` : ''}
+      <div style="display:flex; align-items:center; gap:16px;">
+        <div style="display:flex; align-items:center; gap:16px; height:${alturaLogo}px;">
+          ${logoBeyond ? `<img src="${logoBeyond.dataUrl}" style="width:${wBeyond}px; height:${alturaLogo}px;" />` : ''}
+          ${logoBeyond && logoUnidade ? `<div style="width:1px; height:${alturaLogo + 4}px; background:${rgb(COR_TEXTO_SUAVE)};"></div>` : ''}
+          ${logoUnidade ? `<img src="${logoUnidade.dataUrl}" style="width:${wUnidade}px; height:${alturaLogo}px;" />` : ''}
         </div>
         <div>
           <div style="font-size:19px; font-weight:700;">RELATÓRIO DE PRESENÇA</div>
@@ -702,13 +738,10 @@ function montarPaginaHtml({ alunos, modalidade, parte, totalPartes, nomeEmpresa,
 export async function exportarRelatorioPresencaPNG(porModalidade, periodo, { empresa }) {
   const { default: html2canvas } = await import('html2canvas')
 
-  let logoDataUrl = null
-  let logoAspecto = 1
-  try {
-    const logo = await carregarIconeLogo(LOGO_EMPRESA[empresa], 200)
-    logoDataUrl = logo.dataUrl
-    logoAspecto = logo.aspecto
-  } catch {}
+  let logoBeyond = null
+  let logoUnidade = null
+  try { logoBeyond = await carregarLogoAutoCrop(LOGO_BEYOND_PRETO, 260) } catch {}
+  try { logoUnidade = await carregarLogoAutoCrop(LOGO_UNIDADE_PRETO[empresa], 260) } catch {}
 
   const nomeEmpresa = NOME_EMPRESA[empresa] || empresa
   const periodoLabel = `${format(new Date(periodo.inicio + 'T12:00'), 'dd/MM/yyyy')} a ${format(new Date(periodo.fim + 'T12:00'), 'dd/MM/yyyy')}`
@@ -728,7 +761,7 @@ export async function exportarRelatorioPresencaPNG(porModalidade, periodo, { emp
 
         const elemento = montarPaginaHtml({
           alunos: alunosPagina, modalidade: grupo.modalidade, parte, totalPartes,
-          nomeEmpresa, logoDataUrl, logoAspecto, periodoLabel, geradoEm,
+          nomeEmpresa, logoBeyond, logoUnidade, periodoLabel, geradoEm,
         })
         palco.appendChild(elemento)
 
