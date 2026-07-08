@@ -4,11 +4,11 @@ import { format, startOfMonth, endOfMonth, subMonths, getDaysInMonth, difference
 import { ptBR } from 'date-fns/locale'
 import {
   MODALIDADE_EMPRESA, getModalidadeDaAula,
-  horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula, diaSemanaDaData,
+  horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula,
+  DIAS_HEATMAP, construirHeatmapOcupacao,
 } from '../constants/modalidades'
 
 const CAPACIDADE_TURMA = 4
-const DIAS_SEMANA_HEATMAP = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado']
 const HORAS_HEATMAP = Array.from({ length: 16 }, (_, i) => 6 + i) // 06h..21h
 
 function ehPresente(p) {
@@ -59,7 +59,7 @@ export function useModalidadeDashboard(nomeModalidade, { mesAtual, mesComparacao
         .from('aulas')
         .select(`
           id, data_aula, status_aula, turma_id, observacoes,
-          turmas(nome, horario_inicio, horario_fim, quadras(nome), modalidades(nome)),
+          turmas(nome, horario_inicio, horario_fim, quadras(nome), modalidades(nome), niveis(nome)),
           professores!professor_executou_id(id, nome),
           presencas(id, presente, status_presenca, aluno_id, alunos(id, nome))
         `)
@@ -170,26 +170,20 @@ export function useModalidadeDashboard(nomeModalidade, { mesAtual, mesComparacao
     mesComparacaoStr,
   }
 
-  // ── Mapa de calor (dia da semana x horário) — histórico da janela buscada ──
-  const bucketCalor = {}
-  aulasModalidade.forEach(a => {
-    if (a.status_aula !== 'dada' || a.data_aula > hojeStr) return
-    const dia = diaSemanaDaData(a.data_aula)
-    const horaStr = horarioInicioDaAula(a)
-    const hora = horaStr ? parseInt(horaStr.slice(0, 2), 10) : null
-    if (!DIAS_SEMANA_HEATMAP.includes(dia) || hora == null) return
-    const key = `${dia}-${hora}`
-    if (!bucketCalor[key]) bucketCalor[key] = { presentes: 0, faltas: 0 }
-    a.presencas?.forEach(p => {
-      if (ehPresente(p)) bucketCalor[key].presentes++
-      else if (ehFalta(p)) bucketCalor[key].faltas++
-    })
-  })
+  // ── Mapa de calor (dia da semana x horário) — ocupação do mês selecionado, mesma
+  // lógica do Relatório Mensal (soma grupo+individual simultâneos no mesmo slot,
+  // média pelas ocorrências daquele dia da semana, cor por % de ocupação — não por
+  // % de presença). Usar inicioMesAtual/fimMesAtual — que já vira "hoje" em vez do
+  // fim do mês quando o mês selecionado é o corrente — deixa a média mais precisa
+  // sozinha conforme os dias passam, sem precisar recalcular nada na mão.
+  const aulasParaHeatmap = aulasModalidade.filter(a =>
+    a.data_aula >= fmt(inicioMesAtual) && a.data_aula <= fmt(fimMesAtual)
+  )
+  const heatmapOcupacao = construirHeatmapOcupacao(aulasParaHeatmap, fmt(inicioMesAtual), fmt(fimMesAtual), nomeModalidade)
 
-  const mapaCalor = DIAS_SEMANA_HEATMAP.flatMap(dia => HORAS_HEATMAP.map(hora => {
-    const b = bucketCalor[`${dia}-${hora}`]
-    const total = b ? b.presentes + b.faltas : 0
-    const pct = total > 0 ? Math.round((b.presentes / total) * 100) : null
+  const mapaCalor = DIAS_HEATMAP.flatMap(dia => HORAS_HEATMAP.map(hora => {
+    const cel = heatmapOcupacao.celulas[dia]?.[String(hora).padStart(2, '0')]
+    const pct = cel ? Math.round(cel.ocupacao * 100) : null
     const nivel = pct == null ? 'sem_dados' : pct >= 80 ? 'lotado' : pct >= 40 ? 'medio' : 'vazio'
     return { dia, hora, pct, nivel }
   }))

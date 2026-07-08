@@ -82,3 +82,117 @@ export function diaSemanaDaData(dataStr) {
   const [ano, mes, dia] = dataStr.split('-').map(Number)
   return DIAS_SEMANA_POR_INDICE[new Date(ano, mes - 1, dia).getDay()]
 }
+
+export const DIAS_HEATMAP = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado']
+
+// Mesma convenção usada no painel do professor (DashboardProfessor.jsx): turma
+// individual lota com 1 aluno, turma em grupo lota com 4 — não existe coluna de
+// capacidade no banco, é regra fixa do produto.
+export const VAGAS_INDIVIDUAL = 1
+export const VAGAS_GRUPO = 4
+
+// Aula em turma: individual é um nível específico ("Individual") — mesma convenção
+// já usada em DashboardProfessor.jsx. Aula avulsa: o nível vem como texto livre na
+// observação, então checamos o mesmo valor por convenção.
+export function isAulaIndividual(aula) {
+  if (aula.turma_id) return aula.turmas?.niveis?.nome === 'Individual'
+  return parseObservacoes(aula.observacoes).nivel === 'Individual'
+}
+
+// Quantas vezes cada dia da semana ocorre dentro do período — é o denominador da
+// média (ex.: "somar as 5 segundas-feiras e dividir por 5"). Usar sempre o fim do
+// período até "hoje" (não o fim do mês) quando o mês ainda está em andamento deixa
+// essa média automaticamente mais precisa conforme os dias passam, sem precisar
+// recalcular nada na mão.
+export function contarOcorrenciasPorDiaSemana(periodoInicio, periodoFim) {
+  const contagem = {}
+  const [anoIni, mesIni, diaIni] = periodoInicio.split('-').map(Number)
+  const [anoFim, mesFim, diaFim] = periodoFim.split('-').map(Number)
+  const cursor = new Date(anoIni, mesIni - 1, diaIni)
+  const fim = new Date(anoFim, mesFim - 1, diaFim)
+  while (cursor <= fim) {
+    const dataStr = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`
+    const dia = diaSemanaDaData(dataStr)
+    contagem[dia] = (contagem[dia] || 0) + 1
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return contagem
+}
+
+// Mapa de calor de ocupação (inscritos/vagas) por dia da semana x horário, pra uma
+// modalidade — segunda a sábado.
+//
+// Em cada ocorrência de data+horário, soma os inscritos de TODAS as turmas
+// simultâneas daquele slot (ex.: uma turma em grupo + uma individual às 7h da
+// mesma segunda viram um único número somado). Depois, o valor da célula é a
+// MÉDIA dessas somas semanais pelo número de vezes que aquele dia da semana
+// ocorreu no período (ex.: soma das 5 segundas-feiras dividida por 5) — e não uma
+// média por sessão, que sub-contaria slots com turmas simultâneas.
+//
+// A "força" da célula (usada pra colorir o mapa) é a OCUPAÇÃO — inscritos sobre
+// vagas totais do slot — não o número bruto de gente. Uma turma em grupo cheia (4)
+// + individual cheia (1) = 5 pessoas em 5 vagas = 100% cheio, mesmo peso que duas
+// turmas em grupo cheias (4+4=8 pessoas em 8 vagas, também 100%).
+//
+// `dias`/`horas` retornam só as combinações com dado (pra grades compactas, tipo o
+// PDF do Relatório Mensal); `celulas` sempre tem uma entrada por dia da semana
+// fixo (DIAS_HEATMAP), pra grades fixas — tipo a tela de Modalidade — poderem
+// indexar qualquer dia direto sem checar existência antes.
+export function construirHeatmapOcupacao(aulas, periodoInicio, periodoFim, nomeModalidade) {
+  const porDataHora = {}
+  aulas.forEach(a => {
+    if (getModalidadeDaAula(a) !== nomeModalidade) return
+    const horaStr = horarioInicioDaAula(a)
+    if (!horaStr) return
+    const hora = horaStr.slice(0, 2)
+    const chave = `${a.data_aula}_${hora}`
+    const inscritos = (a.presencas || []).length
+    const individual = isAulaIndividual(a)
+    const vagas = individual ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
+    if (!porDataHora[chave]) porDataHora[chave] = { data: a.data_aula, hora, total: 0, grupo: 0, individual: 0, vagasTotal: 0 }
+    porDataHora[chave].total += inscritos
+    porDataHora[chave].vagasTotal += vagas
+    if (individual) porDataHora[chave].individual += inscritos
+    else porDataHora[chave].grupo += inscritos
+  })
+
+  const baldes = {}
+  Object.values(porDataHora).forEach(({ data, hora, total, grupo, individual, vagasTotal }) => {
+    const dia = diaSemanaDaData(data)
+    const chave = `${dia}_${hora}`
+    if (!baldes[chave]) baldes[chave] = { somaTotal: 0, somaGrupo: 0, somaIndividual: 0, somaVagas: 0 }
+    baldes[chave].somaTotal += total
+    baldes[chave].somaGrupo += grupo
+    baldes[chave].somaIndividual += individual
+    baldes[chave].somaVagas += vagasTotal
+  })
+
+  const contagemDiaSemana = contarOcorrenciasPorDiaSemana(periodoInicio, periodoFim)
+
+  const diasComDados = DIAS_HEATMAP.filter(d =>
+    Object.keys(baldes).some(chave => chave.startsWith(`${d}_`))
+  )
+  const horasSet = new Set()
+  Object.keys(baldes).forEach(chave => horasSet.add(chave.split('_')[1]))
+  const horas = Array.from(horasSet).sort()
+
+  const celulas = {}
+  DIAS_HEATMAP.forEach(d => {
+    celulas[d] = {}
+    const denom = contagemDiaSemana[d] || 1
+    Object.keys(baldes).filter(chave => chave.startsWith(`${d}_`)).forEach(chave => {
+      const hora = chave.split('_')[1]
+      const b = baldes[chave]
+      const mediaVagas = b.somaVagas / denom
+      celulas[d][hora] = {
+        media: b.somaTotal / denom,
+        mediaGrupo: b.somaGrupo / denom,
+        mediaIndividual: b.somaIndividual / denom,
+        mediaVagas,
+        ocupacao: mediaVagas > 0 ? Math.min(1, (b.somaTotal / denom) / mediaVagas) : 0,
+      }
+    })
+  })
+
+  return { dias: diasComDados, horas, celulas }
+}

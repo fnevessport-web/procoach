@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Timer } from 'lucide-react'
 import { useHomeDashboard } from '../../hooks/useHomeDashboard'
+import { useModalidades } from '../../hooks/useModalidades'
 import useAppStore from '../../store/useAppStore'
 import { Loading } from '../../components/ui/Loading'
 import { FotoProfessor } from '../../components/ui/FotoProfessor'
-import { LOGO_EMPRESA, EMPRESAS, horarioParaMinutos } from '../../constants/modalidades'
+import { ICONES_MODALIDADES, LOGO_EMPRESA, EMPRESAS, horarioParaMinutos } from '../../constants/modalidades'
 import { AulasCoordenador } from '../aulas/AulasCoordenador'
 
 // Home dedicada ao role "leitura" (acesso somente-consulta do clube): uma única
@@ -78,10 +79,61 @@ function getIniciais(nome) {
   return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
 }
 
+function ModalidadesRail({ modalidades, onSelect }) {
+  if (!modalidades?.length) return null
+  return (
+    <div className="modalidades-rail">
+      {modalidades.map(mod => {
+        const icone = ICONES_MODALIDADES[mod.nome]
+        return (
+          <button key={mod.id} onClick={() => onSelect(mod)} className="modalidade-rail-item" title={mod.nome}>
+            {icone
+              ? <img src={icone} alt={mod.nome} className="modalidade-rail-icon" />
+              : <span className="modalidade-rail-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#555' }}>{mod.nome[0]}</span>
+            }
+            <span className="modalidade-rail-label">{mod.nome}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function ModalidadesRow({ modalidades, onSelect }) {
+  if (!modalidades?.length) return null
+  return (
+    <div className="modalidades-mobile-row" style={{ marginBottom: '26px' }}>
+      <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', margin: '0 0 12px' }}>Modalidades</h2>
+      <div className="modalidades-row">
+        {modalidades.map(mod => {
+          const icone = ICONES_MODALIDADES[mod.nome]
+          return (
+            <button
+              key={mod.id}
+              onClick={() => onSelect(mod)}
+              className="modalidade-card"
+              style={{ border: '1px solid rgba(255,255,255,0.06)', background: '#1a1a1a' }}
+            >
+              <div className="modalidade-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {icone
+                  ? <img src={icone} alt={mod.nome} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  : <span style={{ fontSize: '10px', color: '#555' }}>{mod.nome}</span>
+                }
+              </div>
+              <span className="modalidade-label" style={{ color: '#888' }}>{mod.nome}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function HomeLeitura() {
   const navigate = useNavigate()
   const { perfil } = useAppStore()
   const { aoVivoAgora, isLoading } = useHomeDashboard()
+  const { data: modalidades } = useModalidades()
 
   const [filtroAoVivo, setFiltroAoVivo] = useState('todas')
   const [filtroAoVivoAberto, setFiltroAoVivoAberto] = useState(false)
@@ -99,8 +151,13 @@ export function HomeLeitura() {
     navigate('/aulas', { state: { highlightAulaId: aulaId, fromHome: true } })
   }
 
+  function selectModalidade(mod) {
+    navigate(`/modalidade/${encodeURIComponent(mod.nome)}`)
+  }
+
   return (
-    <div className="fade-in" style={{ minHeight: '100%' }}>
+    <div className="fade-in home-leitura-layout" style={{ minHeight: '100%' }}>
+    <div>
 
       {/* Saudação */}
       <div style={{ margin: '16px 0 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -246,6 +303,9 @@ export function HomeLeitura() {
         )}
       </div>
 
+      {/* Modalidades — só no mobile; no desktop vira a barra lateral */}
+      <ModalidadesRow modalidades={modalidades} onSelect={selectModalidade} />
+
       {/* Grade completa */}
       <div>
         <h2 style={{ fontSize: '12px', fontWeight: '700', color: '#888', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -253,6 +313,9 @@ export function HomeLeitura() {
         </h2>
         <AulasCoordenador somenteLeitura />
       </div>
+    </div>
+
+    <ModalidadesRail modalidades={modalidades} onSelect={selectModalidade} />
     </div>
   )
 }

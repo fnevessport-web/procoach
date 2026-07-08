@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { useModalidadeDashboard, getOpcoesMeses } from '../../hooks/useModalidadeDashboard'
-import { ICONES_MODALIDADES, EMPRESAS } from '../../constants/modalidades'
+import { ICONES_MODALIDADES, EMPRESAS, DIAS_HEATMAP } from '../../constants/modalidades'
 import { Loading } from '../../components/ui/Loading'
 
 const selectStyle = {
@@ -193,27 +193,28 @@ export function ModalidadePage() {
           {/* Mapa de calor */}
           <Section label="Mapa de calor">
             <div style={cardStyle}>
+              <p style={{ fontSize: '10px', color: '#555', margin: '0 0 12px', lineHeight: '1.4' }}>
+                Cor = % de ocupação das vagas do horário (turma em grupo cheia + individual cheia pesa igual a duas turmas em grupo cheias) — não é número bruto de gente, nem % de presença.
+              </p>
               <div style={{ overflowX: 'auto' }}>
-                <div style={{ display: 'inline-grid', gridTemplateColumns: `32px repeat(6, 26px)`, gap: '3px' }}>
+                <div className="heatmap-grid">
                   <div />
-                  {Object.values(DIA_LABEL).map(lbl => (
-                    <div key={lbl} style={{ fontSize: '8px', color: '#555', textAlign: 'center', fontWeight: '700' }}>{lbl}</div>
+                  {DIAS_HEATMAP.map(dia => (
+                    <div key={dia} style={{ fontSize: '8px', color: '#555', textAlign: 'center', fontWeight: '700' }}>{DIA_LABEL[dia]}</div>
                   ))}
                   {Array.from({ length: 16 }, (_, i) => 6 + i).map(hora => (
                     <Fragment key={hora}>
                       <div style={{ fontSize: '8px', color: '#555', display: 'flex', alignItems: 'center' }}>
                         {String(hora).padStart(2, '0')}h
                       </div>
-                      {Object.keys(DIA_LABEL).map(dia => {
+                      {DIAS_HEATMAP.map(dia => {
                         const cel = mapaCalor.find(c => c.dia === dia && c.hora === hora)
                         return (
                           <div
                             key={`${dia}-${hora}`}
-                            title={cel?.pct != null ? `${cel.pct}% de presença` : 'sem dados'}
-                            style={{
-                              width: '26px', height: '14px', borderRadius: '3px',
-                              backgroundColor: NIVEL_CALOR[cel?.nivel || 'sem_dados'],
-                            }}
+                            className="heatmap-cell"
+                            title={cel?.pct != null ? `${cel.pct}% de ocupação` : 'sem dados'}
+                            style={{ backgroundColor: NIVEL_CALOR[cel?.nivel || 'sem_dados'] }}
                           />
                         )
                       })}

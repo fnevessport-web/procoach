@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
-import { getQuadraNome, getModalidadeDaAula, diaSemanaDaData, horarioInicioDaAula, MODALIDADE_EMPRESA } from '../constants/modalidades'
+import { getQuadraNome, getModalidadeDaAula, construirHeatmapOcupacao, MODALIDADE_EMPRESA } from '../constants/modalidades'
 import { QUADRAS_EMPRESA } from './useFinanceiro'
 import { getFeriado } from '../constants/feriados'
 
@@ -11,118 +11,6 @@ const SELECT_AULAS = `
   turmas(nome, quadra_id, quadras(nome), modalidade_id, modalidades(nome), horario_inicio, nivel_id, niveis(nome)),
   presencas(id, aluno_id, status_presenca, tipo_participacao)
 `
-
-const DIAS_TABELA_HEATMAP = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado']
-
-// Mesma convenção usada no painel do professor (DashboardProfessor.jsx): turma
-// individual lota com 1 aluno, turma em grupo lota com 4 — não existe coluna de
-// capacidade no banco, é regra fixa do produto.
-const VAGAS_INDIVIDUAL = 1
-const VAGAS_GRUPO = 4
-
-function parseObsNivel(obs) {
-  if (!obs) return ''
-  const partes = obs.split('·').map(s => s.trim())
-  return partes[3] || ''
-}
-
-// Aula em turma: individual é um nível específico ("Individual") — mesma convenção
-// já usada em DashboardProfessor.jsx. Aula avulsa: o nível vem como texto livre na
-// observação, então checamos o mesmo valor por convenção.
-function isAulaIndividual(a) {
-  if (a.turma_id) return a.turmas?.niveis?.nome === 'Individual'
-  return parseObsNivel(a.observacoes) === 'Individual'
-}
-
-// Quantas vezes cada dia da semana ocorre dentro do período — é o denominador da
-// média (ex.: "somar as 5 segundas-feiras e dividir por 5").
-function contarOcorrenciasPorDiaSemana(periodoInicio, periodoFim) {
-  const contagem = {}
-  const [anoIni, mesIni, diaIni] = periodoInicio.split('-').map(Number)
-  const [anoFim, mesFim, diaFim] = periodoFim.split('-').map(Number)
-  const cursor = new Date(anoIni, mesIni - 1, diaIni)
-  const fim = new Date(anoFim, mesFim - 1, diaFim)
-  while (cursor <= fim) {
-    const dataStr = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`
-    const dia = diaSemanaDaData(dataStr)
-    contagem[dia] = (contagem[dia] || 0) + 1
-    cursor.setDate(cursor.getDate() + 1)
-  }
-  return contagem
-}
-
-// Mapa de calor de alunos inscritos (presença + falta, todo mundo que estava
-// escalado) por dia da semana x horário, só Tênis, segunda a sábado.
-//
-// Em cada ocorrência de data+horário, soma os inscritos de TODAS as turmas
-// simultâneas daquele slot (ex.: uma turma em grupo + uma individual às 7h da
-// mesma segunda viram um único número somado). Depois, o valor da célula é a
-// MÉDIA dessas somas semanais pelo número de vezes que aquele dia da semana
-// ocorreu no período (ex.: soma das 5 segundas-feiras dividida por 5) — e não uma
-// média por sessão, que sub-contaria slots com turmas simultâneas.
-//
-// A "força" da célula (usada pra colorir o mapa) é a OCUPAÇÃO — inscritos sobre
-// vagas totais do slot — não o número bruto de gente. Uma turma em grupo cheia (4)
-// + individual cheia (1) = 5 pessoas em 5 vagas = 100% cheio, mesmo peso que duas
-// turmas em grupo cheias (4+4=8 pessoas em 8 vagas, também 100%).
-function construirHeatmapTenis(aulas, periodoInicio, periodoFim) {
-  const porDataHora = {}
-  aulas.forEach(a => {
-    if (getModalidadeDaAula(a) !== 'Tênis') return
-    const horaStr = horarioInicioDaAula(a)
-    if (!horaStr) return
-    const hora = horaStr.slice(0, 2)
-    const chave = `${a.data_aula}_${hora}`
-    const inscritos = (a.presencas || []).length
-    const individual = isAulaIndividual(a)
-    const vagas = individual ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
-    if (!porDataHora[chave]) porDataHora[chave] = { data: a.data_aula, hora, total: 0, grupo: 0, individual: 0, vagasTotal: 0 }
-    porDataHora[chave].total += inscritos
-    porDataHora[chave].vagasTotal += vagas
-    if (individual) porDataHora[chave].individual += inscritos
-    else porDataHora[chave].grupo += inscritos
-  })
-
-  const baldes = {}
-  Object.values(porDataHora).forEach(({ data, hora, total, grupo, individual, vagasTotal }) => {
-    const dia = diaSemanaDaData(data)
-    const chave = `${dia}_${hora}`
-    if (!baldes[chave]) baldes[chave] = { somaTotal: 0, somaGrupo: 0, somaIndividual: 0, somaVagas: 0 }
-    baldes[chave].somaTotal += total
-    baldes[chave].somaGrupo += grupo
-    baldes[chave].somaIndividual += individual
-    baldes[chave].somaVagas += vagasTotal
-  })
-
-  const contagemDiaSemana = contarOcorrenciasPorDiaSemana(periodoInicio, periodoFim)
-
-  const diasComDados = DIAS_TABELA_HEATMAP.filter(d =>
-    Object.keys(baldes).some(chave => chave.startsWith(`${d}_`))
-  )
-  const horasSet = new Set()
-  Object.keys(baldes).forEach(chave => horasSet.add(chave.split('_')[1]))
-  const horas = Array.from(horasSet).sort()
-
-  const celulas = {}
-  diasComDados.forEach(d => {
-    celulas[d] = {}
-    const denom = contagemDiaSemana[d] || 1
-    horas.forEach(h => {
-      const b = baldes[`${d}_${h}`]
-      if (!b) { celulas[d][h] = null; return }
-      const mediaVagas = b.somaVagas / denom
-      celulas[d][h] = {
-        media: b.somaTotal / denom,
-        mediaGrupo: b.somaGrupo / denom,
-        mediaIndividual: b.somaIndividual / denom,
-        mediaVagas,
-        ocupacao: mediaVagas > 0 ? Math.min(1, (b.somaTotal / denom) / mediaVagas) : 0,
-      }
-    })
-  })
-
-  return { dias: diasComDados, horas, celulas }
-}
 
 function empresaDaAula(aula) {
   const modalidade = getModalidadeDaAula(aula)
@@ -249,7 +137,7 @@ export async function buscarRelatorioMensal({ periodoInicio, periodoFim, empresa
       variacaoTaxaPresenca: variacao(atual.taxaPresenca, anterior.taxaPresenca),
       variacaoAlunosUnicos: variacao(atual.alunosUnicos, anterior.alunosUnicos),
     },
-    heatmapTenis: construirHeatmapTenis(aulas || [], inicio, fim),
+    heatmapTenis: construirHeatmapOcupacao(aulas || [], inicio, fim, 'Tênis'),
     periodo: { inicio, fim },
   }
 }
