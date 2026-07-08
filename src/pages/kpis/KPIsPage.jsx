@@ -13,8 +13,11 @@ const toastStyle = { background: '#1a1a1a', color: '#F0F2F5', border: '1px solid
 const COR_UNIDADE = { procopio: '#fcc825', beach_arena: '#cf1b9b' }
 
 export function KPIsPage() {
+  // "Mês atual" por padrão vai do dia 1 até hoje (o mês ainda não fechou) — mesma regra do
+  // botão "Mês atual" logo abaixo, pra clicar nele nunca parecer que "não fez nada" quando é
+  // exatamente o que já vem selecionado ao abrir a tela.
   const [periodoInicio, setPeriodoInicio] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
-  const [periodoFim, setPeriodoFim] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
+  const [periodoFim, setPeriodoFim] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [unidadesSelecionadas, setUnidadesSelecionadas] = useState([])
   const [modalidadesSelecionadas, setModalidadesSelecionadas] = useState([])
   const [gerando, setGerando] = useState(null)
@@ -29,9 +32,11 @@ export function KPIsPage() {
     periodoInicio, periodoFim, empresa: empresaPreview, modalidades: modalidadesSelecionadas,
   })
 
+  // Mês atual = do dia 1 até hoje (o mês ainda tá em andamento, não faz sentido pedir dado que
+  // ainda não aconteceu). Mês passado = ciclo completo, dia 1 até o último dia daquele mês.
   function selecionarMesAtual() {
     setPeriodoInicio(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
-    setPeriodoFim(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
+    setPeriodoFim(format(new Date(), 'yyyy-MM-dd'))
   }
   function selecionarMesPassado() {
     const mesPassado = subMonths(new Date(), 1)
