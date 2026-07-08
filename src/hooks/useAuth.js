@@ -32,6 +32,10 @@ export function useAuth() {
         setUser(session.user)
         // Só busca o perfil se ainda não tiver carregado
         if (!useAppStore.getState().perfil) {
+          // loading já pode estar false de um check anterior sem sessão (ex: tela de
+          // login) — sem isso, App.jsx renderiza as rotas com perfil ainda nulo, o role
+          // cai no fallback mais restrito por um instante e já redireciona pra fora da Home
+          setLoading(true)
           fetchPerfil(session.user.id)
         } else {
           setLoading(false)

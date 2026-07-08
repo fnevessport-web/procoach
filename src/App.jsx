@@ -13,6 +13,7 @@ import { EsqueciSenha } from './pages/auth/EsqueciSenha'
 import { TrocarSenha } from './pages/auth/TrocarSenha'
 import { SelecionarEmpresaPage } from './pages/auth/SelecionarEmpresaPage'
 import { HomePage } from './pages/home/HomePage'
+import { HomeLeitura } from './pages/home/HomeLeitura'
 import { ModalidadePage } from './pages/modalidades/ModalidadePage'
 import { AulasPage } from './pages/aulas/AulasPage'
 import { CadastrosPage } from './pages/cadastros/CadastrosPage'
@@ -80,7 +81,9 @@ function AppRouter() {
       <ModalTurmaAtivada />
       <InstallBanner />
       <Routes>
-        <Route path="/" element={homeRoute === '/' ? <HomePage /> : <Navigate to={homeRoute} replace />} />
+        <Route path="/" element={
+          homeRoute !== '/' ? <Navigate to={homeRoute} replace /> : role === 'leitura' ? <HomeLeitura /> : <HomePage />
+        } />
         <Route path="/modalidade/:nomeModalidade" element={
           <RouteGuard permitido={homeRoute === '/'} homeRoute={homeRoute}><ModalidadePage /></RouteGuard>
         } />

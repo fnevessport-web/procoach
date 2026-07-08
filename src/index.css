@@ -270,6 +270,23 @@ button {
   }
 }
 
+/* ── Home leitura (clube): "ao vivo agora" compacto — só ~2 linhas visíveis, resto rola ── */
+.ao-vivo-grid-compact {
+  max-height: 210px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+@media (min-width: 768px) {
+  .ao-vivo-grid-compact {
+    max-height: 230px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+
 /* ── Home: Modalidades — icone+texto empilhado no mobile, lado a lado preenchendo a grade no desktop ── */
 .modalidades-row {
   display: flex;

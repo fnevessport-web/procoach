@@ -1,14 +1,15 @@
 import { ChevronUp } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
+import { usePermissions } from '../../hooks/usePermissions'
 import { getNavItems } from '../../constants/navItems'
 
 export function BottomNav() {
-  const { perfil, navRecolhida, setNavRecolhida } = useAppStore()
+  const { navRecolhida, setNavRecolhida } = useAppStore()
+  const { role } = usePermissions()
   const location = useLocation()
   const navigate = useNavigate()
 
-  const role = perfil?.role || 'professor'
   const items = getNavItems(role)
 
   if (navRecolhida) {
