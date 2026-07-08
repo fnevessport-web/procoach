@@ -576,13 +576,11 @@ export function FinanceiroPage() {
   const maxValorProf = Math.max(...allProfs.map(p => p.totalValor + (extrasMapGeral[p.id] || 0)), 1)
   // boletos_professor agora é único por (professor, mês, ano, EMPRESA) — sem o filtro de
   // empresa aqui, quem trabalha nas duas (ex: Fernando, Michel) tinha a NF/boleto de uma
-  // sobrescrevendo o da outra no mesmo mês, porque caía na mesma linha.
+  // sobrescrevendo o da outra no mesmo mês, porque caía na mesma linha. Só mostra a NF da
+  // empresa que está sendo vista agora (empresaId) — quem cuida do financeiro de uma empresa
+  // não deve ver a NF da outra.
   const boletoMes = boletos.find(b => b.mes === mes && b.ano === anoSel && b.empresa === empresaId)
   const ehProfessorMultiEmpresa = !!(professorSel?.trabalha_procopio && professorSel?.trabalha_beach)
-  const outraEmpresaId = empresaId === 'procopio' ? 'beach_arena' : 'procopio'
-  const boletoOutraEmpresa = ehProfessorMultiEmpresa
-    ? boletos.find(b => b.mes === mes && b.ano === anoSel && b.empresa === outraEmpresaId)
-    : null
   const totalAulasProf = aulasProf.length
   const valorUnitarioProf = empresaId === 'beach_arena' && professorSel?.valor_aula_beach
     ? Number(professorSel.valor_aula_beach)
@@ -1179,26 +1177,21 @@ export function FinanceiroPage() {
           </div>
         )}
 
-        {/* NF — um campo por padrão; quem trabalha nas duas empresas (Procópio + Beach
-            Arena) ganha um campo pra cada uma, pra não ter uma NF sobrescrevendo a outra
-            nem precisar trocar de tela pra anexar a da outra empresa. */}
+        {/* NF — sempre só a da empresa que está sendo vista agora (empresaId). Quem cuida do
+            financeiro da Beach Arena não deve ver (nem poder anexar) a NF da Procópio de um
+            colaborador que trabalha nas duas, e vice-versa — cada visão de empresa mostra só
+            o que é dela. Pra ver a NF da outra empresa, troca de contexto pela navegação
+            normal (ex: menu Beach Arena → Procópio), não pelas duas juntas nessa tela. */}
         <div style={{
           backgroundColor: '#1a1a1a', borderRadius: '12px',
           border: '1px solid rgba(252,200,37,0.15)', padding: '14px',
-          marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '12px',
+          marginBottom: '14px',
         }}>
           <CampoNF
             titulo={`NF${ehProfessorMultiEmpresa ? ` — ${EMPRESAS[empresaId].nome}` : ''} — ${MESES_ABREV[mesSel]}/${anoSel}`}
             boleto={boletoMes}
             onUpload={e => handleUploadNF(e, empresaId)}
           />
-          {ehProfessorMultiEmpresa && (
-            <CampoNF
-              titulo={`NF — ${EMPRESAS[outraEmpresaId].nome} — ${MESES_ABREV[mesSel]}/${anoSel}`}
-              boleto={boletoOutraEmpresa}
-              onUpload={e => handleUploadNF(e, outraEmpresaId)}
-            />
-          )}
         </div>
 
         {/* Resumo por dia */}
