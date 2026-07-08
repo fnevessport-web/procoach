@@ -166,7 +166,7 @@ export async function buscarRelatorioPresencaAlunos({ periodoInicio, periodoFim,
     ;(a.presencas || []).forEach(p => {
       if (!p.aluno_id) return
       if (!grupo[p.aluno_id]) {
-        grupo[p.aluno_id] = { nome: p.alunos?.nome || 'Aluno sem nome', aulasVinculadas: 0, presentes: 0, faltas: 0, faltasJustificadas: 0, registros: [] }
+        grupo[p.aluno_id] = { nome: p.alunos?.nome || 'Aluno sem nome', aulasVinculadas: 0, presentes: 0, faltas: 0, faltasJustificadas: 0, reposicoes: 0, registros: [] }
       }
       const registro = grupo[p.aluno_id]
       registro.aulasVinculadas++
@@ -176,6 +176,10 @@ export async function buscarRelatorioPresencaAlunos({ periodoInicio, periodoFim,
       if (presente) registro.presentes++
       else if (falta) registro.faltas++
       else if (faltaJustificada) registro.faltasJustificadas++
+      // Reposição é um tipo de participação (não um status de presença) — o aluno tá ali
+      // repondo uma aula perdida em outro dia. Conta à parte, sem tirar da contagem de
+      // presença/falta acima, só pra deixar visível quantas dessas aulas foram reposição.
+      if (p.tipo_participacao === 'reposicao') registro.reposicoes++
       // Falta justificada (aula cancelada por chuva, atestado etc.) não é culpa do aluno —
       // não entra na % de presença nem na sequência de risco de evasão, como se a aula não
       // tivesse acontecido pra fins dessas duas contas.

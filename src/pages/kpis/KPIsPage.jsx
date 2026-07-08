@@ -84,6 +84,53 @@ export function KPIsPage() {
         </h1>
       </div>
 
+      {/* Filtros — ficam ANTES dos botões de exportar de propósito: assim o período que vai
+          pro relatório é sempre o último que a pessoa viu e confirmou, não um valor que
+          ficou selecionado de uma visita anterior à página. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px', width: '100%', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={selecionarMesAtual} style={{
+            flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid #2a2a2a',
+            background: '#1a1a1a', color: '#888', fontSize: '12px', cursor: 'pointer',
+          }}>Mês atual</button>
+          <button onClick={selecionarMesPassado} style={{
+            flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid #2a2a2a',
+            background: '#1a1a1a', color: '#888', fontSize: '12px', cursor: 'pointer',
+          }}>Mês passado</button>
+        </div>
+        <Input type="date" label="De" value={periodoInicio} onChange={e => e.target.value && setPeriodoInicio(e.target.value)} />
+        <Input type="date" label="Até" value={periodoFim} onChange={e => e.target.value && setPeriodoFim(e.target.value)} />
+        <Select label="Unidade" value={empresa} onChange={e => setEmpresa(e.target.value)}>
+          <option value="">Ambas</option>
+          {EMPRESAS.map(e => <option key={e.valor} value={e.valor}>{e.label}</option>)}
+        </Select>
+        <Select label="Modalidade" value={modalidade} onChange={e => setModalidade(e.target.value)}>
+          <option value="">Todas</option>
+          {modalidades?.map(m => <option key={m.id} value={m.nome}>{m.nome}</option>)}
+        </Select>
+      </div>
+
+      {/* Confirmação visível do período que será usado — pega justamente o caso de alguém
+          digitar uma data inválida (ex: 31/06) no input nativo: o navegador rejeita em
+          silêncio e mantém o valor antigo, então sem isso aqui a pessoa não teria como notar
+          antes de exportar um período errado. */}
+      {(() => {
+        const mesInicio = periodoInicio.slice(0, 7)
+        const mesFim = periodoFim.slice(0, 7)
+        const suspeito = mesInicio !== mesFim
+        return (
+          <div style={{
+            padding: '10px 14px', borderRadius: '10px', marginBottom: '20px',
+            backgroundColor: suspeito ? 'rgba(239,68,68,0.08)' : '#1a1a1a',
+            border: suspeito ? '1px solid rgba(239,68,68,0.35)' : '1px solid #2a2a2a',
+            fontSize: '12px', color: suspeito ? '#EF4444' : '#888',
+          }}>
+            Período selecionado: <strong>{format(new Date(periodoInicio + 'T12:00'), 'dd/MM/yyyy')} a {format(new Date(periodoFim + 'T12:00'), 'dd/MM/yyyy')}</strong>
+            {suspeito && ' — atenção: as datas caem em meses diferentes, confira se é isso mesmo antes de exportar.'}
+          </div>
+        )
+      })()}
+
       {rel && (
         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
           {EMPRESAS.map(e => (
@@ -127,30 +174,6 @@ export function KPIsPage() {
           ))}
         </div>
       )}
-
-      {/* Filtros */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', width: '100%', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={selecionarMesAtual} style={{
-            flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid #2a2a2a',
-            background: '#1a1a1a', color: '#888', fontSize: '12px', cursor: 'pointer',
-          }}>Mês atual</button>
-          <button onClick={selecionarMesPassado} style={{
-            flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid #2a2a2a',
-            background: '#1a1a1a', color: '#888', fontSize: '12px', cursor: 'pointer',
-          }}>Mês passado</button>
-        </div>
-        <Input type="date" label="De" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)} />
-        <Input type="date" label="Até" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} />
-        <Select label="Unidade" value={empresa} onChange={e => setEmpresa(e.target.value)}>
-          <option value="">Ambas</option>
-          {EMPRESAS.map(e => <option key={e.valor} value={e.valor}>{e.label}</option>)}
-        </Select>
-        <Select label="Modalidade" value={modalidade} onChange={e => setModalidade(e.target.value)}>
-          <option value="">Todas</option>
-          {modalidades?.map(m => <option key={m.id} value={m.nome}>{m.nome}</option>)}
-        </Select>
-      </div>
 
       {isLoading ? <Loading /> : rel ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', boxSizing: 'border-box' }}>

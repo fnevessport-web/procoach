@@ -585,17 +585,17 @@ export async function exportarRelatorioPresencaPDF(porModalidade, periodo, { emp
     garantirEspaco(60)
     autoTable(doc, {
       startY: cursorY,
-      head: [['Aluno', 'Aulas', 'Presenças', 'Faltas', 'Falta Just.', '% Presença', 'Observação']],
-      body: alunos.map(a => [a.nome, String(a.aulasVinculadas), String(a.presentes), String(a.faltas), String(a.faltasJustificadas), `${a.pctPresenca}%`, a.risco || '—']),
+      head: [['Aluno', 'Aulas', 'Presenças', 'Faltas', 'Falta Just.', 'Reposição', '% Presença', 'Observação']],
+      body: alunos.map(a => [a.nome, String(a.aulasVinculadas), String(a.presentes), String(a.faltas), String(a.faltasJustificadas), String(a.reposicoes), `${a.pctPresenca}%`, a.risco || '—']),
       theme: 'plain',
       styles: { fontSize: 8.5, cellPadding: 6, valign: 'middle', textColor: COR_TINTA, lineColor: [215, 210, 200], lineWidth: 0.5 },
       headStyles: { fillColor: COR_MARINHO, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 8 },
       alternateRowStyles: { fillColor: [249, 247, 243] },
-      columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' } },
+      columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' }, 6: { halign: 'center' } },
       margin: { left: margem, right: margem },
       willDrawPage: pintarFundo,
       didParseCell(data) {
-        if (data.section !== 'body' || data.column.index !== 6) return
+        if (data.section !== 'body' || data.column.index !== 7) return
         const texto = String(data.cell.raw || '')
         if (texto.includes('Risco alto')) { data.cell.styles.textColor = COR_VERMELHO; data.cell.styles.fontStyle = 'bold' }
         else if (texto.includes('Atenção')) data.cell.styles.textColor = COR_LARANJA
@@ -697,19 +697,20 @@ function montarPaginaHtml({ alunos, modalidade, parte, totalPartes, nomeEmpresa,
     <table style="width:100%; border-collapse:collapse; font-size:11px; table-layout:fixed;">
       <thead>
         <tr style="background:${rgb(COR_MARINHO)}; color:${rgb(COR_BRANCO)};">
-          <th style="text-align:left; padding:8px 10px; font-size:10px; width:38%;">Aluno</th>
-          <th style="padding:8px 4px; font-size:10px; width:9%;">Aulas</th>
-          <th style="padding:8px 4px; font-size:10px; width:11%;">Presenças</th>
-          <th style="padding:8px 4px; font-size:10px; width:9%;">Faltas</th>
-          <th style="padding:8px 4px; font-size:10px; width:11%;">Falta Just.</th>
-          <th style="padding:8px 4px; font-size:10px; width:10%;">% Presença</th>
-          <th style="text-align:left; padding:8px 10px; font-size:10px; width:22%;">Observação</th>
+          <th style="text-align:left; padding:8px 10px; font-size:10px; width:30%;">Aluno</th>
+          <th style="padding:8px 4px; font-size:10px; width:8%;">Aulas</th>
+          <th style="padding:8px 4px; font-size:10px; width:10%;">Presenças</th>
+          <th style="padding:8px 4px; font-size:10px; width:8%;">Faltas</th>
+          <th style="padding:8px 4px; font-size:10px; width:10%;">Falta Just.</th>
+          <th style="padding:8px 4px; font-size:10px; width:10%;">Reposição</th>
+          <th style="padding:8px 4px; font-size:10px; width:9%;">% Presença</th>
+          <th style="text-align:left; padding:8px 10px; font-size:10px; width:15%;">Observação</th>
         </tr>
       </thead>
       <tbody>
         ${Array.from({ length: LINHAS_POR_PAGINA_PNG }, (_, i) => {
           const a = alunos[i]
-          if (!a) return `<tr style="height:28px;"><td colspan="7"></td></tr>`
+          if (!a) return `<tr style="height:28px;"><td colspan="8"></td></tr>`
           const risco = a.risco || '—'
           const estiloRisco = corRisco(risco)
           const bgLinha = i % 2 === 1 ? 'rgba(0,0,0,0.03)' : 'transparent'
@@ -720,6 +721,7 @@ function montarPaginaHtml({ alunos, modalidade, parte, totalPartes, nomeEmpresa,
               <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${a.presentes}</td>
               <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${a.faltas}</td>
               <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${a.faltasJustificadas}</td>
+              <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${a.reposicoes}</td>
               <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${a.pctPresenca}%</td>
               <td style="padding:6px 10px; border-bottom:1px solid rgba(0,0,0,0.08); font-size:10px; color:${estiloRisco.color || rgb(COR_TINTA)}; font-weight:${estiloRisco.fontWeight || '400'};">${risco}</td>
             </tr>`
