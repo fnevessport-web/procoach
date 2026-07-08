@@ -48,16 +48,17 @@ export function KPIsPage() {
     }
   }
 
-  // Lista de presença por aluno, separada por modalidade — sempre pra unidade inteira no
-  // período selecionado, igual o relatório executivo acima (independe do filtro de Modalidade
-  // da tela, já que o objetivo é justamente juntar todas as modalidades num relatório só, em
-  // seções). PDF serve pra imprimir/enviar; PNG (fundo transparente, em partes por modalidade)
-  // serve pra colar direto dentro de outro relatório em alta resolução.
+  // Lista de presença por aluno, separada por modalidade, pra unidade inteira no período
+  // selecionado. Se o filtro de Modalidade da tela estiver marcado (não "Todas"), o export sai
+  // só com aquela modalidade — senão traz todas juntas, em seções. PDF serve pra imprimir/
+  // enviar; PNG (fundo transparente, em partes por modalidade) serve pra colar direto dentro de
+  // outro relatório em alta resolução.
   async function handleExportarPresenca(empresaAlvo, formato) {
     const chave = `${empresaAlvo}-${formato}`
     setGerandoPresenca(chave)
     try {
       const dados = await buscarRelatorioPresencaAlunos({ periodoInicio, periodoFim, empresa: empresaAlvo })
+      if (modalidade) dados.porModalidade = dados.porModalidade.filter(g => g.modalidade === modalidade)
       if (formato === 'pdf') {
         await exportarRelatorioPresencaPDF(dados.porModalidade, dados.periodo, { empresa: empresaAlvo })
         toast.success('PDF gerado!', { style: toastStyle })
@@ -97,7 +98,9 @@ export function KPIsPage() {
 
       {rel && (
         <div style={{ marginBottom: '20px' }}>
-          <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px' }}>Presença por aluno (separado por modalidade)</div>
+          <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px' }}>
+            {modalidade ? `Presença por aluno — só ${modalidade}` : 'Presença por aluno (todas as modalidades, em seções)'}
+          </div>
           {EMPRESAS.map(e => (
             <div key={e.valor} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
               <div style={{ flex: 1, fontSize: '12px', color: '#888', display: 'flex', alignItems: 'center' }}>{e.label}</div>
