@@ -134,6 +134,48 @@ function PixButton({ chave }) {
   )
 }
 
+// Um campo de anexo/visualização de NF — usado 1x pra professor de empresa só, 2x (uma por
+// empresa) pra quem trabalha em ambas.
+function CampoNF({ titulo, boleto, onUpload }) {
+  return (
+    <div>
+      <div style={{ fontSize: '10px', color: '#fcc825', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
+        {titulo}
+      </div>
+      {boleto?.nf_url ? (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <a href={boleto.nf_url} target="_blank" rel="noreferrer" style={{
+            flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '10px 14px', borderRadius: '10px',
+            border: '1px solid rgba(252,200,37,0.3)', backgroundColor: 'rgba(252,200,37,0.06)',
+            color: '#fcc825', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
+          }}>
+            <FileText size={14} /> Ver Nota Fiscal
+            <ExternalLink size={12} style={{ marginLeft: 'auto' }} />
+          </a>
+          <label style={{
+            flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '10px', borderRadius: '10px', border: '1px solid #2a2a2a', cursor: 'pointer', color: '#555',
+          }}>
+            <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={onUpload} />
+            <Upload size={14} />
+          </label>
+        </div>
+      ) : (
+        <label style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+          padding: '10px', borderRadius: '10px',
+          border: '1px dashed rgba(252,200,37,0.15)',
+          color: '#888', fontSize: '12px', cursor: 'pointer',
+        }}>
+          <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={onUpload} />
+          <Upload size={13} /> Anexar NF
+        </label>
+      )}
+    </div>
+  )
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // PinModal — bottom sheet com teclado numérico
 // ──────────────────────────────────────────────────────────────────────
@@ -532,7 +574,15 @@ export function FinanceiroPage() {
   const totalOutros = outrosCustos.reduce((s, c) => s + Number(c.valor), 0)
   const totalCustos = totalProfessores + totalOutros
   const maxValorProf = Math.max(...allProfs.map(p => p.totalValor + (extrasMapGeral[p.id] || 0)), 1)
-  const boletoMes = boletos.find(b => b.mes === mes && b.ano === anoSel)
+  // boletos_professor agora é único por (professor, mês, ano, EMPRESA) — sem o filtro de
+  // empresa aqui, quem trabalha nas duas (ex: Fernando, Michel) tinha a NF/boleto de uma
+  // sobrescrevendo o da outra no mesmo mês, porque caía na mesma linha.
+  const boletoMes = boletos.find(b => b.mes === mes && b.ano === anoSel && b.empresa === empresaId)
+  const ehProfessorMultiEmpresa = !!(professorSel?.trabalha_procopio && professorSel?.trabalha_beach)
+  const outraEmpresaId = empresaId === 'procopio' ? 'beach_arena' : 'procopio'
+  const boletoOutraEmpresa = ehProfessorMultiEmpresa
+    ? boletos.find(b => b.mes === mes && b.ano === anoSel && b.empresa === outraEmpresaId)
+    : null
   const totalAulasProf = aulasProf.length
   const valorUnitarioProf = empresaId === 'beach_arena' && professorSel?.valor_aula_beach
     ? Number(professorSel.valor_aula_beach)
@@ -586,30 +636,32 @@ export function FinanceiroPage() {
     e.target.value = ''
     if (!file || !professorSel?.id) return
     try {
-      const path = `professores/${professorSel.id}/boleto_${anoSel}_${mes}.pdf`
+      const path = `professores/${professorSel.id}/boleto_${empresaId}_${anoSel}_${mes}.pdf`
       const { error: upErr } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
       if (upErr) throw upErr
       const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
       await supabase.from('boletos_professor').upsert({
-        professor_id: professorSel.id, mes, ano: anoSel, boleto_url: publicUrl, status: 'pendente',
-      }, { onConflict: 'professor_id,mes,ano' })
+        professor_id: professorSel.id, mes, ano: anoSel, empresa: empresaId, boleto_url: publicUrl, status: 'pendente',
+      }, { onConflict: 'professor_id,mes,ano,empresa' })
       qc.invalidateQueries({ queryKey: ['boletos', professorSel.id] })
       toast.success('Boleto anexado!', { style: toastStyle })
     } catch (err) { toast.error('Erro ao anexar boleto: ' + err.message, { style: toastStyle }) }
   }
 
-  async function handleUploadNF(e) {
+  // `empresaAlvo` deixa anexar a NF da OUTRA empresa (pra quem trabalha nas duas) sem sair
+  // dessa tela — por padrão é a empresa que já está sendo vista.
+  async function handleUploadNF(e, empresaAlvo = empresaId) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file || !professorSel?.id) return
     try {
-      const path = `professores/${professorSel.id}/nf_${anoSel}_${mes}.pdf`
+      const path = `professores/${professorSel.id}/nf_${empresaAlvo}_${anoSel}_${mes}.pdf`
       const { error: upErr } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
       if (upErr) throw upErr
       const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
       await supabase.from('boletos_professor').upsert({
-        professor_id: professorSel.id, mes, ano: anoSel, nf_url: publicUrl,
-      }, { onConflict: 'professor_id,mes,ano' })
+        professor_id: professorSel.id, mes, ano: anoSel, empresa: empresaAlvo, nf_url: publicUrl,
+      }, { onConflict: 'professor_id,mes,ano,empresa' })
       qc.invalidateQueries({ queryKey: ['boletos', professorSel.id] })
       toast.success('NF anexada!', { style: toastStyle })
     } catch (err) { toast.error('Erro ao anexar NF: ' + err.message, { style: toastStyle }) }
@@ -1127,44 +1179,25 @@ export function FinanceiroPage() {
           </div>
         )}
 
-        {/* NF — universal para todos os professores */}
+        {/* NF — um campo por padrão; quem trabalha nas duas empresas (Procópio + Beach
+            Arena) ganha um campo pra cada uma, pra não ter uma NF sobrescrevendo a outra
+            nem precisar trocar de tela pra anexar a da outra empresa. */}
         <div style={{
           backgroundColor: '#1a1a1a', borderRadius: '12px',
           border: '1px solid rgba(252,200,37,0.15)', padding: '14px',
-          marginBottom: '14px',
+          marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '12px',
         }}>
-          <div style={{ fontSize: '10px', color: '#fcc825', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
-            NF — {MESES_ABREV[mesSel]}/{anoSel}
-          </div>
-          {boletoMes?.nf_url ? (
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <a href={boletoMes.nf_url} target="_blank" rel="noreferrer" style={{
-                flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '10px 14px', borderRadius: '10px',
-                border: '1px solid rgba(252,200,37,0.3)', backgroundColor: 'rgba(252,200,37,0.06)',
-                color: '#fcc825', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
-              }}>
-                <FileText size={14} /> Ver Nota Fiscal
-                <ExternalLink size={12} style={{ marginLeft: 'auto' }} />
-              </a>
-              <label style={{
-                flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: '10px', borderRadius: '10px', border: '1px solid #2a2a2a', cursor: 'pointer', color: '#555',
-              }}>
-                <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadNF} />
-                <Upload size={14} />
-              </label>
-            </div>
-          ) : (
-            <label style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              padding: '10px', borderRadius: '10px',
-              border: '1px dashed rgba(252,200,37,0.15)',
-              color: '#888', fontSize: '12px', cursor: 'pointer',
-            }}>
-              <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadNF} />
-              <Upload size={13} /> Anexar NF
-            </label>
+          <CampoNF
+            titulo={`NF${ehProfessorMultiEmpresa ? ` — ${EMPRESAS[empresaId].nome}` : ''} — ${MESES_ABREV[mesSel]}/${anoSel}`}
+            boleto={boletoMes}
+            onUpload={e => handleUploadNF(e, empresaId)}
+          />
+          {ehProfessorMultiEmpresa && (
+            <CampoNF
+              titulo={`NF — ${EMPRESAS[outraEmpresaId].nome} — ${MESES_ABREV[mesSel]}/${anoSel}`}
+              boleto={boletoOutraEmpresa}
+              onUpload={e => handleUploadNF(e, outraEmpresaId)}
+            />
           )}
         </div>
 
