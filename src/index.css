@@ -351,60 +351,12 @@ button {
   }
 }
 
-/* ── Home leitura (clube): conteúdo principal + barra lateral de modalidades no desktop ── */
-.home-leitura-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-}
-@media (min-width: 768px) {
-  .home-leitura-layout {
-    grid-template-columns: 1fr 64px;
-    align-items: start;
-  }
-}
-
+/* ── Home leitura (clube): fileira de modalidades só no mobile — no desktop os
+   atalhos ficam na barra lateral do app (Sidebar.jsx), junto do Início ── */
 .modalidades-mobile-row { display: block; }
-.modalidades-rail { display: none; }
 @media (min-width: 768px) {
   .modalidades-mobile-row { display: none; }
-  .modalidades-rail {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    position: sticky;
-    top: 16px;
-  }
 }
-
-.modalidade-rail-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  overflow: hidden;
-  width: 44px;
-  height: 44px;
-  padding: 9px;
-  border-radius: 12px;
-  background: #1a1a1a;
-  border: 1px solid #252525;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: width 200ms ease;
-  box-sizing: border-box;
-  position: relative;
-  z-index: 1;
-}
-.modalidade-rail-item:hover {
-  width: 170px;
-  z-index: 2;
-}
-.modalidade-rail-icon { width: 26px; height: 26px; flex-shrink: 0; object-fit: contain; }
-.modalidade-rail-label {
-  font-size: 12px; font-weight: 600; color: #F0F2F5;
-  opacity: 0; transition: opacity 150ms ease;
-}
-.modalidade-rail-item:hover .modalidade-rail-label { opacity: 1; }
 
 /* ── Cadastros: grade de colaboradores/professores responsiva ── */
 .professores-grid {

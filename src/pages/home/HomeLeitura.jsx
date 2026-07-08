@@ -79,26 +79,6 @@ function getIniciais(nome) {
   return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
 }
 
-function ModalidadesRail({ modalidades, onSelect }) {
-  if (!modalidades?.length) return null
-  return (
-    <div className="modalidades-rail">
-      {modalidades.map(mod => {
-        const icone = ICONES_MODALIDADES[mod.nome]
-        return (
-          <button key={mod.id} onClick={() => onSelect(mod)} className="modalidade-rail-item" title={mod.nome}>
-            {icone
-              ? <img src={icone} alt={mod.nome} className="modalidade-rail-icon" />
-              : <span className="modalidade-rail-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#555' }}>{mod.nome[0]}</span>
-            }
-            <span className="modalidade-rail-label">{mod.nome}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 function ModalidadesRow({ modalidades, onSelect }) {
   if (!modalidades?.length) return null
   return (
@@ -156,8 +136,7 @@ export function HomeLeitura() {
   }
 
   return (
-    <div className="fade-in home-leitura-layout" style={{ minHeight: '100%' }}>
-    <div>
+    <div className="fade-in" style={{ minHeight: '100%' }}>
 
       {/* Saudação */}
       <div style={{ margin: '16px 0 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -303,7 +282,7 @@ export function HomeLeitura() {
         )}
       </div>
 
-      {/* Modalidades — só no mobile; no desktop vira a barra lateral */}
+      {/* Modalidades — só no mobile; no desktop os atalhos ficam na barra lateral do app, junto do Início */}
       <ModalidadesRow modalidades={modalidades} onSelect={selectModalidade} />
 
       {/* Grade completa */}
@@ -313,9 +292,6 @@ export function HomeLeitura() {
         </h2>
         <AulasCoordenador somenteLeitura />
       </div>
-    </div>
-
-    <ModalidadesRail modalidades={modalidades} onSelect={selectModalidade} />
     </div>
   )
 }
