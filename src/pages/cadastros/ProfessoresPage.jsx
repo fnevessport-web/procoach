@@ -73,7 +73,7 @@ const FORM_VAZIO = {
   id: null, nome: '', email: '', telefone: '', instagram: '', apelido: '',
   tem_cref: false, numero_cref: '', cref_url: '',
   cnpj: '', razao_social: '',
-  modalidade_id: '', modalidades_ids: [], valor_aula: '', valor_aula_beach: '', trabalha_procopio: true, trabalha_beach: false, salario_fixo: '', funcao: 'professor', ativo: true,
+  modalidade_id: '', modalidades_ids: [], valor_aula: '', valor_aula_beach: '', trabalha_procopio: true, trabalha_beach: false, salario_fixo_procopio: '', salario_fixo_beach: '', funcao: 'professor', ativo: true,
   nascimento: '', cidade_nascimento: '', estado_nascimento: '',
   cpf: '', cep: '', endereco: '', numero: '', complemento: '',
   bairro: '', cidade: '', estado: '', data_inicio: '',
@@ -234,7 +234,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   const [mesSelecionado, setMesSelecionado] = useState(null)
   const [diaSelecionado, setDiaSelecionado] = useState(null)
   const [modalExtra, setModalExtra] = useState(false)
-  const [formExtra, setFormExtra] = useState({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '' })
+  const [formExtra, setFormExtra] = useState({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '', empresa: '' })
   const [salvandoExtra, setSalvandoExtra] = useState(false)
   const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear())
   const [filtroFuncao, setFiltroFuncao] = useState('todos')
@@ -463,7 +463,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
     setForm({
       id: prof.id, nome: prof.nome || '', email: prof.email || '',
       telefone: prof.telefone || '', instagram: prof.instagram || '',
-      modalidade_id: prof.modalidade_id || '', modalidades_ids: prof.modalidades_ids || [], valor_aula: prof.valor_aula || '', valor_aula_beach: prof.valor_aula_beach || '', trabalha_procopio: prof.trabalha_procopio !== false, trabalha_beach: !!prof.trabalha_beach, salario_fixo: prof.salario_fixo || '', funcao: prof.funcao || 'professor',
+      modalidade_id: prof.modalidade_id || '', modalidades_ids: prof.modalidades_ids || [], valor_aula: prof.valor_aula || '', valor_aula_beach: prof.valor_aula_beach || '', trabalha_procopio: prof.trabalha_procopio !== false, trabalha_beach: !!prof.trabalha_beach, salario_fixo_procopio: prof.salario_fixo_procopio || '', salario_fixo_beach: prof.salario_fixo_beach || '', funcao: prof.funcao || 'professor',
       ativo: prof.ativo !== false, nascimento: prof.nascimento || '',
       cidade_nascimento: prof.cidade_nascimento || '',
       estado_nascimento: prof.estado_nascimento || '',
@@ -530,7 +530,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       modalidade_id: form.modalidades_ids?.[0] || form.modalidade_id || null,
       modalidades_ids: form.modalidades_ids?.length > 0 ? form.modalidades_ids : null,
       funcao: form.funcao || 'professor',
-      salario_fixo: form.salario_fixo ? parseFloat(String(form.salario_fixo).replace(',', '.')) : null,
+      salario_fixo_procopio: form.salario_fixo_procopio ? parseFloat(String(form.salario_fixo_procopio).replace(',', '.')) : null,
+      salario_fixo_beach: form.salario_fixo_beach ? parseFloat(String(form.salario_fixo_beach).replace(',', '.')) : null,
       valor_aula: form.valor_aula ? parseFloat(String(form.valor_aula).replace(',', '.')) : null,
       valor_aula_beach: form.valor_aula_beach ? parseFloat(String(form.valor_aula_beach).replace(',', '.')) : null,
       trabalha_procopio: form.trabalha_procopio,
@@ -732,16 +733,21 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
     return { qtd, valor: valorAulas + valorExtras, valorAulas, valorExtras }
   }
 
+  const extraEhMultiEmpresa = !!(cardAberto?.trabalha_procopio && cardAberto?.trabalha_beach)
+
   async function handleSalvarExtra() {
     if (!formExtra.descricao.trim() || !formExtra.valor) return alert('Preencha todos os campos')
+    if (extraEhMultiEmpresa && !formExtra.empresa) return alert('Selecione a empresa (Procópio ou Beach Arena)')
     setSalvandoExtra(true)
     const d = new Date(formExtra.data_pagamento + 'T12:00')
+    const empresaFinal = formExtra.empresa || (cardAberto.trabalha_beach ? 'beach_arena' : 'procopio')
     try {
       if (formExtra.id) {
         await supabase.from('pagamentos_extras').update({
           data_pagamento: formExtra.data_pagamento,
           descricao: formExtra.descricao,
           valor: parseFloat(String(formExtra.valor).replace(',', '.')),
+          empresa: empresaFinal,
         }).eq('id', formExtra.id)
       } else {
         await supabase.from('pagamentos_extras').insert({
@@ -751,10 +757,11 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
         valor: parseFloat(String(formExtra.valor).replace(',', '.')),
         mes: d.getMonth() + 1,
         ano: d.getFullYear(),
+        empresa: empresaFinal,
       })
       }
       qc.invalidateQueries({ queryKey: ['pagamentos_extras', cardAberto.id] })
-      setFormExtra({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '' })
+      setFormExtra({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '', empresa: '' })
       setModalExtra(false)
     } catch (err) { alert('Erro: ' + err.message) }
     finally { setSalvandoExtra(false) }
@@ -1284,6 +1291,14 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                       <input style={inputStyle} placeholder="Ex: Evento, Diária, Bônus..." value={formExtra.descricao} onChange={e => setFormExtra(f => ({ ...f, descricao: e.target.value }))} /></div>
                     <div><div style={labelStyle}>Valor (R$)</div>
                       <input type="number" style={inputStyle} placeholder="0,00" value={formExtra.valor} onChange={e => setFormExtra(f => ({ ...f, valor: e.target.value }))} /></div>
+                    {extraEhMultiEmpresa && (
+                      <div><div style={labelStyle}>Empresa</div>
+                        <select style={inputStyle} value={formExtra.empresa} onChange={e => setFormExtra(f => ({ ...f, empresa: e.target.value }))}>
+                          <option value="">Selecione...</option>
+                          <option value="procopio">Procópio</option>
+                          <option value="beach_arena">Beach Arena</option>
+                        </select></div>
+                    )}
                     <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                       <button onClick={() => setModalExtra(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
                       <button onClick={handleSalvarExtra} disabled={salvandoExtra} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
@@ -1403,7 +1418,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <span style={{ fontSize: '12px', fontWeight: '600', color: '#cf1b9b' }}>R${Number(ex.valor).toFixed(2).replace('.', ',')}</span>
-                                    <button onClick={() => { setFormExtra({ id: ex.id, data_pagamento: ex.data_pagamento, descricao: ex.descricao, valor: ex.valor }); setModalExtra(true) }} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(252,200,37,0.1)', color: '#fcc825', cursor: 'pointer' }}>
+                                    <button onClick={() => { setFormExtra({ id: ex.id, data_pagamento: ex.data_pagamento, descricao: ex.descricao, valor: ex.valor, empresa: ex.empresa || '' }); setModalExtra(true) }} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(252,200,37,0.1)', color: '#fcc825', cursor: 'pointer' }}>
                                       <Pencil size={11} />
                                     </button>
                                     <button onClick={async () => {
@@ -1466,11 +1481,23 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                       <option value="auxiliar">Auxiliar de Quadra</option>
                       <option value="coordenador">Coordenador</option>
                     </select></div>
-                  {form.funcao !== 'professor' && (
-                    <div><div style={labelStyle}>Salário Fixo (R$)</div>
-                      <input type="number" style={inputStyle} placeholder="0,00" value={form.salario_fixo || ''} onChange={e => set('salario_fixo', e.target.value)} /></div>
-                  )}
                 </div>
+
+                {form.funcao !== 'professor' && (
+                  form.trabalha_procopio && form.trabalha_beach ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div><div style={labelStyle}>Salário Fixo Procópio (R$)</div>
+                        <input type="number" style={inputStyle} placeholder="0,00" value={form.salario_fixo_procopio || ''} onChange={e => set('salario_fixo_procopio', e.target.value)} /></div>
+                      <div><div style={labelStyle}>Salário Fixo Beach Arena (R$)</div>
+                        <input type="number" style={inputStyle} placeholder="0,00" value={form.salario_fixo_beach || ''} onChange={e => set('salario_fixo_beach', e.target.value)} /></div>
+                    </div>
+                  ) : (
+                    <div><div style={labelStyle}>Salário Fixo (R$)</div>
+                      <input type="number" style={inputStyle} placeholder="0,00"
+                        value={(form.trabalha_beach ? form.salario_fixo_beach : form.salario_fixo_procopio) || ''}
+                        onChange={e => set(form.trabalha_beach ? 'salario_fixo_beach' : 'salario_fixo_procopio', e.target.value)} /></div>
+                  )
+                )}
 
                 <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>CREF</div>
                 <button onClick={() => set('tem_cref', !form.tem_cref)} style={{

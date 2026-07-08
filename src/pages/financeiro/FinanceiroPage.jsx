@@ -78,6 +78,16 @@ function fimMes(mes, ano) {
   return format(endOfMonth(new Date(ano, mes, 1)), 'yyyy-MM-dd')
 }
 
+// Um pagamento_extra "pertence" à empresa que está marcada nele (e.empresa).
+// Lançamentos antigos (de antes dessa coluna existir) não têm essa marcação —
+// pra esses, cai no mesmo critério que já era usado: Beach Arena só se o
+// colaborador trabalha lá, Procópio pra todo o resto.
+function extraPertenceAEmpresa(extraEmpresa, prof, empresaAlvo) {
+  if (extraEmpresa) return extraEmpresa === empresaAlvo
+  if (empresaAlvo === 'beach_arena') return !!prof?.trabalha_beach
+  return !(prof?.trabalha_beach === true && prof?.trabalha_procopio === false)
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Sub-componentes pequenos
 // ──────────────────────────────────────────────────────────────────────
@@ -512,7 +522,7 @@ export function FinanceiroPage() {
       if (!professorSel?.id) return []
       const { data, error } = await supabase
         .from('pagamentos_extras')
-        .select('id, descricao, valor, data_pagamento')
+        .select('id, descricao, valor, data_pagamento, empresa')
         .eq('professor_id', professorSel.id)
         .eq('mes', mes)
         .eq('ano', anoSel)
@@ -522,6 +532,9 @@ export function FinanceiroPage() {
     enabled: !!professorSel?.id,
     staleTime: 30000,
   })
+  // Só conta os extras da empresa que está sendo vista agora — quem trabalha nas
+  // duas empresas (ex: Fernando, Michel) tem lançamentos separados por empresa.
+  const extrasProfDaEmpresa = extrasProf.filter(e => extraPertenceAEmpresa(e.empresa, professorSel, empresaId))
 
   // Extras de todos os professores do mês (para a lista principal)
   const { data: todoExtras = [] } = useQuery({
@@ -529,7 +542,7 @@ export function FinanceiroPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pagamentos_extras')
-        .select('professor_id, valor, professores(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular)')
+        .select('professor_id, valor, descricao, empresa, professores(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, salario_fixo_procopio, salario_fixo_beach, ativo, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular)')
         .eq('mes', mes)
         .eq('ano', anoSel)
       if (error) return []
@@ -537,7 +550,10 @@ export function FinanceiroPage() {
     },
     staleTime: 30000,
   })
-  const extrasMapGeral = todoExtras.reduce((acc, e) => {
+  // Extras desta empresa (a que está sendo visualizada agora), pra não somar no
+  // total da Procópio um lançamento que é da Beach Arena e vice-versa.
+  const todoExtrasDaEmpresa = todoExtras.filter(e => extraPertenceAEmpresa(e.empresa, e.professores, empresaId))
+  const extrasMapGeral = todoExtrasDaEmpresa.reduce((acc, e) => {
     acc[e.professor_id] = (acc[e.professor_id] || 0) + Number(e.valor || 0)
     return acc
   }, {})
@@ -545,19 +561,55 @@ export function FinanceiroPage() {
   // Professores que têm só extras (sem aulas no período) — ex: salários manuais
   const custoProfIds = new Set(custosProf.map(p => p.id))
   const extrasOnlyMap = {}
-  todoExtras.forEach(e => {
+  todoExtrasDaEmpresa.forEach(e => {
     if (!e.professores || custoProfIds.has(e.professor_id)) return
-    const prof = e.professores
-    // Filtra por empresa: só mostra se o professor trabalha nessa empresa
-    // Se nenhum flag definido (null), cai no Procopio por padrão
-    if (empresaId === 'beach_arena' && !prof.trabalha_beach) return
-    if (empresaId === 'procopio' && prof.trabalha_beach === true && prof.trabalha_procopio === false) return
     if (!extrasOnlyMap[e.professor_id]) {
-      extrasOnlyMap[e.professor_id] = { ...prof, valorUnitario: 0, totalAulas: 0, totalValor: 0 }
+      extrasOnlyMap[e.professor_id] = { ...e.professores, valorUnitario: 0, totalAulas: 0, totalValor: 0 }
     }
   })
   const extrasOnlyProfs = Object.values(extrasOnlyMap)
   const allProfs = [...custosProf, ...extrasOnlyProfs]
+
+  // Gera automaticamente o lançamento de "Salário fixo" do mês (por empresa) pra
+  // quem tem esse valor configurado no cadastro e ainda não tem o lançamento —
+  // evita ter que criar manualmente todo mês pra quem ganha fixo (ex: Fernando, Michel).
+  const { data: colabsSalarioFixo = [] } = useQuery({
+    queryKey: ['colaboradores_salario_fixo'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('professores')
+        .select('id, nome, ativo, trabalha_procopio, trabalha_beach, salario_fixo_procopio, salario_fixo_beach')
+        .or('salario_fixo_procopio.not.is.null,salario_fixo_beach.not.is.null')
+      if (error) return []
+      return data || []
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+  useEffect(() => {
+    if (!empresaId) return
+    const jaTem = new Set(
+      todoExtras
+        .filter(e => e.descricao === 'Salário fixo' && e.empresa === empresaId)
+        .map(e => e.professor_id)
+    )
+    const faltando = colabsSalarioFixo.filter(c => {
+      if (c.ativo === false || jaTem.has(c.id)) return false
+      const valor = empresaId === 'beach_arena' ? c.salario_fixo_beach : c.salario_fixo_procopio
+      return valor > 0
+    })
+    if (faltando.length === 0) return
+    ;(async () => {
+      await supabase.from('pagamentos_extras').insert(faltando.map(c => ({
+        professor_id: c.id,
+        data_pagamento: dataInicio,
+        descricao: 'Salário fixo',
+        valor: empresaId === 'beach_arena' ? c.salario_fixo_beach : c.salario_fixo_procopio,
+        mes, ano: anoSel, empresa: empresaId,
+      })))
+      qc.invalidateQueries({ queryKey: ['pagamentos_extras_todos_fin', mes, anoSel] })
+      qc.invalidateQueries({ queryKey: ['pagamentos_extras_fin'] })
+    })()
+  }, [empresaId, mes, anoSel, todoExtras, colabsSalarioFixo, dataInicio, qc])
 
   const salvarLancamento = useSalvarLancamento()
   const removerLancamento = useRemoverLancamento()
@@ -585,7 +637,7 @@ export function FinanceiroPage() {
   const valorUnitarioProf = empresaId === 'beach_arena' && professorSel?.valor_aula_beach
     ? Number(professorSel.valor_aula_beach)
     : Number(professorSel?.valor_aula || professorSel?.valor_hora_aula || 0)
-  const totalExtrasProf = extrasProf.reduce((s, e) => s + Number(e.valor || 0), 0)
+  const totalExtrasProf = extrasProfDaEmpresa.reduce((s, e) => s + Number(e.valor || 0), 0)
   const totalPagarProf = totalAulasProf * valorUnitarioProf + totalExtrasProf
   const pagamentoConfirmado = professorSel ? pagamentosConfirmados.has(professorSel.id) : false
   const pagamentoAutorizado = professorSel ? liberacoes.has(professorSel.id) : false
@@ -975,7 +1027,7 @@ export function FinanceiroPage() {
             {totalAulasProf} aulas × {fmtBRL(valorUnitarioProf)}
             {totalExtrasProf > 0 && (
               <span style={{ color: '#cf1b9b', marginLeft: '6px' }}>
-                + {fmtBRL(totalExtrasProf)} extra{extrasProf.length > 1 ? 's' : ''}
+                + {fmtBRL(totalExtrasProf)} extra{extrasProfDaEmpresa.length > 1 ? 's' : ''}
               </span>
             )}
           </div>
