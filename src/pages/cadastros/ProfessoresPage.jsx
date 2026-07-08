@@ -63,6 +63,12 @@ const TIPOS_COLABORADOR = [
   { value: 'auxiliar', label: 'Auxiliar', funcao: 'auxiliar' },
 ]
 
+// Mesmo mapeamento funcao -> role usado no cadastro do zero (TIPOS_COLABORADOR), mas pra
+// quando o colaborador já existe (cardAberto.funcao) e só está ganhando acesso agora — usado
+// em handleCriarAcesso pra a API criar o perfil com o role certo em vez de cair no default
+// 'professor' dela (bug que já fez financeiro/gerente virar professor no perfis_usuario).
+const FUNCAO_PARA_ROLE = { professor: 'professor', gerente: 'gestor', financeiro: 'financeiro', auxiliar: 'auxiliar', coordenador: 'coordenador' }
+
 const FORM_VAZIO = {
   id: null, nome: '', email: '', telefone: '', instagram: '', apelido: '',
   tem_cref: false, numero_cref: '', cref_url: '',
@@ -368,11 +374,12 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
           nome: cardAberto.nome,
           cpf: cpfDigitos,
           senha: formAcesso.senha,
+          role: FUNCAO_PARA_ROLE[cardAberto.funcao] || 'professor',
         }),
       })
       const resultado = await resp.json()
       if (!resp.ok) throw new Error(resultado.error || 'Erro ao criar acesso')
-      toast.success('Acesso criado! O professor já pode entrar com essa senha usando o CPF como login.')
+      toast.success('Acesso criado! Já pode entrar com essa senha usando o CPF como login.')
       setCriandoAcesso(false)
       setFormAcesso({ cpf: '', senha: '', confirmacao: '' })
       qc.invalidateQueries({ queryKey: ['perfil_vinculado', cardAberto.id] })

@@ -47,10 +47,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'A senha precisa ter pelo menos 8 caracteres' })
   }
   // 'gestor' é o nome usado na UI; 'admin' é o valor histórico gravado no banco (ver
-  // usePermissions.js). Só aceita os 4 tipos que o cadastro oferece — nunca confia em
-  // qualquer outro valor vindo do corpo da requisição.
-  const ROLES_VALIDOS = { professor: 'professor', gestor: 'admin', financeiro: 'financeiro', auxiliar: 'auxiliar' }
-  const roleFinal = ROLES_VALIDOS[role] || 'professor'
+  // usePermissions.js). Só aceita os tipos que o cadastro oferece — nunca confia em
+  // qualquer outro valor vindo do corpo da requisição. Se vier um role desconhecido/ausente,
+  // rejeita em vez de cair silenciosamente pra 'professor' (isso já causou colaborador
+  // financeiro/gestor virando professor no perfis_usuario por engano).
+  const ROLES_VALIDOS = { professor: 'professor', gestor: 'admin', financeiro: 'financeiro', auxiliar: 'auxiliar', coordenador: 'coordenador' }
+  const roleFinal = ROLES_VALIDOS[role]
+  if (!roleFinal) {
+    return res.status(400).json({ error: 'Role inválido' })
+  }
 
   // Login do professor é o CPF, não e-mail. Usamos um e-mail sintético (nunca enviado de
   // verdade) só pra satisfazer o Supabase Auth, que exige e-mail como identificador — isso
