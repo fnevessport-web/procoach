@@ -503,8 +503,12 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
     { label: 'Alunos Únicos', valor: resumo.alunosUnicos },
     { label: 'Presenças', valor: resumo.presentes },
     { label: 'Faltas', valor: resumo.faltas },
-    { label: 'Falta Justificada', valor: resumo.faltasJustificadas },
+    { label: 'Falta Justificada*', valor: resumo.faltasJustificadas },
   ], 4)
+  fontePadrao('italic', 7.5)
+  doc.setTextColor(...COR_TEXTO_SUAVE)
+  doc.text('* Falta Justificada: chuva ou atestado médico.', margem, cursorY - 4)
+  cursorY += 8
   blocoDestaque('Taxa de presença', `${resumo.taxaPresenca}%`, COR_VINHO)
 
   if (Object.keys(resumo.motivosCancelamento).length > 0) {
@@ -544,10 +548,14 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
     )
   }
 
-  // ---------- Mapa de calor de cada modalidade em escopo ----------
-  heatmaps.forEach(({ modalidade, heatmap }) => desenharHeatmap(heatmap, modalidade))
+  // ---------- Mapa de calor de cada modalidade em escopo — sempre em página nova ----------
+  if (heatmaps.length > 0) {
+    novaPagina()
+    heatmaps.forEach(({ modalidade, heatmap }) => desenharHeatmap(heatmap, modalidade))
+  }
 
-  // ---------- Presença por aluno, separada por modalidade ----------
+  // ---------- Presença por aluno, separada por modalidade — sempre em página nova ----------
+  novaPagina()
   if (presenca.porModalidade.length === 0) {
     tituloSecao('Presença por aluno')
     fontePadrao('normal', 10)
@@ -675,12 +683,13 @@ function montarPaginaResumoHtml({ resumo, nomeEmpresa, logoBeyond, logoUnidade, 
   </div>`)
 
   secoes.push(`<div style="font-size:13px; font-weight:700; text-transform:uppercase; border-bottom:1px solid ${rgb(COR_TEXTO_SUAVE)}; padding-bottom:6px; margin:16px 0 12px;">Participação dos associados</div>`)
-  secoes.push(`<div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+  secoes.push(`<div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:4px;">
     ${chipHtml({ valor: resumo.alunosUnicos, label: 'Alunos Únicos' }, COR_SALVIA)}
     ${chipHtml({ valor: resumo.presentes, label: 'Presenças' }, COR_LARANJA)}
     ${chipHtml({ valor: resumo.faltas, label: 'Faltas' }, COR_VINHO)}
-    ${chipHtml({ valor: resumo.faltasJustificadas, label: 'Falta Justificada' }, COR_MARINHO)}
-  </div>`)
+    ${chipHtml({ valor: resumo.faltasJustificadas, label: 'Falta Justificada*' }, COR_MARINHO)}
+  </div>
+  <div style="font-size:9px; font-style:italic; color:${rgb(COR_TEXTO_SUAVE)}; margin-bottom:12px;">* Falta Justificada: chuva ou atestado médico.</div>`)
   secoes.push(`<div style="background:${rgb(COR_BRANCO)}; border:1px solid rgba(0,0,0,0.08); border-radius:8px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
     <div style="font-size:12px;">Taxa de presença</div>
     <div style="font-size:20px; font-weight:800; color:${rgb(COR_VINHO)};">${resumo.taxaPresenca}%</div>
