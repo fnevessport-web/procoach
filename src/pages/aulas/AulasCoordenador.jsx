@@ -1637,6 +1637,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div>
+                <div style={{ fontSize: '10px', fontWeight: '700', color: '#fcc825', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>
+                  {aula.data_aula && format(new Date(aula.data_aula + 'T12:00'), "dd/MM · EEEE", { locale: ptBR })}
+                </div>
                 <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>
                   {getNivel(aula) || (isAvulsa ? 'Aula Avulsa' : aula.turmas?.nome)}
                 </div>

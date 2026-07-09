@@ -182,7 +182,8 @@ export function useSalvarPresencas() {
           aula_origem_id: aulaId,
           status: 'pendente'
         }))
-        await supabase.from('reposicoes').upsert(repos, { onConflict: 'aluno_id,aula_origem_id' })
+        const { error: errRepos } = await supabase.from('reposicoes').upsert(repos, { onConflict: 'aluno_id,aula_origem_id' })
+        if (errRepos) throw errRepos
       }
 
       // Aluno marcado como "Reposição" nesta aula (fora da aba dedicada de Reposição) também
