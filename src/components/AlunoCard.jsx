@@ -3,8 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Camera, MessageCircle, ChevronRight } from 'lucide-react'
-import { useAlunoCompleto, useHistoricoNivel } from '../hooks/useAlunos'
+import { Camera, MessageCircle, ChevronRight, ClipboardList } from 'lucide-react'
+import {
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts'
+import {
+  useAlunoCompleto, useHistoricoNivel,
+  useDimensoesModalidade, useAvaliacoesModalidade, useHistoricoPresencaModalidade,
+} from '../hooks/useAlunos'
+import { useReposicoesDoAluno } from '../hooks/useAulas'
+import { calcStatusPorPrazo } from '../constants/reposicao'
 import { supabase } from '../lib/supabase'
 import { Modal } from './ui/Modal'
 import { Loading, EmptyState } from './ui/Loading'
@@ -21,6 +30,19 @@ const TIPO_VINCULO_LABEL = {
   conjuge: 'Cônjuge',
   filho: 'Filho(a)',
   responsavel: 'Responsável',
+}
+
+const BADGES = {
+  primeira_aula: { emoji: '🎉', label: 'Primeira aula' },
+  '10_aulas': { emoji: '🔟', label: '10 aulas' },
+  evoluiu_nivel: { emoji: '📈', label: 'Evoluiu de nível' },
+  '3_meses_sem_falta': { emoji: '🏆', label: '3 meses sem falta' },
+}
+
+const STATUS_PRESENCA_LABEL = {
+  presente: { label: 'Presente', cor: '#22c55e' },
+  falta: { label: 'Falta', cor: '#EF4444' },
+  falta_justificada: { label: 'Falta Just.', cor: '#f97316' },
 }
 
 // Silhueta padrão quando o aluno não tem foto — mesmo círculo com anel gradiente
@@ -103,11 +125,26 @@ export function AlunoCard({ alunoId }) {
           <div style={{ fontSize: '18px', fontWeight: '800', color: '#F0F2F5', lineHeight: 1.25 }}>
             {aluno.nome}
           </div>
-          {aluno.menor_idade && (
-            <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '10px', padding: '2px 7px', borderRadius: '5px', backgroundColor: 'rgba(252,200,37,0.15)', color: '#fcc825', fontWeight: '600' }}>
-              menor de idade
-            </span>
-          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '4px' }}>
+            {aluno.menor_idade && (
+              <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '5px', backgroundColor: 'rgba(252,200,37,0.15)', color: '#fcc825', fontWeight: '600' }}>
+                menor de idade
+              </span>
+            )}
+            {aluno.badges.map(b => {
+              const info = BADGES[b.tipo_badge]
+              if (!info) return null
+              return (
+                <span key={b.id} title={info.label} style={{
+                  fontSize: '10px', padding: '2px 7px', borderRadius: '5px',
+                  backgroundColor: 'rgba(255,255,255,0.06)', color: '#F0F2F5', fontWeight: '600',
+                  display: 'flex', alignItems: 'center', gap: '3px',
+                }}>
+                  {info.emoji} {info.label}
+                </span>
+              )
+            })}
+          </div>
           {aluno.telefone && (
             <button onClick={() => abrirWhatsApp(aluno.telefone)} style={{
               display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px',
@@ -244,9 +281,44 @@ function DadoLinha({ label, valor, placeholder = 'Não informado', mostrarSempre
   )
 }
 
+function SecaoTitulo({ children }) {
+  return (
+    <div style={{ fontSize: '11px', fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+      {children}
+    </div>
+  )
+}
+
+function CardVazio({ texto }) {
+  return (
+    <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: '#111', border: '1px dashed #2a2a2a', textAlign: 'center', fontSize: '12px', color: '#555' }}>
+      {texto}
+    </div>
+  )
+}
+
 function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
-  const { data: historico, isLoading } = useHistoricoNivel(aluno.id, modalidade.id)
+  const navigate = useNavigate()
   const cor = modalidade.cor_hex || '#fcc825'
+
+  const { data: historicoNivel, isLoading: loadingNivel } = useHistoricoNivel(aluno.id, modalidade.id)
+  const { data: dimensoes } = useDimensoesModalidade(modalidade.id)
+  const { data: avaliacoes, isLoading: loadingAvaliacoes } = useAvaliacoesModalidade(aluno.id, modalidade.id)
+  const { data: presencas, isLoading: loadingPresencas } = useHistoricoPresencaModalidade(aluno.id, modalidade.id, modalidade.nome)
+  const { data: reposicoesTodas } = useReposicoesDoAluno(aluno.id)
+
+  const ultimaAvaliacao = avaliacoes?.length ? avaliacoes[avaliacoes.length - 1] : null
+  const reposicoesModalidade = (reposicoesTodas || []).filter(r => r.modalidades?.id === modalidade.id)
+
+  const radarData = (dimensoes || []).map(d => ({
+    dimensao: d.nome_dimensao,
+    valor: ultimaAvaliacao?.dimensoes?.[d.nome_dimensao] ?? 0,
+  }))
+
+  const evolucaoData = (avaliacoes || []).map(a => ({
+    data: format(new Date(a.data_avaliacao + 'T12:00'), 'dd/MM', { locale: ptBR }),
+    nota: a.nota_geral,
+  }))
 
   return (
     <Modal open onClose={onClose} title={modalidade.nome} size="md">
@@ -272,28 +344,77 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
 
         <DadoLinha label="Data de entrada na modalidade" valor={fmtData(modalidade.dataEntrada?.slice(0, 10))} mostrarSempre={!!modalidade.dataEntrada} />
 
-        {/* Placeholder: histórico de presença (Fase 2/3) */}
+        <button
+          onClick={() => navigate('/avaliar-aluno', { state: { alunoId: aluno.id, alunoNome: aluno.nome, modalidadeId: modalidade.id } })}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            padding: '11px', borderRadius: '10px', border: 'none',
+            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white',
+            fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+          }}
+        >
+          <ClipboardList size={15} /> Avaliar aluno
+        </button>
+
+        {/* Perfil técnico — radar da última avaliação */}
         <div>
-          <div style={{ fontSize: '11px', fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-            Histórico de presença
-          </div>
-          <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: '#111', border: '1px dashed #2a2a2a', textAlign: 'center', fontSize: '12px', color: '#555' }}>
-            Em breve: histórico completo de presença
-          </div>
+          <SecaoTitulo>Perfil técnico</SecaoTitulo>
+          {loadingAvaliacoes ? <Loading /> : !ultimaAvaliacao ? (
+            <CardVazio texto="Nenhuma avaliação técnica ainda nesta modalidade" />
+          ) : (
+            <div style={{ backgroundColor: '#111', borderRadius: '12px', border: '1px solid #2a2a2a', padding: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 10px' }}>
+                <span style={{ fontSize: '11px', color: '#555' }}>{fmtData(ultimaAvaliacao.data_avaliacao)}</span>
+                <span style={{ fontSize: '20px', fontWeight: '800', color: cor }}>
+                  {ultimaAvaliacao.nota_geral != null ? Number(ultimaAvaliacao.nota_geral).toFixed(1) : '—'}
+                </span>
+              </div>
+              <div style={{ width: '100%', height: 220 }}>
+                <ResponsiveContainer>
+                  <RadarChart data={radarData} outerRadius="70%">
+                    <PolarGrid stroke="#2a2a2a" />
+                    <PolarAngleAxis dataKey="dimensao" tick={{ fill: '#888', fontSize: 11 }} />
+                    <PolarRadiusAxis domain={[0, 5]} tick={{ fill: '#444', fontSize: 9 }} axisLine={false} />
+                    <Radar dataKey="valor" stroke={cor} fill={cor} fillOpacity={0.35} strokeWidth={2} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#F0F2F5' }} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+              {ultimaAvaliacao.comentario && (
+                <div style={{ marginTop: '4px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#1a1a1a', fontSize: '12px', color: '#888', fontStyle: 'italic' }}>
+                  "{ultimaAvaliacao.comentario}"
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Histórico de nível — já funciona de verdade */}
-        <div>
-          <div style={{ fontSize: '11px', fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-            Histórico de nível
-          </div>
-          {isLoading ? <Loading /> : !historico?.length ? (
-            <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: '#111', border: '1px dashed #2a2a2a', textAlign: 'center', fontSize: '12px', color: '#555' }}>
-              Nenhum registro de nível ainda nesta modalidade
+        {/* Evolução da nota geral */}
+        {evolucaoData.length > 1 && (
+          <div>
+            <SecaoTitulo>Evolução da nota geral</SecaoTitulo>
+            <div style={{ backgroundColor: '#111', borderRadius: '12px', border: '1px solid #2a2a2a', padding: '10px', width: '100%', height: 160 }}>
+              <ResponsiveContainer>
+                <LineChart data={evolucaoData} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
+                  <CartesianGrid stroke="#2a2a2a" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="data" tick={{ fill: '#555', fontSize: 10 }} axisLine={{ stroke: '#2a2a2a' }} tickLine={false} />
+                  <YAxis domain={[0, 5]} tick={{ fill: '#555', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#F0F2F5' }} />
+                  <Line type="monotone" dataKey="nota" stroke={cor} strokeWidth={2} dot={{ r: 4, fill: cor }} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
+          </div>
+        )}
+
+        {/* Histórico de nível */}
+        <div>
+          <SecaoTitulo>Histórico de nível</SecaoTitulo>
+          {loadingNivel ? <Loading /> : !historicoNivel?.length ? (
+            <CardVazio texto="Nenhum registro de nível ainda nesta modalidade" />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {historico.map((h, i) => (
+              {historicoNivel.map((h, i) => (
                 <div key={h.id} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '10px 12px', borderRadius: '10px',
@@ -303,6 +424,54 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
                   <span style={{ fontSize: '11px', color: '#555' }}>desde {fmtData(h.data_inicio)}</span>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Histórico de presença */}
+        <div>
+          <SecaoTitulo>Histórico de presença</SecaoTitulo>
+          {loadingPresencas ? <Loading /> : !presencas?.length ? (
+            <CardVazio texto="Nenhuma presença registrada ainda nesta modalidade" />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '220px', overflowY: 'auto' }}>
+              {presencas.map(p => {
+                const info = STATUS_PRESENCA_LABEL[p.status_presenca] || { label: p.status_presenca || '—', cor: '#555' }
+                return (
+                  <div key={p.id} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '8px 10px', borderRadius: '8px', backgroundColor: '#111', border: '1px solid #2a2a2a',
+                  }}>
+                    <span style={{ fontSize: '12px', color: '#888' }}>{fmtData(p.aulas?.data_aula)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '700', color: info.cor }}>{info.label}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Reposições da modalidade */}
+        <div>
+          <SecaoTitulo>Reposições</SecaoTitulo>
+          {reposicoesModalidade.length === 0 ? (
+            <CardVazio texto="Nenhuma reposição registrada nesta modalidade" />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {reposicoesModalidade.map(r => {
+                const status = calcStatusPorPrazo(r.data_limite)
+                return (
+                  <div key={r.id} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '8px 10px', borderRadius: '8px', backgroundColor: '#111', border: '1px solid #2a2a2a',
+                  }}>
+                    <span style={{ fontSize: '12px', color: '#888' }}>{fmtData(r.aula_origem?.data_aula)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '700', color: r.status === 'expirada' ? '#555' : r.status === 'agendada' ? '#22c55e' : status.cor, textTransform: 'uppercase' }}>
+                      {r.status}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

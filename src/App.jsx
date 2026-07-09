@@ -26,6 +26,7 @@ import { MensagensPage } from './pages/mensagens/MensagensPage'
 import { DashboardProfessor } from './pages/professor/DashboardProfessor'
 import { MeuPerfilProfessor } from './pages/professor/MeuPerfilProfessor'
 import { MeusAlunosProfessor } from './pages/professor/MeusAlunosProfessor'
+import { AvaliarAluno } from './pages/professor/AvaliarAluno'
 import { ModalTurmaAtivada } from './components/ModalTurmaAtivada'
 import { InstallBanner } from './components/ui/InstallBanner'
 import { DisponibilidadePage } from './pages/disponibilidade/DisponibilidadePage'
@@ -99,6 +100,9 @@ function AppRouter() {
         } />
         <Route path="/meus-alunos" element={
           <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MeusAlunosProfessor /></RouteGuard>
+        } />
+        <Route path="/avaliar-aluno" element={
+          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><AvaliarAluno /></RouteGuard>
         } />
         <Route path="/mensagens" element={
           <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MensagensPage /></RouteGuard>
