@@ -17,6 +17,7 @@ import { HomeLeitura } from './pages/home/HomeLeitura'
 import { ModalidadePage } from './pages/modalidades/ModalidadePage'
 import { AulasPage } from './pages/aulas/AulasPage'
 import { CadastrosPage } from './pages/cadastros/CadastrosPage'
+import { AlunoCardPage } from './pages/cadastros/AlunoCardPage'
 import { FinanceiroPage } from './pages/financeiro/FinanceiroPage'
 import { KPIsPage } from './pages/kpis/KPIsPage'
 import { RelatoriosLeituraPage } from './pages/kpis/RelatoriosLeituraPage'
@@ -109,6 +110,9 @@ function AppRouter() {
         } />
         <Route path="/cadastros/alunos" element={
           <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
+        } />
+        <Route path="/cadastros/alunos/:id" element={
+          <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><AlunoCardPage /></RouteGuard>
         } />
         <Route path="/cadastros/turmas" element={
           <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
