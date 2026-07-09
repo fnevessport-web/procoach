@@ -872,6 +872,19 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       const { error: erroAulas } = await query
       if (erroAulas) throw erroAulas
 
+      // Trocar o professor titular da turma não preenche sozinho quem vai dar as aulas já
+      // geradas sem professor — sem isso o aviso "sem professor" e a grade continuam vazios
+      // mesmo depois de escolher alguém aqui. Só entra nas que ainda não têm ninguém, pra não
+      // sobrescrever uma substituição específica que já tenha sido atribuída numa data.
+      if (novoProfessorTurmaId) {
+        const { error: erroProfExecutou } = await supabase
+          .from('aulas')
+          .update({ professor_executou_id: professorIdFinal })
+          .eq('turma_id', turmaNova.id)
+          .is('professor_executou_id', null)
+        if (erroProfExecutou) throw erroProfExecutou
+      }
+
       const nomeProfessorNovo = todoProfessores?.find(p => p.id === professorIdFinal)?.nome || ''
       const nomeProfessorAntigo = todoProfessores?.find(p => p.id === turmaOriginal.professor_titular_id)?.nome || ''
       await logAudit('turmas', turmaOriginal.id, 'UPDATE',
