@@ -1,9 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { logAudit } from '../lib/audit'
-import { format } from 'date-fns'
-import { horarioInicioDaAula, horarioParaMinutos, isAulaIndividual } from '../constants/modalidades'
+import { format, addDays } from 'date-fns'
+import { horarioInicioDaAula, horarioParaMinutos, isAulaIndividual, VAGAS_INDIVIDUAL, VAGAS_GRUPO } from '../constants/modalidades'
 import { getFeriado } from '../constants/feriados'
+
+// Motivos de cancelamento (de MOTIVOS_CANCELAMENTO em AulasCoordenador.jsx) que dão
+// direito a reposição automática pro aluno. Fica só como constante — ajustar essa lista
+// no futuro não precisa de migração nenhuma.
+const MOTIVOS_FORCA_MAIOR = ['Chuva']
 
 export function useAulas({ data, professorId, modalidadeId, status } = {}) {
   return useQuery({
@@ -135,6 +140,147 @@ async function resolverReposicaoFIFO({ alunoId, aulaDestinoId }) {
   return { dataFaltaResolvida: maisAntiga.aulas?.data_aula }
 }
 
+// Cancelamento por força maior (ver MOTIVOS_FORCA_MAIOR): todo aluno matriculado na aula
+// ganha crédito de reposição automático — falta_justificada + reposicoes pendente, prazo
+// de 60 dias. Chamada pelos dois fluxos de cancelamento em AulasCoordenador.jsx (individual
+// e em massa) — nenhum dos dois passa por useSalvarPresencas, que é onde isso já acontece
+// hoje pra faltas justificadas marcadas manualmente.
+export async function gerarReposicoesPorCancelamento(aulaId, motivoCancelamento) {
+  if (!MOTIVOS_FORCA_MAIOR.includes(motivoCancelamento)) return
+
+  const { data: aula } = await supabase
+    .from('aulas')
+    .select('id, turma_id, turmas(modalidade_id)')
+    .eq('id', aulaId)
+    .single()
+  if (!aula) return
+  const modalidadeId = aula.turmas?.modalidade_id || null
+
+  const { data: presencasAula } = await supabase
+    .from('presencas')
+    .select('id, aluno_id')
+    .eq('aula_id', aulaId)
+  if (!presencasAula?.length) return
+
+  await supabase
+    .from('presencas')
+    .update({ status_presenca: 'falta_justificada', presente: false })
+    .eq('aula_id', aulaId)
+
+  const alunoIds = presencasAula.map(p => p.aluno_id)
+  const { data: reposExistentes } = await supabase
+    .from('reposicoes')
+    .select('aluno_id')
+    .eq('aula_origem_id', aulaId)
+    .in('aluno_id', alunoIds)
+  const jaTem = new Set((reposExistentes || []).map(r => r.aluno_id))
+
+  // Só cria reposição pra quem ainda não tem uma pra essa aula — evita duplicar se o
+  // coordenador reabrir e recancelar a mesma aula com o mesmo motivo.
+  const faltantes = alunoIds.filter(id => !jaTem.has(id))
+  if (faltantes.length === 0) return
+
+  const dataLimite = format(addDays(new Date(), 60), 'yyyy-MM-dd')
+  const { error } = await supabase.from('reposicoes').insert(
+    faltantes.map(alunoId => ({
+      aluno_id: alunoId,
+      aula_origem_id: aulaId,
+      modalidade_id: modalidadeId,
+      status: 'pendente',
+      data_limite: dataLimite,
+    }))
+  )
+  if (error) throw error
+}
+
+// Roda no início das telas que leem reposicoes — sem cron ainda, só "de graça" a cada
+// carregamento (mesmo padrão de confirmarAulasElegiveis). Só afeta reposições que já têm
+// data_limite (criadas a partir da Fase 2) — as antigas não expiram automaticamente aqui.
+export async function expirarReposicoesPendentesVencidas() {
+  try {
+    const hoje = format(new Date(), 'yyyy-MM-dd')
+    await supabase
+      .from('reposicoes')
+      .update({ status: 'expirada' })
+      .eq('status', 'pendente')
+      .lt('data_limite', hoje)
+  } catch {
+    // não trava nenhuma tela por causa disso
+  }
+}
+
+// Agenda um aluno numa aula respeitando a capacidade (individual = 1, grupo = 4), com
+// proteção contra dois cliques simultâneos reservarem a mesma vaga: cada presença de
+// agendamento self-service recebe um vaga_numero sequencial, com índice único parcial em
+// presencas(aula_id, vaga_numero) — o segundo insert que tentar o mesmo número perde a
+// corrida com erro de unicidade (23505) e tenta de novo com a contagem atualizada. Usado
+// tanto pra reposição quanto pra aula avulsa — mesma fila, sem prioridade entre elas.
+export async function agendarSlotAtomico({ aulaId, alunoId, tipoParticipacao, valorCobrado = null }) {
+  const { data: aula, error: erroAula } = await supabase
+    .from('aulas')
+    .select('id, turma_id, observacoes, turmas(niveis(nome))')
+    .eq('id', aulaId)
+    .single()
+  if (erroAula || !aula) throw new Error('Aula não encontrada')
+
+  const capacidade = isAulaIndividual(aula) ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
+
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    const { data: presencasAtuais, error: erroConsulta } = await supabase
+      .from('presencas')
+      .select('id, aluno_id')
+      .eq('aula_id', aulaId)
+    if (erroConsulta) throw erroConsulta
+
+    if (presencasAtuais.some(p => p.aluno_id === alunoId)) {
+      throw new Error('Esse aluno já está agendado nessa aula.')
+    }
+    if (presencasAtuais.length >= capacidade) {
+      throw new Error('Vaga já preenchida, tente outro horário.')
+    }
+
+    const vagaNumero = presencasAtuais.length + 1
+    const { error: erroInsert } = await supabase.from('presencas').insert({
+      aula_id: aulaId,
+      aluno_id: alunoId,
+      presente: false,
+      status_presenca: 'presente',
+      tipo_participacao: tipoParticipacao,
+      vaga_numero: vagaNumero,
+    })
+
+    if (!erroInsert) {
+      if (tipoParticipacao === 'reposicao') {
+        const resultado = await resolverReposicaoFIFO({ alunoId, aulaDestinoId: aulaId })
+        return { vagaNumero, ...resultado }
+      }
+      if (tipoParticipacao === 'avulso') {
+        const { data: vagaAberta } = await supabase
+          .from('vagas_avulsas')
+          .select('id')
+          .eq('aula_id', aulaId)
+          .eq('status', 'aberta')
+          .limit(1)
+          .maybeSingle()
+        if (vagaAberta) {
+          await supabase.from('vagas_avulsas').update({
+            status: 'preenchida',
+            aluno_preenchimento_id: alunoId,
+            valor_cobrado: valorCobrado,
+          }).eq('id', vagaAberta.id)
+        }
+      }
+      return { vagaNumero }
+    }
+
+    if (erroInsert.code !== '23505') throw erroInsert
+    // 23505 = unique_violation — outro clique venceu a corrida por esse vaga_numero.
+    // Tenta de novo com a contagem atualizada (até 3 vezes).
+  }
+
+  throw new Error('Vaga já preenchida, tente outro horário.')
+}
+
 export function useAtualizarStatusAula() {
   const qc = useQueryClient()
   return useMutation({
@@ -151,9 +297,17 @@ export function useAtualizarStatusAula() {
         .select()
         .single()
       if (error) throw error
+
+      if (statusAula === 'cancelada') {
+        await gerarReposicoesPorCancelamento(aulaId, motivoCancelamento)
+      }
+
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['aulas'] })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      qc.invalidateQueries({ queryKey: ['relatorio_repos'] })
+    }
   })
 }
 
@@ -207,6 +361,7 @@ export function useRelatorioReposicoes() {
   return useQuery({
     queryKey: ['relatorio_repos'],
     queryFn: async () => {
+      await expirarReposicoesPendentesVencidas()
       const hoje = new Date()
       const dataFim = format(hoje, 'yyyy-MM-dd')
       const umAnoAtras = new Date(hoje)
@@ -281,6 +436,30 @@ export function useRelatorioReposicoes() {
   })
 }
 
+// Painel "Minhas Reposições" (Fase 2) — todas as reposições de um aluno específico,
+// incluindo as já expiradas (diferente de useRelatorioReposicoes, que só olha pendentes
+// pra montar a fila de trabalho da equipe).
+export function useReposicoesDoAluno(alunoId) {
+  return useQuery({
+    queryKey: ['reposicoes_aluno', alunoId],
+    queryFn: async () => {
+      await expirarReposicoesPendentesVencidas()
+      const { data, error } = await supabase
+        .from('reposicoes')
+        .select(`
+          id, status, data_limite, created_at, aula_origem_id, aula_reposicao_id,
+          modalidades(id, nome, icone_emoji, cor_hex),
+          aula_origem:aulas!aula_origem_id(data_aula)
+        `)
+        .eq('aluno_id', alunoId)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data || []
+    },
+    enabled: !!alunoId,
+  })
+}
+
 export function useAulasDiaParaReposicao(data) {
   return useQuery({
     queryKey: ['aulas_dia_repos', data],
@@ -290,7 +469,7 @@ export function useAulasDiaParaReposicao(data) {
         .from('aulas')
         .select(`
           id, data_aula, turma_id,
-          turmas(id, nome, horario_inicio, horario_fim, quadras(id, nome), niveis(nome)),
+          turmas(id, nome, modalidade_id, horario_inicio, horario_fim, quadras(id, nome), niveis(nome)),
           presencas(id, aluno_id)
         `)
         .eq('data_aula', data)
@@ -331,28 +510,33 @@ export function useAulasDisponiveisReposicao() {
 }
 
 // Agenda sempre resolve a falta pendente mais antiga do aluno (FIFO) — não recebe qual falta
-// baixar, só o aluno e a aula de destino. Ver resolverReposicaoFIFO.
+// baixar, só o aluno e a aula de destino. Por baixo usa agendarSlotAtomico — mesma
+// proteção de concorrência e mesma fila que a agenda self-service (Fase 2).
 export function useAgendarReposicao() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ alunoId, aulaId }) => {
-      const { error: errPres } = await supabase
-        .from('presencas')
-        .upsert({
-          aula_id: aulaId,
-          aluno_id: alunoId,
-          presente: false,
-          status_presenca: 'presente',
-          tipo_participacao: 'reposicao',
-        }, { onConflict: 'aula_id,aluno_id' })
-      if (errPres) throw errPres
-
-      return resolverReposicaoFIFO({ alunoId, aulaDestinoId: aulaId })
-    },
+    mutationFn: async ({ alunoId, aulaId }) =>
+      agendarSlotAtomico({ aulaId, alunoId, tipoParticipacao: 'reposicao' }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['relatorio_repos'] })
       qc.invalidateQueries({ queryKey: ['aulas'] })
       qc.invalidateQueries({ queryKey: ['aulas_disp_repos'] })
+    }
+  })
+}
+
+// Agenda de um aluno (Fase 2) — usada tanto pra usar uma reposição pendente quanto pra
+// comprar uma aula avulsa numa vaga aberta. Ver agendarSlotAtomico.
+export function useAgendarSlotAluno() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: agendarSlotAtomico,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reposicoes_aluno'] })
+      qc.invalidateQueries({ queryKey: ['relatorio_repos'] })
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      qc.invalidateQueries({ queryKey: ['aulas_dia_repos'] })
+      qc.invalidateQueries({ queryKey: ['vagas_avulsas_abertas'] })
     }
   })
 }
@@ -427,5 +611,69 @@ export function useGerarAulas() {
       return aulasCriadas.length
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['aulas'] })
+  })
+}
+
+// "Avisar falta" (Fase 2): aluno avisa com antecedência que vai faltar numa aula
+// específica (não recorrente). Marca a presença como falta_justificada (mesma regra de
+// reposição automática das faltas justificadas manuais) e abre a vaga como avulsa pra
+// qualquer outro aluno comprar.
+export function useAvisarFalta() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ aulaId, alunoId }) => {
+      const { error: errPres } = await supabase
+        .from('presencas')
+        .update({ status_presenca: 'falta_justificada', presente: false })
+        .eq('aula_id', aulaId)
+        .eq('aluno_id', alunoId)
+      if (errPres) throw errPres
+
+      const { data: repoExistente } = await supabase
+        .from('reposicoes')
+        .select('id')
+        .eq('aluno_id', alunoId)
+        .eq('aula_origem_id', aulaId)
+        .maybeSingle()
+      if (!repoExistente) {
+        const { data: aula } = await supabase
+          .from('aulas').select('turma_id, turmas(modalidade_id)').eq('id', aulaId).single()
+        const dataLimite = format(addDays(new Date(), 60), 'yyyy-MM-dd')
+        await supabase.from('reposicoes').insert({
+          aluno_id: alunoId,
+          aula_origem_id: aulaId,
+          modalidade_id: aula?.turmas?.modalidade_id || null,
+          status: 'pendente',
+          data_limite: dataLimite,
+        })
+      }
+
+      const { error: errVaga } = await supabase.from('vagas_avulsas').insert({
+        aula_id: aulaId,
+        origem: 'falta_avisada',
+        status: 'aberta',
+      })
+      if (errVaga) throw errVaga
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      qc.invalidateQueries({ queryKey: ['relatorio_repos'] })
+      qc.invalidateQueries({ queryKey: ['vagas_avulsas_abertas'] })
+    }
+  })
+}
+
+export function useVagasAvulsasAbertas() {
+  return useQuery({
+    queryKey: ['vagas_avulsas_abertas'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('vagas_avulsas')
+        .select('id, aula_id, created_at')
+        .eq('status', 'aberta')
+      if (error) throw error
+      return data || []
+    },
+    staleTime: 30000,
   })
 }

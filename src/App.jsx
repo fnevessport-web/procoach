@@ -18,6 +18,7 @@ import { ModalidadePage } from './pages/modalidades/ModalidadePage'
 import { AulasPage } from './pages/aulas/AulasPage'
 import { CadastrosPage } from './pages/cadastros/CadastrosPage'
 import { AlunoCardPage } from './pages/cadastros/AlunoCardPage'
+import { AgendaAluno } from './pages/aluno/AgendaAluno'
 import { FinanceiroPage } from './pages/financeiro/FinanceiroPage'
 import { KPIsPage } from './pages/kpis/KPIsPage'
 import { RelatoriosLeituraPage } from './pages/kpis/RelatoriosLeituraPage'
@@ -116,6 +117,9 @@ function AppRouter() {
         } />
         <Route path="/cadastros/turmas" element={
           <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
+        } />
+        <Route path="/agenda-aluno" element={
+          <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><AgendaAluno /></RouteGuard>
         } />
         <Route path="/kpis" element={
           <RouteGuard permitido={podeAcessarKPIs} homeRoute={homeRoute}><KPIsPage /></RouteGuard>

@@ -5,7 +5,7 @@ import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown } from 'lucide-react'
 import { horarioParaMinutos } from '../../constants/modalidades'
 import { getFeriado } from '../../constants/feriados'
-import { useAulas, useAtualizarStatusAula, useSalvarPresencas, confirmarAulasElegiveis } from '../../hooks/useAulas'
+import { useAulas, useAtualizarStatusAula, useSalvarPresencas, confirmarAulasElegiveis, gerarReposicoesPorCancelamento, useAvisarFalta } from '../../hooks/useAulas'
 import { useVisualViewportHeight } from '../../hooks/useVisualViewportHeight'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useProfessores } from '../../hooks/useProfessores'
@@ -203,8 +203,13 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         if (a.presencas && a.presencas.length > 0) {
           await supabase.from('presencas').update({ status_presenca: statusPresenca, presente: acaoMassa === 'confirmar' }).eq('aula_id', a.id)
         }
+
+        if (acaoMassa === 'cancelar') {
+          await gerarReposicoesPorCancelamento(a.id, motivoCancelamentoMassa)
+        }
       }
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      qc.invalidateQueries({ queryKey: ['relatorio_repos'] })
       toast.success(
         acaoMassa === 'confirmar' ? '✅ Todas as aulas confirmadas!' :
         acaoMassa === 'sem_aula' ? '❌ Todas marcadas como Sem Aula!' :
@@ -255,6 +260,16 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   const salvarAluno = useSalvarAluno()
   const atualizarStatus = useAtualizarStatusAula()
   const salvarPresencas = useSalvarPresencas()
+  const avisarFalta = useAvisarFalta()
+
+  async function handleAvisarFalta(aulaId, alunoId, nomeAluno) {
+    try {
+      await avisarFalta.mutateAsync({ aulaId, alunoId })
+      toast.success(`🗣️ Falta de ${nomeAluno} avisada — vaga aberta pra aula avulsa`, { style: toastStyle })
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    }
+  }
 
   // Pra mostrar um ícone discreto de mensagem no card de aulas que já têm uma conversa aberta
   const idsAulasDoDia = (aulas || []).map(a => a.id)
@@ -2049,6 +2064,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                             style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', color: isReposicao ? COR_REPOSICAO : '#888', cursor: 'pointer', outline: 'none' }}>
                             {TIPO_PARTICIPACAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                           </select>
+                          {aulaFutura && aluno.status_presenca !== 'falta_justificada' && (
+                            <button onClick={() => handleAvisarFalta(aula.id, aluno.aluno_id, aluno.nome)} title="Avisar falta — abre vaga avulsa" disabled={avisarFalta.isPending} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(249,115,22,0.1)', color: '#f97316', fontSize: '13px' }}>
+                              🗣️
+                            </button>
+                          )}
                           <button onClick={() => iniciarRemocaoAluno(aula, aluno.aluno_id)} title="Remover" style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(239,68,68,0.08)', color: '#EF4444' }}>
                             <X size={11} />
                           </button>

@@ -16,6 +16,7 @@ import { AulasCoordenador } from './AulasCoordenador'
 import { supabase } from '../../lib/supabase'
 import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+import { calcReposicaoStatus } from '../../constants/reposicao'
 
 const TIPOS_PARTICIPACAO = [
   { value: 'mensalista', label: 'Mensalista', color: '#22c55e' },
@@ -389,23 +390,6 @@ function ModalCopiarGrade({ open, onClose }) {
   )
 }
 
-
-function calcReposicaoStatus(dataAula) {
-  if (!dataAula) return { diasRestantes: null, cor: '#3b82f6', progresso: 0, label: '' }
-  const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
-  const dataFalta = new Date(dataAula + 'T12:00')
-  const daysElapsed = Math.floor((hoje - dataFalta) / (1000 * 60 * 60 * 24))
-  const diasRestantes = 60 - daysElapsed
-  let cor = '#3b82f6'
-  if (diasRestantes <= 5) cor = '#ef4444'
-  else if (diasRestantes <= 15) cor = '#f59e0b'
-  // Barra começa vazia e vai enchendo conforme os dias passam (cheia = prazo estourado)
-  const progresso = Math.min(100, Math.max(0, (daysElapsed / 60) * 100))
-  const label = diasRestantes <= 0
-    ? `+${Math.abs(diasRestantes)}d em atraso`
-    : `${diasRestantes}d restantes`
-  return { diasRestantes, cor, progresso, label }
-}
 
 function fmtData(d) {
   return d ? format(new Date(d + 'T12:00'), "dd/MM/yyyy", { locale: ptBR }) : '—'

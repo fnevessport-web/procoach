@@ -8,6 +8,7 @@ import { useAlunoCompleto, useHistoricoNivel } from '../hooks/useAlunos'
 import { supabase } from '../lib/supabase'
 import { Modal } from './ui/Modal'
 import { Loading, EmptyState } from './ui/Loading'
+import { PainelReposicoesAluno } from './PainelReposicoesAluno'
 import toast from 'react-hot-toast'
 
 const toastStyle = {
@@ -210,6 +211,14 @@ export function AlunoCard({ alunoId }) {
             })}
           </div>
         )}
+      </div>
+
+      {/* Minhas Reposições */}
+      <div style={{ marginTop: '20px' }}>
+        <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', fontWeight: '700' }}>
+          Minhas Reposições
+        </div>
+        <PainelReposicoesAluno alunoId={alunoId} alunoNome={aluno.nome} />
       </div>
 
       {modalidadeSel && (
