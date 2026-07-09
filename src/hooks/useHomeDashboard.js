@@ -4,6 +4,7 @@ import { format, subDays, addDays } from 'date-fns'
 import { useProfessores } from './useProfessores'
 import { QUADRAS_EMPRESA } from './useFinanceiro'
 import { parseObservacoes, getQuadraNome, getModalidadeDaAula, horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula } from '../constants/modalidades'
+import { getFeriado } from '../constants/feriados'
 
 function getEmpresaPorQuadra(quadraNome) {
   if (QUADRAS_EMPRESA.procopio.includes(quadraNome)) return 'procopio'
@@ -108,9 +109,13 @@ export function useHomeDashboard() {
     staleTime: 60000,
   })
 
+  const feriadoHoje = getFeriado(hoje)
+
   const aulasAtivasHoje = aulasHoje.filter(aulaTemAluno)
 
-  const aoVivoAgora = aulasAtivasHoje
+  // Feriado: aulas continuam contando como pagas pro professor, mas ninguém dá aula de
+  // verdade — não faz sentido mostrar elas como "ao vivo" no dashboard.
+  const aoVivoAgora = feriadoHoje ? [] : aulasAtivasHoje
     .filter(aulaEmAndamento)
     .map(a => {
       const quadraNome = getQuadraNome(a)
@@ -179,6 +184,7 @@ export function useHomeDashboard() {
 
   return {
     aoVivoAgora,
+    feriadoHoje,
     hojeAcumulado,
     professoresAgora,
     alertasSemProfessor,

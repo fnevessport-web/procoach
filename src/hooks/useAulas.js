@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { logAudit } from '../lib/audit'
 import { format } from 'date-fns'
-import { horarioInicioDaAula, horarioParaMinutos } from '../constants/modalidades'
+import { horarioInicioDaAula, horarioParaMinutos, isAulaIndividual } from '../constants/modalidades'
 import { getFeriado } from '../constants/feriados'
 
 export function useAulas({ data, professorId, modalidadeId, status } = {}) {
@@ -79,6 +79,62 @@ export async function confirmarAulasElegiveis({ professorId = null, dataInicio =
   }
 }
 
+// FIFO: toda vez que uma reposição é agendada — seja pela aba dedicada de Reposição, seja
+// marcando "Reposição" na lista de presença de qualquer aula — resolve sempre a falta pendente
+// mais antiga do aluno, nunca deixa escolher qual. Idempotente: se aula_reposicao_id já aponta
+// pra essa aula de destino, não mexe de novo (evita consumir uma 2a falta ao salvar a mesma
+// aula várias vezes).
+async function resolverReposicaoFIFO({ alunoId, aulaDestinoId }) {
+  const { data: jaResolvida } = await supabase
+    .from('reposicoes')
+    .select('id')
+    .eq('aluno_id', alunoId)
+    .eq('aula_reposicao_id', aulaDestinoId)
+    .maybeSingle()
+  if (jaResolvida) return null
+
+  const { data: faltas } = await supabase
+    .from('presencas')
+    .select('aula_id, aulas!inner(data_aula)')
+    .eq('aluno_id', alunoId)
+    .eq('status_presenca', 'falta_justificada')
+  if (!faltas?.length) return null
+
+  const aulaIds = faltas.map(f => f.aula_id)
+  const { data: reposExistentes } = await supabase
+    .from('reposicoes')
+    .select('id, aula_origem_id, status')
+    .eq('aluno_id', alunoId)
+    .in('aula_origem_id', aulaIds)
+
+  const reposPorAula = {}
+  reposExistentes?.forEach(r => { reposPorAula[r.aula_origem_id] = r })
+
+  const pendentes = faltas
+    .filter(f => {
+      const r = reposPorAula[f.aula_id]
+      return !r || r.status === 'pendente'
+    })
+    .sort((a, b) => (a.aulas?.data_aula || '').localeCompare(b.aulas?.data_aula || ''))
+
+  const maisAntiga = pendentes[0]
+  if (!maisAntiga) return null
+
+  const existente = reposPorAula[maisAntiga.aula_id]
+  const { error } = await supabase
+    .from('reposicoes')
+    .upsert({
+      id: existente?.id,
+      aluno_id: alunoId,
+      aula_origem_id: maisAntiga.aula_id,
+      status: 'agendada',
+      aula_reposicao_id: aulaDestinoId,
+    }, { onConflict: 'aluno_id,aula_origem_id' })
+  if (error) throw error
+
+  return { dataFaltaResolvida: maisAntiga.aulas?.data_aula }
+}
+
 export function useAtualizarStatusAula() {
   const qc = useQueryClient()
   return useMutation({
@@ -128,8 +184,21 @@ export function useSalvarPresencas() {
         }))
         await supabase.from('reposicoes').upsert(repos, { onConflict: 'aluno_id,aula_origem_id' })
       }
+
+      // Aluno marcado como "Reposição" nesta aula (fora da aba dedicada de Reposição) também
+      // baixa a falta pendente mais antiga dele — os dois fluxos convergem pro mesmo lugar.
+      const reposicoesBaixadas = []
+      for (const p of presencas.filter(p => p.tipo_participacao === 'reposicao')) {
+        const resultado = await resolverReposicaoFIFO({ alunoId: p.aluno_id, aulaDestinoId: aulaId })
+        if (resultado) reposicoesBaixadas.push(resultado)
+      }
+
+      return { reposicoesBaixadas }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['aulas'] })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      qc.invalidateQueries({ queryKey: ['relatorio_repos'] })
+    }
   })
 }
 
@@ -148,8 +217,8 @@ export function useRelatorioReposicoes() {
         .select(`
           id, aluno_id, aula_id,
           alunos(id, nome, nivel_avaliado_prof),
-          aulas!inner(id, data_aula, turma_id,
-            turmas(id, nome, modalidades(id, nome, icone_emoji, cor_hex))
+          aulas!inner(id, data_aula, turma_id, observacoes,
+            turmas(id, nome, modalidades(id, nome, icone_emoji, cor_hex), niveis(nome))
           )
         `)
         .eq('status_presenca', 'falta_justificada')
@@ -161,7 +230,10 @@ export function useRelatorioReposicoes() {
       const aulaIdsUnicos = [...new Set(faltas.map(f => f.aula_id))]
       const { data: repos } = await supabase
         .from('reposicoes')
-        .select('id, aluno_id, aula_origem_id, status')
+        .select(`
+          id, aluno_id, aula_origem_id, status, aula_reposicao_id,
+          aula_reposicao:aulas!aula_reposicao_id(id, data_aula, turmas(nome, quadras(nome)))
+        `)
         .in('aula_origem_id', aulaIdsUnicos)
 
       const reposMap = {}
@@ -176,13 +248,15 @@ export function useRelatorioReposicoes() {
         if (!aluno) return
         const aula = f.aulas
         const modalidade = aula?.turmas?.modalidades || null
+        const tipoAula = isAulaIndividual(aula) ? 'individual' : 'grupo'
 
         if (!porAluno[aluno.id]) {
-          porAluno[aluno.id] = { id: aluno.id, nome: aluno.nome, nivel: aluno.nivel_avaliado_prof, modalidade, faltas: [] }
+          porAluno[aluno.id] = { id: aluno.id, nome: aluno.nome, nivel: aluno.nivel_avaliado_prof, modalidade, tiposAula: new Set(), faltas: [] }
         }
         if (!porAluno[aluno.id].modalidade && modalidade) {
           porAluno[aluno.id].modalidade = modalidade
         }
+        porAluno[aluno.id].tiposAula.add(tipoAula)
         porAluno[aluno.id].faltas.push({
           presencaId: f.id,
           aulaId: f.aula_id,
@@ -194,8 +268,12 @@ export function useRelatorioReposicoes() {
 
       return Object.values(porAluno).map(a => {
         const pendentes = a.faltas.filter(f => !f.reposicao || f.reposicao.status === 'pendente')
-        const agendadas = a.faltas.filter(f => f.reposicao?.status === 'agendado')
-        return { ...a, pendentes, agendadas }
+        // Concluída (já aconteceu ou é hoje) vs. ainda vai acontecer — mesmo status 'agendada',
+        // separadas pela data da aula de destino.
+        const resolvidas = a.faltas.filter(f => f.reposicao?.status === 'agendada')
+        const agendadas = resolvidas.filter(f => (f.reposicao.aula_reposicao?.data_aula || '9999-99-99') > dataFim)
+        const repostas = resolvidas.filter(f => (f.reposicao.aula_reposicao?.data_aula || '') <= dataFim)
+        return { ...a, tiposAula: [...a.tiposAula], pendentes, agendadas, repostas }
       }).sort((a, b) => b.pendentes.length - a.pendentes.length)
     },
     staleTime: 60000,
@@ -251,10 +329,12 @@ export function useAulasDisponiveisReposicao() {
   })
 }
 
+// Agenda sempre resolve a falta pendente mais antiga do aluno (FIFO) — não recebe qual falta
+// baixar, só o aluno e a aula de destino. Ver resolverReposicaoFIFO.
 export function useAgendarReposicao() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ reposicaoId, aulaOrigemId, aulaId, alunoId }) => {
+    mutationFn: async ({ alunoId, aulaId }) => {
       const { error: errPres } = await supabase
         .from('presencas')
         .upsert({
@@ -266,16 +346,7 @@ export function useAgendarReposicao() {
         }, { onConflict: 'aula_id,aluno_id' })
       if (errPres) throw errPres
 
-      if (reposicaoId) {
-        const { error } = await supabase
-          .from('reposicoes').update({ status: 'agendado' }).eq('id', reposicaoId)
-        if (error) throw error
-      } else {
-        const { error } = await supabase
-          .from('reposicoes')
-          .upsert({ aluno_id: alunoId, aula_origem_id: aulaOrigemId, status: 'agendado' }, { onConflict: 'aluno_id,aula_origem_id' })
-        if (error) throw error
-      }
+      return resolverReposicaoFIFO({ alunoId, aulaDestinoId: aulaId })
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['relatorio_repos'] })

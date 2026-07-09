@@ -391,29 +391,38 @@ function ModalCopiarGrade({ open, onClose }) {
 
 
 function calcReposicaoStatus(dataAula) {
-  if (!dataAula) return { diasRestantes: null, cor: '#3b82f6', progresso: 100, label: '' }
+  if (!dataAula) return { diasRestantes: null, cor: '#3b82f6', progresso: 0, label: '' }
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
   const dataFalta = new Date(dataAula + 'T12:00')
   const daysElapsed = Math.floor((hoje - dataFalta) / (1000 * 60 * 60 * 24))
   const diasRestantes = 60 - daysElapsed
   let cor = '#3b82f6'
-  if (diasRestantes <= 0) cor = '#ef4444'
-  else if (diasRestantes <= 10) cor = '#f59e0b'
-  // Barra começa cheia e vai diminuindo; expirado = tracinho mínimo vermelho
-  const progresso = diasRestantes <= 0
-    ? 3
-    : Math.min(100, (diasRestantes / 60) * 100)
+  if (diasRestantes <= 5) cor = '#ef4444'
+  else if (diasRestantes <= 15) cor = '#f59e0b'
+  // Barra começa vazia e vai enchendo conforme os dias passam (cheia = prazo estourado)
+  const progresso = Math.min(100, Math.max(0, (daysElapsed / 60) * 100))
   const label = diasRestantes <= 0
     ? `+${Math.abs(diasRestantes)}d em atraso`
     : `${diasRestantes}d restantes`
   return { diasRestantes, cor, progresso, label }
 }
 
+function fmtData(d) {
+  return d ? format(new Date(d + 'T12:00'), "dd/MM/yyyy", { locale: ptBR }) : '—'
+}
+
 const SORT_OPTS = [
-  { key: 'urgencia', label: 'Mais urgente' },
-  { key: 'quantidade', label: 'Mais faltas' },
-  { key: 'alfabetico', label: 'Alfabético' },
+  { value: 'urgencia', label: 'Mais urgente' },
+  { value: 'quantidade', label: 'Mais faltas' },
+  { value: 'alfabetico', label: 'Alfabético' },
 ]
+
+const TIPO_AULA_OPTS = [
+  { value: 'individual', label: 'Individual' },
+  { value: 'grupo', label: 'Grupo' },
+]
+
+const NIVEL_OPTS = NIVEIS_ALUNO.map(n => ({ value: n, label: n }))
 
 function urgenciaMenor(pendentes) {
   if (!pendentes.length) return 999
@@ -423,12 +432,70 @@ function urgenciaMenor(pendentes) {
   }, Infinity)
 }
 
+const LIMITE_LISTA = 20
+
+// Dropdown de filtro genérico — reusado pra Modalidade, Tipo, Nível e Ordenar.
+function FiltroDropdown({ label, valor, opcoes, onChange, aberto, onToggle, permiteTodas = true }) {
+  const labelAtual = opcoes.find(o => o.value === valor)?.label || label
+  return (
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button onClick={onToggle} style={{
+        display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap',
+        padding: '8px 12px', borderRadius: '8px', border: 'none',
+        backgroundColor: valor ? 'rgba(252,200,37,0.08)' : '#1a1a1a',
+        outline: `1px solid ${valor ? 'rgba(252,200,37,0.3)' : '#2a2a2a'}`,
+        color: valor ? '#fcc825' : '#666', cursor: 'pointer', fontSize: '12px', fontWeight: '500',
+      }}>
+        <span>{labelAtual}</span>
+        <span style={{ fontSize: '8px', opacity: 0.6 }}>▾</span>
+      </button>
+      {aberto && (
+        <>
+          <div onClick={onToggle} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+          <div style={{
+            position: 'absolute', left: 0, top: 'calc(100% + 4px)', zIndex: 20,
+            backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: '10px',
+            padding: '6px', minWidth: '160px', maxHeight: '260px', overflowY: 'auto',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          }}>
+            {permiteTodas && (
+              <button onClick={() => onChange(null)} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
+                cursor: 'pointer', fontSize: '13px', textAlign: 'left',
+                backgroundColor: !valor ? 'rgba(252,200,37,0.08)' : 'transparent',
+                color: !valor ? '#fcc825' : '#888',
+              }}>
+                Todas {!valor && '✓'}
+              </button>
+            )}
+            {opcoes.map(op => (
+              <button key={op.value} onClick={() => onChange(op.value)} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
+                cursor: 'pointer', fontSize: '13px', textAlign: 'left',
+                backgroundColor: valor === op.value ? 'rgba(252,200,37,0.08)' : 'transparent',
+                color: valor === op.value ? '#fcc825' : '#888',
+              }}>
+                {op.label} {valor === op.value && '✓'}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function AulasReposicoes() {
   const [busca, setBusca] = useState('')
   const [modFilter, setModFilter] = useState(null)
-  const [showModMenu, setShowModMenu] = useState(false)
+  const [tipoFilter, setTipoFilter] = useState(null)
+  const [nivelFilter, setNivelFilter] = useState(null)
   const [sortBy, setSortBy] = useState('urgencia')
-  const [showSortMenu, setShowSortMenu] = useState(false)
+  const [menuAberto, setMenuAberto] = useState(null) // 'mod' | 'tipo' | 'nivel' | 'sort' | null
+  const [viewTab, setViewTab] = useState('pendentes') // 'pendentes' | 'repostas'
+  const [verTodos, setVerTodos] = useState(false)
   const [alunoSel, setAlunoSel] = useState(null)
 
   const { data: relatorio, isLoading } = useRelatorioReposicoes()
@@ -437,24 +504,71 @@ function AulasReposicoes() {
     (relatorio || []).filter(a => a.modalidade).map(a => [a.modalidade.nome, a.modalidade])
   ).values()]
 
-  let lista = (relatorio || []).filter(a => {
+  const totalAPor = (relatorio || []).reduce((s, a) => s + a.pendentes.length, 0)
+  const totalAlunosRepostos = (relatorio || []).filter(a => a.repostas.length > 0).length
+
+  let filtrada = (relatorio || []).filter(a => {
     if (modFilter && a.modalidade?.nome !== modFilter) return false
+    if (tipoFilter && !a.tiposAula?.includes(tipoFilter)) return false
+    if (nivelFilter && a.nivel !== nivelFilter) return false
     if (busca && !a.nome.toLowerCase().includes(busca.toLowerCase())) return false
     return true
   })
 
+  filtrada = viewTab === 'repostas'
+    ? filtrada.filter(a => a.repostas.length > 0)
+    : filtrada
+
   if (sortBy === 'urgencia') {
-    lista = [...lista].sort((a, b) => urgenciaMenor(a.pendentes) - urgenciaMenor(b.pendentes))
+    filtrada = [...filtrada].sort((a, b) => urgenciaMenor(a.pendentes) - urgenciaMenor(b.pendentes))
   } else if (sortBy === 'quantidade') {
-    lista = [...lista].sort((a, b) => b.pendentes.length - a.pendentes.length)
+    filtrada = [...filtrada].sort((a, b) => b.pendentes.length - a.pendentes.length)
   } else if (sortBy === 'alfabetico') {
-    lista = [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
+    filtrada = [...filtrada].sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
   }
 
-  const sortLabel = SORT_OPTS.find(o => o.key === sortBy)?.label || 'Ordenar'
+  const capativa = !busca && !verTodos && filtrada.length > LIMITE_LISTA
+  const lista = capativa ? filtrada.slice(0, LIMITE_LISTA) : filtrada
+
+  function toggleMenu(nome) {
+    setMenuAberto(m => m === nome ? null : nome)
+  }
 
   return (
     <div>
+      {/* Resumo geral */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
+        <div style={{ backgroundColor: '#151515', border: '1px solid #2a2a2a', borderRadius: '12px', padding: '12px 14px' }}>
+          <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Aulas p/ repor</div>
+          <div style={{ fontSize: '22px', fontWeight: '700', color: '#3b82f6' }}>{totalAPor}</div>
+        </div>
+        <div style={{ backgroundColor: '#151515', border: '1px solid #2a2a2a', borderRadius: '12px', padding: '12px 14px' }}>
+          <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Alunos repostos</div>
+          <div style={{ fontSize: '22px', fontWeight: '700', color: '#22c55e' }}>{totalAlunosRepostos}</div>
+        </div>
+      </div>
+
+      {/* Sub-tabs: Pendentes / Repostas */}
+      <div style={{
+        display: 'flex', gap: '3px', marginBottom: '12px',
+        padding: '4px', backgroundColor: '#1a1a1a',
+        border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px',
+      }}>
+        {[
+          { key: 'pendentes', label: 'Pendentes' },
+          { key: 'repostas', label: '✓ Aulas Repostas' },
+        ].map(t => (
+          <button key={t.key} onClick={() => setViewTab(t.key)} style={{
+            flex: 1, padding: '7px 4px', borderRadius: '7px', border: 'none',
+            fontSize: '12px', fontWeight: '500', cursor: 'pointer',
+            background: viewTab === t.key ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : 'transparent',
+            color: viewTab === t.key ? 'white' : '#555', transition: 'all 0.2s',
+          }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {/* Busca */}
       <div style={{ marginBottom: '10px' }}>
         <input
@@ -470,91 +584,27 @@ function AulasReposicoes() {
         />
       </div>
 
-      {/* Filtros: modalidade + ordenação */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-        {/* Dropdown modalidade */}
-        <div style={{ position: 'relative', flex: 1 }}>
-          <button onClick={() => { setShowModMenu(v => !v); setShowSortMenu(false) }} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            width: '100%', padding: '8px 12px', borderRadius: '8px', border: 'none',
-            backgroundColor: modFilter ? 'rgba(252,200,37,0.08)' : '#1a1a1a',
-            outline: `1px solid ${modFilter ? 'rgba(252,200,37,0.3)' : '#2a2a2a'}`,
-            color: modFilter ? '#fcc825' : '#666', cursor: 'pointer', fontSize: '12px', fontWeight: '500',
-          }}>
-            <span>{modFilter || 'Modalidade'}</span>
-            <span style={{ fontSize: '8px', opacity: 0.6 }}>▾</span>
-          </button>
-          {showModMenu && (
-            <>
-              <div onClick={() => setShowModMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-              <div style={{
-                position: 'absolute', left: 0, top: 'calc(100% + 4px)', zIndex: 20,
-                backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: '10px',
-                padding: '6px', minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-              }}>
-                <button onClick={() => { setModFilter(null); setShowModMenu(false) }} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
-                  cursor: 'pointer', fontSize: '13px', textAlign: 'left',
-                  backgroundColor: !modFilter ? 'rgba(252,200,37,0.08)' : 'transparent',
-                  color: !modFilter ? '#fcc825' : '#888',
-                }}>
-                  Todas {!modFilter && '✓'}
-                </button>
-                {modalidades.map(m => (
-                  <button key={m.nome} onClick={() => { setModFilter(m.nome); setShowModMenu(false) }} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
-                    cursor: 'pointer', fontSize: '13px', textAlign: 'left',
-                    backgroundColor: modFilter === m.nome ? 'rgba(252,200,37,0.08)' : 'transparent',
-                    color: modFilter === m.nome ? '#fcc825' : '#888',
-                  }}>
-                    {m.nome} {modFilter === m.nome && '✓'}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Dropdown ordenação */}
-        <div style={{ position: 'relative', flex: 1 }}>
-          <button onClick={() => { setShowSortMenu(v => !v); setShowModMenu(false) }} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            width: '100%', padding: '8px 12px', borderRadius: '8px', border: 'none',
-            backgroundColor: '#1a1a1a', outline: '1px solid #2a2a2a',
-            color: '#666', cursor: 'pointer', fontSize: '12px', fontWeight: '500',
-          }}>
-            <span>{sortLabel}</span>
-            <span style={{ fontSize: '8px', opacity: 0.6 }}>▾</span>
-          </button>
-          {showSortMenu && (
-            <>
-              <div onClick={() => setShowSortMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
-              <div style={{
-                position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 20,
-                backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: '10px',
-                padding: '6px', minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-              }}>
-                {SORT_OPTS.map(opt => (
-                  <button key={opt.key} onClick={() => { setSortBy(opt.key); setShowSortMenu(false) }} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
-                    cursor: 'pointer', fontSize: '13px', textAlign: 'left',
-                    backgroundColor: sortBy === opt.key ? 'rgba(252,200,37,0.08)' : 'transparent',
-                    color: sortBy === opt.key ? '#fcc825' : '#888',
-                  }}>
-                    {opt.label} {sortBy === opt.key && '✓'}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+      {/* Filtros: modalidade + tipo + nível + ordenação */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', overflowX: 'auto', paddingBottom: '2px' }}>
+        <FiltroDropdown label="Modalidade" valor={modFilter}
+          opcoes={modalidades.map(m => ({ value: m.nome, label: m.nome }))}
+          onChange={v => { setModFilter(v); setMenuAberto(null) }}
+          aberto={menuAberto === 'mod'} onToggle={() => toggleMenu('mod')} />
+        <FiltroDropdown label="Tipo" valor={tipoFilter} opcoes={TIPO_AULA_OPTS}
+          onChange={v => { setTipoFilter(v); setMenuAberto(null) }}
+          aberto={menuAberto === 'tipo'} onToggle={() => toggleMenu('tipo')} />
+        <FiltroDropdown label="Nível" valor={nivelFilter} opcoes={NIVEL_OPTS}
+          onChange={v => { setNivelFilter(v); setMenuAberto(null) }}
+          aberto={menuAberto === 'nivel'} onToggle={() => toggleMenu('nivel')} />
+        <FiltroDropdown label="Ordenar" valor={sortBy} opcoes={SORT_OPTS} permiteTodas={false}
+          onChange={v => { setSortBy(v); setMenuAberto(null) }}
+          aberto={menuAberto === 'sort'} onToggle={() => toggleMenu('sort')} />
       </div>
 
-      {isLoading ? <Loading /> : lista.length === 0 ? (
-        <EmptyState icon="🎉" title="Nenhuma falta justificada" description="Nenhuma reposição pendente" />
+      {isLoading ? <Loading /> : filtrada.length === 0 ? (
+        <EmptyState icon="🎉"
+          title={viewTab === 'repostas' ? 'Nenhuma reposição feita ainda' : 'Nenhuma falta justificada'}
+          description={viewTab === 'repostas' ? 'Ninguém repôs aula com esses filtros' : 'Nenhuma reposição pendente'} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {lista.map(aluno => {
@@ -586,25 +636,26 @@ function AulasReposicoes() {
                   {/* Badge contagem */}
                   <div style={{
                     minWidth: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-                    backgroundColor: aluno.pendentes.length > 0 ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.1)',
-                    border: `1px solid ${aluno.pendentes.length > 0 ? 'rgba(59,130,246,0.35)' : 'rgba(34,197,94,0.3)'}`,
+                    backgroundColor: viewTab === 'repostas' ? 'rgba(34,197,94,0.15)' : aluno.pendentes.length > 0 ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.1)',
+                    border: `1px solid ${viewTab === 'repostas' ? 'rgba(34,197,94,0.35)' : aluno.pendentes.length > 0 ? 'rgba(59,130,246,0.35)' : 'rgba(34,197,94,0.3)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '12px', fontWeight: '700', color: aluno.pendentes.length > 0 ? '#3b82f6' : '#22c55e',
+                    fontSize: '12px', fontWeight: '700', color: viewTab === 'repostas' ? '#22c55e' : aluno.pendentes.length > 0 ? '#3b82f6' : '#22c55e',
                   }}>
-                    {aluno.pendentes.length > 0 ? aluno.pendentes.length : '✓'}
+                    {viewTab === 'repostas' ? aluno.repostas.length : (aluno.pendentes.length > 0 ? aluno.pendentes.length : '✓')}
                   </div>
                   {/* Nome + nível */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5' }}>{aluno.nome}</div>
                     <div style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>
                       {aluno.nivel || '-'}
-                      {aluno.agendadas.length > 0 && <span style={{ color: '#22c55e', marginLeft: '8px' }}>✓ {aluno.agendadas.length} agendada{aluno.agendadas.length !== 1 ? 's' : ''}</span>}
+                      {viewTab === 'pendentes' && aluno.agendadas.length > 0 && <span style={{ color: '#22c55e', marginLeft: '8px' }}>✓ {aluno.agendadas.length} agendada{aluno.agendadas.length !== 1 ? 's' : ''}</span>}
+                      {viewTab === 'repostas' && aluno.pendentes.length > 0 && <span style={{ color: '#3b82f6', marginLeft: '8px' }}>{aluno.pendentes.length} ainda pendente{aluno.pendentes.length !== 1 ? 's' : ''}</span>}
                     </div>
                   </div>
                 </div>
 
                 {/* Barra de prazo mais urgente */}
-                {statusUrgente && aluno.pendentes.length > 0 && (
+                {viewTab === 'pendentes' && statusUrgente && aluno.pendentes.length > 0 && (
                   <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #1e1e1e' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '4px' }}>
                       <span style={{ color: '#444' }}>Prazo mais urgente</span>
@@ -618,6 +669,14 @@ function AulasReposicoes() {
               </button>
             )
           })}
+          {capativa && (
+            <button onClick={() => setVerTodos(true)} style={{
+              padding: '10px', borderRadius: '10px', border: '1px dashed #2a2a2a', background: 'none',
+              color: '#888', fontSize: '12px', cursor: 'pointer',
+            }}>
+              + {filtrada.length - LIMITE_LISTA} aluno{filtrada.length - LIMITE_LISTA !== 1 ? 's' : ''} — buscar pelo nome ou ver todos
+            </button>
+          )}
         </div>
       )}
 
@@ -626,16 +685,73 @@ function AulasReposicoes() {
   )
 }
 
+// Card de uma falta pendente, com a barrinha de prazo (60 dias)
+function CardFaltaPendente({ item, destaque }) {
+  const status = calcReposicaoStatus(item.dataAula)
+  return (
+    <div style={{
+      padding: '12px 14px', borderRadius: '12px',
+      backgroundColor: '#111', outline: destaque ? `1px solid ${status.cor}66` : '1px solid #2a2a2a',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>
+          {item.dataAula ? format(new Date(item.dataAula + 'T12:00'), "dd/MM/yyyy · EEEE", { locale: ptBR }) : 'Data desconhecida'}
+        </div>
+        {destaque && (
+          <span style={{ fontSize: '9px', fontWeight: '700', color: '#fcc825', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+            próxima a baixar
+          </span>
+        )}
+      </div>
+      <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{item.turmaNome || 'Individual'}</div>
+      <div style={{ marginTop: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '4px' }}>
+          <span style={{ color: '#444' }}>Prazo: {item.dataAula ? format(new Date(new Date(item.dataAula + 'T12:00').getTime() + 60 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy', { locale: ptBR }) : '-'}</span>
+          <span style={{ color: status.cor, fontWeight: '600' }}>{status.label}</span>
+        </div>
+        <div style={{ height: '3px', backgroundColor: '#1a1a1a', borderRadius: '2px', overflow: 'hidden' }}>
+          <div style={{ width: `${status.progresso}%`, height: '100%', backgroundColor: status.cor, borderRadius: '2px' }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Card de um par falta → reposição (agendada no futuro, ou já reposta)
+function CardReposicaoPar({ item, concluida }) {
+  const destino = item.reposicao?.aula_reposicao
+  return (
+    <div style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: '#111', outline: '1px solid #2a2a2a' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Faltou</div>
+          <div style={{ color: '#F0F2F5', fontWeight: '600', marginTop: '2px' }}>{fmtData(item.dataAula)}</div>
+          <div style={{ color: '#555', fontSize: '11px', marginTop: '1px' }}>{item.turmaNome || 'Individual'}</div>
+        </div>
+        <span style={{ color: concluida ? '#22c55e' : '#3b82f6', fontSize: '16px', flexShrink: 0 }}>→</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '9px', color: concluida ? '#22c55e' : '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+            {concluida ? 'Repôs em' : 'Vai repor em'}
+          </div>
+          <div style={{ color: '#F0F2F5', fontWeight: '600', marginTop: '2px' }}>{fmtData(destino?.data_aula)}</div>
+          <div style={{ color: '#555', fontSize: '11px', marginTop: '1px' }}>{destino?.turmas?.nome || destino?.turmas?.quadras?.nome || '—'}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ModalReposicao({ aluno, onClose }) {
   const agendar = useAgendarReposicao()
-  const [step, setStep] = useState('falta')         // 'falta' | 'grade'
-  const [faltasLocais, setFaltasLocais] = useState([...aluno.pendentes])
-  const [faltaSel, setFaltaSel] = useState(aluno.pendentes[0] || null)
+  const [mostrarGrade, setMostrarGrade] = useState(false)
   const [dataSel, setDataSel] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [slotSel, setSlotSel] = useState(null)
 
+  const pendentesOrdenadas = [...aluno.pendentes].sort((a, b) => (a.dataAula || '').localeCompare(b.dataAula || ''))
+  const proximaFalta = pendentesOrdenadas[0] || null
+
   const { data: aulasData, isLoading: loadingDia } = useAulasDiaParaReposicao(
-    step === 'grade' ? dataSel : null
+    mostrarGrade ? dataSel : null
   )
 
   const aulasComDisp = (aulasData || []).map(a => {
@@ -651,92 +767,99 @@ function ModalReposicao({ aluno, onClose }) {
   })
 
   async function handleConfirmar() {
-    if (!slotSel || !faltaSel) return
+    if (!slotSel) return
     try {
-      await agendar.mutateAsync({
-        reposicaoId: faltaSel.reposicao?.id || null,
-        aulaOrigemId: faltaSel.aulaId,
-        aulaId: slotSel.id,
-        alunoId: aluno.id,
-      })
+      const resultado = await agendar.mutateAsync({ alunoId: aluno.id, aulaId: slotSel.id })
       toast.success(
-        `✅ Reposição agendada — ${slotSel.turmas?.nome} · ${format(new Date(dataSel + 'T12:00'), 'dd/MM', { locale: ptBR })}`,
+        resultado?.dataFaltaResolvida
+          ? `✅ Reposição agendada — baixou a falta de ${format(new Date(resultado.dataFaltaResolvida + 'T12:00'), 'dd/MM', { locale: ptBR })}`
+          : `✅ Reposição agendada — ${slotSel.turmas?.nome} · ${format(new Date(dataSel + 'T12:00'), 'dd/MM', { locale: ptBR })}`,
         { style: toastStyle }
       )
-      const restantes = faltasLocais.filter(f => f.aulaId !== faltaSel.aulaId)
-      if (restantes.length === 0) { onClose(); return }
-      setFaltasLocais(restantes)
-      setFaltaSel(restantes[0])
-      setSlotSel(null)
-      setStep('falta')
+      onClose()
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
     }
   }
 
-  /* ── STEP 1: lista de faltas ─────────────────────────────────── */
-  if (step === 'falta') {
+  /* ── Vista principal: histórico completo do aluno ────────────── */
+  if (!mostrarGrade) {
     return (
       <Modal open onClose={onClose} title={aluno.nome} size="md">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ fontSize: '12px', color: '#555', marginBottom: '6px' }}>
-            {faltasLocais.length} falta{faltasLocais.length !== 1 ? 's' : ''} a repor
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          <div style={{ fontSize: '12px', color: '#888' }}>
+            {aluno.pendentes.length} p/ repor · {aluno.agendadas.length} agendada{aluno.agendadas.length !== 1 ? 's' : ''} · {aluno.repostas.length} reposta{aluno.repostas.length !== 1 ? 's' : ''}
             {aluno.modalidade ? ` · ${aluno.modalidade.nome}` : ''}
           </div>
-          {faltasLocais.map(item => {
-            const status = calcReposicaoStatus(item.dataAula)
-            return (
-              <button key={item.aulaId} onClick={() => { setFaltaSel(item); setSlotSel(null); setStep('grade') }} style={{
-                display: 'flex', flexDirection: 'column',
-                padding: '14px 16px', borderRadius: '12px', border: 'none', cursor: 'pointer',
-                textAlign: 'left', width: '100%', backgroundColor: '#111', outline: '1px solid #2a2a2a',
-              }}
-              onMouseEnter={e => e.currentTarget.style.outline = `1px solid ${status.cor}55`}
-              onMouseLeave={e => e.currentTarget.style.outline = '1px solid #2a2a2a'}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#F0F2F5', fontWeight: '600' }}>
-                      {item.dataAula ? format(new Date(item.dataAula + 'T12:00'), "dd/MM/yyyy · EEEE", { locale: ptBR }) : 'Data desconhecida'}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#555', marginTop: '3px' }}>
-                      {item.turmaNome || aluno.nivel || 'Individual'}
-                    </div>
-                  </div>
-                  <span style={{ color: '#3b82f6', fontSize: '20px', flexShrink: 0 }}>›</span>
-                </div>
-                <div style={{ marginTop: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '4px' }}>
-                    <span style={{ color: '#444' }}>Prazo: {item.dataAula ? format(new Date(new Date(item.dataAula + 'T12:00').getTime() + 60 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy', { locale: ptBR }) : '-'}</span>
-                    <span style={{ color: status.cor, fontWeight: '600' }}>{status.label}</span>
-                  </div>
-                  <div style={{ height: '3px', backgroundColor: '#1a1a1a', borderRadius: '2px', overflow: 'hidden' }}>
-                    <div style={{ width: `${status.progresso}%`, height: '100%', backgroundColor: status.cor, borderRadius: '2px' }} />
-                  </div>
-                </div>
-              </button>
-            )
-          })}
+
+          {aluno.pendentes.length === 0 && aluno.agendadas.length === 0 && aluno.repostas.length === 0 && (
+            <EmptyState icon="🎉" title="Nada por aqui" description="Sem faltas registradas" />
+          )}
+
+          {aluno.pendentes.length > 0 && (
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                Pendentes
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {pendentesOrdenadas.map(item => (
+                  <CardFaltaPendente key={item.aulaId} item={item} destaque={item === proximaFalta} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {aluno.agendadas.length > 0 && (
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                Agendadas
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {aluno.agendadas.map(item => <CardReposicaoPar key={item.aulaId} item={item} />)}
+              </div>
+            </div>
+          )}
+
+          {aluno.repostas.length > 0 && (
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                Repostas
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {aluno.repostas.map(item => <CardReposicaoPar key={item.aulaId} item={item} concluida />)}
+              </div>
+            </div>
+          )}
+
+          {aluno.pendentes.length > 0 && (
+            <button onClick={() => setMostrarGrade(true)} style={{
+              width: '100%', padding: '13px', borderRadius: '12px', border: 'none',
+              background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+              color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+            }}>
+              + Agendar reposição — baixa {fmtData(proximaFalta?.dataAula)}
+            </button>
+          )}
         </div>
       </Modal>
     )
   }
 
-  /* ── STEP 2: mini-grade por dia ──────────────────────────────── */
+  /* ── Agendar: mini-grade por dia ──────────────────────────────── */
   return (
     <Modal open onClose={onClose} title={aluno.nome} size="xl">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
         {/* Info da falta + botão voltar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button onClick={() => { setStep('falta'); setSlotSel(null) }} style={{
+          <button onClick={() => { setMostrarGrade(false); setSlotSel(null) }} style={{
             flexShrink: 0, padding: '7px 12px', borderRadius: '8px', border: '1px solid #2a2a2a',
             background: 'none', color: '#888', cursor: 'pointer', fontSize: '13px',
           }}>← Voltar</button>
           <div style={{ flex: 1, padding: '8px 12px', backgroundColor: 'rgba(59,130,246,0.08)', borderRadius: '8px', border: '1px solid rgba(59,130,246,0.2)' }}>
-            <div style={{ fontSize: '10px', color: '#3b82f6', fontWeight: '600', textTransform: 'uppercase' }}>Falta a repor</div>
+            <div style={{ fontSize: '10px', color: '#3b82f6', fontWeight: '600', textTransform: 'uppercase' }}>Vai baixar a falta mais antiga</div>
             <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600', marginTop: '1px' }}>
-              {faltaSel?.dataAula ? format(new Date(faltaSel.dataAula + 'T12:00'), "dd/MM · EEEE", { locale: ptBR }) : ''} · {faltaSel?.turmaNome || aluno.nivel || 'Individual'}
+              {proximaFalta?.dataAula ? format(new Date(proximaFalta.dataAula + 'T12:00'), "dd/MM · EEEE", { locale: ptBR }) : ''} · {proximaFalta?.turmaNome || 'Individual'}
             </div>
           </div>
         </div>

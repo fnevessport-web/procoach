@@ -94,7 +94,7 @@ export function HomePage() {
   const navigate = useNavigate()
   const { perfil, modalidadeSelecionada } = useAppStore()
   const { data: modalidades, isLoading: loadingModalidades } = useModalidades()
-  const { aoVivoAgora, hojeAcumulado, professoresAgora, alertasSemProfessor, isLoading } = useHomeDashboard()
+  const { aoVivoAgora, feriadoHoje, hojeAcumulado, professoresAgora, alertasSemProfessor, isLoading } = useHomeDashboard()
   const role = perfil?.role || 'professor'
 
   const [filtroAoVivo, setFiltroAoVivo] = useState('todas')
@@ -167,6 +167,15 @@ export function HomePage() {
 
       {/* Ao vivo agora */}
       <div style={{ marginBottom: '26px' }}>
+        {feriadoHoje && (
+          <div style={{
+            backgroundColor: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)',
+            borderRadius: '10px', padding: '10px 14px', marginBottom: '12px',
+            fontSize: '12px', color: '#a855f7',
+          }}>
+            🎉 Feriado — {feriadoHoje}: não teremos aula hoje.
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
             {aoVivoFiltrado.length > 0 && (

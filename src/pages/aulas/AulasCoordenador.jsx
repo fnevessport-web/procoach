@@ -723,8 +723,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       if (idsRemovidos.length > 0) {
         await supabase.from('presencas').delete().eq('aula_id', aulaId).in('aluno_id', idsRemovidos)
       }
+      let reposicoesBaixadas = []
       if (lista.length > 0) {
-        await salvarPresencas.mutateAsync({ aulaId, presencas: lista })
+        const resultado = await salvarPresencas.mutateAsync({ aulaId, presencas: lista })
+        reposicoesBaixadas = resultado?.reposicoesBaixadas || []
       }
       const mensalistas = lista.filter(p => p.tipo_participacao === 'mensalista')
       if (aula && mensalistas.length > 0) {
@@ -762,6 +764,13 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
       toast.success('✅ Presenças salvas!', { style: toastStyle })
+      reposicoesBaixadas.forEach(r => {
+        if (!r.dataFaltaResolvida) return
+        toast.success(
+          `↩ Reposição baixou a falta de ${format(new Date(r.dataFaltaResolvida + 'T12:00'), 'dd/MM', { locale: ptBR })}`,
+          { style: toastStyle }
+        )
+      })
       fecharModal()
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
@@ -1141,7 +1150,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
           borderRadius: '10px', padding: '10px 14px', marginBottom: '12px',
           fontSize: '12px', color: '#a855f7',
         }}>
-          🎉 Feriado — {feriado}: aulas de hoje com aluno já contam como pagas, ninguém vai dar aula.
+          🎉 Feriado — {feriado}: não teremos aula hoje.
         </div>
       )}
 
