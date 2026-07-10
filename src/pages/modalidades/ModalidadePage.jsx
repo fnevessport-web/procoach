@@ -156,16 +156,25 @@ export function ModalidadePage() {
                 {opcoesMeses.map(o => <option key={o.valor} value={o.valor}>vs. {o.label}</option>)}
               </select>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '4px' }}>
               <div style={cardStyle}>
                 <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Alunos ativos</div>
-                <div style={{ fontSize: '22px', fontWeight: '700', color: '#F0F2F5' }}>{mes.alunosAtivos}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px' }}>
+                  <span style={{ fontSize: '22px', fontWeight: '700', color: '#F0F2F5' }}>{mes.alunosAtivos}</span>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#666' }}>{mes.alunosAtivosComparacao}</span>
+                </div>
               </div>
               <div style={cardStyle}>
                 <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Aulas no mês</div>
-                <div style={{ fontSize: '22px', fontWeight: '700', color: '#F0F2F5' }}>{mes.aulasRealizadas}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px' }}>
+                  <span style={{ fontSize: '22px', fontWeight: '700', color: '#F0F2F5' }}>{mes.aulasRealizadas}</span>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#666' }}>{mes.aulasComparacao}</span>
+                </div>
               </div>
             </div>
+            <p style={{ fontSize: '10px', color: '#555', margin: '0 0 8px', lineHeight: '1.4' }}>
+              Em destaque: primeiros {mes.diasComparados} dias de <span style={{ textTransform: 'capitalize' }}>{mes.labelMesAtual}</span> · em cinza: mesmo período de <span style={{ textTransform: 'capitalize' }}>{mes.labelMesComparacao}</span>.
+            </p>
             <div style={cardStyle}>
               <div style={{ fontSize: '11px', color: '#555', marginBottom: '10px' }}>Presença acumulada</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

@@ -19,6 +19,13 @@ function ehFalta(p) {
   return p.status_presenca === 'falta' || p.status_presenca === 'falta_justificada'
 }
 
+// Mesma regra de useHomeDashboard.js: turma sem ninguém matriculado na aula do dia é uma
+// grade inativa, não uma aula rolando de verdade — avulsa sempre conta (já nasce com aluno).
+function aulaTemAluno(a) {
+  if (!a.turma_id) return true
+  return (a.presencas?.length || 0) > 0
+}
+
 function fmt(d) {
   return format(d, 'yyyy-MM-dd')
 }
@@ -124,9 +131,11 @@ export function useModalidadeDashboard(nomeModalidade, { mesAtual, mesComparacao
   const empresa = MODALIDADE_EMPRESA[nomeModalidade] || null
 
   // ── Acontecendo agora (sempre "agora" de verdade, independente do mês selecionado) ──
+  // Grade sem aluno matriculado é uma vaga vazia, não uma aula rolando — não entra aqui.
   const agoraMin = hoje.getHours() * 60 + hoje.getMinutes()
   const aulasAgora = aulasModalidade.filter(a => {
     if (a.data_aula !== hojeStr) return false
+    if (!aulaTemAluno(a)) return false
     const inicio = horarioParaMinutos(horarioInicioDaAula(a))
     const fim = horarioParaMinutos(horarioFimDaAula(a))
     if (inicio == null || fim == null) return false
@@ -158,9 +167,23 @@ export function useModalidadeDashboard(nomeModalidade, { mesAtual, mesComparacao
   const statsMesAtual = statsPeriodo(fmt(inicioMesAtual), fmt(fimMesAtual))
   const statsMesComparacao = statsPeriodo(fmt(inicioMesComparacao), fmt(fimMesComparacao))
 
+  // Aluno "ativo no período" = teve presença registrada (qualquer status) na janela — não
+  // o cadastro genérico alunos.ativo=true, que não é comparável mês a mês (é um flag sem
+  // histórico). Mesma janela proporcional (primeiros N dias) usada em statsPeriodo/pct.
+  function alunosAtivosNoPeriodo(inicioStr, fimStr) {
+    const ids = new Set()
+    aulasModalidade.forEach(a => {
+      if (a.data_aula < inicioStr || a.data_aula > fimStr) return
+      a.presencas?.forEach(p => { if (p.aluno_id) ids.add(p.aluno_id) })
+    })
+    return ids.size
+  }
+
   const mes = {
-    alunosAtivos: alunosModalidade.length,
+    alunosAtivos: alunosAtivosNoPeriodo(fmt(inicioMesAtual), fmt(fimMesAtual)),
+    alunosAtivosComparacao: alunosAtivosNoPeriodo(fmt(inicioMesComparacao), fmt(fimMesComparacao)),
     aulasRealizadas: statsMesAtual.aulas,
+    aulasComparacao: statsMesComparacao.aulas,
     pctAtual: statsMesAtual.pct,
     pctComparacao: statsMesComparacao.pct,
     diasComparados: diasNoPeriodo,
@@ -252,9 +275,12 @@ export function useModalidadeDashboard(nomeModalidade, { mesAtual, mesComparacao
     .sort((a, b) => b.faltasConsecutivas - a.faltasConsecutivas)
 
   // ── Ranking de professores (mês selecionado) ────────────────────
+  // Só aula efetivamente dada conta — agendada/futura/não dada não vira aula no ranking
+  // (mesmo critério de statsPeriodo/topAlunos acima).
   const profStats = {}
   aulasModalidade.forEach(a => {
     if (a.data_aula < fmt(inicioMesAtual) || a.data_aula > fmt(fimMesAtual) || !a.professores) return
+    if (a.status_aula !== 'dada') return
     if (!profStats[a.professores.id]) profStats[a.professores.id] = { nome: a.professores.nome, aulas: 0 }
     profStats[a.professores.id].aulas++
   })
