@@ -12,11 +12,13 @@ import { useProfessores } from '../../hooks/useProfessores'
 import { useQuadras } from '../../hooks/useQuadras'
 import { useNiveis } from '../../hooks/useNiveis'
 import { useModalidades } from '../../hooks/useModalidades'
+import { useTurmas } from '../../hooks/useTurmas'
 import { QUADRAS_EMPRESA } from '../../hooks/useFinanceiro'
 import { useAbrirConversaDaAula } from '../../hooks/useMensagens'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
 import { Loading, EmptyState } from '../../components/ui/Loading'
+import { Modal } from '../../components/ui/Modal'
 import { supabase } from '../../lib/supabase'
 import { logAudit } from '../../lib/audit'
 import { criarAlerta } from '../../hooks/useAlertas'
@@ -189,6 +191,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
     show: false, nome: '', telefone: '', nivel: '',
     menor_idade: false, nome_responsavel: '',
   })
+  // Depois de cadastrar um aluno novo, pergunta se ele também entra em outra turma (ex:
+  // matriculou 2x/semana) — evita repetir o fluxo inteiro de "Novo Aluno" pra cada dia.
+  const [promptOutraTurma, setPromptOutraTurma] = useState(null) // { alunoId, alunoNome } | null
+  const { data: todasTurmas } = useTurmas()
 
   const [modalMassa, setModalMassa] = useState(null)
   const [acaoMassa, setAcaoMassa] = useState(null)
@@ -1065,7 +1071,25 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       adicionarAlunoNaLista(aulaId, { id: result.id, nome: result.nome })
       setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '' })
       toast.success('Aluno cadastrado e adicionado!', { style: toastStyle })
+      setPromptOutraTurma({ alunoId: result.id, alunoNome: result.nome })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
+
+  async function handleAdicionarEmOutraTurma(turma) {
+    if (!promptOutraTurma) return
+    try {
+      const hojeStr = format(new Date(), 'yyyy-MM-dd')
+      await vincularMensalistasNaTurma(
+        { turma_id: turma.id, data_aula: hojeStr },
+        [{ aluno_id: promptOutraTurma.alunoId }]
+      )
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      toast.success(`✅ ${promptOutraTurma.alunoNome} incluído(a) também em ${turma.nome}!`, { style: toastStyle })
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    } finally {
+      setPromptOutraTurma(null)
+    }
   }
 
   const aulasFiltradas = aulas?.filter(a => {
@@ -2316,6 +2340,129 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         </div>,
         document.body
       )}
+
+      {promptOutraTurma && (
+        <ModalOutraTurma
+          alunoNome={promptOutraTurma.alunoNome}
+          todasTurmas={todasTurmas}
+          onConfirmarTurma={handleAdicionarEmOutraTurma}
+          onFechar={() => setPromptOutraTurma(null)}
+        />
+      )}
     </div>
+  )
+}
+
+const DIAS_SEMANA_OUTRA_TURMA = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
+const DIAS_LABEL_OUTRA_TURMA = { segunda: 'Segunda', terca: 'Terça', quarta: 'Quarta', quinta: 'Quinta', sexta: 'Sexta', sabado: 'Sábado', domingo: 'Domingo' }
+
+// Depois de cadastrar um aluno novo (ver handleCadastrarNovoAluno), pergunta se ele também
+// entra em outra turma (ex: matriculou 2x/semana) — sem isso, o coordenador tinha que repetir
+// o fluxo de "Novo Aluno" inteiro pra cada dia que o aluno frequenta.
+function ModalOutraTurma({ alunoNome, todasTurmas, onConfirmarTurma, onFechar }) {
+  const [fase, setFase] = useState('pergunta') // 'pergunta' | 'dia' | 'turma'
+  const [diaEscolhido, setDiaEscolhido] = useState(null)
+  const [confirmando, setConfirmando] = useState(false)
+
+  const diasComTurma = new Set((todasTurmas || []).map(t => t.horario_dia_semana))
+  const turmasNoDia = diaEscolhido
+    ? (todasTurmas || [])
+        .filter(t => t.horario_dia_semana === diaEscolhido)
+        .sort((a, b) => (a.horario_inicio || '').localeCompare(b.horario_inicio || ''))
+    : []
+
+  async function confirmar(turma) {
+    setConfirmando(true)
+    await onConfirmarTurma(turma)
+    setConfirmando(false)
+  }
+
+  if (fase === 'pergunta') {
+    return (
+      <Modal open onClose={onFechar} title="Incluir em outra turma?" size="sm">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ fontSize: '13px', color: '#F0F2F5', lineHeight: '1.5' }}>
+            Deseja incluir <b>{alunoNome}</b> em outra turma além dessa (ex: mais um dia da semana)?
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={onFechar} style={{
+              flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #2a2a2a',
+              background: 'none', color: '#888', fontSize: '13px', cursor: 'pointer',
+            }}>Não, só essa</button>
+            <button onClick={() => setFase('dia')} style={{
+              flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
+              background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+              color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+            }}>Sim, adicionar</button>
+          </div>
+        </div>
+      </Modal>
+    )
+  }
+
+  if (fase === 'dia') {
+    return (
+      <Modal open onClose={onFechar} title={`${alunoNome} — outra turma`} size="sm">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ fontSize: '12px', color: '#888' }}>Qual dia da semana?</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {DIAS_SEMANA_OUTRA_TURMA.filter(d => diasComTurma.has(d)).map(d => (
+              <button key={d} onClick={() => { setDiaEscolhido(d); setFase('turma') }} style={{
+                padding: '9px 14px', borderRadius: '8px', border: 'none',
+                background: '#1a1a1a', outline: '1px solid #2a2a2a',
+                color: '#F0F2F5', fontSize: '13px', cursor: 'pointer',
+              }}>{DIAS_LABEL_OUTRA_TURMA[d]}</button>
+            ))}
+          </div>
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal open onClose={onFechar} title={`${alunoNome} — ${DIAS_LABEL_OUTRA_TURMA[diaEscolhido]}`} size="sm">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <button onClick={() => setFase('dia')} style={{
+          alignSelf: 'flex-start', background: 'none', border: 'none', color: '#888', fontSize: '12px', cursor: 'pointer',
+        }}>← trocar dia</button>
+
+        {turmasNoDia.length === 0 ? (
+          <div style={{ fontSize: '12px', color: '#555', textAlign: 'center', padding: '16px' }}>
+            Nenhuma turma cadastrada nesse dia
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '320px', overflowY: 'auto' }}>
+            {turmasNoDia.map(t => {
+              const capacidade = t.niveis?.nome === 'Individual' ? 1 : 4
+              const ocupacao = t.turmas_alunos?.filter(ta => ta.ativo).length || 0
+              const vagas = capacidade - ocupacao
+              return (
+                <button key={t.id} onClick={() => confirmar(t)} disabled={confirmando || vagas <= 0} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+                  padding: '12px 14px', borderRadius: '10px', border: 'none',
+                  backgroundColor: '#1a1a1a', outline: '1px solid #2a2a2a',
+                  cursor: vagas > 0 ? 'pointer' : 'default', opacity: vagas > 0 ? 1 : 0.4,
+                  textAlign: 'left', width: '100%',
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>{t.nome}</div>
+                    <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
+                      {t.horario_inicio?.slice(0, 5)} · {t.quadras?.nome} · {t.niveis?.nome}
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: '11px', fontWeight: '600', padding: '4px 9px', borderRadius: '20px', flexShrink: 0,
+                    backgroundColor: vagas <= 0 ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)',
+                    color: vagas <= 0 ? '#ef4444' : '#22c55e',
+                  }}>
+                    {vagas <= 0 ? 'lotada' : `${vagas} vaga${vagas !== 1 ? 's' : ''}`}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </Modal>
   )
 }

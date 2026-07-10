@@ -30,6 +30,7 @@ import { AvaliarAluno } from './pages/professor/AvaliarAluno'
 import { ModalTurmaAtivada } from './components/ModalTurmaAtivada'
 import { InstallBanner } from './components/ui/InstallBanner'
 import { DisponibilidadePage } from './pages/disponibilidade/DisponibilidadePage'
+import { DisponibilidadeTurmasPage } from './pages/disponibilidade/DisponibilidadeTurmasPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,7 +79,7 @@ function AppRouter() {
     return <SelecionarEmpresaPage empresas={empresas} onSelecionar={setEmpresaSelecionada} />
   }
 
-  const { role, homeRoute, podeAcessarCadastros, podeAcessarFinanceiro, podeAcessarKPIs } = permissoes
+  const { role, homeRoute, podeAcessarCadastros, podeAcessarFinanceiro, podeAcessarKPIs, podeVerDisponibilidade } = permissoes
 
   return (
     <AppLayout>
@@ -130,6 +131,9 @@ function AppRouter() {
         } />
         <Route path="/relatorios-leitura" element={
           <RouteGuard permitido={role === 'leitura'} homeRoute={homeRoute}><RelatoriosLeituraPage /></RouteGuard>
+        } />
+        <Route path="/disponibilidade-turmas" element={
+          <RouteGuard permitido={podeVerDisponibilidade} homeRoute={homeRoute}><DisponibilidadeTurmasPage /></RouteGuard>
         } />
         <Route path="/financeiro" element={
           <RouteGuard permitido={podeAcessarFinanceiro} homeRoute={homeRoute}><FinanceiroPage /></RouteGuard>

@@ -1,4 +1,4 @@
-import { Home, CalendarDays, Users, DollarSign, FileBarChart, MessageCircle, LayoutDashboard, User, GraduationCap } from 'lucide-react'
+import { Home, CalendarDays, Users, DollarSign, FileBarChart, MessageCircle, LayoutDashboard, User, GraduationCap, ClipboardCheck } from 'lucide-react'
 import { resolverRole, permissoesDoRole } from '../hooks/usePermissions'
 
 // Itens de navegação derivados das flags de usePermissions — uma fonte só de verdade
@@ -17,6 +17,7 @@ export function getNavItems(roleBruto) {
     return [
       { path: '/', icon: Home, label: 'Início' },
       { path: '/relatorios-leitura', icon: FileBarChart, label: 'Relatórios' },
+      { path: '/disponibilidade-turmas', icon: ClipboardCheck, label: 'Disponibilidade' },
     ]
   }
 
@@ -37,6 +38,7 @@ export function getNavItems(roleBruto) {
   if (permissoes.podeAcessarCadastros) items.push({ path: '/cadastros', icon: Users, label: 'Cadastros' })
   if (permissoes.podeAcessarFinanceiro) items.push({ path: '/financeiro', icon: DollarSign, label: 'Financeiro' })
   if (permissoes.podeAcessarKPIs) items.push({ path: '/kpis', icon: FileBarChart, label: 'Relatório' })
+  if (permissoes.podeVerDisponibilidade) items.push({ path: '/disponibilidade-turmas', icon: ClipboardCheck, label: 'Disponibilidade' })
   items.push({ path: '/mensagens', icon: MessageCircle, label: 'Mensagens' })
   return items
 }
