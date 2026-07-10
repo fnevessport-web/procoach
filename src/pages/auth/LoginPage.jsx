@@ -94,7 +94,15 @@ export function LoginPage() {
           </div>
         </form>
 
-        <p style={{ textAlign: 'center', fontSize: '10px', color: '#222', marginTop: '24px', letterSpacing: '2px' }}>
+        <p style={{ textAlign: 'center', marginTop: '20px' }}>
+          <button type="button" onClick={() => navigate('/politica-de-privacidade')} style={{
+            background: 'none', border: 'none', color: '#444', fontSize: '11px', cursor: 'pointer', padding: 0,
+          }}>
+            Política de Privacidade
+          </button>
+        </p>
+
+        <p style={{ textAlign: 'center', fontSize: '10px', color: '#222', marginTop: '10px', letterSpacing: '2px' }}>
           POWERED BY FNEVESSPORT
         </p>
       </div>

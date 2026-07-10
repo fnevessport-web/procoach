@@ -419,6 +419,11 @@ export function HomePage() {
       </div>
 
       <div style={{ textAlign: 'center', marginTop: '8px', paddingBottom: '8px' }}>
+        <button onClick={() => navigate('/politica-de-privacidade')} style={{
+          background: 'none', border: 'none', color: '#444', fontSize: '11px', cursor: 'pointer', padding: 0, marginBottom: '6px', display: 'block', width: '100%',
+        }}>
+          Política de Privacidade
+        </button>
         <span style={{ fontSize: '10px', color: '#222', letterSpacing: '2px' }}>
           POWERED BY FNEVESSPORT
         </span>
