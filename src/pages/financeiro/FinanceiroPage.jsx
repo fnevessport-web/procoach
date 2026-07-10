@@ -19,6 +19,7 @@ import {
   useDesautorizar,
 } from '../../hooks/useFinanceiro'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
+import { useEmpresaVinculada } from '../../hooks/useProfessores'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
 import toast from 'react-hot-toast'
@@ -472,6 +473,9 @@ export function FinanceiroPage() {
   const qc = useQueryClient()
   const location = useLocation()
   const savedFin = location.state?.financeiroState
+  // Conta vinculada a uma única empresa (ex: "Beach Arena - Financeiro") não pode ver nem
+  // acessar por navegação direta os dados financeiros da outra — ver useEmpresaVinculada.
+  const empresaVinculada = useEmpresaVinculada()
 
   const [view, setView] = useState(savedFin?.view || 'empresas') // 'empresas' | 'empresa' | 'professor'
   const [empresaId, setEmpresaId] = useState(savedFin?.empresaId || null)
@@ -718,9 +722,24 @@ export function FinanceiroPage() {
   }
 
   function navegarEmpresa(id) {
+    // Defesa contra bypass (estado restaurado de location.state, ou navegação direta) —
+    // uma conta travada numa empresa nunca consegue entrar na outra por aqui.
+    if (empresaVinculada && id !== empresaVinculada) return
     setEmpresaId(id)
     setView('empresa')
   }
+
+  // Conta travada numa empresa nunca vê a tela de escolha — entra direto na única que
+  // pode ver. Também corrige na hora se o estado restaurado (savedFin) apontava pra outra.
+  useEffect(() => {
+    if (!empresaVinculada) return
+    if (empresaId && empresaId !== empresaVinculada) {
+      setEmpresaId(empresaVinculada)
+      setView('empresa')
+    } else if (view === 'empresas') {
+      navegarEmpresa(empresaVinculada)
+    }
+  }, [empresaVinculada])
 
   function navegarProfessor(prof) {
     setProfessorSel(prof)
@@ -898,7 +917,7 @@ export function FinanceiroPage() {
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          {Object.values(EMPRESAS).map(emp => (
+          {Object.values(EMPRESAS).filter(emp => !empresaVinculada || emp.id === empresaVinculada).map(emp => (
             <button key={emp.id} onClick={() => navegarEmpresa(emp.id)} style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               gap: '12px', padding: '24px 16px',

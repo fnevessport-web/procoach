@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { usePermissions } from '../../hooks/usePermissions'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
+import { useEmpresaVinculada } from '../../hooks/useProfessores'
 import useAppStore from '../../store/useAppStore'
 import toast from 'react-hot-toast'
 import { apenasDigitosCPF, mascararCPF, cpfParaEmailSintetico } from '../../lib/cpf'
@@ -216,6 +217,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   const qc = useQueryClient()
   const { podeVerTodosSalarios, podeEditarCadastros } = usePermissions()
   const { perfil } = useAppStore()
+  // Conta vinculada a uma única empresa (ex: "Beach Arena - Financeiro") não pode ver
+  // colaboradores da outra empresa nesta lista — ver useEmpresaVinculada.
+  const empresaVinculada = useEmpresaVinculada()
   const [cardAberto, setCardAberto] = useState(null)
   const [menuCardId, setMenuCardId] = useState(null)
   const [aba, setAba] = useState('perfil')
@@ -938,6 +942,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
           {professores.filter(prof => {
             // Sem permissão pra ver todos: só enxerga o próprio card (não vê salário/dados de colegas)
             if (!podeVerTodosSalarios && prof.id !== perfil?.professor_id) return false
+            // Conta travada numa empresa nunca vê colaborador da outra
+            if (empresaVinculada === 'beach_arena' && !prof.trabalha_beach) return false
+            if (empresaVinculada === 'procopio' && !prof.trabalha_procopio) return false
             if (filtroAtivo === 'ativos' && prof.ativo === false) return false
             if (filtroAtivo === 'inativos' && prof.ativo !== false) return false
             if (filtroFuncao !== 'todos' && prof.funcao !== filtroFuncao) return false
