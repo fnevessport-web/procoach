@@ -4,6 +4,11 @@ import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useAlertas, useMarcarAlertaLido, useMarcarTodosAlertasLidos } from '../hooks/useAlertas'
+import { supabase } from '../lib/supabase'
+
+// Tipos cujo referencia_id aponta pra uma aula — clicar deve abrir ela direto, não só cair
+// na lista genérica de /aulas.
+const TIPOS_COM_AULA = ['aluno_incluido', 'aluno_adicionado', 'aluno_removido']
 
 const ROTA_POR_TIPO = {
   mensagem_nova: '/mensagens',
@@ -25,9 +30,19 @@ export function SinoAlertas() {
 
   const naoLidos = alertas.filter(a => !a.lido).length
 
-  function handleClickAlerta(alerta) {
+  async function handleClickAlerta(alerta) {
     if (!alerta.lido) marcarLido.mutate(alerta.id)
     setAberto(false)
+
+    if (TIPOS_COM_AULA.includes(alerta.tipo) && alerta.referencia_id) {
+      const { data: aula } = await supabase
+        .from('aulas').select('data_aula').eq('id', alerta.referencia_id).maybeSingle()
+      navigate('/aulas', {
+        state: { highlightAulaId: alerta.referencia_id, data: aula?.data_aula, abrirAoDestacar: true },
+      })
+      return
+    }
+
     navigate(ROTA_POR_TIPO[alerta.tipo] || '/')
   }
 

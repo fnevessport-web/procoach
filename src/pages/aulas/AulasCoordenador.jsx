@@ -44,6 +44,14 @@ const TIPO_PARTICIPACAO = [
   { value: 'reposicao', label: 'Reposição' },
 ]
 
+// Rótulo usado na mensagem do alerta pro professor (ver handleSalvarPresencas)
+const LABEL_TIPO_PARTICIPACAO = {
+  mensalista: 'aula mensal',
+  avulso: 'aula avulsa',
+  reposicao: 'reposição',
+  cortesia: 'cortesia',
+}
+
 const NIVEIS_ALUNO = [
   'Iniciante 1', 'Iniciante 2', 'Intermediário 1', 'Intermediário 2',
   'Avançado', 'Kids Iniciante', 'Kids Intermediário', 'Kids Avançado',
@@ -128,6 +136,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   const [highlightedAulaId, setHighlightedAulaId] = useState(null)
   const highlightAulaId = location.state?.highlightAulaId
   const fromHome = location.state?.fromHome
+  const abrirAoDestacar = location.state?.abrirAoDestacar
 
   // Segurança: se sair da tela sem fechar o modal (ex: "Discutir esta aula" navega direto
   // pra Mensagens), garante que o rodapé volte a aparecer normalmente na próxima tela.
@@ -308,6 +317,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       document.getElementById(`aula-cel-${highlightAulaId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       setHighlightedAulaId(highlightAulaId)
       if (fromHome) setOrigemAulas({ data, aulaId: highlightAulaId })
+      // Veio de um alerta (ex: "fulano foi incluído na sua aula") — abre a aula direto em
+      // vez de só destacar a célula, pra não precisar de mais um clique.
+      if (abrirAoDestacar) abrirAula(aulaAlvo)
       setTimeout(() => setHighlightedAulaId(null), 2000)
     }, 400)
     return () => clearTimeout(timer)
@@ -762,17 +774,53 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
 
         // Gestor mexendo na turma de outra pessoa: avisa o professor dono da aula (sino +
         // realtime). Se o próprio professor mexeu na aula dele, não faz sentido avisar ele mesmo.
+        // Um alerta por aluno (não um só combinado) — cada um pode ter tipo de participação e
+        // destino de navegação diferentes.
         if (nomesAdicionados.length > 0 && aula?.professores?.id && !professorProprioId) {
           const { data: perfilProfessor } = await supabase
             .from('perfis_usuario').select('user_id').eq('professor_id', aula.professores.id).maybeSingle()
           if (perfilProfessor?.user_id && perfilProfessor.user_id !== user?.id) {
-            await criarAlerta({
-              usuarioId: perfilProfessor.user_id,
-              tipo: 'aluno_adicionado',
-              referenciaId: aulaId,
-              prioridade: 'baixa',
-              mensagem: `${nomesAdicionados.join(', ')} foi incluído na sua aula de ${getHorario(aula)} (${getNivel(aula) || aula?.turmas?.nome || 'avulsa'}).`,
-            })
+            const alunosAdicionadosInfo = lista.filter(p => idsAdicionados.includes(p.aluno_id))
+            const turmaEstavaVazia = idsAnteriores.length === 0
+
+            // Mensalista é vinculado à turma toda (vincularMensalistasNaTurma, acima) — a aula
+            // de hoje já foi resolvida, então o botão do alerta deve levar pra próxima
+            // ocorrência dele, não pra essa. Avulso/reposição/cortesia são só essa aula mesmo.
+            let proximaAulaMensalista = null
+            if (aula.turma_id && alunosAdicionadosInfo.some(p => p.tipo_participacao === 'mensalista')) {
+              const { data: proxima } = await supabase
+                .from('aulas')
+                .select('id, data_aula')
+                .eq('turma_id', aula.turma_id)
+                .gt('data_aula', aula.data_aula)
+                .neq('status_aula', 'cancelada')
+                .order('data_aula', { ascending: true })
+                .limit(1)
+                .maybeSingle()
+              proximaAulaMensalista = proxima
+            }
+
+            for (const p of alunosAdicionadosInfo) {
+              const ehMensalista = p.tipo_participacao === 'mensalista'
+              const aulaAlvo = ehMensalista && proximaAulaMensalista
+                ? proximaAulaMensalista
+                : { id: aulaId, data_aula: aula.data_aula }
+              const rotuloTipo = LABEL_TIPO_PARTICIPACAO[p.tipo_participacao] || p.tipo_participacao
+
+              let mensagem = `${p.nome} foi incluído(a) como ${rotuloTipo} na sua aula de ${getHorario(aula)} (${getNivel(aula) || aula?.turmas?.nome || 'avulsa'}).`
+              if (turmaEstavaVazia) mensagem += ' A turma estava sem aluno e agora ficou ativa.'
+              if (ehMensalista && proximaAulaMensalista) {
+                mensagem += ` Próxima aula em ${format(new Date(proximaAulaMensalista.data_aula + 'T12:00'), 'dd/MM', { locale: ptBR })}.`
+              }
+
+              await criarAlerta({
+                usuarioId: perfilProfessor.user_id,
+                tipo: 'aluno_adicionado',
+                referenciaId: aulaAlvo.id,
+                prioridade: 'baixa',
+                mensagem,
+              })
+            }
           }
         }
       }
