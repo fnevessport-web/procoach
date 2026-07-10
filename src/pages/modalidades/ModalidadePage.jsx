@@ -44,6 +44,34 @@ function ProgressBar({ pct, color, bg = '#252525' }) {
   )
 }
 
+// Duas barras empilhadas (mês de comparação em cinza, mês atual em amarelo) — mesmo
+// padrão visual do card "Presença acumulada" logo abaixo, pra deixar claro qual
+// número pertence a qual mês, valendo pra qualquer par de meses escolhido.
+function ComparativoCard({ titulo, labelAtual, valorAtual, labelComparacao, valorComparacao }) {
+  const maior = Math.max(valorAtual || 0, valorComparacao || 0, 1)
+  return (
+    <div style={cardStyle}>
+      <div style={{ fontSize: '11px', color: '#555', marginBottom: '10px' }}>{titulo}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '4px' }}>
+            <span style={{ textTransform: 'capitalize' }}>{labelComparacao}</span>
+            <span style={{ fontWeight: '700', color: '#F0F2F5' }}>{valorComparacao}</span>
+          </div>
+          <ProgressBar pct={(valorComparacao / maior) * 100} color="#555" />
+        </div>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '4px' }}>
+            <span style={{ textTransform: 'capitalize' }}>{labelAtual}</span>
+            <span style={{ fontWeight: '700', color: '#fcc825' }}>{valorAtual}</span>
+          </div>
+          <ProgressBar pct={(valorAtual / maior) * 100} color="#fcc825" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const NIVEL_OCUPACAO = {
   cheio: '#EF4444',
   medio: '#fcc825',
@@ -157,23 +185,19 @@ export function ModalidadePage() {
               </select>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '4px' }}>
-              <div style={cardStyle}>
-                <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Alunos ativos</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px' }}>
-                  <span style={{ fontSize: '22px', fontWeight: '700', color: '#F0F2F5' }}>{mes.alunosAtivos}</span>
-                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#666' }}>{mes.alunosAtivosComparacao}</span>
-                </div>
-              </div>
-              <div style={cardStyle}>
-                <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Aulas no mês</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px' }}>
-                  <span style={{ fontSize: '22px', fontWeight: '700', color: '#F0F2F5' }}>{mes.aulasRealizadas}</span>
-                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#666' }}>{mes.aulasComparacao}</span>
-                </div>
-              </div>
+              <ComparativoCard
+                titulo="Alunos ativos"
+                labelAtual={mes.labelMesAtual} valorAtual={mes.alunosAtivos}
+                labelComparacao={mes.labelMesComparacao} valorComparacao={mes.alunosAtivosComparacao}
+              />
+              <ComparativoCard
+                titulo="Aulas no mês"
+                labelAtual={mes.labelMesAtual} valorAtual={mes.aulasRealizadas}
+                labelComparacao={mes.labelMesComparacao} valorComparacao={mes.aulasComparacao}
+              />
             </div>
             <p style={{ fontSize: '10px', color: '#555', margin: '0 0 8px', lineHeight: '1.4' }}>
-              Em destaque: primeiros {mes.diasComparados} dias de <span style={{ textTransform: 'capitalize' }}>{mes.labelMesAtual}</span> · em cinza: mesmo período de <span style={{ textTransform: 'capitalize' }}>{mes.labelMesComparacao}</span>.
+              Comparativo proporcional — primeiros {mes.diasComparados} dias de cada mês.
             </p>
             <div style={cardStyle}>
               <div style={{ fontSize: '11px', color: '#555', marginBottom: '10px' }}>Presença acumulada</div>
