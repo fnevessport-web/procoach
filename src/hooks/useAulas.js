@@ -218,10 +218,19 @@ export async function expirarReposicoesPendentesVencidas() {
 export async function agendarSlotAtomico({ aulaId, alunoId, tipoParticipacao, valorCobrado = null }) {
   const { data: aula, error: erroAula } = await supabase
     .from('aulas')
-    .select('id, turma_id, observacoes, turmas(niveis(nome))')
+    .select('id, turma_id, observacoes, turmas(niveis(nome), modalidade_id)')
     .eq('id', aulaId)
     .single()
   if (erroAula || !aula) throw new Error('Aula não encontrada')
+
+  // Mesma sincronização de useSalvarPresencas — o Card do Aluno lê de alunos_modalidades,
+  // não de turmas_alunos/presencas.
+  if (aula.turmas?.modalidade_id) {
+    await supabase.from('alunos_modalidades').upsert(
+      { aluno_id: alunoId, modalidade_id: aula.turmas.modalidade_id },
+      { onConflict: 'aluno_id,modalidade_id', ignoreDuplicates: true }
+    )
+  }
 
   const capacidade = isAulaIndividual(aula) ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
 
@@ -329,12 +338,32 @@ export function useSalvarPresencas() {
         .upsert(rows, { onConflict: 'aula_id,aluno_id' })
       if (error) throw error
 
+      // Modalidade da aula (se for turma-linked) — usada tanto pra manter alunos_modalidades
+      // sincronizado quanto pra preencher reposicoes.modalidade_id. turmas_alunos/presencas já
+      // dirigem a grade e o financeiro sozinhos, mas o Card do Aluno lê de alunos_modalidades —
+      // sem isso, um aluno incluído direto numa aula (em vez de cadastrado via Cadastros >
+      // Alunos) nunca aparecia com a modalidade no card, mesmo jogando toda semana.
+      const { data: aulaInfo } = await supabase
+        .from('aulas').select('turma_id, turmas(modalidade_id)').eq('id', aulaId).single()
+      const modalidadeId = aulaInfo?.turmas?.modalidade_id || null
+
+      if (modalidadeId) {
+        const alunoIds = [...new Set(presencas.map(p => p.aluno_id))]
+        await supabase.from('alunos_modalidades').upsert(
+          alunoIds.map(aluno_id => ({ aluno_id, modalidade_id: modalidadeId })),
+          { onConflict: 'aluno_id,modalidade_id', ignoreDuplicates: true }
+        )
+      }
+
       const faltasJustificadas = presencas.filter(p => p.status_presenca === 'falta_justificada')
       if (faltasJustificadas.length > 0) {
+        const dataLimite = format(addDays(new Date(), 60), 'yyyy-MM-dd')
         const repos = faltasJustificadas.map(p => ({
           aluno_id: p.aluno_id,
           aula_origem_id: aulaId,
-          status: 'pendente'
+          status: 'pendente',
+          modalidade_id: modalidadeId,
+          data_limite: dataLimite,
         }))
         const { error: errRepos } = await supabase.from('reposicoes').upsert(repos, { onConflict: 'aluno_id,aula_origem_id' })
         if (errRepos) throw errRepos
