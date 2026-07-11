@@ -32,6 +32,7 @@ import { InstallBanner } from './components/ui/InstallBanner'
 import { DisponibilidadePage } from './pages/disponibilidade/DisponibilidadePage'
 import { DisponibilidadeTurmasPage } from './pages/disponibilidade/DisponibilidadeTurmasPage'
 import { PoliticaPrivacidadePage } from './pages/legal/PoliticaPrivacidadePage'
+import { ComoFuncionaAPontuacaoPage } from './pages/legal/ComoFuncionaAPontuacaoPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -154,6 +155,7 @@ export default function App() {
           <Route path="/disponibilidade/:token" element={<DisponibilidadePage />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/politica-de-privacidade" element={<PoliticaPrivacidadePage />} />
+          <Route path="/pontuacao" element={<ComoFuncionaAPontuacaoPage />} />
           {/* App com autenticação */}
           <Route path="/*" element={<AppRouter />} />
         </Routes>
