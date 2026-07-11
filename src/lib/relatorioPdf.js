@@ -1,4 +1,6 @@
 import { format } from 'date-fns'
+import { gerarInsights } from '../hooks/useRelatorioMensal'
+import { classificarPct } from '../constants/semaforo'
 
 const COR_CREME = [241, 239, 234]
 const COR_TINTA = [26, 24, 24]
@@ -10,7 +12,9 @@ const COR_TEXTO_SUAVE = [110, 106, 100]
 const COR_BRANCO = [255, 255, 255]
 const COR_VERDE = [34, 130, 82]
 const COR_VERMELHO = [176, 54, 54]
+const COR_AZUL_INFO = [59, 130, 246]
 const CORES_CHIP = [COR_SALVIA, COR_LARANJA, COR_VINHO, COR_MARINHO]
+const CORES_SEVERIDADE = { bom: COR_VERDE, atencao: COR_LARANJA, critico: COR_VERMELHO, info: COR_AZUL_INFO }
 
 const NOME_EMPRESA = { procopio: 'Procópio Arena', beach_arena: 'Beach Arena' }
 // Versões pretas das marcas, pensadas pra página clara do relatório (fundo creme) — o
@@ -322,7 +326,7 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
       const row = Math.floor(i / porLinha)
       const x = margem + col * (larguraChip + gap)
       const y = cursorY + row * (alturaChip + gap)
-      doc.setFillColor(...CORES_CHIP[i % CORES_CHIP.length])
+      doc.setFillColor(...(item.cor || CORES_CHIP[i % CORES_CHIP.length]))
       doc.roundedRect(x, y, larguraChip, alturaChip, 8, 8, 'F')
       fonteDestaque(23)
       doc.setTextColor(...COR_BRANCO)
@@ -387,7 +391,7 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
     cursorY = doc.lastAutoTable.finalY + 20
   }
 
-  function linhaComparativo(label, atual, anterior, variacao) {
+  function linhaComparativo(label, atual, anterior, variacao, semHistorico) {
     const altura = 36
     garantirEspaco(altura + 8)
     doc.setFillColor(...COR_BRANCO)
@@ -399,7 +403,7 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
     doc.text(label, margem + 12, cursorY + 15)
     fontePadrao('normal', 8)
     doc.setTextColor(...COR_TEXTO_SUAVE)
-    doc.text(`${atual} vs ${anterior} no mês anterior`, margem + 12, cursorY + 27)
+    doc.text(semHistorico ? `${atual} este período — sem dados do mês anterior` : `${atual} vs ${anterior} no mês anterior`, margem + 12, cursorY + 27)
     if (variacao !== null) {
       const positivo = variacao >= 0
       const cor = positivo ? COR_VERDE : COR_VERMELHO
@@ -413,6 +417,37 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
       doc.text(`${variacao > 0 ? '+' : ''}${variacao}%`, tx + 14, ty + 4)
     }
     cursorY += altura + 8
+  }
+
+  function blocoInsights(insights) {
+    const larguraTexto = pageWidth - margem * 2 - 40
+    const alturaPad = 14
+    let alturaTotal = alturaPad
+    const linhasPorItem = insights.map(ins => {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      const linhas = doc.splitTextToSize(ins.texto, larguraTexto)
+      alturaTotal += linhas.length * 13 + 6
+      return linhas
+    })
+    garantirEspaco(alturaTotal + 10)
+    const yInicio = cursorY
+    doc.setFillColor(...COR_BRANCO)
+    doc.roundedRect(margem, yInicio, pageWidth - margem * 2, alturaTotal, 8, 8, 'F')
+    doc.setDrawColor(215, 210, 200)
+    doc.roundedRect(margem, yInicio, pageWidth - margem * 2, alturaTotal, 8, 8, 'S')
+
+    let y = yInicio + alturaPad
+    insights.forEach((ins, i) => {
+      const linhas = linhasPorItem[i]
+      doc.setFillColor(...CORES_SEVERIDADE[ins.severidade])
+      doc.circle(margem + 14, y - 3, 2.4, 'F')
+      fontePadrao('normal', 9)
+      doc.setTextColor(...COR_TINTA)
+      doc.text(linhas, margem + 24, y)
+      y += linhas.length * 13 + 6
+    })
+    cursorY += alturaTotal + 14
   }
 
   function desenharHeatmap(heatmap, nomeModalidade) {
@@ -496,7 +531,7 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
     { label: 'Aulas Dadas', valor: resumo.aulasDadas },
     { label: 'Canceladas', valor: resumo.aulasCanceladas },
     { label: 'Sem Aluno', valor: resumo.aulasSemAluno },
-    { label: 'Taxa de Realização', valor: `${resumo.taxaRealizacao}%` },
+    { label: 'Taxa de Realização', valor: `${resumo.taxaRealizacao}%`, cor: CORES_SEVERIDADE[classificarPct(resumo.taxaRealizacao, { bom: 85, atencao: 65 })] },
     { label: 'Aulas em Feriado', valor: resumo.aulasEmFeriado },
   ], 3)
 
@@ -511,7 +546,13 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
   doc.setTextColor(...COR_TEXTO_SUAVE)
   doc.text('* Falta Justificada: chuva ou atestado médico.', margem, cursorY - 4)
   cursorY += 8
-  blocoDestaque('Taxa de presença', `${resumo.taxaPresenca}%`, COR_VINHO)
+  blocoDestaque('Taxa de presença', `${resumo.taxaPresenca}%`, CORES_SEVERIDADE[classificarPct(resumo.taxaPresenca)])
+
+  const insights = gerarInsights(resumo)
+  if (insights.length > 0) {
+    tituloSecao('Insights executivos')
+    blocoInsights(insights)
+  }
 
   if (Object.keys(resumo.motivosCancelamento).length > 0) {
     tituloSecao('Cancelamentos por motivo')
@@ -538,9 +579,9 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
   }
 
   tituloSecao('Comparação com o mês anterior')
-  linhaComparativo('Aulas dadas', resumo.aulasDadas, resumo.comparativo.aulasDadasAnterior, resumo.comparativo.variacaoAulasDadas)
-  linhaComparativo('Taxa de presença', `${resumo.taxaPresenca}%`, `${resumo.comparativo.taxaPresencaAnterior}%`, resumo.comparativo.variacaoTaxaPresenca)
-  linhaComparativo('Alunos únicos', resumo.alunosUnicos, resumo.comparativo.alunosUnicosAnterior, resumo.comparativo.variacaoAlunosUnicos)
+  linhaComparativo('Aulas dadas', resumo.aulasDadas, resumo.comparativo.aulasDadasAnterior, resumo.comparativo.variacaoAulasDadas, resumo.comparativo.semHistoricoAnterior)
+  linhaComparativo('Taxa de presença', `${resumo.taxaPresenca}%`, `${resumo.comparativo.taxaPresencaAnterior}%`, resumo.comparativo.variacaoTaxaPresenca, resumo.comparativo.semHistoricoAnterior)
+  linhaComparativo('Alunos únicos', resumo.alunosUnicos, resumo.comparativo.alunosUnicosAnterior, resumo.comparativo.variacaoAlunosUnicos, resumo.comparativo.semHistoricoAnterior)
 
   if (resumo.rankingProfessores.length > 0) {
     tituloSecao('Aulas por professor')
@@ -647,16 +688,31 @@ function barraHtml(item, maxValor, corBarra) {
   `
 }
 
-function comparativoHtml(label, atual, anterior, variacao) {
+function comparativoHtml(label, atual, anterior, variacao, semHistorico) {
   const positivo = variacao === null || variacao >= 0
   const cor = variacao === null ? COR_TEXTO_SUAVE : (positivo ? COR_VERDE : COR_VERMELHO)
   return `
     <div style="display:flex; align-items:center; justify-content:space-between; background:${rgb(COR_BRANCO)}; border:1px solid rgba(0,0,0,0.08); border-radius:6px; padding:10px 12px; margin-bottom:8px;">
       <div>
         <div style="font-size:11px; font-weight:700; color:${rgb(COR_TINTA)};">${label}</div>
-        <div style="font-size:10px; color:${rgb(COR_TEXTO_SUAVE)};">${atual} vs ${anterior} no mês anterior</div>
+        <div style="font-size:10px; color:${rgb(COR_TEXTO_SUAVE)};">${semHistorico ? `${atual} este período — sem dados do mês anterior` : `${atual} vs ${anterior} no mês anterior`}</div>
       </div>
       ${variacao !== null ? `<div style="font-size:13px; font-weight:700; color:${rgb(cor)};">${variacao > 0 ? '+' : ''}${variacao}%</div>` : ''}
+    </div>
+  `
+}
+
+function insightsHtml(insights) {
+  if (insights.length === 0) return ''
+  return `
+    <div style="font-size:13px; font-weight:700; text-transform:uppercase; border-bottom:1px solid ${rgb(COR_TEXTO_SUAVE)}; padding-bottom:6px; margin:16px 0 12px;">🧠 Insights executivos</div>
+    <div style="background:${rgb(COR_BRANCO)}; border:1px solid rgba(0,0,0,0.08); border-radius:8px; padding:14px 16px; margin-bottom:8px; display:flex; flex-direction:column; gap:8px;">
+      ${insights.map(ins => `
+        <div style="display:flex; align-items:flex-start; gap:8px;">
+          <span style="width:7px; height:7px; border-radius:50%; margin-top:5px; flex-shrink:0; background:${rgb(CORES_SEVERIDADE[ins.severidade])};"></span>
+          <span style="font-size:11px; color:${rgb(COR_TINTA)}; line-height:1.5;">${ins.texto}</span>
+        </div>
+      `).join('')}
     </div>
   `
 }
@@ -684,7 +740,7 @@ function montarPaginaResumoHtml({ resumo, nomeEmpresa, logoBeyond, logoUnidade, 
   </div>
   <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:8px;">
     ${chipHtml({ valor: resumo.aulasSemAluno, label: 'Sem Aluno' }, COR_MARINHO)}
-    ${chipHtml({ valor: `${resumo.taxaRealizacao}%`, label: 'Taxa de Realização' }, COR_SALVIA)}
+    ${chipHtml({ valor: `${resumo.taxaRealizacao}%`, label: 'Taxa de Realização' }, CORES_SEVERIDADE[classificarPct(resumo.taxaRealizacao, { bom: 85, atencao: 65 })])}
     ${chipHtml({ valor: resumo.aulasEmFeriado, label: 'Aulas em Feriado' }, COR_LARANJA)}
   </div>`)
 
@@ -698,8 +754,10 @@ function montarPaginaResumoHtml({ resumo, nomeEmpresa, logoBeyond, logoUnidade, 
   <div style="font-size:9px; font-style:italic; color:${rgb(COR_TEXTO_SUAVE)}; margin-bottom:12px;">* Falta Justificada: chuva ou atestado médico.</div>`)
   secoes.push(`<div style="background:${rgb(COR_BRANCO)}; border:1px solid rgba(0,0,0,0.08); border-radius:8px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
     <div style="font-size:12px;">Taxa de presença</div>
-    <div style="font-size:20px; font-weight:800; color:${rgb(COR_VINHO)};">${resumo.taxaPresenca}%</div>
+    <div style="font-size:20px; font-weight:800; color:${rgb(CORES_SEVERIDADE[classificarPct(resumo.taxaPresenca)])};">${resumo.taxaPresenca}%</div>
   </div>`)
+
+  secoes.push(insightsHtml(gerarInsights(resumo)))
 
   if (Object.keys(resumo.motivosCancelamento).length > 0) {
     const itens = Object.entries(resumo.motivosCancelamento).sort((a, b) => b[1] - a[1]).map(([nome, total]) => ({ nome, total }))
@@ -739,9 +797,9 @@ function montarPaginaResumoHtml({ resumo, nomeEmpresa, logoBeyond, logoUnidade, 
 
   secoes.push(`<div style="font-size:13px; font-weight:700; text-transform:uppercase; border-bottom:1px solid ${rgb(COR_TEXTO_SUAVE)}; padding-bottom:6px; margin:4px 0 12px;">Comparação com o mês anterior</div>`)
   secoes.push(`<div style="margin-bottom:8px;">
-    ${comparativoHtml('Aulas dadas', resumo.aulasDadas, resumo.comparativo.aulasDadasAnterior, resumo.comparativo.variacaoAulasDadas)}
-    ${comparativoHtml('Taxa de presença', `${resumo.taxaPresenca}%`, `${resumo.comparativo.taxaPresencaAnterior}%`, resumo.comparativo.variacaoTaxaPresenca)}
-    ${comparativoHtml('Alunos únicos', resumo.alunosUnicos, resumo.comparativo.alunosUnicosAnterior, resumo.comparativo.variacaoAlunosUnicos)}
+    ${comparativoHtml('Aulas dadas', resumo.aulasDadas, resumo.comparativo.aulasDadasAnterior, resumo.comparativo.variacaoAulasDadas, resumo.comparativo.semHistoricoAnterior)}
+    ${comparativoHtml('Taxa de presença', `${resumo.taxaPresenca}%`, `${resumo.comparativo.taxaPresencaAnterior}%`, resumo.comparativo.variacaoTaxaPresenca, resumo.comparativo.semHistoricoAnterior)}
+    ${comparativoHtml('Alunos únicos', resumo.alunosUnicos, resumo.comparativo.alunosUnicosAnterior, resumo.comparativo.variacaoAlunosUnicos, resumo.comparativo.semHistoricoAnterior)}
   </div>`)
 
   if (resumo.rankingProfessores.length > 0) {

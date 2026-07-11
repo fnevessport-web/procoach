@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Timer } from 'lucide-react'
+import { format, startOfMonth } from 'date-fns'
+import { Timer, ChevronRight } from 'lucide-react'
 import { useModalidades } from '../../hooks/useModalidades'
 import { useHomeDashboard } from '../../hooks/useHomeDashboard'
+import { useRelatorioMensal, gerarInsights } from '../../hooks/useRelatorioMensal'
+import { classificarPct, CORES_SEMAFORO, LABEL_SEMAFORO } from '../../constants/semaforo'
 import useAppStore from '../../store/useAppStore'
 import { Loading } from '../../components/ui/Loading'
 import { FotoProfessor } from '../../components/ui/FotoProfessor'
@@ -97,6 +100,16 @@ export function HomePage() {
   const { aoVivoAgora, feriadoHoje, hojeAcumulado, professoresAgora, alertasSemProfessor, isLoading } = useHomeDashboard()
   const role = perfil?.role || 'professor'
 
+  // Saúde do mês: mesmo cálculo do Relatório Mensal (useRelatorioMensal), sem filtro de
+  // empresa/modalidade — visão combinada das duas unidades, só pra dar o pulso geral do clube
+  // sem precisar abrir o relatório completo.
+  const { data: saudeMes } = useRelatorioMensal({
+    periodoInicio: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+    periodoFim: format(new Date(), 'yyyy-MM-dd'),
+  })
+  const insightsMes = saudeMes ? gerarInsights(saudeMes) : []
+  const insightDestaque = insightsMes.find(i => i.severidade === 'critico' || i.severidade === 'atencao') || insightsMes[0]
+
   const [filtroAoVivo, setFiltroAoVivo] = useState('todas')
   const [filtroAoVivoAberto, setFiltroAoVivoAberto] = useState(false)
 
@@ -163,6 +176,48 @@ export function HomePage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Saúde do mês — pulso geral do clube, atalho pro relatório completo */}
+      {saudeMes && (
+        <button onClick={() => navigate('/kpis')} style={{
+          width: '100%', marginBottom: '22px', padding: '16px', borderRadius: '14px',
+          backgroundColor: '#1a1a1a', border: `1px solid ${CORES_SEMAFORO[classificarPct(saudeMes.taxaPresenca)]}33`,
+          cursor: 'pointer', textAlign: 'left', display: 'block',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Saúde do mês
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#555' }}>
+              <span style={{ fontSize: '11px' }}>Relatório completo</span>
+              <ChevronRight size={13} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '20px', marginBottom: insightDestaque ? '10px' : 0 }}>
+            <div>
+              <div style={{ fontSize: '20px', fontWeight: '700', color: CORES_SEMAFORO[classificarPct(saudeMes.taxaPresenca)] }}>
+                {saudeMes.taxaPresenca}%
+              </div>
+              <div style={{ fontSize: '10px', color: '#555' }}>Presença · {LABEL_SEMAFORO[classificarPct(saudeMes.taxaPresenca)]}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '20px', fontWeight: '700', color: CORES_SEMAFORO[classificarPct(saudeMes.taxaRealizacao, { bom: 85, atencao: 65 })] }}>
+                {saudeMes.taxaRealizacao}%
+              </div>
+              <div style={{ fontSize: '10px', color: '#555' }}>Realização · {LABEL_SEMAFORO[classificarPct(saudeMes.taxaRealizacao, { bom: 85, atencao: 65 })]}</div>
+            </div>
+          </div>
+          {insightDestaque && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '7px' }}>
+              <span style={{
+                width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, marginTop: '4px',
+                backgroundColor: CORES_SEMAFORO[insightDestaque.severidade],
+              }} />
+              <span style={{ fontSize: '11px', color: '#aaa', lineHeight: '1.4' }}>{insightDestaque.texto}</span>
+            </div>
+          )}
+        </button>
       )}
 
       {/* Ao vivo agora */}

@@ -162,12 +162,100 @@ function construirPresencaPorAluno(aulasFiltradas) {
           else if (pctPresenca < 75) risco = 'Atenção — presença baixa'
           return { ...a, pctPresenca, risco }
         })
-        .sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR'))
+        // Prioriza quem precisa de atenção — um gestor abrindo uma lista de 150+ alunos deve
+        // ver primeiro quem está em risco, não rolar tudo procurando as linhas vermelhas.
+        .sort((x, y) => pesoRisco(x.risco) - pesoRisco(y.risco) || x.nome.localeCompare(y.nome, 'pt-BR'))
       return { modalidade, alunos }
     })
     .sort((a, b) => a.modalidade.localeCompare(b.modalidade, 'pt-BR'))
 
   return resultado
+}
+
+function pesoRisco(risco) {
+  if (risco.startsWith('Risco alto')) return 0
+  if (risco.startsWith('Atenção')) return 1
+  if (risco.startsWith('Só aulas') || risco.startsWith('Sem presença')) return 2
+  return 3
+}
+
+// Contagens usadas tanto nos Insights Executivos quanto pra dar destaque visual — reaproveita
+// o mesmo cálculo de risco por aluno já usado no detalhamento, sem duplicar a lógica.
+function contarRiscos(presencaPorModalidade) {
+  const todos = presencaPorModalidade.flatMap(g => g.alunos)
+  return {
+    riscoAltoCount: todos.filter(a => a.risco.startsWith('Risco alto')).length,
+    atencaoCount: todos.filter(a => a.risco.startsWith('Atenção')).length,
+  }
+}
+
+export { construirPresencaPorAluno }
+
+const PESO_SEVERIDADE = { critico: 0, atencao: 1, bom: 2, info: 3 }
+
+// Insights Executivos: síntese em texto do "resumo" já calculado (agregar() + riscoAlto/atencaoCount
+// + comparativo) — mesma informação que já está nos cards e tabelas, só lida em 10 segundos em vez
+// de garimpada manualmente. Usado tanto no preview ao vivo (KPIsPage) quanto no PDF/PNG exportado,
+// pra nunca divergir entre as duas telas.
+export function gerarInsights(resumo) {
+  const insights = []
+  const push = (severidade, texto) => insights.push({ severidade, texto })
+
+  if (resumo.comparativo?.semHistoricoAnterior) {
+    push('info', 'Ainda não há mês anterior com dados suficientes pra comparar — a comparação mês a mês passa a valer a partir do próximo período.')
+  }
+
+  if (resumo.taxaPresenca >= 75) {
+    push('bom', `Taxa de presença saudável: ${resumo.taxaPresenca}%.`)
+  } else if (resumo.taxaPresenca >= 50) {
+    push('atencao', `Taxa de presença em ${resumo.taxaPresenca}% — abaixo do recomendado (75%).`)
+  } else if (resumo.aulasProgramadas > 0) {
+    push('critico', `Taxa de presença em ${resumo.taxaPresenca}% — bem abaixo do ideal (75%). Vale investigar o motivo das faltas.`)
+  }
+
+  if (resumo.taxaRealizacao < 65 && resumo.aulasProgramadas > 0) {
+    push('critico', `Só ${resumo.taxaRealizacao}% das aulas programadas foram realizadas — muitas aulas não estão acontecendo.`)
+  } else if (resumo.taxaRealizacao < 85 && resumo.aulasProgramadas > 0) {
+    push('atencao', `Taxa de realização em ${resumo.taxaRealizacao}%, com espaço pra melhorar.`)
+  }
+
+  if (resumo.riscoAltoCount > 0) {
+    push('critico', `${resumo.riscoAltoCount} aluno${resumo.riscoAltoCount === 1 ? '' : 's'} em risco alto de evasão (3+ faltas seguidas) — recomenda-se contato direto.`)
+  } else if (resumo.aulasProgramadas > 0) {
+    push('bom', 'Nenhum aluno em risco alto de evasão neste período.')
+  }
+
+  if (resumo.atencaoCount > 0) {
+    push('atencao', `${resumo.atencaoCount} aluno${resumo.atencaoCount === 1 ? '' : 's'} com presença abaixo de 75% — vale acompanhar de perto.`)
+  }
+
+  const motivos = Object.entries(resumo.motivosCancelamento || {})
+  if (motivos.length > 0) {
+    const [motivoTop, totalTop] = motivos.sort((a, b) => b[1] - a[1])[0]
+    if (motivoTop === 'Não informado' && totalTop >= resumo.aulasCanceladas * 0.5) {
+      push('atencao', `${totalTop} cancelamento${totalTop === 1 ? '' : 's'} sem motivo registrado — informar o motivo ao cancelar deixa o relatório mais confiável.`)
+    } else if (motivoTop !== 'Não informado') {
+      push('info', `"${motivoTop}" foi o principal motivo de cancelamento no período (${totalTop} aula${totalTop === 1 ? '' : 's'}).`)
+    }
+  }
+
+  const comp = resumo.comparativo
+  if (comp && !comp.semHistoricoAnterior) {
+    if (comp.variacaoAulasDadas >= 10) push('bom', `Aulas dadas cresceram ${comp.variacaoAulasDadas}% em relação ao mês anterior.`)
+    else if (comp.variacaoAulasDadas <= -10) push('critico', `Aulas dadas caíram ${Math.abs(comp.variacaoAulasDadas)}% em relação ao mês anterior.`)
+
+    if (comp.variacaoTaxaPresenca >= 10) push('bom', `Taxa de presença melhorou ${comp.variacaoTaxaPresenca}% em relação ao mês anterior.`)
+    else if (comp.variacaoTaxaPresenca <= -10) push('atencao', `Taxa de presença caiu ${Math.abs(comp.variacaoTaxaPresenca)}% em relação ao mês anterior.`)
+  }
+
+  if (resumo.rankingProfessores?.length > 0) {
+    const lider = resumo.rankingProfessores[0]
+    push('info', `${lider.nome} lidera o período com ${lider.total} aula${lider.total === 1 ? '' : 's'} dadas.`)
+  }
+
+  return insights
+    .sort((a, b) => PESO_SEVERIDADE[a.severidade] - PESO_SEVERIDADE[b.severidade])
+    .slice(0, 6)
 }
 
 // Versão "leve" — só o resumo executivo, usada pelos cards ao vivo da tela (useRelatorioMensal).
@@ -192,6 +280,7 @@ export async function buscarRelatorioMensal({ periodoInicio, periodoFim, empresa
 
   const atual = agregar(filtrar(aulas))
   const anterior = agregar(filtrar(aulasAnterior))
+  const { riscoAltoCount, atencaoCount } = contarRiscos(construirPresencaPorAluno(filtrar(aulas)))
 
   function variacao(chaveAtual, chaveAnterior) {
     if (!chaveAnterior) return null
@@ -200,6 +289,8 @@ export async function buscarRelatorioMensal({ periodoInicio, periodoFim, empresa
 
   return {
     ...atual,
+    riscoAltoCount,
+    atencaoCount,
     comparativo: {
       aulasDadasAnterior: anterior.aulasDadas,
       taxaPresencaAnterior: anterior.taxaPresenca,
@@ -207,6 +298,9 @@ export async function buscarRelatorioMensal({ periodoInicio, periodoFim, empresa
       variacaoAulasDadas: variacao(atual.aulasDadas, anterior.aulasDadas),
       variacaoTaxaPresenca: variacao(atual.taxaPresenca, anterior.taxaPresenca),
       variacaoAlunosUnicos: variacao(atual.alunosUnicos, anterior.alunosUnicos),
+      // Clube novo (dados só a partir de junho/2026) — mês anterior sem nenhuma aula programada
+      // é esperado, não uma anomalia; sinaliza pra tela mostrar "sem histórico" em vez de "vs 0".
+      semHistoricoAnterior: anterior.aulasProgramadas === 0,
     },
     periodo: { inicio, fim },
   }
@@ -246,8 +340,13 @@ export async function buscarRelatorioCompleto({ periodoInicio, periodoFim, empre
     return Math.round(((chaveAtual - chaveAnterior) / chaveAnterior) * 100)
   }
 
+  const presenca = { porModalidade: construirPresencaPorAluno(aulasFiltradas) }
+  const { riscoAltoCount, atencaoCount } = contarRiscos(presenca.porModalidade)
+
   const resumo = {
     ...atual,
+    riscoAltoCount,
+    atencaoCount,
     comparativo: {
       aulasDadasAnterior: anterior.aulasDadas,
       taxaPresencaAnterior: anterior.taxaPresenca,
@@ -255,14 +354,13 @@ export async function buscarRelatorioCompleto({ periodoInicio, periodoFim, empre
       variacaoAulasDadas: variacao(atual.aulasDadas, anterior.aulasDadas),
       variacaoTaxaPresenca: variacao(atual.taxaPresenca, anterior.taxaPresenca),
       variacaoAlunosUnicos: variacao(atual.alunosUnicos, anterior.alunosUnicos),
+      semHistoricoAnterior: anterior.aulasProgramadas === 0,
     },
   }
 
   const heatmaps = modalidadesEmEscopo
     .map(modalidade => ({ modalidade, heatmap: construirHeatmapOcupacao(aulasFiltradas, inicio, fim, modalidade) }))
     .filter(({ heatmap }) => heatmap.dias.length > 0 && heatmap.horas.length > 0)
-
-  const presenca = { porModalidade: construirPresencaPorAluno(aulasFiltradas) }
 
   return { resumo, heatmaps, presenca, periodo: { inicio, fim }, empresa }
 }

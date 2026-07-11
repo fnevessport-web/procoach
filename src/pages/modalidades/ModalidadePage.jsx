@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { useModalidadeDashboard, getOpcoesMeses } from '../../hooks/useModalidadeDashboard'
 import { ICONES_MODALIDADES, EMPRESAS, DIAS_HEATMAP } from '../../constants/modalidades'
+import { classificarPct, CORES_SEMAFORO } from '../../constants/semaforo'
 import { Loading } from '../../components/ui/Loading'
 
 const selectStyle = {
@@ -212,15 +213,28 @@ export function ModalidadePage() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '4px' }}>
                     <span style={{ textTransform: 'capitalize' }}>{mes.labelMesAtual}</span>
-                    <span style={{ fontWeight: '700', color: '#fcc825' }}>{mes.pctAtual}%</span>
+                    <span style={{ fontWeight: '700', color: CORES_SEMAFORO[classificarPct(mes.pctAtual)] }}>{mes.pctAtual}%</span>
                   </div>
-                  <ProgressBar pct={mes.pctAtual} color="#fcc825" />
+                  <ProgressBar pct={mes.pctAtual} color={CORES_SEMAFORO[classificarPct(mes.pctAtual)]} />
                 </div>
               </div>
               <p style={{ fontSize: '10px', color: '#555', margin: '10px 0 0', lineHeight: '1.4' }}>
                 Comparativo proporcional — primeiros {mes.diasComparados} dias de <span style={{ textTransform: 'capitalize' }}>{mes.labelMesComparacao}</span> vs <span style={{ textTransform: 'capitalize' }}>{mes.labelMesAtual}</span>.
               </p>
             </div>
+
+            {riscoEvasao.length > 0 && (
+              <div style={{
+                marginTop: '10px', padding: '12px 14px', borderRadius: '10px',
+                backgroundColor: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+                display: 'flex', alignItems: 'center', gap: '10px',
+              }}>
+                <span style={{ fontSize: '16px' }}>⚠️</span>
+                <span style={{ fontSize: '12px', color: '#F0F2F5', lineHeight: '1.4' }}>
+                  <strong style={{ color: '#EF4444' }}>{riscoEvasao.length} aluno{riscoEvasao.length === 1 ? '' : 's'}</strong> em risco alto de evasão (3+ faltas seguidas) — veja a lista em "Alerta — risco de evasão" abaixo.
+                </span>
+              </div>
+            )}
           </Section>
 
           {/* Mapa de calor */}

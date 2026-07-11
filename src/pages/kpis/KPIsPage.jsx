@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { TrendingUp, TrendingDown, Download } from 'lucide-react'
-import { useRelatorioMensal, buscarRelatorioCompleto } from '../../hooks/useRelatorioMensal'
+import { useRelatorioMensal, buscarRelatorioCompleto, gerarInsights } from '../../hooks/useRelatorioMensal'
 import { useModalidades } from '../../hooks/useModalidades'
 import { EMPRESAS, MODALIDADE_EMPRESA, ICONES_MODALIDADES } from '../../constants/modalidades'
+import { classificarPct, CORES_SEMAFORO, LABEL_SEMAFORO } from '../../constants/semaforo'
 import { Input } from '../../components/ui/Input'
 import { Loading } from '../../components/ui/Loading'
 import { exportarRelatorioCompletoPDF, exportarRelatorioCompletoPNG } from '../../lib/relatorioPdf'
@@ -31,6 +32,7 @@ export function KPIsPage() {
   const { data: rel, isLoading } = useRelatorioMensal({
     periodoInicio, periodoFim, empresa: empresaPreview, modalidades: modalidadesSelecionadas,
   })
+  const insights = rel ? gerarInsights(rel) : []
 
   // Mês atual = do dia 1 até hoje (o mês ainda tá em andamento, não faz sentido pedir dado que
   // ainda não aconteceu). Mês passado = ciclo completo, dia 1 até o último dia daquele mês.
@@ -230,7 +232,7 @@ export function KPIsPage() {
             <KpiCard emoji="✅" label="Aulas Dadas" value={rel.aulasDadas} dot="#22c55e" />
             <KpiCard emoji="🌧️" label="Canceladas" value={rel.aulasCanceladas} dot="#3b82f6" />
             <KpiCard emoji="🈳" label="Sem Aluno" value={rel.aulasSemAluno} dot="#888" />
-            <KpiCard emoji="📈" label="Taxa Realização" value={`${rel.taxaRealizacao}%`} dot="#cf1b9b" />
+            <KpiCard emoji="📈" label="Taxa Realização" value={`${rel.taxaRealizacao}%`} dot={CORES_SEMAFORO[classificarPct(rel.taxaRealizacao, { bom: 85, atencao: 65 })]} />
             <KpiCard emoji="🎉" label="Aulas em Feriado" value={rel.aulasEmFeriado} dot="#a855f7" />
           </div>
 
@@ -243,11 +245,31 @@ export function KPIsPage() {
           </div>
           <div style={{
             padding: '16px', borderRadius: '16px', backgroundColor: '#1a1a1a',
-            border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            border: `1px solid ${CORES_SEMAFORO[classificarPct(rel.taxaPresenca)]}33`, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
-            <span style={{ fontSize: '13px', color: '#F0F2F5' }}>Taxa de presença</span>
-            <span style={{ fontSize: '20px', fontWeight: '700', color: '#cf1b9b' }}>{rel.taxaPresenca}%</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '13px', color: '#F0F2F5' }}>Taxa de presença</span>
+              <SeloSemaforo pct={rel.taxaPresenca} />
+            </div>
+            <span style={{ fontSize: '20px', fontWeight: '700', color: CORES_SEMAFORO[classificarPct(rel.taxaPresenca)] }}>{rel.taxaPresenca}%</span>
           </div>
+
+          {/* Insights Executivos */}
+          {insights.length > 0 && (
+            <Bloco titulo="🧠 Insights executivos">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {insights.map((ins, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <span style={{
+                      width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, marginTop: '5px',
+                      backgroundColor: CORES_SEMAFORO[ins.severidade],
+                    }} />
+                    <span style={{ fontSize: '12.5px', color: '#ddd', lineHeight: '1.5' }}>{ins.texto}</span>
+                  </div>
+                ))}
+              </div>
+            </Bloco>
+          )}
 
           {/* Cancelamentos por motivo */}
           {Object.keys(rel.motivosCancelamento).length > 0 && (
@@ -291,11 +313,20 @@ export function KPIsPage() {
 
           {/* Comparação com mês anterior */}
           <SectionTitle>Comparação com o mês anterior</SectionTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <ComparativoLinha label="Aulas dadas" atual={rel.aulasDadas} anterior={rel.comparativo.aulasDadasAnterior} variacao={rel.comparativo.variacaoAulasDadas} />
-            <ComparativoLinha label="Taxa de presença" atual={`${rel.taxaPresenca}%`} anterior={`${rel.comparativo.taxaPresencaAnterior}%`} variacao={rel.comparativo.variacaoTaxaPresenca} />
-            <ComparativoLinha label="Alunos únicos" atual={rel.alunosUnicos} anterior={rel.comparativo.alunosUnicosAnterior} variacao={rel.comparativo.variacaoAlunosUnicos} />
-          </div>
+          {rel.comparativo.semHistoricoAnterior ? (
+            <div style={{
+              padding: '14px 16px', borderRadius: '14px', backgroundColor: '#1a1a1a',
+              border: '1px solid rgba(255,255,255,0.06)', fontSize: '12px', color: '#666',
+            }}>
+              Sem dados do mês anterior pra comparar — ainda não há histórico suficiente.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <ComparativoLinha label="Aulas dadas" atual={rel.aulasDadas} anterior={rel.comparativo.aulasDadasAnterior} variacao={rel.comparativo.variacaoAulasDadas} />
+              <ComparativoLinha label="Taxa de presença" atual={`${rel.taxaPresenca}%`} anterior={`${rel.comparativo.taxaPresencaAnterior}%`} variacao={rel.comparativo.variacaoTaxaPresenca} />
+              <ComparativoLinha label="Alunos únicos" atual={rel.alunosUnicos} anterior={rel.comparativo.alunosUnicosAnterior} variacao={rel.comparativo.variacaoAlunosUnicos} />
+            </div>
+          )}
 
           {/* Ranking de professores */}
           {rel.rankingProfessores.length > 0 && (
@@ -379,6 +410,19 @@ function ComparativoLinha({ label, atual, anterior, variacao }) {
         </div>
       )}
     </div>
+  )
+}
+
+function SeloSemaforo({ pct, limites }) {
+  const status = classificarPct(pct, limites)
+  return (
+    <span style={{
+      fontSize: '9px', fontWeight: '700', padding: '2px 7px', borderRadius: '6px',
+      textTransform: 'uppercase', letterSpacing: '0.3px',
+      color: CORES_SEMAFORO[status], backgroundColor: `${CORES_SEMAFORO[status]}22`,
+    }}>
+      {LABEL_SEMAFORO[status]}
+    </span>
   )
 }
 
