@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { logAudit } from '../lib/audit'
 import { format, addDays } from 'date-fns'
-import { horarioInicioDaAula, horarioParaMinutos, isAulaIndividual, VAGAS_INDIVIDUAL, VAGAS_GRUPO } from '../constants/modalidades'
+import { horarioInicioDaAula, horarioParaMinutos, isAulaIndividual, getModalidadeDaAula, VAGAS_INDIVIDUAL, VAGAS_GRUPO } from '../constants/modalidades'
 import { getFeriado } from '../constants/feriados'
 
 // Motivos de cancelamento (de MOTIVOS_CANCELAMENTO em AulasCoordenador.jsx) que dão
@@ -82,6 +82,18 @@ export async function confirmarAulasElegiveis({ professorId = null, dataInicio =
   } catch {
     // não trava nenhuma tela por causa disso — no pior caso, tenta de novo no próximo carregamento
   }
+}
+
+// Modalidade de uma aula (aceita tanto turma-linked quanto avulsa) resolvida pro id real —
+// getModalidadeDaAula (constants/modalidades.js) já sabe inferir a modalidade de uma aula
+// avulsa pela quadra (parseada da observação), mas devolve só o NOME; aqui resolve o id de
+// verdade pra gravar em alunos_modalidades/reposicoes.modalidade_id, que são FKs.
+async function resolverModalidadeIdDaAula(aula) {
+  if (aula?.turmas?.modalidades?.id) return aula.turmas.modalidades.id
+  const nomeModalidade = getModalidadeDaAula(aula)
+  if (!nomeModalidade) return null
+  const { data: mod } = await supabase.from('modalidades').select('id').eq('nome', nomeModalidade).maybeSingle()
+  return mod?.id || null
 }
 
 // FIFO: toda vez que uma reposição é agendada — seja pela aba dedicada de Reposição, seja
@@ -218,16 +230,17 @@ export async function expirarReposicoesPendentesVencidas() {
 export async function agendarSlotAtomico({ aulaId, alunoId, tipoParticipacao, valorCobrado = null }) {
   const { data: aula, error: erroAula } = await supabase
     .from('aulas')
-    .select('id, turma_id, observacoes, turmas(niveis(nome), modalidade_id)')
+    .select('id, turma_id, observacoes, turmas(niveis(nome), modalidades(id, nome))')
     .eq('id', aulaId)
     .single()
   if (erroAula || !aula) throw new Error('Aula não encontrada')
 
   // Mesma sincronização de useSalvarPresencas — o Card do Aluno lê de alunos_modalidades,
   // não de turmas_alunos/presencas.
-  if (aula.turmas?.modalidade_id) {
+  const modalidadeIdSlot = await resolverModalidadeIdDaAula(aula)
+  if (modalidadeIdSlot) {
     await supabase.from('alunos_modalidades').upsert(
-      { aluno_id: alunoId, modalidade_id: aula.turmas.modalidade_id },
+      { aluno_id: alunoId, modalidade_id: modalidadeIdSlot },
       { onConflict: 'aluno_id,modalidade_id', ignoreDuplicates: true }
     )
   }
@@ -338,14 +351,14 @@ export function useSalvarPresencas() {
         .upsert(rows, { onConflict: 'aula_id,aluno_id' })
       if (error) throw error
 
-      // Modalidade da aula (se for turma-linked) — usada tanto pra manter alunos_modalidades
+      // Modalidade da aula (turma-linked ou avulsa) — usada tanto pra manter alunos_modalidades
       // sincronizado quanto pra preencher reposicoes.modalidade_id. turmas_alunos/presencas já
       // dirigem a grade e o financeiro sozinhos, mas o Card do Aluno lê de alunos_modalidades —
       // sem isso, um aluno incluído direto numa aula (em vez de cadastrado via Cadastros >
       // Alunos) nunca aparecia com a modalidade no card, mesmo jogando toda semana.
       const { data: aulaInfo } = await supabase
-        .from('aulas').select('turma_id, turmas(modalidade_id)').eq('id', aulaId).single()
-      const modalidadeId = aulaInfo?.turmas?.modalidade_id || null
+        .from('aulas').select('turma_id, observacoes, turmas(modalidades(id, nome))').eq('id', aulaId).single()
+      const modalidadeId = aulaInfo ? await resolverModalidadeIdDaAula(aulaInfo) : null
 
       if (modalidadeId) {
         const alunoIds = [...new Set(presencas.map(p => p.aluno_id))]
