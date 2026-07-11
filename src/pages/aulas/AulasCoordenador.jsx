@@ -1329,8 +1329,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         )}
       </div>
 
-      {/* Modal exportar PDF */}
-      {modalExportarPDF && (
+      {/* Modal exportar PDF — via portal pro <body>, mesmo motivo do modal de aula acima */}
+      {modalExportarPDF && createPortal((
         <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
           onClick={() => setModalExportarPDF(false)}>
           <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#1a1a1a', borderRadius: '16px', border: '1px solid #2a2a2a', padding: '20px', width: '100%', maxWidth: '360px', maxHeight: `${Math.round(alturaVisivel * 0.85)}px`, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -1390,9 +1390,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
-      {modalMassa && (
+      {modalMassa && createPortal((
         <div className="sheet-overlay" style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex' }}
           onClick={() => { setModalMassa(null); setAcaoMassa(null) }}>
           <div className="sheet-content" onClick={e => e.stopPropagation()} style={{
@@ -1479,7 +1479,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
             )}
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {/* Aviso dia futuro */}
       {isFuturo && (

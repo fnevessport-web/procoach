@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil, Lock, KeyRound, Eye, EyeOff, MoreVertical, Ban, RotateCcw } from 'lucide-react'
@@ -146,7 +147,9 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
   const getNivel = a => a.turmas?.niveis?.nome || parteObs(a.observacoes)[3] || ''
   const dataLabel = format(new Date(dataStr + 'T12:00'), "dd 'de' MMMM", { locale: ptBR })
 
-  return (
+  // Via portal pro <body>: sem isso, o WebKit mobile prende esse position:fixed dentro do
+  // .app-main (overflow-y + scroll-touch) e o modal fica cortado, sem cobrir a tela toda.
+  return createPortal((
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-end' }}>
       <div onClick={e => e.stopPropagation()} style={{
         width: '100%', backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0', padding: '20px 16px 32px', boxSizing: 'border-box',
@@ -210,7 +213,7 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
         </div>
       </div>
     </div>
-  )
+  ), document.body)
 }
 
 export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
@@ -1050,7 +1053,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
         </div>
       )}
 
-      {cardAberto && (
+      {cardAberto && createPortal((
         <div style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }}
           onClick={() => setCardAberto(null)}>
           <div onClick={e => e.stopPropagation()} style={{
@@ -1971,7 +1974,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             )}
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {/* MODAL DETALHES DIA */}
       {diaSelecionado && (
@@ -1983,7 +1986,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       )}
 
       {/* MODAL CRIAR */}
-      {modalCriar && (
+      {modalCriar && createPortal((
         <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }} onClick={() => { setModalCriar(false); setTipoColaborador(null); setCpfNovoColaborador(''); setSenhaNovoColaborador('') }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box', maxHeight: '85dvh', overflowY: 'auto' }}>
             <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
@@ -2050,7 +2053,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </div>
   )
 }

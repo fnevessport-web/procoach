@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -43,7 +44,9 @@ export function ModalTurmaAtivada() {
     navigate('/aulas', { state: destino })
   }
 
-  return (
+  // Via portal pro <body>: sem isso, o WebKit mobile prende esse position:fixed dentro do
+  // .app-main (overflow-y + scroll-touch) e o modal fica cortado, sem cobrir a tela toda.
+  return createPortal((
     <div style={{
       position: 'fixed', inset: 0, zIndex: 300,
       backgroundColor: 'rgba(0,0,0,0.85)',
@@ -73,5 +76,5 @@ export function ModalTurmaAtivada() {
         </button>
       </div>
     </div>
-  )
+  ), document.body)
 }

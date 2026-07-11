@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 export function Modal({ open, onClose, title, children, size = 'md' }) {
@@ -12,7 +13,10 @@ export function Modal({ open, onClose, title, children, size = 'md' }) {
 
   const maxWidths = { sm: '400px', md: '520px', lg: '600px', xl: '720px' }
 
-  return (
+  // Via portal pro <body>: escapa do .app-main (overflow-y + scroll-touch), que no WebKit
+  // mobile "prende" filhos position:fixed dentro dele em vez de cobrir a tela toda — por
+  // isso o modal aparecia cortado, com a BottomNav visível por baixo dele.
+  return createPortal((
     <div style={{
       position: 'fixed', inset: 0, zIndex: 50,
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
@@ -60,5 +64,5 @@ export function Modal({ open, onClose, title, children, size = 'md' }) {
         </div>
       </div>
     </div>
-  )
+  ), document.body)
 }

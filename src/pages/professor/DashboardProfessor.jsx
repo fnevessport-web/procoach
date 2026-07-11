@@ -1,4 +1,5 @@
 import { useState, Fragment } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { format, addDays, startOfWeek } from 'date-fns'
@@ -534,7 +535,9 @@ function ModalCelula({ celulaAtiva, onClose }) {
   const { info, horario } = celulaAtiva
   const nomeExibir = info.ehOverride ? info.nomeEfetivo : (info.nomeRecorrente || info.nomeEfetivo)
   const totalAlunos = info.presencasRegulares.length + info.presencasReposicao.length
-  return (
+  // Via portal pro <body>: sem isso, o WebKit mobile prende esse position:fixed dentro do
+  // .app-main (overflow-y + scroll-touch) e o modal fica cortado, sem cobrir a tela toda.
+  return createPortal((
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#1a1a1a', borderRadius: '16px', border: '1px solid #2a2a2a', padding: '20px', width: '100%', maxWidth: '340px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
@@ -566,5 +569,5 @@ function ModalCelula({ celulaAtiva, onClose }) {
         {info.removida && <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '6px' }}>Turma removida</div>}
       </div>
     </div>
-  )
+  ), document.body)
 }

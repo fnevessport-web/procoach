@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, endOfMonth, parseISO } from 'date-fns'
@@ -270,7 +271,9 @@ function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado })
 
   const PAD = [1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'del']
 
-  return (
+  // Via portal pro <body>: sem isso, o WebKit mobile prende esse position:fixed dentro do
+  // .app-main (que tem overflow-y+scroll-touch) e o modal fica cortado, sem cobrir a tela toda.
+  return createPortal((
     <div
       style={{ position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
       onClick={onClose}
@@ -323,7 +326,7 @@ function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado })
         </div>
       </div>
     </div>
-  )
+  ), document.body)
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -389,7 +392,7 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
 
   const contagem = aulas.length || totalAulas
 
-  return (
+  return createPortal((
     <div style={{ position: 'fixed', inset: 0, zIndex: 900, backgroundColor: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
       <div style={{ backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxWidth: '480px', maxHeight: '78dvh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
         <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: '#333', margin: '0 auto 16px' }} />
@@ -461,7 +464,7 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
         </div>
       </div>
     </div>
-  )
+  ), document.body)
 }
 
 // ──────────────────────────────────────────────────────────────────────
