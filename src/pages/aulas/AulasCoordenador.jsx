@@ -709,6 +709,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   // Mensalista = matrícula duradoura: além de salvar a presença nessa aula, vincula o aluno
   // à turma (turmas_alunos) e completa a presença nas aulas futuras já geradas dessa mesma
   // turma (que foram criadas antes dessa matrícula, então nunca tiveram esse aluno).
+  // Usa sempre "hoje" como piso — nunca a data da aula que estava aberta na tela — porque o
+  // coordenador pode abrir qualquer ocorrência futura da turma pra fazer a matrícula (não
+  // necessariamente a mais próxima), e a aula de hoje/desta semana já pode existir como linha
+  // vazia esperando alunos. Usar aula.data_aula como piso deixava essa ocorrência mais próxima
+  // de fora do backfill sempre que a aula aberta era uma semana adiante.
   async function vincularMensalistasNaTurma(aula, mensalistas) {
     if (!aula.turma_id || mensalistas.length === 0) return
     const alunoIds = mensalistas.map(p => p.aluno_id)
@@ -718,10 +723,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       { onConflict: 'turma_id,aluno_id' }
     )
 
+    const piso = aula.data_aula < format(new Date(), 'yyyy-MM-dd') ? aula.data_aula : format(new Date(), 'yyyy-MM-dd')
     const { data: aulasFuturas } = await supabase
       .from('aulas').select('id')
       .eq('turma_id', aula.turma_id)
-      .gte('data_aula', aula.data_aula)
+      .gte('data_aula', piso)
       .lte('data_aula', '2026-12-31')
     const idsAulasFuturas = (aulasFuturas || []).map(a => a.id)
     if (idsAulasFuturas.length === 0) return
