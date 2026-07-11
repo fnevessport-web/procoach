@@ -14,10 +14,12 @@ import {
 } from '../hooks/useAlunos'
 import { useReposicoesDoAluno } from '../hooks/useAulas'
 import { calcStatusPorPrazo } from '../constants/reposicao'
+import { BADGES } from '../constants/badges'
 import { supabase } from '../lib/supabase'
 import { Modal } from './ui/Modal'
 import { Loading, EmptyState } from './ui/Loading'
 import { PainelReposicoesAluno } from './PainelReposicoesAluno'
+import { EvolucaoTecnicaTenis } from './EvolucaoTecnicaTenis'
 import toast from 'react-hot-toast'
 
 const toastStyle = {
@@ -30,13 +32,6 @@ const TIPO_VINCULO_LABEL = {
   conjuge: 'Cônjuge',
   filho: 'Filho(a)',
   responsavel: 'Responsável',
-}
-
-const BADGES = {
-  primeira_aula: { emoji: '🎉', label: 'Primeira aula' },
-  '10_aulas': { emoji: '🔟', label: '10 aulas' },
-  evoluiu_nivel: { emoji: '📈', label: 'Evoluiu de nível' },
-  '3_meses_sem_falta': { emoji: '🏆', label: '3 meses sem falta' },
 }
 
 const STATUS_PRESENCA_LABEL = {
@@ -392,55 +387,64 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
           <ClipboardList size={15} /> Avaliar aluno
         </button>
 
-        {/* Perfil técnico — radar da última avaliação */}
-        <div>
-          <SecaoTitulo>Perfil técnico</SecaoTitulo>
-          {loadingAvaliacoes ? <Loading /> : !ultimaAvaliacao ? (
-            <CardVazio texto="Nenhuma avaliação técnica ainda nesta modalidade" />
-          ) : (
-            <div style={{ backgroundColor: '#111', borderRadius: '12px', border: '1px solid #2a2a2a', padding: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 10px' }}>
-                <span style={{ fontSize: '11px', color: '#555' }}>{fmtData(ultimaAvaliacao.data_avaliacao)}</span>
-                <span style={{ fontSize: '20px', fontWeight: '800', color: cor }}>
-                  {ultimaAvaliacao.nota_geral != null ? Number(ultimaAvaliacao.nota_geral).toFixed(1) : '—'}
-                </span>
-              </div>
-              <div style={{ width: '100%', height: 220 }}>
-                <ResponsiveContainer>
-                  <RadarChart data={radarData} outerRadius="70%">
-                    <PolarGrid stroke="#2a2a2a" />
-                    <PolarAngleAxis dataKey="dimensao" tick={{ fill: '#888', fontSize: 11 }} />
-                    <PolarRadiusAxis domain={[0, 5]} tick={{ fill: '#444', fontSize: 9 }} axisLine={false} />
-                    <Radar dataKey="valor" stroke={cor} fill={cor} fillOpacity={0.35} strokeWidth={2} />
-                    <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#F0F2F5' }} />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-              {ultimaAvaliacao.comentario && (
-                <div style={{ marginTop: '4px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#1a1a1a', fontSize: '12px', color: '#888', fontStyle: 'italic' }}>
-                  "{ultimaAvaliacao.comentario}"
+        {/* Evolução técnica — Tênis usa o módulo novo (PC Score); demais modalidades
+            mantêm o perfil técnico genérico (nota_geral 1-5) até ganharem sua própria
+            configuração de pesos em pcScore.js. */}
+        {modalidade.nome === 'Tênis' ? (
+          loadingAvaliacoes ? <Loading /> : (
+            <EvolucaoTecnicaTenis aluno={aluno} modalidade={modalidade} avaliacoes={avaliacoes} presencas={presencas} />
+          )
+        ) : (
+          <>
+            <div>
+              <SecaoTitulo>Perfil técnico</SecaoTitulo>
+              {loadingAvaliacoes ? <Loading /> : !ultimaAvaliacao ? (
+                <CardVazio texto="Nenhuma avaliação técnica ainda nesta modalidade" />
+              ) : (
+                <div style={{ backgroundColor: '#111', borderRadius: '12px', border: '1px solid #2a2a2a', padding: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 10px' }}>
+                    <span style={{ fontSize: '11px', color: '#555' }}>{fmtData(ultimaAvaliacao.data_avaliacao)}</span>
+                    <span style={{ fontSize: '20px', fontWeight: '800', color: cor }}>
+                      {ultimaAvaliacao.nota_geral != null ? Number(ultimaAvaliacao.nota_geral).toFixed(1) : '—'}
+                    </span>
+                  </div>
+                  <div style={{ width: '100%', height: 220 }}>
+                    <ResponsiveContainer>
+                      <RadarChart data={radarData} outerRadius="70%">
+                        <PolarGrid stroke="#2a2a2a" />
+                        <PolarAngleAxis dataKey="dimensao" tick={{ fill: '#888', fontSize: 11 }} />
+                        <PolarRadiusAxis domain={[0, 5]} tick={{ fill: '#444', fontSize: 9 }} axisLine={false} />
+                        <Radar dataKey="valor" stroke={cor} fill={cor} fillOpacity={0.35} strokeWidth={2} />
+                        <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#F0F2F5' }} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {ultimaAvaliacao.comentario && (
+                    <div style={{ marginTop: '4px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#1a1a1a', fontSize: '12px', color: '#888', fontStyle: 'italic' }}>
+                      "{ultimaAvaliacao.comentario}"
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Evolução da nota geral */}
-        {evolucaoData.length > 1 && (
-          <div>
-            <SecaoTitulo>Evolução da nota geral</SecaoTitulo>
-            <div style={{ backgroundColor: '#111', borderRadius: '12px', border: '1px solid #2a2a2a', padding: '10px', width: '100%', height: 160 }}>
-              <ResponsiveContainer>
-                <LineChart data={evolucaoData} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
-                  <CartesianGrid stroke="#2a2a2a" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="data" tick={{ fill: '#555', fontSize: 10 }} axisLine={{ stroke: '#2a2a2a' }} tickLine={false} />
-                  <YAxis domain={[0, 5]} tick={{ fill: '#555', fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#F0F2F5' }} />
-                  <Line type="monotone" dataKey="nota" stroke={cor} strokeWidth={2} dot={{ r: 4, fill: cor }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+            {evolucaoData.length > 1 && (
+              <div>
+                <SecaoTitulo>Evolução da nota geral</SecaoTitulo>
+                <div style={{ backgroundColor: '#111', borderRadius: '12px', border: '1px solid #2a2a2a', padding: '10px', width: '100%', height: 160 }}>
+                  <ResponsiveContainer>
+                    <LineChart data={evolucaoData} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
+                      <CartesianGrid stroke="#2a2a2a" strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="data" tick={{ fill: '#555', fontSize: 10 }} axisLine={{ stroke: '#2a2a2a' }} tickLine={false} />
+                      <YAxis domain={[0, 5]} tick={{ fill: '#555', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#F0F2F5' }} />
+                      <Line type="monotone" dataKey="nota" stroke={cor} strokeWidth={2} dot={{ r: 4, fill: cor }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Histórico de nível */}
