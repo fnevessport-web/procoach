@@ -491,7 +491,8 @@ export function useReposicoesDoAluno(alunoId) {
         .select(`
           id, status, data_limite, created_at, aula_origem_id, aula_reposicao_id,
           modalidades(id, nome, icone_emoji, cor_hex),
-          aula_origem:aulas!aula_origem_id(data_aula)
+          aula_origem:aulas!aula_origem_id(data_aula),
+          aula_reposicao:aulas!aula_reposicao_id(data_aula, turmas(nome, quadras(nome)))
         `)
         .eq('aluno_id', alunoId)
         .order('created_at', { ascending: false })

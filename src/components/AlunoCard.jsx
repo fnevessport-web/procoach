@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
@@ -43,6 +43,34 @@ const STATUS_PRESENCA_LABEL = {
   presente: { label: 'Presente', cor: '#22c55e' },
   falta: { label: 'Falta', cor: '#EF4444' },
   falta_justificada: { label: 'Falta Just.', cor: '#f97316' },
+}
+
+const DIA_SEMANA_LABEL = { domingo: 'DOM', segunda: 'SEG', terca: 'TER', quarta: 'QUA', quinta: 'QUI', sexta: 'SEX', sabado: 'SAB' }
+const DIAS_SEMANA_POR_INDICE = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado']
+
+function diaSemanaLabel(dataStr) {
+  const [ano, mes, dia] = dataStr.split('-').map(Number)
+  return DIA_SEMANA_LABEL[DIAS_SEMANA_POR_INDICE[new Date(ano, mes - 1, dia).getDay()]]
+}
+
+// Agrupa presenças por mês/ano (mais recente primeiro) — cada grupo já vem ordenado por data
+// decrescente por dentro, pronto pra virar um acordeão em vez de uma lista única enorme.
+function agruparPresencasPorMes(presencas) {
+  const grupos = {}
+  presencas.forEach(p => {
+    const dataAula = p.aulas?.data_aula
+    if (!dataAula) return
+    const chave = dataAula.slice(0, 7)
+    if (!grupos[chave]) grupos[chave] = []
+    grupos[chave].push(p)
+  })
+  return Object.entries(grupos)
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([chave, itens]) => ({
+      chave,
+      label: format(new Date(chave + '-01T12:00'), 'MMM/yy', { locale: ptBR }).toUpperCase().replace('.', ''),
+      itens: [...itens].sort((a, b) => (b.aulas.data_aula || '').localeCompare(a.aulas.data_aula || '')),
+    }))
 }
 
 // Silhueta padrão quando o aluno não tem foto — mesmo círculo com anel gradiente
@@ -306,9 +334,17 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
   const { data: avaliacoes, isLoading: loadingAvaliacoes } = useAvaliacoesModalidade(aluno.id, modalidade.id)
   const { data: presencas, isLoading: loadingPresencas } = useHistoricoPresencaModalidade(aluno.id, modalidade.id, modalidade.nome)
   const { data: reposicoesTodas } = useReposicoesDoAluno(aluno.id)
+  const [mesExpandido, setMesExpandido] = useState(null)
 
   const ultimaAvaliacao = avaliacoes?.length ? avaliacoes[avaliacoes.length - 1] : null
   const reposicoesModalidade = (reposicoesTodas || []).filter(r => r.modalidades?.id === modalidade.id)
+  const presencasPorMes = useMemo(() => agruparPresencasPorMes(presencas || []), [presencas])
+
+  function abrirAula(dataStr, aulaId) {
+    if (!dataStr || !aulaId) return
+    onClose()
+    navigate('/aulas', { state: { data: dataStr, highlightAulaId: aulaId } })
+  }
 
   const radarData = (dimensoes || []).map(d => ({
     dimensao: d.nome_dimensao,
@@ -428,22 +464,61 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
           )}
         </div>
 
-        {/* Histórico de presença */}
+        {/* Histórico de presença — agrupado por mês, clique expande */}
         <div>
           <SecaoTitulo>Histórico de presença</SecaoTitulo>
-          {loadingPresencas ? <Loading /> : !presencas?.length ? (
+          {loadingPresencas ? <Loading /> : presencasPorMes.length === 0 ? (
             <CardVazio texto="Nenhuma presença registrada ainda nesta modalidade" />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '220px', overflowY: 'auto' }}>
-              {presencas.map(p => {
-                const info = STATUS_PRESENCA_LABEL[p.status_presenca] || { label: p.status_presenca || '—', cor: '#555' }
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {presencasPorMes.map(grupo => {
+                const expandido = mesExpandido === grupo.chave
                 return (
-                  <div key={p.id} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '8px 10px', borderRadius: '8px', backgroundColor: '#111', border: '1px solid #2a2a2a',
-                  }}>
-                    <span style={{ fontSize: '12px', color: '#888' }}>{fmtData(p.aulas?.data_aula)}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '700', color: info.cor }}>{info.label}</span>
+                  <div key={grupo.chave} style={{ borderRadius: '10px', backgroundColor: '#111', border: '1px solid #2a2a2a', overflow: 'hidden' }}>
+                    <button
+                      onClick={() => setMesExpandido(expandido ? null : grupo.chave)}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                        padding: '10px 12px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: '#F0F2F5', letterSpacing: '0.5px' }}>{grupo.label}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '11px', color: '#555' }}>{grupo.itens.length} aula{grupo.itens.length === 1 ? '' : 's'}</span>
+                        <ChevronRight size={14} color="#555" style={{ transform: expandido ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }} />
+                      </div>
+                    </button>
+                    {expandido && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '0 10px 10px' }}>
+                        {grupo.itens.map(p => {
+                          const info = STATUS_PRESENCA_LABEL[p.status_presenca] || { label: p.status_presenca || '—', cor: '#555' }
+                          return (
+                            <button
+                              key={p.id}
+                              onClick={() => abrirAula(p.aulas?.data_aula, p.aulas?.id)}
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '7px 9px', borderRadius: '7px', backgroundColor: '#1a1a1a', border: 'none',
+                                cursor: 'pointer', textAlign: 'left', width: '100%',
+                              }}
+                            >
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '9px', fontWeight: '700', color: '#555', width: '22px', flexShrink: 0 }}>
+                                  {diaSemanaLabel(p.aulas.data_aula)}
+                                </span>
+                                <span style={{ fontSize: '12px', color: '#888' }}>{fmtData(p.aulas?.data_aula)}</span>
+                                {p.tipo_participacao === 'reposicao' && (
+                                  <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(59,130,246,0.15)', color: '#3b82f6', fontWeight: '600' }}>
+                                    reposição
+                                  </span>
+                                )}
+                              </span>
+                              <span style={{ fontSize: '10px', fontWeight: '700', color: info.cor }}>{info.label}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -451,7 +526,7 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
           )}
         </div>
 
-        {/* Reposições da modalidade */}
+        {/* Reposições da modalidade — clicável, mostra falta → reposição */}
         <div>
           <SecaoTitulo>Reposições</SecaoTitulo>
           {reposicoesModalidade.length === 0 ? (
@@ -460,16 +535,40 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {reposicoesModalidade.map(r => {
                 const status = calcStatusPorPrazo(r.data_limite)
+                const corStatus = r.status === 'expirada' ? '#555' : r.status === 'agendada' ? '#22c55e' : status.cor
+                const temDestino = r.status !== 'pendente' && r.aula_reposicao?.data_aula
+                const clicavel = temDestino ? r.aula_reposicao_id : r.aula_origem_id
+                const dataClicavel = temDestino ? r.aula_reposicao.data_aula : r.aula_origem?.data_aula
                 return (
-                  <div key={r.id} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '8px 10px', borderRadius: '8px', backgroundColor: '#111', border: '1px solid #2a2a2a',
-                  }}>
-                    <span style={{ fontSize: '12px', color: '#888' }}>{fmtData(r.aula_origem?.data_aula)}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '700', color: r.status === 'expirada' ? '#555' : r.status === 'agendada' ? '#22c55e' : status.cor, textTransform: 'uppercase' }}>
-                      {r.status}
-                    </span>
-                  </div>
+                  <button
+                    key={r.id}
+                    onClick={() => abrirAula(dataClicavel, clicavel)}
+                    style={{
+                      padding: '10px 12px', borderRadius: '10px', backgroundColor: '#111', border: '1px solid #2a2a2a',
+                      cursor: clicavel ? 'pointer' : 'default', textAlign: 'left', width: '100%',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '700', color: corStatus, textTransform: 'uppercase' }}>
+                        {r.status}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Faltou</div>
+                        <div style={{ color: '#F0F2F5', fontWeight: '600', marginTop: '2px' }}>{fmtData(r.aula_origem?.data_aula)}</div>
+                      </div>
+                      <span style={{ color: temDestino ? '#22c55e' : '#3b82f6', fontSize: '16px', flexShrink: 0 }}>→</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '9px', color: temDestino ? '#22c55e' : '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                          {r.status === 'pendente' ? 'Ainda por repor' : 'Repôs em'}
+                        </div>
+                        <div style={{ color: '#F0F2F5', fontWeight: '600', marginTop: '2px' }}>
+                          {temDestino ? fmtData(r.aula_reposicao.data_aula) : '—'}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
                 )
               })}
             </div>

@@ -109,12 +109,16 @@ export function useAlunoCompleto(alunoId) {
     queryFn: async () => {
       await verificarEConcederBadges(alunoId)
 
-      const [{ data: aluno, error: erroAluno }, { data: familia }, { data: modsAluno }, { data: niveisAtivos }, { data: badges }] = await Promise.all([
+      const [{ data: aluno, error: erroAluno }, { data: familia }, { data: modsAluno }, { data: niveisAtivos }, { data: badges }, { data: presencasAluno }] = await Promise.all([
         supabase.from('alunos').select('*').eq('id', alunoId).single(),
         supabase.from('aluno_familia').select('*, vinculo:alunos!vinculo_aluno_id(id, nome)').eq('aluno_id', alunoId).order('created_at'),
         supabase.from('alunos_modalidades').select('created_at, modalidade_id, modalidades(id, nome, icone_emoji, cor_hex)').eq('aluno_id', alunoId),
         supabase.from('aluno_modalidade_nivel').select('*').eq('aluno_id', alunoId).eq('ativo', true),
         supabase.from('badges_aluno').select('*').eq('aluno_id', alunoId),
+        // Só pra achar a data real de entrada em cada modalidade (primeira aula que o aluno
+        // de fato teve) — alunos_modalidades.created_at não serve pra isso porque a linha pode
+        // ter sido criada bem depois (ex.: backfill), sem relação com quando o aluno começou.
+        supabase.from('presencas').select('aula_id, aulas(data_aula, turma_id, observacoes, turmas(modalidade_id))').eq('aluno_id', alunoId),
       ])
       if (erroAluno) throw erroAluno
 
@@ -127,11 +131,29 @@ export function useAlunoCompleto(alunoId) {
       // pra todo mundo só porque a tabela nova começa zerada.
       const nivelGenerico = aluno.nivel_avaliado_prof || aluno.nivel || null
 
+      // Nome → id das modalidades do próprio aluno, pra resolver a modalidade de aulas avulsas
+      // (que não têm turma_id, só a quadra na observação) sem precisar buscar todas as
+      // modalidades do clube.
+      const nomeParaModalidadeId = {}
+      modsAluno?.forEach(m => { if (m.modalidades?.nome) nomeParaModalidadeId[m.modalidades.nome] = m.modalidade_id })
+
+      const primeiraAulaPorModalidade = {}
+      presencasAluno?.forEach(p => {
+        if (!p.aulas?.data_aula) return
+        const modId = p.aulas.turma_id
+          ? p.aulas.turmas?.modalidade_id
+          : nomeParaModalidadeId[getModalidadeDaAula(p.aulas)]
+        if (!modId) return
+        if (!primeiraAulaPorModalidade[modId] || p.aulas.data_aula < primeiraAulaPorModalidade[modId]) {
+          primeiraAulaPorModalidade[modId] = p.aulas.data_aula
+        }
+      })
+
       const modalidadesDetalhe = (modsAluno || []).map(m => {
         const registroAtivo = nivelPorModalidade[m.modalidade_id]
         return {
           ...m.modalidades,
-          dataEntrada: m.created_at,
+          dataEntrada: primeiraAulaPorModalidade[m.modalidade_id] || m.created_at,
           nivelAtual: registroAtivo?.nivel || nivelGenerico,
           nivelRegistrado: !!registroAtivo,
         }
@@ -317,13 +339,17 @@ export function useHistoricoPresencaModalidade(alunoId, modalidadeId, modalidade
       const { data, error } = await supabase
         .from('presencas')
         .select(`
-          id, status_presenca, presente,
+          id, status_presenca, presente, tipo_participacao,
           aulas(id, data_aula, turma_id, observacoes, turmas(modalidade_id, nome))
         `)
         .eq('aluno_id', alunoId)
       if (error) throw error
+      const hoje = format(new Date(), 'yyyy-MM-dd')
       return (data || [])
         .filter(p => p.aulas)
+        // Aulas futuras (turma recorrente já gerada pra semanas adiante) ainda não aconteceram —
+        // a presença delas nasce com um valor "presente" só de placeholder, não é presença real.
+        .filter(p => p.aulas.data_aula <= hoje)
         .filter(p => p.aulas.turma_id ? p.aulas.turmas?.modalidade_id === modalidadeId : getModalidadeDaAula(p.aulas) === modalidadeNome)
         .sort((a, b) => (b.aulas.data_aula || '').localeCompare(a.aulas.data_aula || ''))
         .slice(0, 100)
