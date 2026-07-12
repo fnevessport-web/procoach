@@ -1539,3 +1539,142 @@ export async function exportarRegrasRankingPDF({ empresa } = {}) {
   desenharRodape()
   doc.save(`regras-ranking-beyond-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 }
+
+// ============================================================================================
+// PDF — Tabela de classificação do Ranking "Pontuação Beyond" (item 9). Mesmas colunas da
+// visão do associado na Aba Ranking — sem média/multiplicador, que ficam só no detalhe da
+// tela (ver item 11 do módulo). Pagina automaticamente se a lista passar de 1 página.
+// ============================================================================================
+
+const CORES_TOP3_PDF = { 1: [180, 140, 30], 2: [140, 140, 140], 3: [150, 110, 60] }
+
+export async function exportarClassificacaoRankingPDF(dados, { empresa } = {}) {
+  const { modalidadeNome, tipoRankingLabel, generoLabel, ciclo, posicoes } = dados
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margem = 40
+  const larguraUtil = pageWidth - margem * 2
+
+  let logoBeyond = null
+  let logoUnidade = null
+  try { logoBeyond = await carregarLogoAutoCrop(LOGO_BEYOND_PRETO, 260) } catch {}
+  try { logoUnidade = await carregarLogoAutoCrop(LOGO_UNIDADE_PRETO[empresa], 260) } catch {}
+
+  function fontePadrao(estilo, tamanho) {
+    doc.setFont('helvetica', estilo)
+    doc.setFontSize(tamanho)
+  }
+
+  const nomeEmpresa = NOME_EMPRESA[empresa] || empresa || ''
+  const geradoEm = format(new Date(), "dd/MM/yyyy 'às' HH:mm")
+  let cursorY = 0
+
+  const colunas = [
+    { titulo: '#', w: larguraUtil * 0.08 },
+    { titulo: 'Nome', w: larguraUtil * 0.42 },
+    { titulo: 'Jogos', w: larguraUtil * 0.14 },
+    { titulo: 'Nível', w: larguraUtil * 0.16 },
+    { titulo: 'Pontuação', w: larguraUtil * 0.20 },
+  ]
+
+  function desenharCabecalho() {
+    doc.setFillColor(...COR_CREME)
+    doc.rect(0, 0, pageWidth, pageHeight, 'F')
+
+    const alturaLogo = 20
+    const yTopoLogo = 22
+    const textoX = desenharLockupLogos(doc, { logoBeyond, logoUnidade, x: margem, yTopo: yTopoLogo, altura: alturaLogo, corLinha: COR_TEXTO_SUAVE })
+    fontePadrao('bold', 14)
+    doc.setTextColor(...COR_TINTA)
+    doc.text('RANKING · PONTUAÇÃO BEYOND', textoX, yTopoLogo + alturaLogo / 2 - 3)
+    fontePadrao('italic', 8.5)
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    doc.text(
+      `${nomeEmpresa.toUpperCase()} · ${modalidadeNome.toUpperCase()} · ${tipoRankingLabel.toUpperCase()} · ${generoLabel.toUpperCase()} · CICLO ${ciclo}`,
+      textoX, yTopoLogo + alturaLogo / 2 + 10
+    )
+    fontePadrao('normal', 7.5)
+    doc.text(`Gerado em ${geradoEm}`, pageWidth - margem, 26, { align: 'right' })
+
+    const faixaY = 56
+    const faixaW = larguraUtil / 4
+    CORES_CHIP.forEach((cor, i) => {
+      doc.setFillColor(...cor)
+      doc.rect(margem + i * faixaW, faixaY, faixaW - 3, 4, 'F')
+    })
+    cursorY = faixaY + 30
+  }
+
+  function desenharCabecalhoTabela() {
+    fontePadrao('bold', 8.5)
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    let x = margem
+    colunas.forEach(c => { doc.text(c.titulo, x, cursorY); x += c.w })
+    cursorY += 6
+    doc.setDrawColor(215, 210, 200)
+    doc.line(margem, cursorY, margem + larguraUtil, cursorY)
+    cursorY += 16
+  }
+
+  function desenharRodape() {
+    fontePadrao('normal', 7)
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    doc.text(`Gerado pelo ProCoach em ${geradoEm} · procoachsport.com.br`, pageWidth / 2, pageHeight - 24, { align: 'center' })
+    doc.text(`BEYOND · ${nomeEmpresa.toUpperCase()} · ${new Date().getFullYear()}`, pageWidth / 2, pageHeight - 14, { align: 'center' })
+  }
+
+  function precisaNovaPagina(alturaNecessaria) {
+    if (cursorY + alturaNecessaria <= pageHeight - 50) return
+    desenharRodape()
+    doc.addPage()
+    desenharCabecalho()
+    desenharCabecalhoTabela()
+  }
+
+  desenharCabecalho()
+  desenharCabecalhoTabela()
+
+  if (!posicoes?.length) {
+    fontePadrao('normal', 10)
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    doc.text('Ninguém classificado ainda nesse recorte.', margem, cursorY)
+    cursorY += 20
+  }
+
+  ;(posicoes || []).forEach((p, i) => {
+    precisaNovaPagina(22)
+    if (i % 2 === 1) {
+      doc.setFillColor(249, 247, 243)
+      doc.rect(margem, cursorY - 12, larguraUtil, 20, 'F')
+    }
+    let x = margem
+    fontePadrao('bold', 9.5)
+    doc.setTextColor(...(CORES_TOP3_PDF[p.posicao] || COR_TINTA))
+    doc.text(String(p.posicao), x, cursorY)
+    x += colunas[0].w
+
+    fontePadrao('normal', 9.5)
+    doc.setTextColor(...COR_TINTA)
+    doc.text(p.nome || '', x, cursorY)
+    x += colunas[1].w
+
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    doc.text(String(p.numJogos ?? ''), x, cursorY)
+    x += colunas[2].w
+
+    doc.setTextColor(...COR_VINHO)
+    doc.text(p.nivel || '—', x, cursorY)
+    x += colunas[3].w
+
+    fontePadrao('bold', 10)
+    doc.setTextColor(...COR_TINTA)
+    doc.text(String(p.pontuacaoBeyond ?? ''), x, cursorY)
+
+    cursorY += 20
+  })
+
+  desenharRodape()
+  doc.save(`ranking-${slugificar(modalidadeNome)}-${ciclo}.pdf`)
+}

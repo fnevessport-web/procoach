@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Trophy, Plus, ChevronDown, ChevronUp, Check, AlertTriangle, X, Award, HelpCircle } from 'lucide-react'
+import { Trophy, Plus, ChevronDown, ChevronUp, Check, AlertTriangle, X, Award, HelpCircle, Download } from 'lucide-react'
 import {
   useClassificacaoRanking, useJogosEmAberto,
   useCriarJogo, useLancarPlacar, useConfirmarPlacar, useContestarPlacar, useCancelarJogo,
@@ -13,6 +13,8 @@ import { useQuadras } from '../../hooks/useQuadras'
 import { useAlunos } from '../../hooks/useAlunos'
 import { NIVEIS_ASSIDUIDADE } from '../../lib/pontuacaoBeyond'
 import { cicloAtual } from '../../constants/rankingCategorias'
+import { MODALIDADE_EMPRESA } from '../../constants/modalidades'
+import { exportarClassificacaoRankingPDF } from '../../lib/relatorioPdf'
 import { supabase } from '../../lib/supabase'
 import { Modal } from '../../components/ui/Modal'
 import { Input, Select } from '../../components/ui/Input'
@@ -510,6 +512,7 @@ export function RankingPage() {
   const [jogosAbertosVisivel, setJogosAbertosVisivel] = useState(false)
   const [torneiosVisivel, setTorneiosVisivel] = useState(false)
   const [categorias, setCategorias] = useState([])
+  const [exportando, setExportando] = useState(false)
 
   const ciclo = cicloAtual()
   const tenis = modalidades?.find(m => m.nome === 'Tênis')
@@ -531,6 +534,29 @@ export function RankingPage() {
   })
   const { data: jogosAbertos } = useJogosEmAberto({ modalidadeId })
   const { data: torneios } = useTorneios(modalidadeId)
+
+  const nomeModalidadeAtual = modalidades?.find(m => m.id === modalidadeId)?.nome || ''
+  const nomeCategoriaAtual = categorias.find(c => c.id === categoriaId)?.nome
+
+  async function handleExportarPDF() {
+    setExportando(true)
+    try {
+      await exportarClassificacaoRankingPDF({
+        modalidadeNome: nomeModalidadeAtual,
+        tipoRankingLabel: tipoRanking === 'geral' ? 'Geral' : (nomeCategoriaAtual || 'Categoria'),
+        generoLabel: genero === 'masculino' ? 'Masculino' : 'Feminino',
+        ciclo,
+        posicoes: (posicoes || []).map(p => ({
+          posicao: p.posicao, nome: p.alunos?.nome, numJogos: p.num_jogos,
+          nivel: p.nivel, pontuacaoBeyond: p.pontuacao_beyond,
+        })),
+      }, { empresa: MODALIDADE_EMPRESA[nomeModalidadeAtual] || 'procopio' })
+    } catch (err) {
+      toast.error('Erro ao gerar PDF: ' + err.message, { style: toastStyle })
+    } finally {
+      setExportando(false)
+    }
+  }
 
   return (
     <div className="fade-in" style={{ paddingBottom: '20px' }}>
@@ -583,6 +609,21 @@ export function RankingPage() {
       >
         <Plus size={15} /> Criar jogo
       </button>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+        <button
+          onClick={handleExportarPDF}
+          disabled={exportando || isLoading}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '7px 12px', borderRadius: '8px', border: '1px solid #2a2a2a', cursor: exportando ? 'default' : 'pointer',
+            backgroundColor: '#1a1a1a', color: '#888', fontSize: '11px', fontWeight: '600',
+          }}
+        >
+          <Download size={12} />
+          {exportando ? 'Gerando PDF...' : 'Exportar PDF'}
+        </button>
+      </div>
 
       {isLoading ? <Loading /> : !posicoes?.length ? (
         <div style={{ padding: '30px 0', textAlign: 'center', fontSize: '12px', color: '#555' }}>
