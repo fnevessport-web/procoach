@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import useAppStore from '../store/useAppStore'
 import { calcularPontosResultado } from '../lib/pontuacaoBeyond'
 import { recalcularPosicoesRanking } from './useRankingPosicoes'
+import { cicloAtual } from '../constants/rankingCategorias'
 
 const HORAS_AUTO_APROVACAO = 48
 
@@ -94,6 +95,83 @@ export function useJogosEmAberto({ modalidadeId }) {
         .order('data_jogo', { ascending: false })
       if (error) throw error
       return data || []
+    },
+  })
+}
+
+// Posição do aluno no ciclo vigente (Geral + Categoria) pro bloco "Pontuação Beyond" do Card
+// do Aluno. Recalcula antes de ler (mesmo motivo de useClassificacaoRanking: card é aberto
+// bem mais que a Aba Ranking, então não dá pra confiar só em quem visitou a aba recentemente
+// pra manter os números frescos) — mesmo padrão "de graça" de verificarEConcederBadges, que já
+// roda a cada abertura de useAlunoCompleto.
+export function usePosicaoAluno(alunoId, modalidadeId) {
+  return useQuery({
+    queryKey: ['ranking_posicao_aluno', alunoId, modalidadeId],
+    enabled: !!alunoId && !!modalidadeId,
+    queryFn: async () => {
+      const { data: aluno } = await supabase.from('alunos').select('genero').eq('id', alunoId).single()
+      if (!aluno?.genero) return { semGenero: true, geral: null, categoria: null }
+
+      await aprovarJogosVencendoPrazo()
+      await recalcularPosicoesRanking({ modalidadeId })
+
+      const ciclo = cicloAtual()
+      const { data: linhas } = await supabase
+        .from('ranking_posicoes')
+        .select('*, ranking_categorias(nome)')
+        .eq('aluno_id', alunoId)
+        .eq('modalidade_id', modalidadeId)
+        .eq('ciclo', ciclo)
+
+      return {
+        semGenero: false,
+        genero: aluno.genero,
+        geral: (linhas || []).find(l => l.tipo_ranking === 'geral') || null,
+        categoria: (linhas || []).find(l => l.tipo_ranking === 'categoria') || null,
+      }
+    },
+  })
+}
+
+// Histórico de confrontos (H2H) — jogos aprovados do aluno na modalidade, mais recente
+// primeiro, com o(s) nome(s) do(s) adversário(s) de cada jogo. Ordenação é feita no cliente
+// porque o PostgREST não ordena de forma confiável por coluna de uma relação many-to-one
+// (mesmo caso já documentado em useHistoricoPresencaModalidade, useAlunos.js).
+export function useHistoricoConfrontos(alunoId, modalidadeId) {
+  return useQuery({
+    queryKey: ['ranking_h2h', alunoId, modalidadeId],
+    enabled: !!alunoId && !!modalidadeId,
+    queryFn: async () => {
+      const { data: participacoes } = await supabase
+        .from('ranking_jogo_participantes')
+        .select('resultado, pontos_calculados, ranking_jogos!inner(id, data_jogo, modalidade_id, status, placar)')
+        .eq('aluno_id', alunoId)
+        .eq('ranking_jogos.modalidade_id', modalidadeId)
+        .eq('ranking_jogos.status', 'aprovado')
+      if (!participacoes?.length) return []
+
+      const jogoIds = participacoes.map(p => p.ranking_jogos.id)
+      const { data: todosParticipantes } = await supabase
+        .from('ranking_jogo_participantes')
+        .select('jogo_id, aluno_id, alunos(nome)')
+        .in('jogo_id', jogoIds)
+        .neq('aluno_id', alunoId)
+
+      const adversariosPorJogo = {}
+      ;(todosParticipantes || []).forEach(p => {
+        (adversariosPorJogo[p.jogo_id] ||= []).push(p.alunos?.nome)
+      })
+
+      return participacoes
+        .map(p => ({
+          jogoId: p.ranking_jogos.id,
+          data: p.ranking_jogos.data_jogo,
+          placar: p.ranking_jogos.placar,
+          resultado: p.resultado,
+          pontos: p.pontos_calculados,
+          adversarios: (adversariosPorJogo[p.ranking_jogos.id] || []).filter(Boolean).join(' / ') || 'Adversário',
+        }))
+        .sort((a, b) => b.data.localeCompare(a.data))
     },
   })
 }

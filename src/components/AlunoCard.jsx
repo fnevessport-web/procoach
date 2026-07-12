@@ -23,6 +23,7 @@ import { Modal } from './ui/Modal'
 import { Loading, EmptyState } from './ui/Loading'
 import { PainelReposicoesAluno } from './PainelReposicoesAluno'
 import { EvolucaoTecnicaTenis } from './EvolucaoTecnicaTenis'
+import { BlocoPontuacaoBeyond } from './BlocoPontuacaoBeyond'
 import { SeletorFaixaEtariaManual } from './SeletorFaixaEtariaManual'
 import toast from 'react-hot-toast'
 
@@ -464,7 +465,10 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
             configuração de pesos em pcScore.js. */}
         {modalidade.nome === 'Tênis' ? (
           loadingAvaliacoes ? <Loading /> : (
-            <EvolucaoTecnicaTenis aluno={aluno} modalidadeNome={modalidade.nome} avaliacoes={avaliacoes} presencas={presencas} />
+            <>
+              <EvolucaoTecnicaTenis aluno={aluno} modalidadeNome={modalidade.nome} avaliacoes={avaliacoes} presencas={presencas} />
+              <BlocoPontuacaoBeyond aluno={aluno} modalidadeId={modalidade.id} />
+            </>
           )
         ) : (
           <>
