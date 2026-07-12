@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { format, addDays, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronRight, X, AlertTriangle, Check, MessageCircle } from 'lucide-react'
+import { ChevronRight, X, AlertTriangle, Check, MessageCircle, Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { usePendenciasConfirmacao, useConfirmarAvaliacaoTecnica, useResumoTecnicoTurma } from '../../hooks/useAlunos'
@@ -697,11 +697,39 @@ function ModalCelula({ celulaAtiva, onClose }) {
 }
 
 // Item 14 (Fase 3): média por dimensão dos alunos da turma com avaliação confirmada recente,
-// cobertura e gargalo coletivo — só matemática sobre dado já existente, sem custo de IA (o
-// botão de plano sugerido por IA vem no item 15, usando esse mesmo resumo como entrada).
+// cobertura e gargalo coletivo — só matemática sobre dado já existente, sem custo de IA.
+// Item 15: botão "Sugerir plano de treino" chama a Edge Function plano-turma (Haiku, mesmo
+// padrão de narrativa-tecnica) só habilitado com cobertura >= 50% da turma, pra não sugerir
+// plano em cima de dado incompleto. Sem persistência — o texto vive só no estado local
+// enquanto o modal estiver aberto, cada clique gera de novo.
 function ResumoTecnicoTurma({ turmaId }) {
   const { data: resumo, isLoading } = useResumoTecnicoTurma(turmaId)
+  const [plano, setPlano] = useState(null)
+  const [gerandoPlano, setGerandoPlano] = useState(false)
+
   if (isLoading || !resumo || resumo.totalAlunos === 0) return null
+
+  const cobertura = resumo.totalAlunos > 0 ? resumo.alunosAvaliados / resumo.totalAlunos : 0
+  const coberturaSuficiente = cobertura >= 0.5
+
+  async function handleSugerirPlano() {
+    setGerandoPlano(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('plano-turma', {
+        body: {
+          turmaNome: resumo.turmaNome, modalidadeNome: resumo.modalidadeNome,
+          totalAlunos: resumo.totalAlunos, alunosAvaliados: resumo.alunosAvaliados,
+          mediaPorDimensao: resumo.mediaPorDimensao, gargaloColetivo: resumo.gargaloColetivo,
+        },
+      })
+      if (error) throw error
+      setPlano(data?.plano || null)
+    } catch {
+      toast.error('Não foi possível gerar o plano agora.', { style: toastStyle })
+    } finally {
+      setGerandoPlano(false)
+    }
+  }
 
   return (
     <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #2a2a2a' }}>
@@ -722,9 +750,32 @@ function ResumoTecnicoTurma({ turmaId }) {
             ))}
           </div>
           {resumo.gargaloColetivo && (
-            <div style={{ fontSize: '11px', color: '#cf1b9b' }}>
+            <div style={{ fontSize: '11px', color: '#cf1b9b', marginBottom: '10px' }}>
               Gargalo coletivo: {resumo.gargaloColetivo.dimensao} ({resumo.gargaloColetivo.media}/5)
             </div>
+          )}
+
+          {plano ? (
+            <div style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.5', backgroundColor: '#111', borderRadius: '8px', padding: '10px' }}>
+              {plano}
+            </div>
+          ) : (
+            <button
+              onClick={handleSugerirPlano}
+              disabled={!coberturaSuficiente || gerandoPlano}
+              title={!coberturaSuficiente ? 'Precisa de pelo menos metade da turma avaliada recentemente' : undefined}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                padding: '9px', borderRadius: '9px', border: 'none',
+                cursor: (!coberturaSuficiente || gerandoPlano) ? 'default' : 'pointer',
+                background: coberturaSuficiente ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#111',
+                color: coberturaSuficiente ? 'white' : '#555',
+                fontSize: '12px', fontWeight: '700', opacity: gerandoPlano ? 0.6 : 1,
+              }}
+            >
+              <Sparkles size={13} />
+              {gerandoPlano ? 'Gerando plano...' : coberturaSuficiente ? 'Sugerir plano de treino' : 'Cobertura insuficiente pra sugerir plano'}
+            </button>
           )}
         </>
       ) : (
