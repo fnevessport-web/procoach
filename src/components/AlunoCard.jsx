@@ -20,6 +20,7 @@ import { Modal } from './ui/Modal'
 import { Loading, EmptyState } from './ui/Loading'
 import { PainelReposicoesAluno } from './PainelReposicoesAluno'
 import { EvolucaoTecnicaTenis } from './EvolucaoTecnicaTenis'
+import { SeletorFaixaEtariaManual } from './SeletorFaixaEtariaManual'
 import toast from 'react-hot-toast'
 
 const toastStyle = {
@@ -191,6 +192,16 @@ export function AlunoCard({ alunoId }) {
           <DadoLinha label="E-mail" valor={aluno.email} />
           {aluno.menor_idade && <DadoLinha label="Responsável" valor={aluno.nome_responsavel} />}
         </div>
+
+        {!aluno.data_nascimento && (
+          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #2a2a2a' }}>
+            <div style={{ fontSize: '10px', color: '#555', marginBottom: '8px' }}>
+              Faixa etária (pra avaliação técnica, enquanto não tem data de nascimento) — só
+              professor/gestor veem isso
+            </div>
+            <SeletorFaixaEtariaManual alunoId={aluno.id} valorAtual={aluno.faixa_etaria_manual} />
+          </div>
+        )}
       </div>
 
       {/* Família */}

@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
-import { useAlunos, useDimensoesModalidade, useSalvarAvaliacao, useAtualizarNivelModalidade } from '../../hooks/useAlunos'
-import { Textarea } from '../../components/ui/Input'
+import { format } from 'date-fns'
+import { ChevronLeft, Check } from 'lucide-react'
+import {
+  useAlunos, useAlunoCompleto, useDimensoesModalidade, useAvaliacoesModalidade,
+  useSalvarAvaliacao, useAtualizarNivelModalidade,
+} from '../../hooks/useAlunos'
+import { calcularPcScore, nivelPorPcScore } from '../../lib/pcScore'
+import { Input, Textarea } from '../../components/ui/Input'
 import { Loading } from '../../components/ui/Loading'
+import { SeletorFaixaEtariaManual } from '../../components/SeletorFaixaEtariaManual'
 import { supabase } from '../../lib/supabase'
 import useAppStore from '../../store/useAppStore'
 import toast from 'react-hot-toast'
@@ -39,6 +45,11 @@ export function AvaliarAluno() {
   const [modalidadesAluno, setModalidadesAluno] = useState([])
 
   const { data: todosAlunos } = useAlunos()
+  // Dados completos do aluno (data_nascimento, faixa_etaria_manual) — precisa ser a query
+  // "viva" do react-query, não um snapshot, pra reagir sozinha quando a faixa manual for
+  // definida inline dentro do formulário (useAtualizarFaixaEtariaManual invalida essa mesma
+  // chave, então esse hook refaz o fetch e o componente re-renderiza com o valor novo).
+  const { data: aluno } = useAlunoCompleto(alunoId)
 
   useEffect(() => {
     if (!alunoId) return
@@ -56,6 +67,8 @@ export function AvaliarAluno() {
     setModalidadeId(null)
     setBusca('')
   }
+
+  const modalidadeNome = modalidadesAluno.find(m => m.id === modalidadeId)?.nome || ''
 
   return (
     <div className="fade-in" style={{ minHeight: '100%' }}>
@@ -132,9 +145,12 @@ export function AvaliarAluno() {
           ) : (
             <FormularioAvaliacao
               key={modalidadeId}
+              aluno={aluno}
               alunoId={alunoId}
+              alunoNome={alunoNome}
               professorId={professorId}
               modalidadeId={modalidadeId}
+              modalidadeNome={modalidadeNome}
               onVoltar={() => setModalidadeId(null)}
               onSalvo={() => navigate(-1)}
             />
@@ -147,14 +163,17 @@ export function AvaliarAluno() {
 
 // Componente separado e keyed por modalidadeId — trocar de modalidade remonta com estado
 // limpo de propósito (sem precisar de um efeito resetando manualmente cada campo).
-function FormularioAvaliacao({ alunoId, professorId, modalidadeId, onVoltar, onSalvo }) {
+function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, modalidadeId, modalidadeNome, onVoltar, onSalvo }) {
   const [nivelAtual, setNivelAtual] = useState(null)
   const [novoNivel, setNovoNivel] = useState('')
   const [valores, setValores] = useState({})
   const [notaManual, setNotaManual] = useState(null)
   const [comentario, setComentario] = useState('')
+  const [dataAvaliacao, setDataAvaliacao] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [etapa, setEtapa] = useState('preenchimento') // 'preenchimento' | 'resumo'
 
   const { data: dimensoes, isLoading: loadingDimensoes } = useDimensoesModalidade(modalidadeId)
+  const { data: avaliacoesAnteriores } = useAvaliacoesModalidade(alunoId, modalidadeId)
   const salvarAvaliacao = useSalvarAvaliacao()
   const atualizarNivel = useAtualizarNivelModalidade()
 
@@ -166,18 +185,50 @@ function FormularioAvaliacao({ alunoId, professorId, modalidadeId, onVoltar, onS
   const notaCalculada = useMemo(() => media(Object.values(valores)), [valores])
   const notaGeral = notaManual != null ? notaManual : notaCalculada
   const salvando = salvarAvaliacao.isPending || atualizarNivel.isPending
+  const todasPreenchidas = !!dimensoes?.length && Object.keys(valores).length >= dimensoes.length
 
-  async function handleSalvar() {
-    if (!dimensoes?.length || Object.keys(valores).length < dimensoes.length) {
-      return toast.error('Preencha todas as dimensões antes de salvar', { style: toastStyle })
+  // PC Score ao vivo — só é possível calcular pra Tênis (única modalidade com pesos
+  // configurados em pcScore.js por enquanto); pra outras, cai em faixaEtaria null e o
+  // resumo mostra "sem PC Score" sem bloquear o salvamento (nota_geral continua valendo
+  // normalmente pra elas, como já era antes desta entrega).
+  const resultadoPcScore = useMemo(() => {
+    if (!todasPreenchidas || !aluno) return null
+    return calcularPcScore({
+      dimensoes: valores,
+      modalidadeNome,
+      dataNascimento: aluno.data_nascimento,
+      faixaManual: aluno.faixa_etaria_manual,
+      dataAvaliacao,
+    })
+  }, [todasPreenchidas, valores, modalidadeNome, aluno, dataAvaliacao])
+
+  const ehTenis = modalidadeNome === 'Tênis'
+  const faltaFaixaEtaria = ehTenis && todasPreenchidas && !resultadoPcScore?.faixaEtaria
+
+  function handleAvancar() {
+    if (!todasPreenchidas) {
+      return toast.error('Preencha todas as dimensões antes de continuar', { style: toastStyle })
     }
+    setEtapa('resumo')
+  }
+
+  async function handleConfirmar() {
     try {
+      const historicoPcScore = (avaliacoesAnteriores || [])
+        .slice(-4)
+        .filter(a => a.pc_score != null)
+        .map(a => ({ dataAvaliacao: a.data_avaliacao, pcScore: a.pc_score }))
+
       await salvarAvaliacao.mutateAsync({
-        alunoId, modalidadeId, professorId,
+        alunoId, modalidadeId, professorId, alunoNome, modalidadeNome,
         dimensoes: valores,
         notaGeral,
         notaGeralManual: notaManual != null,
         comentario,
+        dataAvaliacao,
+        pcScore: resultadoPcScore?.pcScore ?? null,
+        faixaEtaria: resultadoPcScore?.faixaEtaria ?? null,
+        historicoPcScore,
       })
       if (novoNivel && novoNivel !== nivelAtual) {
         await atualizarNivel.mutateAsync({ alunoId, modalidadeId, nivel: novoNivel })
@@ -191,11 +242,100 @@ function FormularioAvaliacao({ alunoId, professorId, modalidadeId, onVoltar, onS
 
   if (loadingDimensoes) return <Loading />
 
+  if (etapa === 'resumo') {
+    const nivelPcScore = resultadoPcScore?.pcScore != null ? nivelPorPcScore(resultadoPcScore.pcScore) : null
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <button onClick={() => setEtapa('preenchimento')} style={{
+          alignSelf: 'flex-start', background: 'none', border: 'none', color: '#888', fontSize: '12px', cursor: 'pointer',
+        }}>← Voltar e editar</button>
+
+        <div>
+          <div style={{ fontSize: '11px', fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+            Confira sua avaliação
+          </div>
+          <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', marginBottom: '10px' }}>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>{alunoNome}</div>
+            <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
+              {modalidadeNome} · {format(new Date(dataAvaliacao + 'T12:00'), 'dd/MM/yyyy')}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+            {Object.entries(valores).map(([nome, nota]) => (
+              <div key={nome} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '9px 12px', borderRadius: '9px', backgroundColor: '#111', border: '1px solid #2a2a2a',
+              }}>
+                <span style={{ fontSize: '13px', color: '#F0F2F5' }}>{nome}</span>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825' }}>{nota}/5</span>
+              </div>
+            ))}
+          </div>
+
+          {ehTenis && (
+            <div style={{
+              padding: '14px', borderRadius: '12px', marginBottom: '10px',
+              backgroundColor: nivelPcScore ? `${nivelPcScore.cor}12` : 'rgba(249,115,22,0.08)',
+              border: `1px solid ${nivelPcScore ? nivelPcScore.cor + '33' : 'rgba(249,115,22,0.25)'}`,
+            }}>
+              {resultadoPcScore?.pcScore != null ? (
+                <>
+                  <div style={{ fontSize: '10px', color: nivelPcScore.cor, textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700', marginBottom: '4px' }}>
+                    PC Score calculado
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                    <span style={{ fontSize: '26px', fontWeight: '800', color: nivelPcScore.cor }}>{resultadoPcScore.pcScore}</span>
+                    <span style={{ fontSize: '12px', color: nivelPcScore.cor, fontWeight: '600' }}>{nivelPcScore.label}</span>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <div style={{ fontSize: '12px', color: '#f97316', marginBottom: '10px' }}>
+                    Falta a faixa etária do aluno pra calcular o PC Score — escolha uma pra continuar:
+                  </div>
+                  <SeletorFaixaEtariaManual alunoId={alunoId} valorAtual={aluno?.faixa_etaria_manual} compacto />
+                </div>
+              )}
+            </div>
+          )}
+
+          {comentario && (
+            <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: '#111', fontSize: '12px', color: '#888', fontStyle: 'italic', marginBottom: '10px' }}>
+              "{comentario}"
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={handleConfirmar}
+          disabled={salvando || faltaFaixaEtaria}
+          style={{
+            width: '100%', padding: '13px', borderRadius: '12px', border: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+            color: 'white', fontSize: '14px', fontWeight: '600',
+            cursor: (salvando || faltaFaixaEtaria) ? 'not-allowed' : 'pointer',
+            opacity: faltaFaixaEtaria ? 0.5 : 1,
+          }}
+        >
+          <Check size={16} /> {salvando ? 'Salvando...' : 'Confirmar avaliação'}
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
       <button onClick={onVoltar} style={{
         alignSelf: 'flex-start', background: 'none', border: 'none', color: '#888', fontSize: '12px', cursor: 'pointer',
       }}>← trocar modalidade</button>
+
+      {/* Data da avaliação */}
+      <Input
+        type="date" label="Data da avaliação"
+        value={dataAvaliacao} onChange={e => e.target.value && setDataAvaliacao(e.target.value)}
+      />
 
       {/* Dimensões técnicas */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -270,12 +410,12 @@ function FormularioAvaliacao({ alunoId, professorId, modalidadeId, onVoltar, onS
         </div>
       </div>
 
-      <button onClick={handleSalvar} disabled={salvando} style={{
+      <button onClick={handleAvancar} style={{
         width: '100%', padding: '13px', borderRadius: '12px', border: 'none',
         background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
         color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
       }}>
-        {salvando ? 'Salvando...' : 'Salvar avaliação'}
+        Continuar — revisar antes de salvar
       </button>
     </div>
   )

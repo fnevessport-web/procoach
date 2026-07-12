@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Search } from 'lucide-react'
+import { AlertTriangle, ClipboardList, Search } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useNiveis } from '../../hooks/useNiveis'
 import useAppStore from '../../store/useAppStore'
@@ -44,6 +45,7 @@ function useMeusAlunos(professorId) {
 
 export function MeusAlunosProfessor() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const { perfil } = useAppStore()
   const professorId = perfil?.professor_id
   const { data: alunos = [], isLoading } = useMeusAlunos(professorId)
@@ -115,19 +117,35 @@ export function MeusAlunosProfessor() {
               border: aluno.alerta_nivel ? '1px solid rgba(252,200,37,0.25)' : '1px solid rgba(255,255,255,0.06)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                <div style={{ minWidth: 0 }}>
+                <button
+                  onClick={() => navigate(`/cadastros/alunos/${aluno.id}`)}
+                  style={{ minWidth: 0, background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer' }}
+                >
                   <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5' }}>{aluno.nome}</div>
                   <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{aluno.turmas.join(' · ')}</div>
-                </div>
-                <button onClick={() => (classificando === aluno.id ? setClassificando(null) : abrirClassificacao(aluno))} style={{
-                  display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0,
-                  padding: '6px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                  backgroundColor: aluno.alerta_nivel ? 'rgba(252,200,37,0.15)' : '#111',
-                  color: aluno.alerta_nivel ? '#fcc825' : '#888', fontSize: '11px', fontWeight: '600',
-                }}>
-                  <AlertTriangle size={12} />
-                  {aluno.alerta_nivel ? aluno.nivel_avaliado_prof : 'Classificar nível'}
                 </button>
+                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                  <button
+                    onClick={() => navigate('/avaliar-aluno', { state: { alunoId: aluno.id, alunoNome: aluno.nome } })}
+                    title="Avaliar tecnicamente"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '5px',
+                      padding: '6px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                      backgroundColor: '#111', color: '#888', fontSize: '11px', fontWeight: '600',
+                    }}
+                  >
+                    <ClipboardList size={12} /> Avaliar
+                  </button>
+                  <button onClick={() => (classificando === aluno.id ? setClassificando(null) : abrirClassificacao(aluno))} style={{
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                    padding: '6px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                    backgroundColor: aluno.alerta_nivel ? 'rgba(252,200,37,0.15)' : '#111',
+                    color: aluno.alerta_nivel ? '#fcc825' : '#888', fontSize: '11px', fontWeight: '600',
+                  }}>
+                    <AlertTriangle size={12} />
+                    {aluno.alerta_nivel ? aluno.nivel_avaliado_prof : 'Classificar nível'}
+                  </button>
+                </div>
               </div>
 
               {classificando === aluno.id && (

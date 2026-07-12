@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import { logAudit } from '../lib/audit'
 import { format, subMonths } from 'date-fns'
 import { getModalidadeDaAula } from '../constants/modalidades'
+import { nivelPorPcScore, FAIXAS_ETARIAS } from '../lib/pcScore'
+import { badgesTecnicosElegiveis } from '../constants/badges'
 
 export function useAlunos(modalidadeId = null) {
   return useQuery({
@@ -271,23 +273,95 @@ export function useAvaliacoesModalidade(alunoId, modalidadeId) {
   })
 }
 
+// Dispara a narrativa da Edge Function em segundo plano — nunca trava o salvamento da
+// avaliação por causa disso (1-2s de latência da Anthropic não deveria bloquear o
+// professor seguindo pro próximo aluno). A própria function já cai num texto de
+// fallback e grava sozinha em avaliacoes_tecnicas.narrativa_ia se algo falhar.
+function dispararNarrativaIA({ avaliacaoId, alunoNome, modalidadeNome, faixaEtaria, dimensoes, pcScore, historico }) {
+  const faixaLabel = FAIXAS_ETARIAS.find(f => f.chave === faixaEtaria)?.label || faixaEtaria
+  const nivelLabel = nivelPorPcScore(pcScore)?.label || ''
+  supabase.functions.invoke('narrativa-tecnica', {
+    body: {
+      avaliacaoId, alunoNome, modalidadeNome,
+      faixaEtariaLabel: faixaLabel, dimensoes, pcScoreAtual: pcScore,
+      nivelAtualLabel: nivelLabel, historico,
+    },
+  }).catch(() => {
+    // Sem internet / function fora do ar — a avaliação já foi salva com as notas certas,
+    // só a análise em texto que fica sem gerar dessa vez.
+  })
+}
+
+// Concede badges técnicos elegíveis a partir do histórico atualizado (pós-insert) — usa a
+// mesma regra pura de src/constants/badges.js, então ajustar uma regra lá já vale aqui
+// sem precisar tocar neste arquivo.
+async function concederBadgesTecnicos(alunoId, modalidadeId) {
+  const { data: avaliacoes } = await supabase
+    .from('avaliacoes_tecnicas')
+    .select('data_avaliacao, pc_score, dimensoes')
+    .eq('aluno_id', alunoId)
+    .eq('modalidade_id', modalidadeId)
+    .order('data_avaliacao', { ascending: true })
+  const elegiveis = badgesTecnicosElegiveis(avaliacoes || [])
+  if (elegiveis.length === 0) return
+  await supabase.from('badges_aluno').upsert(
+    elegiveis.map(tipo_badge => ({ aluno_id: alunoId, tipo_badge })),
+    { onConflict: 'aluno_id,tipo_badge', ignoreDuplicates: true }
+  )
+}
+
 export function useSalvarAvaliacao() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ alunoId, modalidadeId, professorId, dimensoes, notaGeral, notaGeralManual, comentario }) => {
-      const { error } = await supabase.from('avaliacoes_tecnicas').insert({
+    mutationFn: async ({
+      alunoId, modalidadeId, professorId, alunoNome, modalidadeNome,
+      dimensoes, notaGeral, notaGeralManual, comentario,
+      dataAvaliacao, pcScore, faixaEtaria, historicoPcScore,
+    }) => {
+      const { data: nova, error } = await supabase.from('avaliacoes_tecnicas').insert({
         aluno_id: alunoId,
         modalidade_id: modalidadeId,
         professor_id: professorId,
+        data_avaliacao: dataAvaliacao,
         dimensoes,
         nota_geral: notaGeral,
         nota_geral_manual: notaGeralManual,
         comentario: comentario || null,
-      })
+        pc_score: pcScore ?? null,
+        faixa_etaria: faixaEtaria ?? null,
+      }).select().single()
       if (error) throw error
+
+      if (pcScore != null) {
+        dispararNarrativaIA({
+          avaliacaoId: nova.id, alunoNome, modalidadeNome, faixaEtaria, dimensoes, pcScore,
+          historico: historicoPcScore || [],
+        })
+        await concederBadgesTecnicos(alunoId, modalidadeId)
+      }
+
+      return nova
     },
     onSuccess: (_, { alunoId, modalidadeId }) => {
       qc.invalidateQueries({ queryKey: ['avaliacoes_modalidade', alunoId, modalidadeId] })
+      qc.invalidateQueries({ queryKey: ['aluno_completo', alunoId] })
+    }
+  })
+}
+
+// Faixa etária escolhida manualmente por professor/gestor (kids/infantil/adulto) — usada
+// no cálculo do PC Score só enquanto o aluno não tem data_nascimento cadastrada (que, tendo,
+// sempre tem prioridade — ver src/lib/pcScore.js). Propriedade do aluno, não da avaliação:
+// escolhida uma vez, vale pra qualquer avaliação futura dele.
+export function useAtualizarFaixaEtariaManual() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ alunoId, faixaEtariaManual }) => {
+      const { error } = await supabase.from('alunos').update({ faixa_etaria_manual: faixaEtariaManual }).eq('id', alunoId)
+      if (error) throw error
+    },
+    onSuccess: (_, { alunoId }) => {
+      qc.invalidateQueries({ queryKey: ['aluno_completo', alunoId] })
     }
   })
 }

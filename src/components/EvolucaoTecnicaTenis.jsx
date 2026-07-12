@@ -5,8 +5,8 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react'
-import { NIVEIS_PC_SCORE, nivelPorPcScore } from '../lib/pcScore'
+import { ChevronDown, ChevronUp, HelpCircle, AlertTriangle } from 'lucide-react'
+import { NIVEIS_PC_SCORE, nivelPorPcScore, precisaReavaliar, REAVALIACAO_PRAZO_DIAS } from '../lib/pcScore'
 import { BADGES } from '../constants/badges'
 
 function fmtData(d) {
@@ -74,6 +74,7 @@ export function EvolucaoTecnicaTenis({ aluno, avaliacoes, presencas }) {
   const melhorou = variacaoPcScore != null && variacaoPcScore < 0
 
   const totalPresencas = (presencas || []).filter(p => p.status_presenca === 'presente').length
+  const reavaliacaoPendente = precisaReavaliar(ultimaAvaliacao.data_avaliacao)
 
   const entradasDimensoes = Object.entries(ultimaAvaliacao.dimensoes || {})
   const radarData = entradasDimensoes.map(([dimensao, valor]) => ({ dimensao, valor }))
@@ -91,6 +92,18 @@ export function EvolucaoTecnicaTenis({ aluno, avaliacoes, presencas }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+
+      {reavaliacaoPendente && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '10px',
+          backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+        }}>
+          <AlertTriangle size={14} color="#EF4444" style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: '12px', color: '#EF4444' }}>
+            Reavaliação pendente — última avaliação há mais de {REAVALIACAO_PRAZO_DIAS} dias.
+          </span>
+        </div>
+      )}
 
       {/* Destaques lado a lado */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
