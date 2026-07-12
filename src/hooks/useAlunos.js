@@ -5,6 +5,8 @@ import { format, subMonths } from 'date-fns'
 import { getModalidadeDaAula } from '../constants/modalidades'
 import { nivelPorPcScore, FAIXAS_ETARIAS } from '../lib/pcScore'
 import { badgesTecnicosElegiveis } from '../constants/badges'
+import { buscarProfessoresDoAlunoNaModalidade } from './useProfessoresDoAluno'
+import { criarAlerta } from './useAlertas'
 
 export function useAlunos(modalidadeId = null) {
   return useQuery({
@@ -310,11 +312,37 @@ async function concederBadgesTecnicos(alunoId, modalidadeId) {
   )
 }
 
+// Se o aluno tem mais de um professor titular na modalidade avaliada, a avaliação nasce
+// 'pendente' (e cria uma linha de confirmação + um alerta pra cada um dos outros) em vez de
+// 'confirmada' direto — ninguém deve ver uma nota que ainda pode ser corrigida em conjunto.
+// Só entra na regra quem tem login no ProCoach (sem user_id não há como confirmar).
+async function aplicarConfirmacaoMultiProfessor({ novaAvaliacao, alunoId, modalidadeId, professorId, professorNome, alunoNome, modalidadeNome }) {
+  const professores = await buscarProfessoresDoAlunoNaModalidade(alunoId, modalidadeId)
+  const outros = professores.filter(p => p.professorId !== professorId && p.userId)
+  if (outros.length === 0) return { ...novaAvaliacao, status: 'confirmada' }
+
+  await supabase.from('avaliacoes_tecnicas').update({ status: 'pendente' }).eq('id', novaAvaliacao.id)
+  await supabase.from('avaliacoes_tecnicas_confirmacoes').insert(
+    outros.map(p => ({ avaliacao_id: novaAvaliacao.id, professor_id: p.professorId }))
+  )
+  for (const p of outros) {
+    await criarAlerta({
+      usuarioId: p.userId,
+      tipo: 'avaliacao_pendente_confirmacao',
+      referenciaId: novaAvaliacao.id,
+      alunoId,
+      prioridade: 'media',
+      mensagem: `${professorNome || 'Um professor'} avaliou ${alunoNome} em ${modalidadeNome} — confirme ou discuta.`,
+    })
+  }
+  return { ...novaAvaliacao, status: 'pendente' }
+}
+
 export function useSalvarAvaliacao() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({
-      alunoId, modalidadeId, professorId, alunoNome, modalidadeNome,
+      alunoId, modalidadeId, professorId, professorNome, alunoNome, modalidadeNome,
       dimensoes, notaGeral, notaGeralManual, comentario,
       dataAvaliacao, pcScore, faixaEtaria, historicoPcScore,
     }) => {
@@ -332,15 +360,23 @@ export function useSalvarAvaliacao() {
       }).select().single()
       if (error) throw error
 
+      const avaliacaoFinal = await aplicarConfirmacaoMultiProfessor({
+        novaAvaliacao: nova, alunoId, modalidadeId, professorId, professorNome, alunoNome, modalidadeNome,
+      })
+
       if (pcScore != null) {
         dispararNarrativaIA({
           avaliacaoId: nova.id, alunoNome, modalidadeNome, faixaEtaria, dimensoes, pcScore,
           historico: historicoPcScore || [],
         })
-        await concederBadgesTecnicos(alunoId, modalidadeId)
+        // Badge é conquista "oficial" — só concede quando a avaliação já nasce confirmada
+        // (sem outro professor titular pra confirmar). Uma pendente pode ainda mudar.
+        if (avaliacaoFinal.status === 'confirmada') {
+          await concederBadgesTecnicos(alunoId, modalidadeId)
+        }
       }
 
-      return nova
+      return avaliacaoFinal
     },
     onSuccess: (_, { alunoId, modalidadeId }) => {
       qc.invalidateQueries({ queryKey: ['avaliacoes_modalidade', alunoId, modalidadeId] })

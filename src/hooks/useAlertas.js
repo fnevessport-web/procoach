@@ -5,9 +5,14 @@ import useAppStore from '../store/useAppStore'
 
 // Cria um alerta pra outro usuário (ex: professor confirma aula -> alerta pro coordenador).
 // Falha silenciosa se a tabela ainda não existir (SQL não rodado ainda) — não deve travar o fluxo principal.
-export async function criarAlerta({ usuarioId, tipo, referenciaId, mensagem, prioridade = 'media' }) {
+// alunoId é opcional — só usado nos alertas vinculados a um aluno (ex: avaliação pendente de
+// confirmação), pra permitir a segunda ação "abrir card do aluno" (ver SinoAlertas.jsx).
+export async function criarAlerta({ usuarioId, tipo, referenciaId, mensagem, prioridade = 'media', alunoId }) {
   try {
-    await supabase.from('alertas').insert({ usuario_id: usuarioId, tipo, referencia_id: referenciaId, mensagem, prioridade })
+    await supabase.from('alertas').insert({
+      usuario_id: usuarioId, tipo, referencia_id: referenciaId, mensagem, prioridade,
+      aluno_id: alunoId || null,
+    })
   } catch {
     // sem tabela ainda / sem permissão — segue o app normalmente
   }

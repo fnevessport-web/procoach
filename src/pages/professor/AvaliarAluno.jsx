@@ -149,6 +149,7 @@ export function AvaliarAluno() {
               alunoId={alunoId}
               alunoNome={alunoNome}
               professorId={professorId}
+              professorNome={perfil?.nome}
               modalidadeId={modalidadeId}
               modalidadeNome={modalidadeNome}
               onVoltar={() => setModalidadeId(null)}
@@ -163,7 +164,7 @@ export function AvaliarAluno() {
 
 // Componente separado e keyed por modalidadeId — trocar de modalidade remonta com estado
 // limpo de propósito (sem precisar de um efeito resetando manualmente cada campo).
-function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, modalidadeId, modalidadeNome, onVoltar, onSalvo }) {
+function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professorNome, modalidadeId, modalidadeNome, onVoltar, onSalvo }) {
   const [nivelAtual, setNivelAtual] = useState(null)
   const [novoNivel, setNovoNivel] = useState('')
   const [valores, setValores] = useState({})
@@ -219,8 +220,8 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, modalidad
         .filter(a => a.pc_score != null)
         .map(a => ({ dataAvaliacao: a.data_avaliacao, pcScore: a.pc_score }))
 
-      await salvarAvaliacao.mutateAsync({
-        alunoId, modalidadeId, professorId, alunoNome, modalidadeNome,
+      const avaliacaoSalva = await salvarAvaliacao.mutateAsync({
+        alunoId, modalidadeId, professorId, professorNome, alunoNome, modalidadeNome,
         dimensoes: valores,
         notaGeral,
         notaGeralManual: notaManual != null,
@@ -233,7 +234,12 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, modalidad
       if (novoNivel && novoNivel !== nivelAtual) {
         await atualizarNivel.mutateAsync({ alunoId, modalidadeId, nivel: novoNivel })
       }
-      toast.success('✅ Avaliação registrada!', { style: toastStyle })
+      toast.success(
+        avaliacaoSalva?.status === 'pendente'
+          ? '✅ Avaliação registrada — aguardando confirmação do(s) outro(s) professor(es).'
+          : '✅ Avaliação registrada!',
+        { style: toastStyle }
+      )
       onSalvo()
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
