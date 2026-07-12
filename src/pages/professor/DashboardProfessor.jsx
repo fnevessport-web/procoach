@@ -4,13 +4,23 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { format, addDays, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronRight, X } from 'lucide-react'
+import { ChevronRight, X, AlertTriangle, Check, MessageCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
+import { usePendenciasConfirmacao, useConfirmarAvaliacaoTecnica } from '../../hooks/useAlunos'
+import { useAbrirConversaDoAluno } from '../../hooks/useMensagens'
+import { nivelPorPcScore } from '../../lib/pcScore'
 import useAppStore from '../../store/useAppStore'
 import { horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula, diaSemanaDaData } from '../../constants/modalidades'
 import { Loading } from '../../components/ui/Loading'
 import { ModalDetalhesDia } from '../cadastros/ProfessoresPage'
+import toast from 'react-hot-toast'
+
+const toastStyle = {
+  background: '#1a1a1a', color: '#F0F2F5',
+  border: '1px solid rgba(252,200,37,0.3)',
+  borderRadius: '10px', fontSize: '13px',
+}
 
 const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']
 const DIAS_SEMANA = ['segunda','terca','quarta','quinta','sexta','sabado','domingo']
@@ -50,6 +60,39 @@ export function DashboardProfessor({ professorIdProp } = {}) {
   const [mesExpandido, setMesExpandido] = useState(null)
   const [diaSelecionado, setDiaSelecionado] = useState(null)
   const [celulaAtiva, setCelulaAtiva] = useState(null)
+
+  // Painel só aparece no meu próprio painel, não na visão somente-leitura do gestor sobre
+  // outro professor (professorIdProp) — confirmar é uma ação pessoal de quem foi chamado.
+  const { data: pendencias = [] } = usePendenciasConfirmacao(!professorIdProp ? professorId : null)
+  const confirmarAvaliacao = useConfirmarAvaliacaoTecnica()
+  const abrirConversaDoAluno = useAbrirConversaDoAluno()
+
+  async function handleConfirmarPendencia(pendencia) {
+    try {
+      await confirmarAvaliacao.mutateAsync({
+        confirmacaoId: pendencia.confirmacaoId, avaliacaoId: pendencia.id,
+        alunoId: pendencia.aluno_id, modalidadeId: pendencia.modalidade_id, professorId,
+      })
+      toast.success('Avaliação confirmada!', { style: toastStyle })
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    }
+  }
+
+  async function handleDiscutirPendencia(pendencia) {
+    const { data: perfilAvaliador } = await supabase
+      .from('perfis_usuario').select('user_id').eq('professor_id', pendencia.professor_id).maybeSingle()
+    if (!perfilAvaliador?.user_id) {
+      toast.error('Não foi possível abrir a conversa com esse professor.', { style: toastStyle })
+      return
+    }
+    try {
+      const conversaId = await abrirConversaDoAluno.mutateAsync({ alunoId: pendencia.aluno_id, outroUserId: perfilAvaliador.user_id })
+      navigate('/mensagens', { state: { conversaId } })
+    } catch {
+      toast.error('Não foi possível abrir a conversa.', { style: toastStyle })
+    }
+  }
 
   const hoje = format(new Date(), 'yyyy-MM-dd')
   const amanha = format(addDays(new Date(), 1), 'yyyy-MM-dd')
@@ -283,6 +326,29 @@ export function DashboardProfessor({ professorIdProp } = {}) {
         </div>
       </div>
 
+      {/* Confirmações pendentes — avaliações de outro professor aguardando confirmação */}
+      {pendencias.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <h3 style={{
+            fontSize: '13px', fontWeight: '700', color: '#fcc825', textTransform: 'uppercase',
+            letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px',
+          }}>
+            <AlertTriangle size={13} /> Confirmações pendentes ({pendencias.length})
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {pendencias.map(p => (
+              <CardConfirmacaoPendente
+                key={p.confirmacaoId}
+                pendencia={p}
+                confirmando={confirmarAvaliacao.isPending}
+                onConfirmar={() => handleConfirmarPendencia(p)}
+                onDiscutir={() => handleDiscutirPendencia(p)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 3 cards do dia */}
       {loadingAulas ? <Loading /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
@@ -463,6 +529,63 @@ export function DashboardProfessor({ professorIdProp } = {}) {
       {celulaAtiva && (
         <ModalCelula celulaAtiva={celulaAtiva} onClose={() => setCelulaAtiva(null)} />
       )}
+    </div>
+  )
+}
+
+function CardConfirmacaoPendente({ pendencia, confirmando, onConfirmar, onDiscutir }) {
+  const nivel = pendencia.pc_score != null ? nivelPorPcScore(pendencia.pc_score) : null
+  const dimensoes = Object.entries(pendencia.dimensoes || {})
+
+  return (
+    <div style={{ backgroundColor: '#1a1a1a', borderRadius: '12px', border: '1px solid rgba(252,200,37,0.25)', padding: '14px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', gap: '10px' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5' }}>{pendencia.alunos?.nome}</div>
+          <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+            {pendencia.modalidades?.nome} · avaliado por {pendencia.professores?.nome} em{' '}
+            {format(new Date(pendencia.data_avaliacao + 'T12:00'), 'dd/MM/yyyy', { locale: ptBR })}
+          </div>
+        </div>
+        {nivel && (
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontSize: '20px', fontWeight: '800', color: nivel.cor }}>{pendencia.pc_score}</div>
+            <div style={{ fontSize: '10px', color: nivel.cor, fontWeight: '600' }}>{nivel.label}</div>
+          </div>
+        )}
+      </div>
+
+      {dimensoes.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+          {dimensoes.map(([nome, valor]) => (
+            <span key={nome} style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '6px', backgroundColor: '#111', color: '#ccc' }}>
+              {nome}: <strong style={{ color: '#fcc825' }}>{valor}/5</strong>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {pendencia.comentario && (
+        <div style={{ fontSize: '12px', color: '#888', fontStyle: 'italic', marginBottom: '10px' }}>"{pendencia.comentario}"</div>
+      )}
+
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button onClick={onDiscutir} style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+          padding: '9px', borderRadius: '9px', border: '1px solid #2a2a2a', cursor: 'pointer',
+          backgroundColor: '#111', color: '#888', fontSize: '12px', fontWeight: '600',
+        }}>
+          <MessageCircle size={13} /> Discutir
+        </button>
+        <button onClick={onConfirmar} disabled={confirmando} style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+          padding: '9px', borderRadius: '9px', border: 'none', cursor: confirmando ? 'default' : 'pointer',
+          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '12px', fontWeight: '700',
+          opacity: confirmando ? 0.6 : 1,
+        }}>
+          <Check size={13} /> Confirmar
+        </button>
+      </div>
     </div>
   )
 }

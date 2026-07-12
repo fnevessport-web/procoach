@@ -385,6 +385,64 @@ export function useSalvarAvaliacao() {
   })
 }
 
+// Confirmações pendentes de um professor — avaliações feitas por outro professor do mesmo
+// aluno que aguardam ele confirmar (fase 2, ver migration 011). Alimenta o painel no
+// DashboardProfessor.jsx.
+export function usePendenciasConfirmacao(professorId) {
+  return useQuery({
+    queryKey: ['pendencias_confirmacao', professorId],
+    enabled: !!professorId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('avaliacoes_tecnicas_confirmacoes')
+        .select(`
+          id,
+          avaliacoes_tecnicas!inner(
+            id, aluno_id, modalidade_id, data_avaliacao, dimensoes, pc_score, comentario, professor_id,
+            alunos(nome), modalidades(nome), professores(nome)
+          )
+        `)
+        .eq('professor_id', professorId)
+        .is('confirmado_em', null)
+      if (error) throw error
+      return (data || []).map(c => ({ confirmacaoId: c.id, ...c.avaliacoes_tecnicas }))
+    },
+    refetchInterval: 30000,
+  })
+}
+
+// Confirma a linha de confirmação desse professor; se essa era a última pendente, a
+// avaliação vira 'confirmada' de vez e os badges técnicos represados desde o salvamento
+// (ver useSalvarAvaliacao) são concedidos agora.
+export function useConfirmarAvaliacaoTecnica() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ confirmacaoId, avaliacaoId, alunoId, modalidadeId }) => {
+      const { error } = await supabase
+        .from('avaliacoes_tecnicas_confirmacoes')
+        .update({ confirmado_em: new Date().toISOString() })
+        .eq('id', confirmacaoId)
+      if (error) throw error
+
+      const { count: faltam } = await supabase
+        .from('avaliacoes_tecnicas_confirmacoes')
+        .select('*', { count: 'exact', head: true })
+        .eq('avaliacao_id', avaliacaoId)
+        .is('confirmado_em', null)
+
+      if (faltam === 0) {
+        await supabase.from('avaliacoes_tecnicas').update({ status: 'confirmada' }).eq('id', avaliacaoId)
+        await concederBadgesTecnicos(alunoId, modalidadeId)
+      }
+    },
+    onSuccess: (_, { alunoId, modalidadeId, professorId }) => {
+      qc.invalidateQueries({ queryKey: ['pendencias_confirmacao', professorId] })
+      qc.invalidateQueries({ queryKey: ['avaliacoes_modalidade', alunoId, modalidadeId] })
+      qc.invalidateQueries({ queryKey: ['aluno_completo', alunoId] })
+    }
+  })
+}
+
 // Faixa etária escolhida manualmente por professor/gestor (kids/infantil/adulto) — usada
 // no cálculo do PC Score só enquanto o aluno não tem data_nascimento cadastrada (que, tendo,
 // sempre tem prioridade — ver src/lib/pcScore.js). Propriedade do aluno, não da avaliação:
