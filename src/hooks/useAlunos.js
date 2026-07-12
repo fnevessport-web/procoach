@@ -257,14 +257,16 @@ export function useDimensoesModalidade(modalidadeId) {
 }
 
 // Todas as avaliações técnicas do aluno numa modalidade, mais antiga primeiro (pronto pro
-// gráfico de evolução — a última posição do array é a mais recente).
+// gráfico de evolução — a última posição do array é a mais recente). Traz junto quem ainda
+// falta confirmar (avaliacoes_tecnicas_confirmacoes) pra quando a mais recente for
+// 'pendente' — EvolucaoTecnicaTenis.jsx usa isso pro selo "Aguardando confirmação de X".
 export function useAvaliacoesModalidade(alunoId, modalidadeId) {
   return useQuery({
     queryKey: ['avaliacoes_modalidade', alunoId, modalidadeId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('avaliacoes_tecnicas')
-        .select('*, professores(nome)')
+        .select('*, professores(nome), avaliacoes_tecnicas_confirmacoes(confirmado_em, professores(nome))')
         .eq('aluno_id', alunoId)
         .eq('modalidade_id', modalidadeId)
         .order('data_avaliacao', { ascending: true })

@@ -69,14 +69,27 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presen
   const navigate = useNavigate()
   const [exportando, setExportando] = useState(false)
 
-  const ultimaAvaliacao = avaliacoes?.length ? avaliacoes[avaliacoes.length - 1] : null
-  const avaliacaoAnterior = avaliacoes?.length >= 2 ? avaliacoes[avaliacoes.length - 2] : null
+  // Avaliação 'pendente' (aguardando confirmação de outro professor da modalidade, ver
+  // migration 011) ainda não conta pro histórico oficial — não entra no radar, na evolução
+  // do PC Score nem na regra dos 90 dias. Só aparece como um selo informativo enquanto isso.
+  const avaliacoesConfirmadas = (avaliacoes || []).filter(a => a.status === 'confirmada')
+  const ultimaBruta = avaliacoes?.length ? avaliacoes[avaliacoes.length - 1] : null
+  const pendenteMaisRecente = ultimaBruta?.status === 'pendente' ? ultimaBruta : null
+  const confirmacoesFaltando = (pendenteMaisRecente?.avaliacoes_tecnicas_confirmacoes || []).filter(c => !c.confirmado_em)
+  const nomesFaltando = confirmacoesFaltando.map(c => c.professores?.nome).filter(Boolean).join(', ') || 'outro professor'
+
+  const ultimaAvaliacao = avaliacoesConfirmadas.length ? avaliacoesConfirmadas[avaliacoesConfirmadas.length - 1] : null
+  const avaliacaoAnterior = avaliacoesConfirmadas.length >= 2 ? avaliacoesConfirmadas[avaliacoesConfirmadas.length - 2] : null
 
   if (!ultimaAvaliacao) {
     return (
       <div>
         <SecaoTitulo>Evolução técnica</SecaoTitulo>
-        <CardVazio texto="Nenhuma avaliação técnica ainda nesta modalidade — clique em &quot;Avaliar aluno&quot; pra começar." />
+        {pendenteMaisRecente ? (
+          <CardVazio texto={`Avaliação registrada, aguardando confirmação de ${nomesFaltando} pra virar oficial.`} />
+        ) : (
+          <CardVazio texto="Nenhuma avaliação técnica ainda nesta modalidade — clique em &quot;Avaliar aluno&quot; pra começar." />
+        )}
       </div>
     )
   }
@@ -101,7 +114,7 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presen
     ? entradasDimensoes.reduce((pior, atual) => (atual[1] < pior[1] ? atual : pior))
     : null
 
-  const ultimasQuatro = (avaliacoes || []).slice(-4).filter(a => a.pc_score != null)
+  const ultimasQuatro = avaliacoesConfirmadas.slice(-4).filter(a => a.pc_score != null)
   const evolucaoPcScore = ultimasQuatro.map(a => ({
     data: format(new Date(a.data_avaliacao + 'T12:00'), 'dd/MM', { locale: ptBR }),
     pcScore: a.pc_score,
@@ -165,6 +178,18 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presen
           {exportando ? 'Gerando PDF...' : 'Exportar PDF'}
         </button>
       </div>
+
+      {pendenteMaisRecente && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '10px',
+          backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.25)',
+        }}>
+          <AlertTriangle size={14} color="#fcc825" style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: '12px', color: '#fcc825' }}>
+            Nova avaliação aguardando confirmação de {nomesFaltando} — ainda não entra nas métricas abaixo.
+          </span>
+        </div>
+      )}
 
       {reavaliacaoPendente && (
         <div style={{
