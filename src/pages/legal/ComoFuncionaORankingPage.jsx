@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Download } from 'lucide-react'
 import { PONTOS_POR_RESULTADO, NIVEIS_ASSIDUIDADE, JANELA_DIAS, MINIMO_JOGOS_CLASSIFICACAO } from '../../lib/pontuacaoBeyond'
-import { MODALIDADE_EMPRESA } from '../../constants/modalidades'
+import { MODALIDADE_EMPRESA, EMPRESAS } from '../../constants/modalidades'
 import { exportarRegrasRankingPDF } from '../../lib/relatorioPdf'
 import toast from 'react-hot-toast'
 
@@ -12,32 +12,84 @@ const toastStyle = {
   borderRadius: '10px', fontSize: '13px',
 }
 
+// Mesma paleta das faixas de cor dos relatórios Beyond (relatorioPdf.js: COR_SALVIA/
+// COR_LARANJA/COR_VINHO/COR_MARINHO) — os 4 cards de pontos por jogo usam essas cores, pra
+// amarrar a identidade visual entre a tela e o PDF exportado.
+const COR_VITORIA = '#A3BFAE'
+const COR_DERROTA = '#C1652F'
+const COR_VITORIA_TORNEIO = '#1B293D'
+const COR_DERROTA_TORNEIO = '#6B1B27'
+
 const secaoStyle = { marginBottom: '30px' }
-const tituloStyle = { fontSize: '15px', fontWeight: '700', color: '#F0F2F5', margin: '0 0 12px' }
+const tituloWrapStyle = { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }
 const paragrafoStyle = { fontSize: '13px', color: '#aaa', lineHeight: '1.7', margin: '0 0 10px' }
 
-function Secao({ titulo, children }) {
+function NumeroSecao({ n }) {
+  return (
+    <span style={{
+      width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
+      background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '12px', fontWeight: '800',
+    }}>
+      {n}
+    </span>
+  )
+}
+
+function Secao({ n, titulo, children }) {
   return (
     <div style={secaoStyle}>
-      <h2 style={tituloStyle}>{titulo}</h2>
+      <div style={tituloWrapStyle}>
+        <NumeroSecao n={n} />
+        <h2 style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>{titulo}</h2>
+      </div>
       {children}
     </div>
   )
 }
 
-// Exemplo numérico — mesmo cálculo usado em exportarRegrasRankingPDF (relatorioPdf.js), só
-// pra ilustrar a fórmula de forma concreta, com o líder hipotético de uma categoria.
-const JOGOS_EXEMPLO = 12
-const VITORIAS_EXEMPLO = 9
-const DERROTAS_EXEMPLO = 3
-const NIVEL_EXEMPLO = NIVEIS_ASSIDUIDADE.find(n => n.chave === 'Prata')
-const SOMA_EXEMPLO = VITORIAS_EXEMPLO * PONTOS_POR_RESULTADO.avulso.vitoria + DERROTAS_EXEMPLO * PONTOS_POR_RESULTADO.avulso.derrota
-const MEDIA_EXEMPLO = Math.round((SOMA_EXEMPLO / JOGOS_EXEMPLO) * 10) / 10
-const PONTUACAO_EXEMPLO = Math.round(MEDIA_EXEMPLO * NIVEL_EXEMPLO.multiplicador * 10) / 10
+function CardPonto({ valor, label, cor }) {
+  return (
+    <div style={{ flex: '1 1 auto', minWidth: '110px', padding: '14px 10px', borderRadius: '10px', backgroundColor: cor, textAlign: 'center' }}>
+      <div style={{ fontSize: '22px', fontWeight: '800', color: 'white' }}>{valor}</div>
+      <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.85)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '2px' }}>{label}</div>
+    </div>
+  )
+}
+
+// Exemplo de cálculo do "líder" — mesmo número usado em exportarRegrasRankingPDF
+// (relatorioPdf.js), pra ficar idêntico ao documento oficial de regras.
+const LIDER_NOME = 'Rafael'
+const LIDER_JOGOS = 24
+const LIDER_NIVEL = NIVEIS_ASSIDUIDADE.find(n => n.chave === 'Ouro')
+const LIDER_MEDIA = 97.9
+const LIDER_PONTUACAO = Math.round(LIDER_MEDIA * LIDER_NIVEL.multiplicador * 10) / 10
+
+// Exemplo didático do corte de categoria — mesmos 10 atletas fictícios do documento oficial,
+// pra mostrar como média alta (Gustavo) e nível alto por assiduidade (Bruno) competem entre
+// si na fórmula, e quem sobe/desce no corte do ciclo.
+const EXEMPLO_CICLO = [
+  { pos: 1, nome: 'Rafael', jogos: 24, nivel: 'Ouro', media: 97.9, peso: 1.5, pontuacao: 146.9, movimento: 'sobe' },
+  { pos: 2, nome: 'Bruno', jogos: 22, nivel: 'Ouro', media: 85.9, peso: 1.5, pontuacao: 128.9, movimento: 'sobe' },
+  { pos: 3, nome: 'Diego', jogos: 13, nivel: 'Prata', media: 90.0, peso: 1.2, pontuacao: 108.0, movimento: null },
+  { pos: 4, nome: 'Gustavo', jogos: 9, nivel: 'Bronze', media: 87.8, peso: 1.0, pontuacao: 87.8, movimento: null },
+  { pos: 5, nome: 'Paulo', jogos: 11, nivel: 'Prata', media: 70.9, peso: 1.2, pontuacao: 85.1, movimento: null },
+  { pos: 6, nome: 'Thiago', jogos: 16, nivel: 'Prata', media: 68.8, peso: 1.2, pontuacao: 82.5, movimento: null },
+  { pos: 7, nome: 'Enrico', jogos: 8, nivel: 'Bronze', media: 76.2, peso: 1.0, pontuacao: 76.2, movimento: null },
+  { pos: 8, nome: 'Leonardo', jogos: 6, nivel: 'Bronze', media: 75.0, peso: 1.0, pontuacao: 75.0, movimento: null },
+  { pos: 9, nome: 'Marcelo', jogos: 18, nivel: 'Prata', media: 54.4, peso: 1.2, pontuacao: 65.3, movimento: 'desce' },
+  { pos: 10, nome: 'Fernando', jogos: 5, nivel: 'Bronze', media: 30.0, peso: 1.0, pontuacao: 30.0, movimento: 'desce' },
+]
+
+function corNivel(nivel) {
+  return NIVEIS_ASSIDUIDADE.find(n => n.chave === nivel)?.cor || '#555'
+}
 
 export function ComoFuncionaORankingPage() {
   const navigate = useNavigate()
   const [exportando, setExportando] = useState(false)
+  const nomeUnidade = EMPRESAS.find(e => e.valor === (MODALIDADE_EMPRESA['Tênis'] || 'procopio'))?.label || ''
 
   async function handleExportarPDF() {
     setExportando(true)
@@ -67,126 +119,160 @@ export function ComoFuncionaORankingPage() {
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <img src="/images/logoprocoach.png" alt="ProCoach" style={{ height: '40px', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }} />
           <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: '0 0 4px' }}>
-            Regras do Ranking
+            Pontuação Beyond — Como Funciona o Ranking
           </h1>
-          <p style={{ fontSize: '12px', color: '#555', margin: 0 }}>Pontuação Beyond — Tênis</p>
+          <p style={{ fontSize: '12px', color: '#555', margin: 0 }}>
+            Regras oficiais para associados · Ranking Interno de Tênis{nomeUnidade ? ` · ${nomeUnidade} Arena` : ''}
+          </p>
         </div>
 
-        <Secao titulo="1. Tabela de pontos por jogo">
+        <Secao n={1} titulo="Os pontos de cada jogo">
           <p style={paragrafoStyle}>
-            Cada jogo aprovado soma pontos pro jogador — jogos de <b>torneio interno valem o
-            dobro</b>, pra estimular participação:
+            Todo jogo dá pontos aos dois jogadores — <b>ganhar vale mais, mas perder também
+            pontua</b>. Nos torneios internos os pontos valem <b>o dobro</b>, para estimular a
+            participação.
           </p>
-          <div style={{ borderRadius: '10px', overflow: 'hidden', border: '1px solid #2a2a2a' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '10px 14px', backgroundColor: '#1a1a1a' }}>
-              <span style={{ fontSize: '11px', color: '#555', fontWeight: '700' }}>RESULTADO</span>
-              <span style={{ fontSize: '11px', color: '#555', fontWeight: '700', textAlign: 'right' }}>AVULSO</span>
-              <span style={{ fontSize: '11px', color: '#555', fontWeight: '700', textAlign: 'right' }}>TORNEIO</span>
-            </div>
-            {[
-              ['Vitória', PONTOS_POR_RESULTADO.avulso.vitoria, PONTOS_POR_RESULTADO.torneio.vitoria],
-              ['Derrota', PONTOS_POR_RESULTADO.avulso.derrota, PONTOS_POR_RESULTADO.torneio.derrota],
-              ['Vitória por W.O.', PONTOS_POR_RESULTADO.avulso.wo_vitoria, PONTOS_POR_RESULTADO.torneio.wo_vitoria],
-              ['Derrota por W.O.', PONTOS_POR_RESULTADO.avulso.wo_derrota, PONTOS_POR_RESULTADO.torneio.wo_derrota],
-              ['Jogo cancelado', 0, 0],
-            ].map(([nome, avulso, torneio], i) => (
-              <div key={nome} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', padding: '10px 14px', backgroundColor: i % 2 === 1 ? '#161616' : 'transparent' }}>
-                <span style={{ fontSize: '13px', color: '#F0F2F5' }}>{nome}</span>
-                <span style={{ fontSize: '13px', color: '#fcc825', fontWeight: '700', textAlign: 'right' }}>{avulso}</span>
-                <span style={{ fontSize: '13px', color: '#fcc825', fontWeight: '700', textAlign: 'right' }}>{torneio}</span>
-              </div>
-            ))}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <CardPonto valor={PONTOS_POR_RESULTADO.avulso.vitoria} label="Vitória" cor={COR_VITORIA} />
+            <CardPonto valor={PONTOS_POR_RESULTADO.avulso.derrota} label="Derrota" cor={COR_DERROTA} />
+            <CardPonto valor={PONTOS_POR_RESULTADO.torneio.vitoria} label="Vitória Torneio" cor={COR_VITORIA_TORNEIO} />
+            <CardPonto valor={PONTOS_POR_RESULTADO.torneio.derrota} label="Derrota Torneio" cor={COR_DERROTA_TORNEIO} />
           </div>
         </Secao>
 
-        <Secao titulo="2. A fórmula">
-          <p style={{ ...paragrafoStyle, fontSize: '14px', color: '#F0F2F5', fontWeight: '600', textAlign: 'center', padding: '14px', borderRadius: '10px', backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.25)' }}>
-            Pontuação Beyond = média de pontos por jogo × nível de assiduidade
-          </p>
+        <Secao n={2} titulo="Sua Pontuação Beyond = média × nível de assiduidade">
           <p style={paragrafoStyle}>
-            A média usa <b>todos os jogos válidos</b> dos últimos {JANELA_DIAS} dias — sem
-            descartar nenhum, nem a pior derrota: isso é intencional, e reflete a fase atual de
-            cada jogador. Diferente do PC Score técnico, aqui <b>maior é sempre melhor</b>.
+            Primeiro o sistema calcula a <b>média</b> dos seus pontos (soma dividida pelo número
+            de jogos). Depois multiplica pelo seu <b>nível de assiduidade</b> — quanto mais você
+            joga, maior o seu nível:
           </p>
-        </Secao>
-
-        <Secao titulo="3. Níveis de assiduidade">
-          <p style={paragrafoStyle}>
-            O multiplicador da fórmula depende de quantos jogos válidos o jogador teve nos
-            últimos {JANELA_DIAS} dias:
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
             {NIVEIS_ASSIDUIDADE.map(n => (
               <div key={n.chave} style={{
-                display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '12px 14px', borderRadius: '10px',
-                backgroundColor: `${n.cor}12`, border: `1px solid ${n.cor}33`,
+                flex: '1 1 auto', minWidth: '110px', padding: '12px 10px', borderRadius: '10px', textAlign: 'center',
+                backgroundColor: `${n.cor}18`, border: `1px solid ${n.cor}44`,
               }}>
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: n.cor, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#F0F2F5' }}>{n.chave}</span>
-                  <span style={{ fontSize: '12px', color: '#888', marginLeft: '8px' }}>
-                    {n.max === Infinity ? `${n.min}+ jogos` : `${n.min}–${n.max} jogos`}
+                <div style={{ fontSize: '13px', fontWeight: '800', color: '#F0F2F5' }}>{n.chave.toUpperCase()}</div>
+                <div style={{ fontSize: '10px', color: '#888', margin: '2px 0 4px' }}>
+                  {n.max === Infinity ? `${n.min}+ jogos` : `${n.min} a ${n.max} jogos`}
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: '800', color: n.cor }}>×{n.multiplicador}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.25)' }}>
+            <p style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.7', margin: 0 }}>
+              <b style={{ color: '#fcc825' }}>Por que o nível de assiduidade?</b> Para valorizar
+              quem frequenta e joga com constância. Dois atletas com a mesma média: quem joga
+              mais tem nível maior e sobe no ranking. <b>Aparecer e jogar compensa!</b>
+            </p>
+          </div>
+        </Secao>
+
+        <Secao n={3} titulo="Exemplo real — como o líder pontuou">
+          <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#000', border: '1px solid #2a2a2a' }}>
+            <div style={{ fontSize: '11px', fontWeight: '800', color: '#fcc825', letterSpacing: '0.5px', marginBottom: '10px' }}>
+              {LIDER_NOME.toUpperCase()} — {LIDER_JOGOS} JOGOS (NÍVEL {LIDER_NIVEL.chave.toUpperCase()})
+            </div>
+            <div style={{ fontSize: '12px', color: '#aaa', lineHeight: '1.9' }}>
+              Média dos {LIDER_JOGOS} jogos = {LIDER_MEDIA} pontos<br />
+              Nível {LIDER_NIVEL.chave} ({LIDER_NIVEL.min}+ jogos) = ×{LIDER_NIVEL.multiplicador}<br />
+              Pontuação Beyond = {LIDER_MEDIA} × {LIDER_NIVEL.multiplicador} = <b style={{ color: '#fcc825' }}>{LIDER_PONTUACAO}</b>
+            </div>
+          </div>
+        </Secao>
+
+        <Secao n={4} titulo="Tabela do ciclo — exemplo com 10 atletas">
+          <div style={{ borderRadius: '10px', overflow: 'hidden', border: '1px solid #2a2a2a', marginBottom: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '28px 1.6fr 1fr 1fr 1.2fr', gap: '4px', padding: '9px 10px', backgroundColor: '#000' }}>
+              <span />
+              <span style={{ fontSize: '10px', color: '#888', fontWeight: '700' }}>ATLETA</span>
+              <span style={{ fontSize: '10px', color: '#888', fontWeight: '700', textAlign: 'right' }}>JOGOS</span>
+              <span style={{ fontSize: '10px', color: '#888', fontWeight: '700', textAlign: 'right' }}>NÍVEL</span>
+              <span style={{ fontSize: '10px', color: '#888', fontWeight: '700', textAlign: 'right' }}>BEYOND</span>
+            </div>
+            {EXEMPLO_CICLO.map((a, i) => (
+              <div key={a.pos} style={{
+                display: 'grid', gridTemplateColumns: '28px 1.6fr 1fr 1fr 1.2fr', gap: '4px', alignItems: 'center',
+                padding: '9px 10px', backgroundColor: i % 2 === 1 ? '#161616' : 'transparent',
+              }}>
+                <span style={{
+                  width: '18px', height: '18px', borderRadius: '50%', fontSize: '9px', fontWeight: '800',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: a.pos <= 2 ? '#fcc82533' : a.pos >= 9 ? '#EF444433' : '#2a2a2a',
+                  color: a.pos <= 2 ? '#fcc825' : a.pos >= 9 ? '#EF4444' : '#888',
+                }}>
+                  {a.pos}
+                </span>
+                <span style={{ fontSize: '12px', color: '#F0F2F5', fontWeight: '600' }}>{a.nome}</span>
+                <span style={{ fontSize: '11px', color: '#888', textAlign: 'right' }}>{a.jogos}</span>
+                <span style={{ fontSize: '9px', fontWeight: '700', textAlign: 'right', color: corNivel(a.nivel) }}>{a.nivel}</span>
+                <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: '4px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#cf1b9b' }}>{a.pontuacao}</span>
+                  {a.movimento === 'sobe' && <span style={{ fontSize: '9px', color: '#22c55e' }}>↑</span>}
+                  {a.movimento === 'desce' && <span style={{ fontSize: '9px', color: '#EF4444' }}>↓</span>}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p style={paragrafoStyle}>
+            Repare: o <b>Diego</b> (13 jogos, Prata) tem média melhor que o <b>Bruno</b>, mas o
+            Bruno lidera com o nível Ouro e muitos jogos. Já o <b>Gustavo</b> (Bronze, 9 jogos)
+            fica à frente de vários Pratas graças à sua média alta. Cada um sobe do seu jeito:
+            jogando bem, jogando muito, ou os dois.
+          </p>
+        </Secao>
+
+        <Secao n={5} titulo="As 4 regras que você precisa saber">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {[
+              `Mínimo de ${MINIMO_JOGOS_CLASSIFICACAO} jogos. Antes disso seus pontos são registrados, mas você ainda não aparece na classificação (fica "em qualificação"). No ${MINIMO_JOGOS_CLASSIFICACAO}º jogo, você entra.`,
+              `Seus jogos valem por ${JANELA_DIAS} dias. Cada partida conta pelos últimos ${JANELA_DIAS} dias; depois expira. Quem para de jogar vai caindo no ranking naturalmente, aos poucos — nunca zera de uma vez.`,
+              'Perder também conta. A derrota entra na sua média e pode puxá-la para baixo. Se você entrar em má fase, seu ranking reflete isso — mantendo tudo justo e atual.',
+              'Cortes a cada 3 meses. Na mesma época das avaliações técnicas, os melhores de cada categoria sobem de nível e os últimos descem, mantendo todos jogando contra adversários do seu nível.',
+            ].map((regra, i) => {
+              const [titulo, ...resto] = regra.split('. ')
+              return (
+                <div key={i} style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(252,200,37,0.06)', border: '1px solid rgba(252,200,37,0.2)' }}>
+                  <span style={{ fontSize: '13px', color: '#F0F2F5' }}>
+                    <b>{i + 1}. {titulo}.</b> <span style={{ color: '#aaa' }}>{resto.join('. ')}</span>
                   </span>
                 </div>
-                <span style={{ fontSize: '13px', fontWeight: '700', color: n.cor }}>×{n.multiplicador}</span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </Secao>
 
-        <Secao titulo="4. As regras">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[
-              `Mínimo de ${MINIMO_JOGOS_CLASSIFICACAO} jogos válidos na janela pra aparecer classificado na tabela — antes disso, o jogador fica "Em qualificação".`,
-              `Janela deslizante de ${JANELA_DIAS} dias: todo dia, jogos que completam ${JANELA_DIAS} dias saem automaticamente da conta. Não é um reset em bloco — é contínuo.`,
-              'Derrota também pontua e entra na média — perder participando é melhor do que não jogar, mas uma sequência de derrotas puxa a pontuação pra baixo de verdade.',
-              'Cortes de categoria a cada 3 meses, alinhados ao ciclo de avaliação técnica: os melhores colocados de cada categoria sobem de nível, os últimos descem.',
-            ].map((regra, i) => (
-              <div key={i} style={{ display: 'flex', gap: '10px' }}>
-                <span style={{ fontSize: '13px', fontWeight: '800', color: '#cf1b9b', flexShrink: 0 }}>{i + 1}.</span>
-                <span style={{ fontSize: '13px', color: '#aaa', lineHeight: '1.7' }}>{regra}</span>
-              </div>
-            ))}
-          </div>
-        </Secao>
-
-        <Secao titulo="5. Pontuação Beyond × PC Score — são coisas diferentes">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825' }}>Pontuação Beyond</div>
-              <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-                Mede o <b>resultado em partidas</b> (o placar dos jogos). Maior = melhor.
-              </div>
-            </div>
-            <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#cf1b9b' }}>PC Score</div>
-              <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-                Mede a <b>evolução técnica</b> avaliada pelo professor. Menor = melhor.
-              </div>
-            </div>
-          </div>
-          <p style={{ ...paragrafoStyle, marginTop: '10px' }}>
-            O PC Score pode sugerir a categoria inicial de um aluno no ranking, mas o gestor
-            sempre pode ajustar manualmente — os dois indicadores nunca se misturam no card do
-            aluno.
-          </p>
-        </Secao>
-
-        <Secao titulo="6. Exemplo de cálculo">
+        <Secao n={6} titulo="Dois números no seu perfil">
           <p style={paragrafoStyle}>
-            Um jogador com {JOGOS_EXEMPLO} jogos válidos na janela (nível {NIVEL_EXEMPLO.chave},
-            multiplicador ×{NIVEL_EXEMPLO.multiplicador}), sendo {VITORIAS_EXEMPLO} vitórias e{' '}
-            {DERROTAS_EXEMPLO} derrotas em jogos avulsos:
+            No seu card dentro do app você verá <b>dois indicadores diferentes</b>, que medem
+            coisas distintas:
           </p>
-          <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
-            <div style={{ fontSize: '12px', color: '#888' }}>
-              Média: ({VITORIAS_EXEMPLO} × {PONTOS_POR_RESULTADO.avulso.vitoria} + {DERROTAS_EXEMPLO} × {PONTOS_POR_RESULTADO.avulso.derrota}) ÷ {JOGOS_EXEMPLO} = <b style={{ color: '#ccc' }}>{MEDIA_EXEMPLO}</b> pontos/jogo
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+            <div style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825' }}>Pontuação Beyond</div>
+              <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
+                Seu desempenho nas partidas do ranking. <b>Quanto maior, melhor</b> — você sobe
+                jogando e vencendo.
+              </div>
             </div>
-            <div style={{ fontSize: '15px', fontWeight: '800', color: '#fcc825', marginTop: '8px' }}>
-              Pontuação Beyond: {MEDIA_EXEMPLO} × {NIVEL_EXEMPLO.multiplicador} = {PONTUACAO_EXEMPLO}
+            <div style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#cf1b9b' }}>PC Score (técnico)</div>
+              <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
+                Sua evolução técnica, avaliada pelo professor a cada 3 meses. <b>Quanto menor,
+                melhor</b> — como o ranking mundial profissional.
+              </div>
             </div>
           </div>
+          <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(207,27,155,0.08)', border: '1px solid rgba(207,27,155,0.25)' }}>
+            <p style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.7', margin: 0 }}>
+              Os dois se completam: quanto melhor sua técnica (PC Score baixo), mais partidas
+              você tende a vencer (Pontuação Beyond alta).
+            </p>
+          </div>
+          <p style={{ ...paragrafoStyle, marginTop: '10px', textAlign: 'center', fontSize: '12px' }}>
+            Dúvidas? Fale com a recepção ou a coordenação{nomeUnidade ? ` do ${nomeUnidade} Arena` : ''}.
+          </p>
         </Secao>
 
         <button
