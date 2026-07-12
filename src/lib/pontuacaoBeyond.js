@@ -45,6 +45,25 @@ function arredondar(valor) {
   return valor == null ? null : Math.round(valor * 10) / 10
 }
 
+// Peso de categoria — só entra no Ranking GERAL (nunca no da Categoria, que já reflete
+// gente do mesmo nível competindo entre si). Vencer numa categoria mais alta é mais difícil,
+// então pesa mais na hora de juntar todo mundo num ranking só. pontuacao_geral = pontuacao
+// da categoria (média × nível de assiduidade) × este peso.
+export const PESO_CATEGORIA = {
+  'Avançado': 2.0,
+  'Intermediário': 1.5,
+  'Iniciante': 1.0,
+}
+
+// Aplica o peso de categoria em cima de uma pontuação já calculada pra categoria (ver
+// calcularPontuacaoBeyond) — pontuacaoBase null (aluno ainda não classificado) permanece
+// null, categoria sem peso configurado cai em ×1 (não penaliza nem beneficia à toa).
+export function pontuacaoComPesoCategoria(pontuacaoBase, categoriaNome) {
+  if (pontuacaoBase == null) return null
+  const peso = PESO_CATEGORIA[categoriaNome] ?? 1
+  return arredondar(pontuacaoBase * peso)
+}
+
 // jogos: [{ dataJogo: 'yyyy-MM-dd', pontos: number }] — já filtrados pra "válidos" (aprovados,
 // não cancelados) antes de chegar aqui; a filtragem por JANELA_DIAS é feita dentro da função,
 // nunca fora, pra garantir que todo lugar que chama isso recalcula sobre a janela vigente.

@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import { calcularPontuacaoBeyond } from '../lib/pontuacaoBeyond'
+import { calcularPontuacaoBeyond, pontuacaoComPesoCategoria } from '../lib/pontuacaoBeyond'
 import { nomeCategoriaPorNivel, cicloAtual } from '../constants/rankingCategorias'
 
 // ranking_posicoes.categoria_id é NULL no ranking Geral (ver migration 012) — os dois índices
@@ -108,11 +108,14 @@ export async function recalcularPosicoesRanking({ modalidadeId, dataReferencia }
     const resultado = calcularPontuacaoBeyond({ jogos: jogosPorAluno[aluno.id] || [], dataReferencia })
     const base = {
       aluno_id: aluno.id, modalidade_id: modalidadeId, genero: aluno.genero, ciclo,
-      pontuacao_beyond: resultado.pontuacao_beyond, media: resultado.media,
-      num_jogos: resultado.num_jogos, nivel: resultado.nivel, atualizado_em: new Date().toISOString(),
+      media: resultado.media, num_jogos: resultado.num_jogos, nivel: resultado.nivel,
+      atualizado_em: new Date().toISOString(),
     }
-    linhas.push({ ...base, tipo_ranking: 'geral', categoria_id: null })
-    linhas.push({ ...base, tipo_ranking: 'categoria', categoria_id: categoriaIdPorNome[categoriaNome] || null })
+    // Ranking da Categoria: pontuação "pura" (média × nível de assiduidade), gente do mesmo
+    // nível competindo entre si. Ranking Geral: a mesma pontuação, com o peso extra de
+    // categoria em cima — vencer categoria mais alta pesa mais na hora de juntar todo mundo.
+    linhas.push({ ...base, tipo_ranking: 'categoria', categoria_id: categoriaIdPorNome[categoriaNome] || null, pontuacao_beyond: resultado.pontuacao_beyond })
+    linhas.push({ ...base, tipo_ranking: 'geral', categoria_id: null, pontuacao_beyond: pontuacaoComPesoCategoria(resultado.pontuacao_beyond, categoriaNome) })
   }
   if (!linhas.length) return
 

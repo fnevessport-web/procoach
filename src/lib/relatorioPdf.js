@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
 import { gerarInsights } from '../hooks/useRelatorioMensal'
 import { classificarPct } from '../constants/semaforo'
-import { PONTOS_POR_RESULTADO, NIVEIS_ASSIDUIDADE, JANELA_DIAS, MINIMO_JOGOS_CLASSIFICACAO } from './pontuacaoBeyond'
+import { PONTOS_POR_RESULTADO, NIVEIS_ASSIDUIDADE, JANELA_DIAS, MINIMO_JOGOS_CLASSIFICACAO, PESO_CATEGORIA, pontuacaoComPesoCategoria } from './pontuacaoBeyond'
 
 const COR_CREME = [241, 239, 234]
 const COR_TINTA = [26, 24, 24]
@@ -1375,6 +1375,10 @@ const EXEMPLO_CICLO_PDF = [
   { pos: 10, nome: 'Fernando', jogos: 5, nivel: 'Bronze', media: 30.0, peso: 1.0, pontuacao: 30.0, movimento: 'desce' },
 ]
 
+// Ordem de exibição do peso de categoria (Ranking Geral) — mesma ordem da tela /regras-ranking.
+const ORDEM_PESO_CATEGORIA = ['Iniciante', 'Intermediário', 'Avançado']
+const LIDER_CATEGORIA_EXEMPLO = 'Avançado'
+
 export async function exportarRegrasRankingPDF({ empresa } = {}) {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
@@ -1630,8 +1634,50 @@ export async function exportarRegrasRankingPDF({ empresa } = {}) {
   cursorY += 8
   paragrafo('Repare: o Diego (13 jogos, Prata) tem média melhor que o Bruno, mas o Bruno lidera com o nível Ouro e muitos jogos. Já o Gustavo (Bronze, 9 jogos) fica à frente de vários Pratas graças à sua média alta. Cada um sobe do seu jeito: jogando bem, jogando muito, ou os dois.')
 
-  // ---------- 5. As 4 regras ----------
-  tituloSecao(5, 'As 4 regras que você precisa saber')
+  // ---------- 5. Ranking Geral: peso extra por categoria ----------
+  tituloSecao(5, 'Ranking Geral: peso extra por categoria')
+  paragrafo('Você aparece em dois rankings: o da sua Categoria (Iniciante, Intermediário ou Avançado) e o Geral, que junta todo mundo numa lista só. No Geral, vencer em categorias mais avançadas vale mais pontos, porque o nível de dificuldade é maior.')
+
+  precisaNovaPagina(50)
+  const wCaixaPeso = (larguraUtil - 2 * 8) / 3
+  ORDEM_PESO_CATEGORIA.forEach((nome, i) => {
+    const x = margem + i * (wCaixaPeso + 8)
+    doc.setFillColor(...COR_VINHO)
+    doc.roundedRect(x, cursorY, wCaixaPeso, 38, 6, 6, 'F')
+    fontePadrao('bold', 9.5)
+    doc.setTextColor(...COR_BRANCO)
+    doc.text(nome.toUpperCase(), x + wCaixaPeso / 2, cursorY + 16, { align: 'center' })
+    fontePadrao('bold', 13)
+    doc.text(`×${PESO_CATEGORIA[nome]}`, x + wCaixaPeso / 2, cursorY + 31, { align: 'center' })
+  })
+  cursorY += 52
+
+  const pontuacaoLiderGeral = pontuacaoComPesoCategoria(pontuacaoLider, LIDER_CATEGORIA_EXEMPLO)
+  precisaNovaPagina(70)
+  doc.setFillColor(0, 0, 0)
+  doc.roundedRect(margem, cursorY, larguraUtil, 62, 8, 8, 'F')
+  fontePadrao('bold', 9)
+  doc.setTextColor(...COR_LARANJA)
+  doc.text(`${LIDER_EXEMPLO.nome.toUpperCase()} NA CATEGORIA ${LIDER_CATEGORIA_EXEMPLO.toUpperCase()}`, margem + 14, cursorY + 18)
+  fontePadrao('normal', 9)
+  doc.setTextColor(215, 210, 205)
+  doc.text(`Pontuação Beyond (Categoria) = ${pontuacaoLider}`, margem + 14, cursorY + 33)
+  doc.text(`Peso da categoria ${LIDER_CATEGORIA_EXEMPLO} = ×${PESO_CATEGORIA[LIDER_CATEGORIA_EXEMPLO]}`, margem + 14, cursorY + 45)
+  fontePadrao('bold', 9)
+  doc.setTextColor(...COR_BRANCO)
+  doc.text(`Pontuação Beyond (Geral) = ${pontuacaoLider} × ${PESO_CATEGORIA[LIDER_CATEGORIA_EXEMPLO]} = `, margem + 14, cursorY + 57)
+  const larguraFraseGeral = doc.getTextWidth(`Pontuação Beyond (Geral) = ${pontuacaoLider} × ${PESO_CATEGORIA[LIDER_CATEGORIA_EXEMPLO]} = `)
+  doc.setTextColor(...COR_LARANJA)
+  doc.text(String(pontuacaoLiderGeral), margem + 14 + larguraFraseGeral, cursorY + 57)
+  cursorY += 78
+
+  caixaDestaque(
+    'Isso garante que um atleta Avançado fique corretamente à frente no Geral, mas sem travar a mobilidade: um Iniciante excepcional ainda pode superar um Avançado de baixo desempenho. Na sua Categoria, esse peso não entra — lá todo mundo já está competindo no mesmo nível.',
+    COR_VINHO
+  )
+
+  // ---------- 6. As 4 regras ----------
+  tituloSecao(6, 'As 4 regras que você precisa saber')
   const regras = [
     `Mínimo de ${MINIMO_JOGOS_CLASSIFICACAO} jogos. Antes disso seus pontos são registrados, mas você ainda não aparece na classificação (fica "em qualificação"). No ${MINIMO_JOGOS_CLASSIFICACAO}º jogo, você entra.`,
     `Seus jogos valem por ${JANELA_DIAS} dias. Cada partida conta pelos últimos ${JANELA_DIAS} dias; depois expira. Quem para de jogar vai caindo no ranking naturalmente, aos poucos — nunca zera de uma vez.`,
@@ -1652,7 +1698,7 @@ export async function exportarRegrasRankingPDF({ empresa } = {}) {
   cursorY += 4
 
   // ---------- 6. Dois números no seu perfil ----------
-  tituloSecao(6, 'Dois números no seu perfil')
+  tituloSecao(7, 'Dois números no seu perfil')
   paragrafo('No seu card dentro do app você verá dois indicadores diferentes, que medem coisas distintas:')
 
   precisaNovaPagina(56)

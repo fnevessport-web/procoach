@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Trophy, ChevronDown, ChevronUp } from 'lucide-react'
 import { usePosicaoAluno, useHistoricoConfrontos } from '../hooks/useRanking'
-import { NIVEIS_ASSIDUIDADE } from '../lib/pontuacaoBeyond'
+import { NIVEIS_ASSIDUIDADE, PESO_CATEGORIA } from '../lib/pontuacaoBeyond'
 import { Loading } from './ui/Loading'
 
 const LABEL_RESULTADO = {
@@ -135,9 +135,17 @@ export function BlocoPontuacaoBeyond({ aluno, modalidadeId }) {
       {expandido && (
         <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ padding: '10px 12px', borderRadius: '10px', backgroundColor: '#111', fontSize: '11px', color: '#888' }}>
-            Cálculo: média de <strong style={{ color: '#ccc' }}>{geral.media ?? '—'}</strong> pontos/jogo × nível{' '}
+            Cálculo (Categoria): média de <strong style={{ color: '#ccc' }}>{geral.media ?? '—'}</strong> pontos/jogo × nível{' '}
             <strong style={{ color: cor }}>{geral.nivel || '—'}</strong>
-            {geral.nivel && <> (×{NIVEIS_ASSIDUIDADE.find(n => n.chave === geral.nivel)?.multiplicador})</>}.
+            {geral.nivel && <> (×{NIVEIS_ASSIDUIDADE.find(n => n.chave === geral.nivel)?.multiplicador})</>}
+            {categoria?.pontuacao_beyond != null && <> = <strong style={{ color: '#ccc' }}>{categoria.pontuacao_beyond}</strong></>}.
+            {categoria?.ranking_categorias?.nome && PESO_CATEGORIA[categoria.ranking_categorias.nome] != null && (
+              <>
+                {' '}No <strong style={{ color: '#fcc825' }}>Geral</strong>, entra ainda o peso da categoria{' '}
+                <strong style={{ color: '#ccc' }}>{categoria.ranking_categorias.nome}</strong> (×{PESO_CATEGORIA[categoria.ranking_categorias.nome]}),
+                que dá <strong style={{ color: '#fcc825' }}>{geral.pontuacao_beyond}</strong>.
+              </>
+            )}
           </div>
 
           <div>

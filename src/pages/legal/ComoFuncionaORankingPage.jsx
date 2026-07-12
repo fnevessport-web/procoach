@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Download } from 'lucide-react'
-import { PONTOS_POR_RESULTADO, NIVEIS_ASSIDUIDADE, JANELA_DIAS, MINIMO_JOGOS_CLASSIFICACAO } from '../../lib/pontuacaoBeyond'
+import { PONTOS_POR_RESULTADO, NIVEIS_ASSIDUIDADE, JANELA_DIAS, MINIMO_JOGOS_CLASSIFICACAO, PESO_CATEGORIA, pontuacaoComPesoCategoria } from '../../lib/pontuacaoBeyond'
 import { MODALIDADE_EMPRESA, EMPRESAS } from '../../constants/modalidades'
 import { exportarRegrasRankingPDF } from '../../lib/relatorioPdf'
 import toast from 'react-hot-toast'
@@ -85,6 +85,15 @@ const EXEMPLO_CICLO = [
 function corNivel(nivel) {
   return NIVEIS_ASSIDUIDADE.find(n => n.chave === nivel)?.cor || '#555'
 }
+
+// Ordem de exibição do peso de categoria — do mais fácil pro mais difícil, mesma leitura das
+// 3 categorias adultas do ranking (ranking_categorias.ordem).
+const ORDEM_PESO_CATEGORIA = ['Iniciante', 'Intermediário', 'Avançado']
+
+// Mesmo Rafael da Seção 3, agora supondo categoria Avançado — mostra o mesmo número (146.9)
+// ganhando a camada extra do peso de categoria no Ranking Geral.
+const LIDER_CATEGORIA_EXEMPLO = 'Avançado'
+const LIDER_PONTUACAO_GERAL = pontuacaoComPesoCategoria(LIDER_PONTUACAO, LIDER_CATEGORIA_EXEMPLO)
 
 export function ComoFuncionaORankingPage() {
   const navigate = useNavigate()
@@ -223,7 +232,45 @@ export function ComoFuncionaORankingPage() {
           </p>
         </Secao>
 
-        <Secao n={5} titulo="As 4 regras que você precisa saber">
+        <Secao n={5} titulo="Ranking Geral: peso extra por categoria">
+          <p style={paragrafoStyle}>
+            Você aparece em <b>dois rankings</b>: o da sua <b>Categoria</b> (Iniciante,
+            Intermediário ou Avançado) e o <b>Geral</b>, que junta todo mundo numa lista só.
+            No Geral, vencer em categorias mais avançadas vale mais pontos, porque o{' '}
+            <b>nível de dificuldade é maior</b>.
+          </p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+            {ORDEM_PESO_CATEGORIA.map(nome => (
+              <div key={nome} style={{
+                flex: '1 1 auto', minWidth: '110px', padding: '12px 10px', borderRadius: '10px', textAlign: 'center',
+                backgroundColor: 'rgba(207,27,155,0.08)', border: '1px solid rgba(207,27,155,0.25)',
+              }}>
+                <div style={{ fontSize: '13px', fontWeight: '800', color: '#F0F2F5' }}>{nome.toUpperCase()}</div>
+                <div style={{ fontSize: '16px', fontWeight: '800', color: '#cf1b9b', marginTop: '4px' }}>×{PESO_CATEGORIA[nome]}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#000', border: '1px solid #2a2a2a', marginBottom: '10px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '800', color: '#fcc825', letterSpacing: '0.5px', marginBottom: '10px' }}>
+              {LIDER_NOME.toUpperCase()} NA CATEGORIA {LIDER_CATEGORIA_EXEMPLO.toUpperCase()}
+            </div>
+            <div style={{ fontSize: '12px', color: '#aaa', lineHeight: '1.9' }}>
+              Pontuação Beyond (Categoria) = <b style={{ color: '#F0F2F5' }}>{LIDER_PONTUACAO}</b><br />
+              Peso da categoria {LIDER_CATEGORIA_EXEMPLO} = ×{PESO_CATEGORIA[LIDER_CATEGORIA_EXEMPLO]}<br />
+              Pontuação Beyond (Geral) = {LIDER_PONTUACAO} × {PESO_CATEGORIA[LIDER_CATEGORIA_EXEMPLO]} = <b style={{ color: '#cf1b9b' }}>{LIDER_PONTUACAO_GERAL}</b>
+            </div>
+          </div>
+          <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.25)' }}>
+            <p style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.7', margin: 0 }}>
+              Isso garante que um atleta Avançado fique corretamente à frente no Geral, mas sem
+              travar a mobilidade: um Iniciante excepcional ainda pode superar um Avançado de
+              baixo desempenho. <b style={{ color: '#fcc825' }}>Na sua Categoria, esse peso não
+              entra</b> — lá todo mundo já está competindo no mesmo nível.
+            </p>
+          </div>
+        </Secao>
+
+        <Secao n={6} titulo="As 4 regras que você precisa saber">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {[
               `Mínimo de ${MINIMO_JOGOS_CLASSIFICACAO} jogos. Antes disso seus pontos são registrados, mas você ainda não aparece na classificação (fica "em qualificação"). No ${MINIMO_JOGOS_CLASSIFICACAO}º jogo, você entra.`,
@@ -243,7 +290,7 @@ export function ComoFuncionaORankingPage() {
           </div>
         </Secao>
 
-        <Secao n={6} titulo="Dois números no seu perfil">
+        <Secao n={7} titulo="Dois números no seu perfil">
           <p style={paragrafoStyle}>
             No seu card dentro do app você verá <b>dois indicadores diferentes</b>, que medem
             coisas distintas:

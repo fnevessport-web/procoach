@@ -453,8 +453,19 @@ function CardJogoEmAberto({ jogo }) {
   )
 }
 
-function LinhaClassificacao({ posicao, expandido, onToggle }) {
+function LinhaClassificacao({ posicao, tipoRanking, expandido, onToggle }) {
   const cor = corNivel(posicao.nivel)
+  const multiplicadorAssiduidade = posicao.multiplicador ?? NIVEIS_ASSIDUIDADE.find(n => n.chave === posicao.nivel)?.multiplicador
+  // No Geral, pontuacao_beyond já vem com o peso de categoria embutido (ver
+  // recalcularPosicoesRanking) — a linha do Geral não guarda a categoria do aluno (categoria_id
+  // é sempre null ali), então o peso é derivado comparando com a pontuação "pura" (média ×
+  // multiplicador de assiduidade) em vez de precisar de outra consulta.
+  const pontuacaoSemPesoCategoria = posicao.media != null && multiplicadorAssiduidade != null
+    ? Math.round(posicao.media * multiplicadorAssiduidade * 10) / 10
+    : null
+  const pesoCategoria = tipoRanking === 'geral' && pontuacaoSemPesoCategoria
+    ? Math.round((posicao.pontuacao_beyond / pontuacaoSemPesoCategoria) * 10) / 10
+    : null
   return (
     <div>
       <button onClick={onToggle} style={{
@@ -492,7 +503,12 @@ function LinhaClassificacao({ posicao, expandido, onToggle }) {
       {expandido && (
         <div style={{ padding: '8px 12px 8px 48px', fontSize: '11px', color: '#888' }}>
           Média: <strong style={{ color: '#ccc' }}>{posicao.media}</strong> pontos/jogo · Multiplicador de nível:{' '}
-          <strong style={{ color: '#ccc' }}>×{posicao.multiplicador ?? NIVEIS_ASSIDUIDADE.find(n => n.chave === posicao.nivel)?.multiplicador}</strong>
+          <strong style={{ color: '#ccc' }}>×{multiplicadorAssiduidade}</strong>
+          {pesoCategoria != null && pesoCategoria !== 1 && (
+            <>
+              {' '}· Peso de categoria: <strong style={{ color: '#fcc825' }}>×{pesoCategoria}</strong>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -635,6 +651,7 @@ export function RankingPage() {
             <LinhaClassificacao
               key={p.id}
               posicao={p}
+              tipoRanking={tipoRanking}
               expandido={expandidoId === p.id}
               onToggle={() => setExpandidoId(expandidoId === p.id ? null : p.id)}
             />
