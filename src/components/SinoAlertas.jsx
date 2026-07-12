@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bell } from 'lucide-react'
+import { Bell, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -17,6 +17,7 @@ const ROTA_POR_TIPO = {
   aluno_adicionado: '/aulas',
   aluno_removido: '/aulas',
   esqueci_senha: '/cadastros',
+  avaliacao_pendente_confirmacao: '/dashboard-professor',
 }
 
 const COR_PRIORIDADE = { alta: '#e24b4a', media: '#fcc825', baixa: '#555' }
@@ -44,6 +45,16 @@ export function SinoAlertas() {
     }
 
     navigate(ROTA_POR_TIPO[alerta.tipo] || '/')
+  }
+
+  // Segunda ação, só pros alertas vinculados a um aluno (mensagem sobre um aluno específico,
+  // avaliação pendente de confirmação) — vai direto pro card do aluno sem passar pela ação
+  // principal (conversa / painel de confirmação).
+  function handleVerAluno(e, alerta) {
+    e.stopPropagation()
+    if (!alerta.lido) marcarLido.mutate(alerta.id)
+    setAberto(false)
+    navigate(`/cadastros/alunos/${alerta.aluno_id}`)
   }
 
   return (
@@ -87,19 +98,37 @@ export function SinoAlertas() {
             ) : (
               <div>
                 {alertas.map(a => (
-                  <button key={a.id} onClick={() => handleClickAlerta(a)} style={{
-                    display: 'flex', gap: '8px', width: '100%', padding: '10px 14px',
-                    border: 'none', borderBottom: '1px solid #1e1e1e', background: a.lido ? 'transparent' : 'rgba(252,200,37,0.04)',
-                    cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box',
-                  }}>
+                  <div
+                    key={a.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleClickAlerta(a)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleClickAlerta(a) }}
+                    style={{
+                      display: 'flex', gap: '8px', width: '100%', padding: '10px 14px',
+                      border: 'none', borderBottom: '1px solid #1e1e1e', background: a.lido ? 'transparent' : 'rgba(252,200,37,0.04)',
+                      cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box',
+                    }}
+                  >
                     <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: COR_PRIORIDADE[a.prioridade] || '#555', flexShrink: 0, marginTop: '5px' }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '12px', color: a.lido ? '#888' : '#F0F2F5', lineHeight: '1.4' }}>{a.mensagem}</div>
-                      <div style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>
-                        {formatDistanceToNow(new Date(a.criado_em), { locale: ptBR, addSuffix: true })}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '4px' }}>
+                        <div style={{ fontSize: '10px', color: '#555' }}>
+                          {formatDistanceToNow(new Date(a.criado_em), { locale: ptBR, addSuffix: true })}
+                        </div>
+                        {a.aluno_id && (
+                          <button onClick={e => handleVerAluno(e, a)} style={{
+                            display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0,
+                            padding: '3px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                            backgroundColor: 'rgba(255,255,255,0.06)', color: '#888', fontSize: '10px', fontWeight: '600',
+                          }}>
+                            <User size={10} /> Ver aluno
+                          </button>
+                        )}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}

@@ -125,6 +125,10 @@ export function useEnviarMensagem() {
       const { error } = await supabase.from('mensagens').insert({ conversa_id: conversaId, autor_id: user.id, texto })
       if (error) throw error
 
+      // Conversa vinculada a um aluno (useAbrirConversaDoAluno) leva o aluno_id junto pro
+      // alerta, pra quem recebe poder ir direto pro card do aluno sem passar pela conversa.
+      const { data: conversa } = await supabase.from('conversas').select('aluno_id').eq('id', conversaId).maybeSingle()
+
       const { data: participantes } = await supabase
         .from('conversas_participantes')
         .select('user_id')
@@ -135,6 +139,7 @@ export function useEnviarMensagem() {
           usuarioId: p.user_id,
           tipo: 'mensagem_nova',
           referenciaId: conversaId,
+          alunoId: conversa?.aluno_id,
           prioridade: 'baixa',
           mensagem: `Nova mensagem de ${user.user_metadata?.nome || 'alguém'}.`,
         })
