@@ -176,6 +176,35 @@ export function useAbrirConversaDaAula() {
   })
 }
 
+// Acha (ou cria) a conversa direta vinculada a um aluno especifico — pro botao de mensagem
+// na secao "Professores desta modalidade" do Card do Aluno, mesmo padrao de useAbrirConversaDaAula.
+export function useAbrirConversaDoAluno() {
+  const { user } = useAppStore()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ alunoId, outroUserId }) => {
+      const { data: existentes } = await supabase
+        .from('conversas')
+        .select('id, conversas_participantes(user_id)')
+        .eq('aluno_id', alunoId)
+
+      for (const c of existentes || []) {
+        const ids = (c.conversas_participantes || []).map(p => p.user_id)
+        if (ids.includes(user.id) && ids.includes(outroUserId)) return c.id
+      }
+
+      const { data: nova, error } = await supabase.from('conversas').insert({ tipo: 'direta', aluno_id: alunoId }).select().single()
+      if (error) throw error
+      await supabase.from('conversas_participantes').insert([
+        { conversa_id: nova.id, user_id: user.id },
+        { conversa_id: nova.id, user_id: outroUserId },
+      ])
+      return nova.id
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['conversas'] }),
+  })
+}
+
 // Acha uma conversa direta já existente com essa pessoa, ou cria uma nova
 export function useAbrirConversaDireta() {
   const { user } = useAppStore()
