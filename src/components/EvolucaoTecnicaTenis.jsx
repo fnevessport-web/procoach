@@ -3,14 +3,32 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronDown, ChevronUp, HelpCircle, AlertTriangle } from 'lucide-react'
+import { ChevronDown, ChevronUp, HelpCircle, AlertTriangle, Download } from 'lucide-react'
 import { NIVEIS_PC_SCORE, nivelPorPcScore, precisaReavaliar, REAVALIACAO_PRAZO_DIAS } from '../lib/pcScore'
 import { BADGES } from '../constants/badges'
+import { MODALIDADE_EMPRESA } from '../constants/modalidades'
+import { exportarEvolucaoTecnicaPDF } from '../lib/relatorioPdf'
+import toast from 'react-hot-toast'
+
+const toastStyle = {
+  background: '#1a1a1a', color: '#F0F2F5',
+  border: '1px solid rgba(252,200,37,0.3)',
+  borderRadius: '10px', fontSize: '13px',
+}
 
 function fmtData(d) {
   return d ? format(new Date(d + 'T12:00'), 'dd/MM/yyyy', { locale: ptBR }) : '—'
+}
+
+// pcScore.js guarda as cores dos níveis em hex (pra usar direto em CSS) — o jsPDF exige
+// arrays [r,g,b], então convertemos só na hora de montar o PDF.
+function hexParaRgb(hex) {
+  const limpo = hex.replace('#', '')
+  const bigint = parseInt(limpo, 16)
+  return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255]
 }
 
 function SecaoTitulo({ children }) {
@@ -47,8 +65,9 @@ function DotsNota({ nota, cor }) {
 // outras modalidades entrarem depois, ver pcScore.js). Recebe a lista completa de
 // avaliações da modalidade (mais antiga primeiro, mesmo formato de useAvaliacoesModalidade)
 // + as presenças já buscadas pelo card, pra não duplicar consulta.
-export function EvolucaoTecnicaTenis({ aluno, avaliacoes, presencas }) {
+export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presencas }) {
   const navigate = useNavigate()
+  const [exportando, setExportando] = useState(false)
 
   const ultimaAvaliacao = avaliacoes?.length ? avaliacoes[avaliacoes.length - 1] : null
   const avaliacaoAnterior = avaliacoes?.length >= 2 ? avaliacoes[avaliacoes.length - 2] : null
@@ -90,8 +109,62 @@ export function EvolucaoTecnicaTenis({ aluno, avaliacoes, presencas }) {
 
   const badgesConquistados = (aluno.badges || []).filter(b => BADGES[b.tipo_badge])
 
+  const hoje = new Date()
+  const mesAtualStr = format(hoje, 'yyyy-MM')
+  const presencasDoMes = (presencas || []).filter(p => p.aulas?.data_aula?.startsWith(mesAtualStr))
+  const historicoMes = {
+    mesLabel: format(hoje, 'MMMM/yy', { locale: ptBR }),
+    presentes: presencasDoMes.filter(p => p.status_presenca === 'presente').length,
+    faltas: presencasDoMes.filter(p => p.status_presenca === 'falta').length,
+    faltasJustificadas: presencasDoMes.filter(p => p.status_presenca === 'falta_justificada').length,
+    reposicoes: presencasDoMes.filter(p => p.tipo_participacao === 'reposicao').length,
+  }
+
+  async function handleExportarPDF() {
+    setExportando(true)
+    try {
+      await exportarEvolucaoTecnicaPDF({
+        alunoNome: aluno.nome,
+        fotoUrl: aluno.foto_url,
+        modalidadeNome,
+        totalPresencas,
+        pcScoreAtual,
+        variacaoPcScore,
+        nivelLabel: nivelAtual?.label || 'Faixa etária não definida',
+        nivelCor: nivelAtual ? hexParaRgb(nivelAtual.cor) : [136, 136, 136],
+        dimensoes: entradasDimensoes.map(([nome, valor]) => ({ nome, valor })),
+        proximoFoco: proximoFoco ? { nome: proximoFoco[0], valor: proximoFoco[1] } : null,
+        evolucaoPcScore,
+        narrativaIA: ultimaAvaliacao.narrativa_ia,
+        badges: badgesConquistados.map(b => BADGES[b.tipo_badge]),
+        historicoMes,
+        niveisPcScore: NIVEIS_PC_SCORE.map(n => ({ ...n, cor: hexParaRgb(n.cor) })),
+      }, { empresa: MODALIDADE_EMPRESA[modalidadeNome] || 'procopio' })
+    } catch (err) {
+      toast.error('Erro ao gerar PDF: ' + err.message, { style: toastStyle })
+    } finally {
+      setExportando(false)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          onClick={handleExportarPDF}
+          disabled={exportando}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '8px 14px', borderRadius: '9px', border: '1px solid #2a2a2a', cursor: exportando ? 'default' : 'pointer',
+            backgroundColor: '#111', color: '#F0F2F5', fontSize: '12px', fontWeight: '600',
+            opacity: exportando ? 0.6 : 1,
+          }}
+        >
+          <Download size={13} />
+          {exportando ? 'Gerando PDF...' : 'Exportar PDF'}
+        </button>
+      </div>
 
       {reavaliacaoPendente && (
         <div style={{

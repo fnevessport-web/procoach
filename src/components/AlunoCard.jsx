@@ -403,7 +403,7 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
             configuração de pesos em pcScore.js. */}
         {modalidade.nome === 'Tênis' ? (
           loadingAvaliacoes ? <Loading /> : (
-            <EvolucaoTecnicaTenis aluno={aluno} modalidade={modalidade} avaliacoes={avaliacoes} presencas={presencas} />
+            <EvolucaoTecnicaTenis aluno={aluno} modalidadeNome={modalidade.nome} avaliacoes={avaliacoes} presencas={presencas} />
           )
         ) : (
           <>

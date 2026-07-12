@@ -1004,3 +1004,342 @@ export async function exportarRelatorioCompletoPNG(dados, { empresa }) {
     document.body.removeChild(palco)
   }
 }
+
+// ============================================================================================
+// PDF — Evolução Técnica (Módulo PC Score, Tênis) — documento de 1 página A4, mesmo layout
+// Beyond dos relatórios executivos (header preto + logos + faixa de 4 cores + rodapé), com
+// dois blocos de desenho que os relatórios existentes não precisavam: radar e linha de
+// evolução — jsPDF não tem chart nativo, então são desenhados com as primitivas de vetor
+// (linha/triângulo/círculo) direto, sem depender de nenhuma lib de gráfico.
+// ============================================================================================
+
+// Radar de N dimensões (genérico — não fixo em 6, já que outras modalidades vão ter outra
+// quantidade de dimensões no futuro). Escala igual à do app (Recharts domain [0,5]).
+function desenharRadarPdf(doc, { cx, cy, raio, dimensoes, cor }) {
+  const n = dimensoes.length
+  if (n < 3) return
+  const angulo = i => -Math.PI / 2 + i * (2 * Math.PI / n)
+  const pontoNaFracao = (i, fracao) => [cx + raio * fracao * Math.cos(angulo(i)), cy + raio * fracao * Math.sin(angulo(i))]
+  const pontoDado = i => pontoNaFracao(i, Math.max(0, Math.min(1, dimensoes[i].valor / 5)))
+
+  doc.setDrawColor(215, 210, 200)
+  doc.setLineWidth(0.4)
+  ;[0.5, 1].forEach(fracao => {
+    for (let i = 0; i < n; i++) {
+      const [x1, y1] = pontoNaFracao(i, fracao)
+      const [x2, y2] = pontoNaFracao((i + 1) % n, fracao)
+      doc.line(x1, y1, x2, y2)
+    }
+  })
+  for (let i = 0; i < n; i++) {
+    const [x, y] = pontoNaFracao(i, 1)
+    doc.line(cx, cy, x, y)
+  }
+
+  doc.setFillColor(...cor)
+  doc.saveGraphicsState()
+  doc.setGState(new doc.GState({ opacity: 0.35 }))
+  for (let i = 0; i < n; i++) {
+    const [x1, y1] = pontoDado(i)
+    const [x2, y2] = pontoDado((i + 1) % n)
+    doc.triangle(cx, cy, x1, y1, x2, y2, 'F')
+  }
+  doc.restoreGraphicsState()
+
+  doc.setDrawColor(...cor)
+  doc.setLineWidth(1.3)
+  for (let i = 0; i < n; i++) {
+    const [x1, y1] = pontoDado(i)
+    const [x2, y2] = pontoDado((i + 1) % n)
+    doc.line(x1, y1, x2, y2)
+  }
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7)
+  doc.setTextColor(...COR_TINTA)
+  for (let i = 0; i < n; i++) {
+    const [x, y] = pontoNaFracao(i, 1.3)
+    doc.text(dimensoes[i].nome, x, y, { align: 'center' })
+  }
+}
+
+// Linha de evolução do PC Score — eixo Y invertido (score baixo = melhor = fica mais alto
+// no desenho), mesma leitura visual do gráfico em tela.
+function desenharLinhaEvolucaoPdf(doc, { x, y, largura, altura, pontos, cor }) {
+  if (pontos.length < 2) return
+  const passoX = largura / (pontos.length - 1)
+  const posY = valor => y + ((valor - 1) / 99) * altura
+
+  doc.setDrawColor(215, 210, 200)
+  doc.setLineWidth(0.5)
+  doc.line(x, y, x, y + altura)
+  doc.line(x, y + altura, x + largura, y + altura)
+
+  doc.setDrawColor(...cor)
+  doc.setLineWidth(1.5)
+  for (let i = 0; i < pontos.length - 1; i++) {
+    doc.line(x + i * passoX, posY(pontos[i].pcScore), x + (i + 1) * passoX, posY(pontos[i + 1].pcScore))
+  }
+
+  pontos.forEach((p, i) => {
+    const px = x + i * passoX
+    const py = posY(p.pcScore)
+    doc.setFillColor(...cor)
+    doc.circle(px, py, 2.2, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8)
+    doc.setTextColor(...cor)
+    doc.text(String(p.pcScore), px, py - 7, { align: 'center' })
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    doc.text(p.data, px, y + altura + 12, { align: 'center' })
+  })
+}
+
+// `dados` já vem com tudo pré-calculado pelo componente de tela (EvolucaoTecnicaTenis) —
+// essa função só desenha, não recalcula PC Score nem busca dado novo.
+export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
+  const {
+    alunoNome, fotoUrl, modalidadeNome,
+    totalPresencas, pcScoreAtual, variacaoPcScore, nivelLabel, nivelCor,
+    dimensoes, proximoFoco, evolucaoPcScore, narrativaIA, badges, historicoMes,
+    niveisPcScore,
+  } = dados
+
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const margem = 40
+  const larguraUtil = pageWidth - margem * 2
+
+  let logoBeyond = null
+  let logoUnidade = null
+  let fotoBase64 = null
+  try { logoBeyond = await carregarLogoAutoCrop(LOGO_BEYOND_PRETO, 260) } catch {}
+  try { logoUnidade = await carregarLogoAutoCrop(LOGO_UNIDADE_PRETO[empresa], 260) } catch {}
+  if (fotoUrl) { try { fotoBase64 = await carregarImagemRedimensionada(fotoUrl, 200, 'image/jpeg', 0.85) } catch {} }
+
+  function fontePadrao(estilo, tamanho) {
+    doc.setFont('helvetica', estilo)
+    doc.setFontSize(tamanho)
+  }
+
+  const nomeEmpresa = NOME_EMPRESA[empresa] || empresa
+  const geradoEm = format(new Date(), "dd/MM/yyyy 'às' HH:mm")
+
+  doc.setFillColor(...COR_CREME)
+  doc.rect(0, 0, pageWidth, doc.internal.pageSize.getHeight(), 'F')
+
+  // ---------- Cabeçalho ----------
+  const alturaLogo = 20
+  const yTopoLogo = 22
+  const textoX = desenharLockupLogos(doc, { logoBeyond, logoUnidade, x: margem, yTopo: yTopoLogo, altura: alturaLogo, corLinha: COR_TEXTO_SUAVE })
+  fontePadrao('bold', 14)
+  doc.setTextColor(...COR_TINTA)
+  doc.text('EVOLUÇÃO TÉCNICA', textoX, yTopoLogo + alturaLogo / 2 - 3)
+  fontePadrao('italic', 9)
+  doc.setTextColor(...COR_TEXTO_SUAVE)
+  doc.text(`${nomeEmpresa.toUpperCase()} · ${modalidadeNome.toUpperCase()}`, textoX, yTopoLogo + alturaLogo / 2 + 10)
+  fontePadrao('normal', 7.5)
+  doc.text(`Gerado em ${geradoEm}`, pageWidth - margem, 26, { align: 'right' })
+
+  const faixaY = 56
+  const faixaW = larguraUtil / 4
+  CORES_CHIP.forEach((cor, i) => {
+    doc.setFillColor(...cor)
+    doc.rect(margem + i * faixaW, faixaY, faixaW - 3, 4, 'F')
+  })
+
+  let cursorY = faixaY + 30
+
+  // ---------- Foto + nome + PC Score em destaque ----------
+  const avatarTam = 52
+  if (fotoBase64) {
+    try { doc.addImage(fotoBase64, 'JPEG', margem, cursorY, avatarTam, avatarTam, undefined, 'FAST') } catch {}
+  } else {
+    doc.setFillColor(...COR_VINHO)
+    doc.roundedRect(margem, cursorY, avatarTam, avatarTam, 8, 8, 'F')
+    const iniciais = alunoNome.trim().split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('')
+    fontePadrao('bold', 18)
+    doc.setTextColor(...COR_BRANCO)
+    doc.text(iniciais, margem + avatarTam / 2, cursorY + avatarTam / 2 + 6, { align: 'center' })
+  }
+  fontePadrao('bold', 16)
+  doc.setTextColor(...COR_TINTA)
+  doc.text(alunoNome, margem + avatarTam + 14, cursorY + 20)
+  fontePadrao('normal', 9)
+  doc.setTextColor(...COR_TEXTO_SUAVE)
+  doc.text(`${totalPresencas} aula${totalPresencas === 1 ? '' : 's'} com presença`, margem + avatarTam + 14, cursorY + 36)
+
+  const boxPcScoreW = 130
+  const boxPcScoreX = pageWidth - margem - boxPcScoreW
+  doc.setFillColor(...COR_BRANCO)
+  doc.roundedRect(boxPcScoreX, cursorY, boxPcScoreW, avatarTam, 8, 8, 'F')
+  doc.setDrawColor(215, 210, 200)
+  doc.roundedRect(boxPcScoreX, cursorY, boxPcScoreW, avatarTam, 8, 8, 'S')
+  fontePadrao('normal', 7.5)
+  doc.setTextColor(...COR_TEXTO_SUAVE)
+  doc.text('PC SCORE', boxPcScoreX + 10, cursorY + 15)
+  fontePadrao('bold', 22)
+  doc.setTextColor(...nivelCor)
+  doc.text(pcScoreAtual != null ? String(pcScoreAtual) : '—', boxPcScoreX + 10, cursorY + 38)
+  fontePadrao('normal', 8)
+  doc.text(nivelLabel || '', boxPcScoreX + 10, cursorY + 48)
+  if (variacaoPcScore != null && variacaoPcScore !== 0) {
+    const melhorou = variacaoPcScore < 0
+    fontePadrao('bold', 9)
+    doc.setTextColor(...(melhorou ? COR_VERDE : COR_VERMELHO))
+    doc.text(`${melhorou ? '▼' : '▲'} ${Math.abs(variacaoPcScore)}`, boxPcScoreX + boxPcScoreW - 10, cursorY + 20, { align: 'right' })
+  }
+
+  cursorY += avatarTam + 22
+
+  // ---------- Radar + tabela de dimensões, lado a lado ----------
+  const colunaW = (larguraUtil - 16) / 2
+  fontePadrao('bold', 9)
+  doc.setTextColor(...COR_TINTA)
+  doc.text('PERFIL TÉCNICO', margem, cursorY)
+  doc.text('DIMENSÕES', margem + colunaW + 16, cursorY)
+  cursorY += 14
+
+  const alturaBlocoRadar = 140
+  doc.setFillColor(...COR_BRANCO)
+  doc.roundedRect(margem, cursorY, colunaW, alturaBlocoRadar, 8, 8, 'F')
+  doc.setDrawColor(215, 210, 200)
+  doc.roundedRect(margem, cursorY, colunaW, alturaBlocoRadar, 8, 8, 'S')
+  desenharRadarPdf(doc, { cx: margem + colunaW / 2, cy: cursorY + alturaBlocoRadar / 2, raio: 48, dimensoes, cor: COR_VINHO })
+
+  const tabelaX = margem + colunaW + 16
+  let linhaY = cursorY
+  const alturaLinha = alturaBlocoRadar / Math.max(dimensoes.length, 1)
+  dimensoes.forEach((d, i) => {
+    if (i % 2 === 1) {
+      doc.setFillColor(249, 247, 243)
+      doc.rect(tabelaX, linhaY, colunaW, alturaLinha, 'F')
+    }
+    fontePadrao('normal', 9)
+    doc.setTextColor(...COR_TINTA)
+    doc.text(d.nome, tabelaX + 8, linhaY + alturaLinha / 2 + 3)
+    fontePadrao('bold', 9)
+    doc.setTextColor(...COR_VINHO)
+    doc.text(`${d.valor}/5`, tabelaX + colunaW - 8, linhaY + alturaLinha / 2 + 3, { align: 'right' })
+    linhaY += alturaLinha
+  })
+
+  cursorY += alturaBlocoRadar + 16
+
+  // ---------- Próximo foco ----------
+  if (proximoFoco) {
+    const alturaFoco = 34
+    doc.setFillColor(207, 27, 155, 0.08)
+    doc.setFillColor(250, 240, 247)
+    doc.roundedRect(margem, cursorY, larguraUtil, alturaFoco, 8, 8, 'F')
+    fontePadrao('bold', 8)
+    doc.setTextColor(207, 27, 155)
+    doc.text('PRÓXIMO FOCO', margem + 12, cursorY + 14)
+    fontePadrao('normal', 10)
+    doc.setTextColor(...COR_TINTA)
+    doc.text(`${proximoFoco.nome} — nota atual ${proximoFoco.valor}/5`, margem + 12, cursorY + 27)
+    cursorY += alturaFoco + 16
+  }
+
+  // ---------- Evolução do PC Score ----------
+  if (evolucaoPcScore?.length > 1) {
+    fontePadrao('bold', 9)
+    doc.setTextColor(...COR_TINTA)
+    doc.text('EVOLUÇÃO DO PC SCORE', margem, cursorY)
+    cursorY += 12
+    const alturaGrafico = 70
+    desenharLinhaEvolucaoPdf(doc, { x: margem + 10, y: cursorY, largura: larguraUtil - 20, altura: alturaGrafico, pontos: evolucaoPcScore, cor: COR_VINHO })
+    cursorY += alturaGrafico + 26
+  }
+
+  // ---------- Análise inteligente ----------
+  if (narrativaIA) {
+    fontePadrao('bold', 9)
+    doc.setTextColor(...COR_TINTA)
+    doc.text('ANÁLISE INTELIGENTE', margem, cursorY)
+    cursorY += 12
+    fontePadrao('normal', 8.5)
+    doc.setTextColor(80, 76, 70)
+    const linhas = doc.splitTextToSize(narrativaIA, larguraUtil - 20)
+    const alturaTexto = linhas.length * 11 + 16
+    doc.setFillColor(...COR_BRANCO)
+    doc.roundedRect(margem, cursorY, larguraUtil, alturaTexto, 8, 8, 'F')
+    doc.text(linhas, margem + 10, cursorY + 14)
+    cursorY += alturaTexto + 16
+  }
+
+  // ---------- Badges ----------
+  if (badges?.length > 0) {
+    fontePadrao('bold', 9)
+    doc.setTextColor(...COR_TINTA)
+    doc.text('CONQUISTAS', margem, cursorY)
+    cursorY += 12
+    let bx = margem
+    let by = cursorY
+    fontePadrao('normal', 8)
+    badges.forEach(b => {
+      const texto = `${b.emoji} ${b.label}`
+      const larguraTexto = doc.getTextWidth(texto) + 16
+      if (bx + larguraTexto > pageWidth - margem) { bx = margem; by += 20 }
+      doc.setFillColor(...COR_BRANCO)
+      doc.roundedRect(bx, by, larguraTexto, 16, 8, 8, 'F')
+      doc.setTextColor(...COR_TINTA)
+      doc.text(texto, bx + 8, by + 11)
+      bx += larguraTexto + 6
+    })
+    cursorY = by + 26
+  }
+
+  // ---------- Histórico de presença do mês ----------
+  if (historicoMes) {
+    fontePadrao('bold', 9)
+    doc.setTextColor(...COR_TINTA)
+    doc.text(`PRESENÇA — ${historicoMes.mesLabel.toUpperCase()}`, margem, cursorY)
+    cursorY += 12
+    const itensMes = [
+      { label: 'Presenças', valor: historicoMes.presentes, cor: COR_VERDE },
+      { label: 'Faltas', valor: historicoMes.faltas, cor: COR_VERMELHO },
+      { label: 'Falta Just.', valor: historicoMes.faltasJustificadas, cor: COR_LARANJA },
+      { label: 'Reposições', valor: historicoMes.reposicoes, cor: COR_MARINHO },
+    ]
+    const colW = larguraUtil / 4
+    itensMes.forEach((item, i) => {
+      fontePadrao('bold', 14)
+      doc.setTextColor(...item.cor)
+      doc.text(String(item.valor), margem + i * colW + colW / 2, cursorY + 14, { align: 'center' })
+      fontePadrao('normal', 7)
+      doc.setTextColor(...COR_TEXTO_SUAVE)
+      doc.text(item.label, margem + i * colW + colW / 2, cursorY + 25, { align: 'center' })
+    })
+    cursorY += 40
+  }
+
+  // ---------- Legenda dos 5 níveis do PC Score (rodapé didático) ----------
+  if (niveisPcScore?.length) {
+    const legendaY = doc.internal.pageSize.getHeight() - 60
+    doc.setDrawColor(215, 210, 200)
+    doc.setLineWidth(0.5)
+    doc.line(margem, legendaY - 8, pageWidth - margem, legendaY - 8)
+    fontePadrao('normal', 6.5)
+    const colW = larguraUtil / niveisPcScore.length
+    niveisPcScore.forEach((n, i) => {
+      const x = margem + i * colW
+      doc.setFillColor(...n.cor)
+      doc.circle(x + 4, legendaY, 3, 'F')
+      doc.setTextColor(...COR_TINTA)
+      doc.text(`${n.label} (${n.min}-${n.max})`, x + 10, legendaY + 2.5)
+    })
+  }
+
+  // ---------- Rodapé ----------
+  const pageHeight = doc.internal.pageSize.getHeight()
+  fontePadrao('normal', 7)
+  doc.setTextColor(...COR_TEXTO_SUAVE)
+  doc.text(`Gerado pelo ProCoach em ${geradoEm} · procoachsport.com.br`, pageWidth / 2, pageHeight - 24, { align: 'center' })
+  doc.text(`BEYOND · ${nomeEmpresa.toUpperCase()} · ${new Date().getFullYear()}`, pageWidth / 2, pageHeight - 14, { align: 'center' })
+
+  doc.save(`evolucao-tecnica-${slugificar(alunoNome)}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+}
