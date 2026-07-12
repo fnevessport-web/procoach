@@ -1,7 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import useAppStore from '../store/useAppStore'
 import { calcularPontosResultado } from '../lib/pontuacaoBeyond'
+import { recalcularPosicoesRanking } from './useRankingPosicoes'
 
 const HORAS_AUTO_APROVACAO = 48
 
@@ -43,7 +44,57 @@ export function useCriarJogo() {
 
       return jogo
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['ranking_jogos'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ranking_jogos_em_aberto'] }),
+  })
+}
+
+// Classificação de um ranking (Geral ou Categoria) já ordenada por posição — só entram
+// alunos classificados (posicao preenchida, ou seja, com o mínimo de 5 jogos na janela, ver
+// pontuacaoBeyond.js). Recalcula sozinha antes de ler (auto-aprovação de prazo vencido +
+// posições), mesmo padrão "de graça" das outras telas do app — nunca deixa a tabela
+// desatualizada só porque ninguém abriu o ranking há uns dias.
+export function useClassificacaoRanking({ modalidadeId, tipoRanking, categoriaId, genero, ciclo }) {
+  return useQuery({
+    queryKey: ['ranking_classificacao', modalidadeId, tipoRanking, categoriaId, genero, ciclo],
+    enabled: !!modalidadeId && !!tipoRanking && !!genero && !!ciclo,
+    queryFn: async () => {
+      await aprovarJogosVencendoPrazo()
+      await recalcularPosicoesRanking({ modalidadeId })
+
+      let q = supabase
+        .from('ranking_posicoes')
+        .select('*, alunos(nome, foto_url)')
+        .eq('modalidade_id', modalidadeId)
+        .eq('tipo_ranking', tipoRanking)
+        .eq('genero', genero)
+        .eq('ciclo', ciclo)
+        .not('posicao', 'is', null)
+        .order('posicao')
+      q = categoriaId ? q.eq('categoria_id', categoriaId) : q.is('categoria_id', null)
+
+      const { data, error } = await q
+      if (error) throw error
+      return data || []
+    },
+  })
+}
+
+// Jogos que ainda precisam de alguma ação: sem placar lançado, aguardando confirmação, ou
+// contestado — é daqui que a tela de Ranking monta a seção "Jogos em aberto".
+export function useJogosEmAberto({ modalidadeId }) {
+  return useQuery({
+    queryKey: ['ranking_jogos_em_aberto', modalidadeId],
+    enabled: !!modalidadeId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ranking_jogos')
+        .select('*, ranking_jogo_participantes(id, aluno_id, lado, resultado, confirmado_em, alunos(nome))')
+        .eq('modalidade_id', modalidadeId)
+        .in('status', ['pendente', 'contestado'])
+        .order('data_jogo', { ascending: false })
+      if (error) throw error
+      return data || []
+    },
   })
 }
 
@@ -82,10 +133,7 @@ export function useLancarPlacar() {
         .eq('id', jogoId)
       if (erroUpdateJogo) throw erroUpdateJogo
     },
-    onSuccess: (_, { jogoId }) => {
-      qc.invalidateQueries({ queryKey: ['ranking_jogos'] })
-      qc.invalidateQueries({ queryKey: ['ranking_jogo', jogoId] })
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ranking_jogos_em_aberto'] }),
   })
 }
 
@@ -108,9 +156,9 @@ export function useConfirmarPlacar() {
         .from('ranking_jogos').update({ status: 'aprovado' }).eq('id', jogoId).eq('status', 'pendente')
       if (erroAprova) throw erroAprova
     },
-    onSuccess: (_, { jogoId }) => {
-      qc.invalidateQueries({ queryKey: ['ranking_jogos'] })
-      qc.invalidateQueries({ queryKey: ['ranking_jogo', jogoId] })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ranking_jogos_em_aberto'] })
+      qc.invalidateQueries({ queryKey: ['ranking_classificacao'] })
     },
   })
 }
@@ -124,10 +172,7 @@ export function useContestarPlacar() {
       const { error } = await supabase.from('ranking_jogos').update({ status: 'contestado' }).eq('id', jogoId)
       if (error) throw error
     },
-    onSuccess: (_, { jogoId }) => {
-      qc.invalidateQueries({ queryKey: ['ranking_jogos'] })
-      qc.invalidateQueries({ queryKey: ['ranking_jogo', jogoId] })
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ranking_jogos_em_aberto'] }),
   })
 }
 
@@ -141,7 +186,7 @@ export function useCancelarJogo() {
       if (error) throw error
       await supabase.from('ranking_jogo_participantes').update({ resultado: null, pontos_calculados: 0 }).eq('jogo_id', jogoId)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['ranking_jogos'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ranking_jogos_em_aberto'] }),
   })
 }
 

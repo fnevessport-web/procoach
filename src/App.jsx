@@ -27,6 +27,7 @@ import { DashboardProfessor } from './pages/professor/DashboardProfessor'
 import { MeuPerfilProfessor } from './pages/professor/MeuPerfilProfessor'
 import { MeusAlunosProfessor } from './pages/professor/MeusAlunosProfessor'
 import { AvaliarAluno } from './pages/professor/AvaliarAluno'
+import { RankingPage } from './pages/ranking/RankingPage'
 import { ModalTurmaAtivada } from './components/ModalTurmaAtivada'
 import { InstallBanner } from './components/ui/InstallBanner'
 import { DisponibilidadePage } from './pages/disponibilidade/DisponibilidadePage'
@@ -109,6 +110,9 @@ function AppRouter() {
         } />
         <Route path="/mensagens" element={
           <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MensagensPage /></RouteGuard>
+        } />
+        <Route path="/ranking" element={
+          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><RankingPage /></RouteGuard>
         } />
         <Route path="/cadastros" element={
           <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
