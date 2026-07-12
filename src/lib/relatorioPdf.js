@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import { gerarInsights } from '../hooks/useRelatorioMensal'
 import { classificarPct } from '../constants/semaforo'
+import { PONTOS_POR_RESULTADO, NIVEIS_ASSIDUIDADE, JANELA_DIAS, MINIMO_JOGOS_CLASSIFICACAO } from './pontuacaoBeyond'
 
 const COR_CREME = [241, 239, 234]
 const COR_TINTA = [26, 24, 24]
@@ -1342,4 +1343,199 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
   doc.text(`BEYOND · ${nomeEmpresa.toUpperCase()} · ${new Date().getFullYear()}`, pageWidth / 2, pageHeight - 14, { align: 'center' })
 
   doc.save(`evolucao-tecnica-${slugificar(alunoNome)}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+}
+
+// ============================================================================================
+// PDF — Regras do Ranking "Pontuação Beyond" (módulo Ranking) — documento didático, mesmo
+// layout Beyond dos relatórios executivos, pode virar 2 páginas dependendo do conteúdo. Todos
+// os números vêm de src/lib/pontuacaoBeyond.js (nunca duplicados aqui), igual já é feito na
+// página /pontuacao pro PC Score.
+// ============================================================================================
+
+function hexParaRgbPdf(hex) {
+  const limpo = hex.replace('#', '')
+  const bigint = parseInt(limpo, 16)
+  return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255]
+}
+
+export async function exportarRegrasRankingPDF({ empresa } = {}) {
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margem = 40
+  const larguraUtil = pageWidth - margem * 2
+
+  let logoBeyond = null
+  let logoUnidade = null
+  try { logoBeyond = await carregarLogoAutoCrop(LOGO_BEYOND_PRETO, 260) } catch {}
+  try { logoUnidade = await carregarLogoAutoCrop(LOGO_UNIDADE_PRETO[empresa], 260) } catch {}
+
+  function fontePadrao(estilo, tamanho) {
+    doc.setFont('helvetica', estilo)
+    doc.setFontSize(tamanho)
+  }
+
+  const nomeEmpresa = NOME_EMPRESA[empresa] || empresa || ''
+  const geradoEm = format(new Date(), "dd/MM/yyyy 'às' HH:mm")
+  let cursorY = 0
+
+  function desenharCabecalho() {
+    doc.setFillColor(...COR_CREME)
+    doc.rect(0, 0, pageWidth, pageHeight, 'F')
+
+    const alturaLogo = 20
+    const yTopoLogo = 22
+    const textoX = desenharLockupLogos(doc, { logoBeyond, logoUnidade, x: margem, yTopo: yTopoLogo, altura: alturaLogo, corLinha: COR_TEXTO_SUAVE })
+    fontePadrao('bold', 14)
+    doc.setTextColor(...COR_TINTA)
+    doc.text('REGRAS DO RANKING', textoX, yTopoLogo + alturaLogo / 2 - 3)
+    fontePadrao('italic', 9)
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    doc.text(`${nomeEmpresa.toUpperCase()} · PONTUAÇÃO BEYOND · TÊNIS`, textoX, yTopoLogo + alturaLogo / 2 + 10)
+    fontePadrao('normal', 7.5)
+    doc.text(`Gerado em ${geradoEm}`, pageWidth - margem, 26, { align: 'right' })
+
+    const faixaY = 56
+    const faixaW = larguraUtil / 4
+    CORES_CHIP.forEach((cor, i) => {
+      doc.setFillColor(...cor)
+      doc.rect(margem + i * faixaW, faixaY, faixaW - 3, 4, 'F')
+    })
+    cursorY = faixaY + 28
+  }
+
+  function desenharRodape() {
+    fontePadrao('normal', 7)
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    doc.text(`Gerado pelo ProCoach em ${geradoEm} · procoachsport.com.br`, pageWidth / 2, pageHeight - 24, { align: 'center' })
+    doc.text(`BEYOND · ${nomeEmpresa.toUpperCase()} · ${new Date().getFullYear()}`, pageWidth / 2, pageHeight - 14, { align: 'center' })
+  }
+
+  function precisaNovaPagina(alturaNecessaria) {
+    if (cursorY + alturaNecessaria <= pageHeight - 50) return
+    desenharRodape()
+    doc.addPage()
+    desenharCabecalho()
+  }
+
+  function tituloSecao(texto) {
+    precisaNovaPagina(28)
+    fontePadrao('bold', 11)
+    doc.setTextColor(...COR_VINHO)
+    doc.text(texto, margem, cursorY)
+    cursorY += 16
+  }
+
+  function paragrafo(texto) {
+    fontePadrao('normal', 9)
+    const linhas = doc.splitTextToSize(texto, larguraUtil)
+    precisaNovaPagina(linhas.length * 12 + 10)
+    doc.setTextColor(60, 56, 50)
+    doc.text(linhas, margem, cursorY)
+    cursorY += linhas.length * 12 + 10
+  }
+
+  desenharCabecalho()
+
+  // ---------- 1. Tabela de pontos ----------
+  tituloSecao('1. Tabela de pontos por jogo')
+  paragrafo('Cada jogo aprovado soma pontos pro jogador, conforme o resultado — jogos de torneio interno valem o dobro, pra estimular participação:')
+
+  const linhasTabela = [
+    ['Vitória', String(PONTOS_POR_RESULTADO.avulso.vitoria), String(PONTOS_POR_RESULTADO.torneio.vitoria)],
+    ['Derrota', String(PONTOS_POR_RESULTADO.avulso.derrota), String(PONTOS_POR_RESULTADO.torneio.derrota)],
+    ['Vitória por W.O.', String(PONTOS_POR_RESULTADO.avulso.wo_vitoria), String(PONTOS_POR_RESULTADO.torneio.wo_vitoria)],
+    ['Derrota por W.O.', String(PONTOS_POR_RESULTADO.avulso.wo_derrota), String(PONTOS_POR_RESULTADO.torneio.wo_derrota)],
+    ['Jogo cancelado', '0', '0'],
+  ]
+  precisaNovaPagina(24 + linhasTabela.length * 20)
+  const colW = [larguraUtil * 0.5, larguraUtil * 0.25, larguraUtil * 0.25]
+  fontePadrao('bold', 8.5)
+  doc.setTextColor(...COR_TEXTO_SUAVE)
+  let xCol = margem
+  ;['Resultado', 'Avulso', 'Torneio'].forEach((c, i) => { doc.text(c, xCol, cursorY); xCol += colW[i] })
+  cursorY += 6
+  doc.setDrawColor(215, 210, 200)
+  doc.line(margem, cursorY, margem + larguraUtil, cursorY)
+  cursorY += 16
+  linhasTabela.forEach((linha, i) => {
+    if (i % 2 === 1) {
+      doc.setFillColor(249, 247, 243)
+      doc.rect(margem, cursorY - 12, larguraUtil, 20, 'F')
+    }
+    let x2 = margem
+    fontePadrao('normal', 9.5)
+    doc.setTextColor(...COR_TINTA)
+    doc.text(linha[0], x2, cursorY)
+    x2 += colW[0]
+    fontePadrao('bold', 9.5)
+    doc.setTextColor(...COR_VINHO)
+    doc.text(linha[1], x2, cursorY)
+    x2 += colW[1]
+    doc.text(linha[2], x2, cursorY)
+    cursorY += 20
+  })
+  cursorY += 8
+
+  // ---------- 2. Fórmula ----------
+  tituloSecao('2. A fórmula')
+  paragrafo('Pontuação Beyond  =  média de pontos por jogo  ×  multiplicador do nível de assiduidade.')
+  paragrafo(`A média usa TODOS os jogos válidos dos últimos ${JANELA_DIAS} dias — sem descartar nenhum, nem a pior derrota: isso é intencional, e reflete a fase atual de cada jogador. Diferente do PC Score técnico, aqui MAIOR é sempre melhor.`)
+
+  // ---------- 3. Níveis de assiduidade ----------
+  tituloSecao('3. Níveis de assiduidade')
+  paragrafo(`O multiplicador da fórmula depende de quantos jogos válidos o jogador teve nos últimos ${JANELA_DIAS} dias:`)
+  NIVEIS_ASSIDUIDADE.forEach(n => {
+    precisaNovaPagina(26)
+    const corRgb = hexParaRgbPdf(n.cor)
+    doc.setFillColor(...corRgb)
+    doc.circle(margem + 4, cursorY - 4, 4, 'F')
+    fontePadrao('bold', 10)
+    doc.setTextColor(...COR_TINTA)
+    doc.text(n.chave, margem + 16, cursorY)
+    fontePadrao('normal', 9)
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    const faixa = n.max === Infinity ? `${n.min}+ jogos` : `${n.min}–${n.max} jogos`
+    doc.text(`${faixa} · multiplicador ×${n.multiplicador}`, margem + 90, cursorY)
+    cursorY += 20
+  })
+  cursorY += 8
+
+  // ---------- 4. As regras ----------
+  tituloSecao('4. As regras')
+  const regras = [
+    `Mínimo de ${MINIMO_JOGOS_CLASSIFICACAO} jogos válidos na janela pra aparecer classificado na tabela — antes disso, o jogador fica "Em qualificação".`,
+    `Janela deslizante de ${JANELA_DIAS} dias: todo dia, jogos que completam ${JANELA_DIAS} dias saem automaticamente da conta. Não é um reset em bloco — é contínuo.`,
+    'Derrota também pontua e entra na média — perder participando é melhor do que não jogar, mas uma sequência de derrotas puxa a pontuação pra baixo de verdade.',
+    'Cortes de categoria a cada 3 meses, alinhados ao ciclo de avaliação técnica: os melhores colocados de cada categoria sobem de nível, os últimos descem.',
+  ]
+  regras.forEach((r, i) => paragrafo(`${i + 1}. ${r}`))
+
+  // ---------- 5. Pontuação Beyond x PC Score ----------
+  tituloSecao('5. Pontuação Beyond × PC Score — são coisas diferentes')
+  paragrafo('O card do aluno mostra dois indicadores separados, que nunca se misturam: a Pontuação Beyond mede o RESULTADO em partidas (o placar dos jogos) e quanto MAIOR, melhor. Já o PC Score mede a EVOLUÇÃO TÉCNICA avaliada pelo professor (o quanto os fundamentos do jogo estão desenvolvidos) e quanto MENOR, melhor. O PC Score pode sugerir a categoria inicial de um aluno no ranking, mas o gestor sempre pode ajustar manualmente.')
+
+  // ---------- 6. Exemplo numérico ----------
+  tituloSecao('6. Exemplo de cálculo')
+  paragrafo('Um jogador com 12 jogos válidos na janela (nível Prata, multiplicador ×1.2), sendo 9 vitórias e 3 derrotas em jogos avulsos:')
+  const somaExemplo = 9 * PONTOS_POR_RESULTADO.avulso.vitoria + 3 * PONTOS_POR_RESULTADO.avulso.derrota
+  const mediaExemplo = Math.round((somaExemplo / 12) * 10) / 10
+  const multiplicadorPrata = NIVEIS_ASSIDUIDADE.find(n => n.chave === 'Prata')?.multiplicador || 1.2
+  const pontuacaoExemplo = Math.round(mediaExemplo * multiplicadorPrata * 10) / 10
+  precisaNovaPagina(60)
+  doc.setFillColor(...COR_BRANCO)
+  doc.roundedRect(margem, cursorY, larguraUtil, 50, 8, 8, 'F')
+  doc.setDrawColor(215, 210, 200)
+  doc.roundedRect(margem, cursorY, larguraUtil, 50, 8, 8, 'S')
+  fontePadrao('normal', 9)
+  doc.setTextColor(...COR_TINTA)
+  doc.text(`Média: (9 × ${PONTOS_POR_RESULTADO.avulso.vitoria} + 3 × ${PONTOS_POR_RESULTADO.avulso.derrota}) ÷ 12 = ${mediaExemplo} pontos/jogo`, margem + 12, cursorY + 20)
+  fontePadrao('bold', 11)
+  doc.setTextColor(...COR_VINHO)
+  doc.text(`Pontuação Beyond: ${mediaExemplo} × ${multiplicadorPrata} = ${pontuacaoExemplo}`, margem + 12, cursorY + 38)
+  cursorY += 62
+
+  desenharRodape()
+  doc.save(`regras-ranking-beyond-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
 }

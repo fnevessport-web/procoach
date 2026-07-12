@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Trophy, Plus, ChevronDown, ChevronUp, Check, AlertTriangle, X, Award } from 'lucide-react'
+import { Trophy, Plus, ChevronDown, ChevronUp, Check, AlertTriangle, X, Award, HelpCircle } from 'lucide-react'
 import {
   useClassificacaoRanking, useJogosEmAberto,
   useCriarJogo, useLancarPlacar, useConfirmarPlacar, useContestarPlacar, useCancelarJogo,
@@ -497,6 +498,7 @@ function LinhaClassificacao({ posicao, expandido, onToggle }) {
 }
 
 export function RankingPage() {
+  const navigate = useNavigate()
   const { data: modalidades } = useModalidades()
   const [modalidadeIdSelecionada, setModalidadeIdSelecionada] = useState('')
   const [tipoRanking, setTipoRanking] = useState('geral')
@@ -532,9 +534,18 @@ export function RankingPage() {
 
   return (
     <div className="fade-in" style={{ paddingBottom: '20px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '16px 0 4px' }}>
-        <Trophy size={20} color="#fcc825" />
-        <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>Ranking</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '16px 0 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Trophy size={20} color="#fcc825" />
+          <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>Ranking</h1>
+        </div>
+        <button
+          onClick={() => navigate('/regras-ranking')}
+          title="Regras do Ranking"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', color: '#444' }}
+        >
+          <HelpCircle size={18} />
+        </button>
       </div>
       <p style={{ fontSize: '12px', color: '#555', margin: '0 0 16px' }}>Pontuação Beyond · Ciclo {ciclo}</p>
 

@@ -34,6 +34,7 @@ import { DisponibilidadePage } from './pages/disponibilidade/DisponibilidadePage
 import { DisponibilidadeTurmasPage } from './pages/disponibilidade/DisponibilidadeTurmasPage'
 import { PoliticaPrivacidadePage } from './pages/legal/PoliticaPrivacidadePage'
 import { ComoFuncionaAPontuacaoPage } from './pages/legal/ComoFuncionaAPontuacaoPage'
+import { ComoFuncionaORankingPage } from './pages/legal/ComoFuncionaORankingPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -160,6 +161,7 @@ export default function App() {
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/politica-de-privacidade" element={<PoliticaPrivacidadePage />} />
           <Route path="/pontuacao" element={<ComoFuncionaAPontuacaoPage />} />
+          <Route path="/regras-ranking" element={<ComoFuncionaORankingPage />} />
           {/* App com autenticação */}
           <Route path="/*" element={<AppRouter />} />
         </Routes>
