@@ -13,9 +13,12 @@ import {
   useDimensoesModalidade, useAvaliacoesModalidade, useHistoricoPresencaModalidade,
 } from '../hooks/useAlunos'
 import { useReposicoesDoAluno } from '../hooks/useAulas'
+import { useProfessoresDoAlunoNaModalidade } from '../hooks/useProfessoresDoAluno'
+import { useAbrirConversaDoAluno } from '../hooks/useMensagens'
 import { calcStatusPorPrazo } from '../constants/reposicao'
 import { BADGES } from '../constants/badges'
 import { supabase } from '../lib/supabase'
+import useAppStore from '../store/useAppStore'
 import { Modal } from './ui/Modal'
 import { Loading, EmptyState } from './ui/Loading'
 import { PainelReposicoesAluno } from './PainelReposicoesAluno'
@@ -331,6 +334,62 @@ function CardVazio({ texto }) {
   )
 }
 
+// Lista os professores atualmente titulares de alguma turma do aluno nessa modalidade, com
+// atalho de mensagem direta por professor — pra combinar avaliações quando o aluno tem mais
+// de um professor (fase 2 do módulo de evolução técnica). Some da tela se não achar nenhum
+// (ex.: aluno avulso, sem turma fixa nessa modalidade).
+function SecaoProfessoresModalidade({ aluno, modalidadeId, onClose }) {
+  const navigate = useNavigate()
+  const { user } = useAppStore()
+  const { data: professores, isLoading } = useProfessoresDoAlunoNaModalidade(aluno.id, modalidadeId)
+  const abrirConversa = useAbrirConversaDoAluno()
+
+  if (isLoading || !professores?.length) return null
+
+  async function handleMensagem(outroUserId) {
+    try {
+      const conversaId = await abrirConversa.mutateAsync({ alunoId: aluno.id, outroUserId })
+      onClose()
+      navigate('/mensagens', { state: { conversaId } })
+    } catch {
+      toast.error('Não foi possível abrir a conversa.', { style: toastStyle })
+    }
+  }
+
+  return (
+    <div>
+      <SecaoTitulo>Professores desta modalidade</SecaoTitulo>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {professores.map(p => {
+          const souEu = p.userId === user?.id
+          return (
+            <div key={p.professorId} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '9px 12px', borderRadius: '9px', backgroundColor: '#111', border: '1px solid #2a2a2a',
+            }}>
+              <span style={{ fontSize: '13px', color: '#F0F2F5' }}>{p.nome}{souEu ? ' (você)' : ''}</span>
+              {!souEu && p.userId && (
+                <button
+                  onClick={() => handleMensagem(p.userId)}
+                  disabled={abrirConversa.isPending}
+                  title={`Mensagem para ${p.nome}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                    padding: '5px 9px', borderRadius: '7px', border: 'none', cursor: 'pointer',
+                    backgroundColor: 'rgba(255,255,255,0.06)', color: '#888', fontSize: '11px', fontWeight: '600',
+                  }}
+                >
+                  <MessageCircle size={12} /> Mensagem
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
   const navigate = useNavigate()
   const cor = modalidade.cor_hex || '#fcc825'
@@ -385,6 +444,8 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
         </div>
 
         <DadoLinha label="Data de entrada na modalidade" valor={fmtData(modalidade.dataEntrada?.slice(0, 10))} mostrarSempre={!!modalidade.dataEntrada} />
+
+        <SecaoProfessoresModalidade aluno={aluno} modalidadeId={modalidade.id} onClose={onClose} />
 
         <button
           onClick={() => navigate('/avaliar-aluno', { state: { alunoId: aluno.id, alunoNome: aluno.nome, modalidadeId: modalidade.id } })}
