@@ -1,0 +1,422 @@
+[
+  {
+    "ordem": 1,
+    "id": "primeira_aula",
+    "nome": "Primeira Aula",
+    "descricao": "Realizou a 1ª aula de tênis (1 aula com presença registrada).",
+    "familia": "Início",
+    "tipo": "marco",
+    "icone": "primeira_aula.svg",
+    "criterio": { "regra": "presencas_confirmadas_minima", "quantidade": 1 }
+  },
+  {
+    "ordem": 2,
+    "id": "entrou_ranking",
+    "nome": "Entrou no Ranking",
+    "descricao": "Completou 5 jogos válidos (entra na classificação).",
+    "familia": "Ranking & Competição",
+    "tipo": "marco",
+    "icone": "entrou_ranking.svg",
+    "criterio": { "regra": "atingiu_minimo_jogos_classificacao", "observacao": "Mesmo limite de MINIMO_JOGOS_CLASSIFICACAO em pontuacaoBeyond.js (hoje 5) — nunca duplicar o número aqui, ler da constante." }
+  },
+  {
+    "ordem": 3,
+    "id": "primeira_vitoria",
+    "nome": "Primeira Vitória",
+    "descricao": "Venceu a 1ª partida do ranking.",
+    "familia": "Ranking & Competição",
+    "tipo": "marco",
+    "icone": "primeira_vitoria.svg",
+    "criterio": { "regra": "vitorias_ranking_minima", "quantidade": 1 }
+  },
+  {
+    "ordem": 4,
+    "id": "primeiro_torneio",
+    "nome": "1º Torneio Interno",
+    "descricao": "Participou de ao menos 1 torneio interno.",
+    "familia": "Ranking & Competição",
+    "tipo": "marco",
+    "icone": "primeiro_torneio.svg",
+    "criterio": { "regra": "jogos_torneio_minima", "quantidade": 1 }
+  },
+  {
+    "ordem": 5,
+    "id": "campeao_torneio",
+    "nome": "Campeão de Torneio",
+    "descricao": "Venceu um torneio interno.",
+    "familia": "Ranking & Competição",
+    "tipo": "marco",
+    "icone": "campeao_torneio.svg",
+    "criterio": {
+      "regra": "aguardando_modulo_torneios",
+      "observacao": "Confirmado com o Fernando: vamos montar um módulo próprio de organização de torneios dentro do ProCoach — é lá que o campeão de cada torneio vai ficar registrado, e essa conquista passa a desbloquear automaticamente a partir disso. Por enquanto essa conquista fica cadastrada no catálogo mas o serviço de verificação não tenta calculá-la (sem campo de campeão no banco ainda pra checar)."
+    }
+  },
+  {
+    "ordem": 6,
+    "id": "zebra",
+    "nome": "Zebra",
+    "descricao": "Venceu um adversário de categoria superior à sua.",
+    "familia": "Ranking & Competição",
+    "tipo": "marco",
+    "icone": "zebra.svg",
+    "criterio": {
+      "regra": "venceu_categoria_superior",
+      "observacao": "Compara ranking_categorias.ordem do vencedor vs. do adversário no momento do jogo aprovado (categoria do ranking — Iniciante/Intermediário/Avançado — não nível de assiduidade). Zebra quando a ordem da categoria do vencedor é MENOR que a do adversário (categoria inferior batendo categoria superior)."
+    }
+  },
+  {
+    "ordem": 7,
+    "id": "estou_top5_cat",
+    "nome": "Estou no Top 5 · Categoria",
+    "descricao": "Está atualmente entre os 5 primeiros da categoria.",
+    "familia": "Ranking & Competição",
+    "tipo": "dinamico",
+    "icone": "estou_top5_cat.svg",
+    "historico_par": "jafui_top5_cat",
+    "criterio": { "regra": "posicao_ranking_maxima", "tipo_ranking": "categoria", "posicao_maxima": 5 }
+  },
+  {
+    "ordem": 8,
+    "id": "jafui_top5_cat",
+    "nome": "Já Fui Top 5 · Categoria",
+    "descricao": "Já esteve no Top 5 da categoria alguma vez.",
+    "familia": "Ranking & Competição",
+    "tipo": "historico",
+    "icone": "jafui_top5_cat.svg",
+    "criterio": { "regra": "desbloqueado_junto_com", "dinamico": "estou_top5_cat" }
+  },
+  {
+    "ordem": 9,
+    "id": "estou_top5_ger",
+    "nome": "Estou no Top 5 · Geral",
+    "descricao": "Está atualmente no Top 5 do ranking geral.",
+    "familia": "Ranking & Competição",
+    "tipo": "dinamico",
+    "icone": "estou_top5_ger.svg",
+    "historico_par": "jafui_top5_ger",
+    "criterio": { "regra": "posicao_ranking_maxima", "tipo_ranking": "geral", "posicao_maxima": 5 }
+  },
+  {
+    "ordem": 10,
+    "id": "jafui_top5_ger",
+    "nome": "Já Fui Top 5 · Geral",
+    "descricao": "Já esteve no Top 5 geral.",
+    "familia": "Ranking & Competição",
+    "tipo": "historico",
+    "icone": "jafui_top5_ger.svg",
+    "criterio": { "regra": "desbloqueado_junto_com", "dinamico": "estou_top5_ger" }
+  },
+  {
+    "ordem": 11,
+    "id": "podio_cat",
+    "nome": "Estou no Pódio",
+    "descricao": "Está atualmente no Top 3 da categoria.",
+    "familia": "Ranking & Competição",
+    "tipo": "dinamico",
+    "icone": "podio_cat.svg",
+    "historico_par": "jafui_podio",
+    "criterio": { "regra": "posicao_ranking_maxima", "tipo_ranking": "categoria", "posicao_maxima": 3 }
+  },
+  {
+    "ordem": 12,
+    "id": "jafui_podio",
+    "nome": "Já Subi ao Pódio",
+    "descricao": "Já esteve no Top 3.",
+    "familia": "Ranking & Competição",
+    "tipo": "historico",
+    "icone": "jafui_podio.svg",
+    "criterio": { "regra": "desbloqueado_junto_com", "dinamico": "podio_cat" }
+  },
+  {
+    "ordem": 13,
+    "id": "n1_cat",
+    "nome": "Nº 1 da Categoria",
+    "descricao": "É o líder atual da categoria.",
+    "familia": "Ranking & Competição",
+    "tipo": "dinamico",
+    "icone": "n1_cat.svg",
+    "criterio": { "regra": "posicao_ranking_atual", "tipo_ranking": "categoria", "posicao": 1 }
+  },
+  {
+    "ordem": 14,
+    "id": "n1_geral",
+    "nome": "Nº 1 Geral",
+    "descricao": "É o nº 1 do ranking geral — a conquista máxima.",
+    "familia": "Ranking & Competição",
+    "tipo": "dinamico",
+    "icone": "n1_geral.svg",
+    "criterio": { "regra": "posicao_ranking_atual", "tipo_ranking": "geral", "posicao": 1 }
+  },
+  {
+    "ordem": 15,
+    "id": "nivel_bronze",
+    "nome": "Nível Bronze",
+    "descricao": "Tem de 5 a 10 jogos na janela de 90 dias.",
+    "familia": "Assiduidade",
+    "tipo": "dinamico",
+    "icone": "nivel_bronze.svg",
+    "criterio": { "regra": "nivel_assiduidade_atual", "nivel": "Bronze" }
+  },
+  {
+    "ordem": 16,
+    "id": "nivel_prata",
+    "nome": "Nível Prata",
+    "descricao": "Tem de 11 a 20 jogos na janela de 90 dias.",
+    "familia": "Assiduidade",
+    "tipo": "dinamico",
+    "icone": "nivel_prata.svg",
+    "criterio": { "regra": "nivel_assiduidade_atual", "nivel": "Prata" }
+  },
+  {
+    "ordem": 17,
+    "id": "nivel_ouro",
+    "nome": "Nível Ouro",
+    "descricao": "Tem 21+ jogos na janela de 90 dias.",
+    "familia": "Assiduidade",
+    "tipo": "dinamico",
+    "icone": "nivel_ouro.svg",
+    "historico_par": "jafui_ouro",
+    "criterio": { "regra": "nivel_assiduidade_atual", "nivel": "Ouro" }
+  },
+  {
+    "ordem": 18,
+    "id": "jafui_ouro",
+    "nome": "Já Fui Ouro",
+    "descricao": "Já atingiu o nível Ouro alguma vez.",
+    "familia": "Assiduidade",
+    "tipo": "historico",
+    "icone": "jafui_ouro.svg",
+    "criterio": { "regra": "desbloqueado_junto_com", "dinamico": "nivel_ouro" }
+  },
+  {
+    "ordem": 19,
+    "id": "rei_quadra",
+    "nome": "Rei da Quadra",
+    "descricao": "Jogou partidas do ranking com 10 adversários/parceiros diferentes.",
+    "familia": "Assiduidade",
+    "tipo": "marco",
+    "icone": "rei_quadra.svg",
+    "criterio": {
+      "regra": "adversarios_distintos_minimo",
+      "quantidade": 10,
+      "observacao": "COUNT(DISTINCT aluno_id) dos OUTROS participantes (qualquer lado que não o do próprio aluno) em ranking_jogo_participantes de jogos aprovados dele — conta pessoas diferentes, não jogos. Premia quem varia de adversário/parceiro em vez de jogar sempre com a mesma pessoa."
+    }
+  },
+  {
+    "ordem": 20,
+    "id": "3meses_semfalta",
+    "nome": "3 Meses Sem Faltar",
+    "descricao": "90 dias sem falta não justificada (atestado/chuva não quebram a sequência).",
+    "familia": "Frequência & Presença",
+    "tipo": "marco",
+    "icone": "3meses_semfalta.svg",
+    "criterio": { "regra": "dias_seguidos_sem_falta_nao_justificada", "dias": 90 }
+  },
+  {
+    "ordem": 21,
+    "id": "6meses_semfalta",
+    "nome": "6 Meses Sem Faltar",
+    "descricao": "180 dias sem falta não justificada.",
+    "familia": "Frequência & Presença",
+    "tipo": "marco",
+    "icone": "6meses_semfalta.svg",
+    "criterio": { "regra": "dias_seguidos_sem_falta_nao_justificada", "dias": 180 }
+  },
+  {
+    "ordem": 22,
+    "id": "mes_perfeito",
+    "nome": "Mês Perfeito",
+    "descricao": "100% de presença em um mês.",
+    "familia": "Frequência & Presença",
+    "tipo": "marco",
+    "icone": "mes_perfeito.svg",
+    "criterio": { "regra": "mes_calendario_sem_nenhuma_falta" }
+  },
+  {
+    "ordem": 23,
+    "id": "primeira_reposicao",
+    "nome": "Primeira Reposição",
+    "descricao": "Fez a 1ª reposição de aula.",
+    "familia": "Frequência & Presença",
+    "tipo": "marco",
+    "icone": "primeira_reposicao.svg",
+    "criterio": { "regra": "presenca_reposicao_minima", "quantidade": 1 }
+  },
+  {
+    "ordem": 24,
+    "id": "aulas_30",
+    "nome": "30 Aulas",
+    "descricao": "30 aulas realizadas com presença.",
+    "familia": "Volume de Aulas",
+    "tipo": "marco",
+    "icone": "aulas_30.svg",
+    "criterio": { "regra": "presencas_confirmadas_minima", "quantidade": 30 }
+  },
+  {
+    "ordem": 25,
+    "id": "aulas_50",
+    "nome": "50 Aulas",
+    "descricao": "50 aulas realizadas com presença.",
+    "familia": "Volume de Aulas",
+    "tipo": "marco",
+    "icone": "aulas_50.svg",
+    "criterio": { "regra": "presencas_confirmadas_minima", "quantidade": 50 }
+  },
+  {
+    "ordem": 26,
+    "id": "aulas_75",
+    "nome": "75 Aulas",
+    "descricao": "75 aulas realizadas com presença.",
+    "familia": "Volume de Aulas",
+    "tipo": "marco",
+    "icone": "aulas_75.svg",
+    "criterio": { "regra": "presencas_confirmadas_minima", "quantidade": 75 }
+  },
+  {
+    "ordem": 27,
+    "id": "aulas_100",
+    "nome": "100 Aulas",
+    "descricao": "100 aulas realizadas com presença.",
+    "familia": "Volume de Aulas",
+    "tipo": "marco",
+    "icone": "aulas_100.svg",
+    "criterio": { "regra": "presencas_confirmadas_minima", "quantidade": 100 }
+  },
+  {
+    "ordem": 28,
+    "id": "aulas_150",
+    "nome": "150 Aulas",
+    "descricao": "150 aulas realizadas com presença.",
+    "familia": "Volume de Aulas",
+    "tipo": "marco",
+    "icone": "aulas_150.svg",
+    "criterio": { "regra": "presencas_confirmadas_minima", "quantidade": 150 }
+  },
+  {
+    "ordem": 29,
+    "id": "aulas_200",
+    "nome": "200 Aulas",
+    "descricao": "200 aulas realizadas com presença.",
+    "familia": "Volume de Aulas",
+    "tipo": "marco",
+    "icone": "aulas_200.svg",
+    "criterio": { "regra": "presencas_confirmadas_minima", "quantidade": 200 }
+  },
+  {
+    "ordem": 30,
+    "id": "aulas_300",
+    "nome": "300 Aulas",
+    "descricao": "300 aulas realizadas com presença.",
+    "familia": "Volume de Aulas",
+    "tipo": "marco",
+    "icone": "aulas_300.svg",
+    "criterio": { "regra": "presencas_confirmadas_minima", "quantidade": 300 }
+  },
+  {
+    "ordem": 31,
+    "id": "um_ano",
+    "nome": "1 Ano de Aulas",
+    "descricao": "365 dias desde a 1ª aula, ainda ativo.",
+    "familia": "Volume de Aulas",
+    "tipo": "marco",
+    "icone": "um_ano.svg",
+    "criterio": { "regra": "dias_desde_primeira_aula_ainda_ativo", "dias": 365 }
+  },
+  {
+    "ordem": 32,
+    "id": "dois_anos",
+    "nome": "2 Anos de Aulas",
+    "descricao": "730 dias desde a 1ª aula, ainda ativo.",
+    "familia": "Volume de Aulas",
+    "tipo": "marco",
+    "icone": "dois_anos.svg",
+    "criterio": { "regra": "dias_desde_primeira_aula_ainda_ativo", "dias": 730 }
+  },
+  {
+    "ordem": 33,
+    "id": "primeira_avaliacao",
+    "nome": "Primeira Avaliação",
+    "descricao": "Recebeu a 1ª avaliação técnica.",
+    "familia": "Evolução Técnica",
+    "tipo": "marco",
+    "icone": "primeira_avaliacao.svg",
+    "criterio": { "regra": "avaliacoes_tecnicas_confirmadas_minima", "quantidade": 1 }
+  },
+  {
+    "ordem": 34,
+    "id": "subiu_nivel",
+    "nome": "Subiu de Nível",
+    "descricao": "Subiu 1 nível técnico (ex.: Iniciante → Intermediário).",
+    "familia": "Evolução Técnica",
+    "tipo": "marco",
+    "icone": "subiu_nivel.svg",
+    "criterio": { "regra": "reaproveita_badge_evoluiu_pc_score_nivel" }
+  },
+  {
+    "ordem": 35,
+    "id": "subiu_2niveis",
+    "nome": "Subiu 2 Níveis",
+    "descricao": "Subiu 2 níveis técnicos de uma vez.",
+    "familia": "Evolução Técnica",
+    "tipo": "marco",
+    "icone": "subiu_2niveis.svg",
+    "criterio": { "regra": "saltos_nivel_pc_score_em_uma_avaliacao", "saltos": 2 }
+  },
+  {
+    "ordem": 36,
+    "id": "evolucao_completa",
+    "nome": "Evolução Completa",
+    "descricao": "Melhorou a nota em todas as 6 dimensões numa mesma avaliação.",
+    "familia": "Evolução Técnica",
+    "tipo": "marco",
+    "icone": "evolucao_completa.svg",
+    "criterio": {
+      "regra": "todas_dimensoes_melhoraram_vs_anterior",
+      "observacao": "Compara as 6 notas da avaliação confirmada mais recente contra a avaliação confirmada imediatamente anterior do mesmo aluno+modalidade. Só é possível a partir da 2ª avaliação (a 1ª nunca desbloqueia, não tem o que comparar). Desbloqueia se TODAS as 6 dimensões tiverem nota estritamente maior que na anterior."
+    }
+  },
+  {
+    "ordem": 37,
+    "id": "dimensao_dominada",
+    "nome": "Dimensão Dominada",
+    "descricao": "Atingiu nota máxima (5) em ao menos 1 dimensão.",
+    "familia": "Evolução Técnica",
+    "tipo": "marco",
+    "icone": "dimensao_dominada.svg",
+    "criterio": { "regra": "dimensao_com_nota_maxima", "nota": 5 }
+  },
+  {
+    "ordem": 38,
+    "id": "tres_avaliacoes",
+    "nome": "3 Avaliações Seguidas",
+    "descricao": "Completou 3 avaliações trimestrais consecutivas.",
+    "familia": "Evolução Técnica",
+    "tipo": "marco",
+    "icone": "tres_avaliacoes.svg",
+    "criterio": { "regra": "reaproveita_badge_avaliacoes_em_dia_3x" }
+  },
+  {
+    "ordem": 39,
+    "id": "indicou_amigo",
+    "nome": "Indicou um Amigo",
+    "descricao": "Indicou alguém que virou aluno.",
+    "familia": "Social & Engajamento",
+    "tipo": "marco",
+    "icone": "indicou_amigo.svg",
+    "criterio": {
+      "regra": "MANUAL_sem_campo_no_cadastro",
+      "observacao": "Não existe hoje nenhum campo tipo \"indicado_por\" no cadastro do aluno — precisa de um campo novo pra rastrear isso (a definir junto com a migration), ou de um lançamento manual do gestor/recepção."
+    }
+  },
+  {
+    "ordem": 40,
+    "id": "perfil_completo",
+    "nome": "Perfil Completo",
+    "descricao": "Preencheu foto + data de nascimento + gênero + contato.",
+    "familia": "Social & Engajamento",
+    "tipo": "marco",
+    "icone": "perfil_completo.svg",
+    "criterio": { "regra": "campos_cadastro_preenchidos", "campos": ["foto_url", "data_nascimento", "genero", "telefone"] }
+  }
+]

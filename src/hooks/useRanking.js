@@ -4,6 +4,7 @@ import useAppStore from '../store/useAppStore'
 import { calcularPontosResultado } from '../lib/pontuacaoBeyond'
 import { recalcularPosicoesRanking } from './useRankingPosicoes'
 import { cicloAtual } from '../constants/rankingCategorias'
+import { verificarEAtualizarConquistas } from './useConquistas'
 
 const HORAS_AUTO_APROVACAO = 48
 
@@ -233,6 +234,15 @@ export function useConfirmarPlacar() {
       const { error: erroAprova } = await supabase
         .from('ranking_jogos').update({ status: 'aprovado' }).eq('id', jogoId).eq('status', 'pendente')
       if (erroAprova) throw erroAprova
+
+      // Conquistas de jogo (primeira vitória, torneio, zebra, rei da quadra...) só contam
+      // com o jogo já aprovado — verifica pros dois lados agora, sem esperar o próximo
+      // recálculo preguiçoso de quando o Card do Aluno for aberto de novo.
+      const { data: participantesDoJogo } = await supabase
+        .from('ranking_jogo_participantes').select('aluno_id').eq('jogo_id', jogoId)
+      for (const p of participantesDoJogo || []) {
+        await verificarEAtualizarConquistas(p.aluno_id)
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['ranking_jogos_em_aberto'] })

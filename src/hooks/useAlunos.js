@@ -7,6 +7,7 @@ import { nivelPorPcScore, FAIXAS_ETARIAS, REAVALIACAO_PRAZO_DIAS } from '../lib/
 import { badgesTecnicosElegiveis } from '../constants/badges'
 import { buscarProfessoresDoAlunoNaModalidade } from './useProfessoresDoAluno'
 import { criarAlerta } from './useAlertas'
+import { verificarEAtualizarConquistas } from './useConquistas'
 
 export function useAlunos(modalidadeId = null) {
   return useQuery({
@@ -112,6 +113,7 @@ export function useAlunoCompleto(alunoId) {
     queryKey: ['aluno_completo', alunoId],
     queryFn: async () => {
       await verificarEConcederBadges(alunoId)
+      await verificarEAtualizarConquistas(alunoId)
 
       const [{ data: aluno, error: erroAluno }, { data: familia }, { data: modsAluno }, { data: niveisAtivos }, { data: badges }, { data: presencasAluno }] = await Promise.all([
         supabase.from('alunos').select('*').eq('id', alunoId).single(),
@@ -371,10 +373,11 @@ export function useSalvarAvaliacao() {
           avaliacaoId: nova.id, alunoNome, modalidadeNome, faixaEtaria, dimensoes, pcScore,
           historico: historicoPcScore || [],
         })
-        // Badge é conquista "oficial" — só concede quando a avaliação já nasce confirmada
-        // (sem outro professor titular pra confirmar). Uma pendente pode ainda mudar.
+        // Badge/conquista é coisa "oficial" — só concede quando a avaliação já nasce
+        // confirmada (sem outro professor titular pra confirmar). Uma pendente pode ainda mudar.
         if (avaliacaoFinal.status === 'confirmada') {
           await concederBadgesTecnicos(alunoId, modalidadeId)
+          await verificarEAtualizarConquistas(alunoId)
         }
       }
 
@@ -435,6 +438,7 @@ export function useConfirmarAvaliacaoTecnica() {
       if (faltam === 0) {
         await supabase.from('avaliacoes_tecnicas').update({ status: 'confirmada' }).eq('id', avaliacaoId)
         await concederBadgesTecnicos(alunoId, modalidadeId)
+        await verificarEAtualizarConquistas(alunoId)
       }
     },
     onSuccess: (_, { alunoId, modalidadeId, professorId }) => {
