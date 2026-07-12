@@ -24,6 +24,7 @@ import { Loading, EmptyState } from './ui/Loading'
 import { PainelReposicoesAluno } from './PainelReposicoesAluno'
 import { EvolucaoTecnicaTenis } from './EvolucaoTecnicaTenis'
 import { BlocoPontuacaoBeyond } from './BlocoPontuacaoBeyond'
+import { ConquistasCard } from './ConquistasCard'
 import { SeletorFaixaEtariaManual } from './SeletorFaixaEtariaManual'
 import toast from 'react-hot-toast'
 
@@ -184,6 +185,9 @@ export function AlunoCard({ alunoId }) {
           )}
         </div>
       </div>
+
+      {/* Conquistas */}
+      <ConquistasCard alunoId={aluno.id} />
 
       {/* Dados pessoais */}
       <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', border: '1px solid #2a2a2a', padding: '14px 16px', marginBottom: '20px' }}>

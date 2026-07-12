@@ -1,7 +1,38 @@
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { format } from 'date-fns'
 import { avaliarConquista } from '../lib/conquistas'
 import { nomeCategoriaPorNivel, cicloAtual } from '../constants/rankingCategorias'
+
+// Catálogo completo das 40 conquistas (id, nome, descricao, familia, tipo, icone, ordem...) —
+// muda raramente, então fica com staleTime bem folgado. Usado tanto pelas mini-cards do Card
+// do Aluno (item A.5) quanto pelo catálogo completo (A.6) e pelo modal de detalhe (A.7).
+export function useCatalogoConquistas() {
+  return useQuery({
+    queryKey: ['conquistas_catalogo'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('conquistas').select('*').eq('ativo', true).order('ordem')
+      if (error) throw error
+      return data || []
+    },
+    staleTime: 1000 * 60 * 30,
+  })
+}
+
+// Progresso do aluno em cada conquista (uma linha por conquista que já foi avaliada alguma
+// vez — desbloqueada ou só com progresso registrado). Quem não tem linha nenhuma aqui ainda
+// está "zerado" nessa conquista — a tela trata isso como bloqueada sem progresso.
+export function useConquistasDoAluno(alunoId) {
+  return useQuery({
+    queryKey: ['conquistas_aluno', alunoId],
+    enabled: !!alunoId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('conquistas_alunos').select('*').eq('aluno_id', alunoId)
+      if (error) throw error
+      return data || []
+    },
+  })
+}
 
 // Verifica e atualiza as conquistas de um aluno (item A.4) — busca tudo que os 38 critérios
 // automáticos precisam (2 dos 40, campeao_torneio e indicou_amigo, não têm avaliador, ver
