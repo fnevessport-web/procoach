@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { logAudit } from '../lib/audit'
-import { format, subMonths } from 'date-fns'
+import { format, subMonths, subDays } from 'date-fns'
 import { getModalidadeDaAula } from '../constants/modalidades'
-import { nivelPorPcScore, FAIXAS_ETARIAS } from '../lib/pcScore'
+import { nivelPorPcScore, FAIXAS_ETARIAS, REAVALIACAO_PRAZO_DIAS } from '../lib/pcScore'
 import { badgesTecnicosElegiveis } from '../constants/badges'
 import { buscarProfessoresDoAlunoNaModalidade } from './useProfessoresDoAluno'
 import { criarAlerta } from './useAlertas'
@@ -525,5 +525,63 @@ export function useHistoricoPresencaModalidade(alunoId, modalidadeId, modalidade
         .slice(0, 100)
     },
     enabled: !!alunoId && !!modalidadeId,
+  })
+}
+
+// Resumo técnico da turma (Fase 3, item 14) — média por dimensão dos alunos matriculados com
+// avaliação CONFIRMADA nos últimos REAVALIACAO_PRAZO_DIAS (mesma janela da regra individual),
+// cobertura (quantos dos matriculados têm avaliação recente) e o gargalo coletivo (dimensão
+// com a média mais baixa do grupo). Só matemática client-side sobre dado já existente — sem
+// custo de IA; a sugestão de plano de treino (item 15) usa esse resumo como entrada.
+export function useResumoTecnicoTurma(turmaId) {
+  return useQuery({
+    queryKey: ['resumo_tecnico_turma', turmaId],
+    enabled: !!turmaId,
+    queryFn: async () => {
+      const { data: turma, error: erroTurma } = await supabase
+        .from('turmas').select('id, nome, modalidade_id, modalidades(nome)').eq('id', turmaId).single()
+      if (erroTurma) throw erroTurma
+
+      const { data: matriculados } = await supabase
+        .from('turmas_alunos').select('aluno_id').eq('turma_id', turmaId).eq('ativo', true)
+      const alunoIds = [...new Set((matriculados || []).map(m => m.aluno_id))]
+
+      const base = { turmaNome: turma.nome, modalidadeNome: turma.modalidades?.nome, totalAlunos: alunoIds.length, alunosAvaliados: 0, mediaPorDimensao: [], gargaloColetivo: null }
+      if (!alunoIds.length) return base
+
+      const { data: avaliacoes } = await supabase
+        .from('avaliacoes_tecnicas')
+        .select('aluno_id, data_avaliacao, dimensoes')
+        .eq('modalidade_id', turma.modalidade_id)
+        .eq('status', 'confirmada')
+        .in('aluno_id', alunoIds)
+        .order('data_avaliacao', { ascending: true })
+
+      // última avaliação confirmada de cada aluno (a última posição vence, já que veio ordenado)
+      const ultimaPorAluno = {}
+      ;(avaliacoes || []).forEach(a => { ultimaPorAluno[a.aluno_id] = a })
+
+      const limite = format(subDays(new Date(), REAVALIACAO_PRAZO_DIAS), 'yyyy-MM-dd')
+      const recentes = Object.values(ultimaPorAluno).filter(a => a.data_avaliacao >= limite)
+      if (!recentes.length) return base
+
+      const somaPorDimensao = {}
+      const contagemPorDimensao = {}
+      recentes.forEach(a => {
+        Object.entries(a.dimensoes || {}).forEach(([nome, valor]) => {
+          somaPorDimensao[nome] = (somaPorDimensao[nome] || 0) + valor
+          contagemPorDimensao[nome] = (contagemPorDimensao[nome] || 0) + 1
+        })
+      })
+      const mediaPorDimensao = Object.keys(somaPorDimensao).map(nome => ({
+        dimensao: nome,
+        media: Math.round((somaPorDimensao[nome] / contagemPorDimensao[nome]) * 10) / 10,
+      }))
+      const gargaloColetivo = mediaPorDimensao.length
+        ? mediaPorDimensao.reduce((pior, atual) => (atual.media < pior.media ? atual : pior))
+        : null
+
+      return { ...base, alunosAvaliados: recentes.length, mediaPorDimensao, gargaloColetivo }
+    },
   })
 }

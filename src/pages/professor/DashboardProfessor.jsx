@@ -7,9 +7,9 @@ import { ptBR } from 'date-fns/locale'
 import { ChevronRight, X, AlertTriangle, Check, MessageCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
-import { usePendenciasConfirmacao, useConfirmarAvaliacaoTecnica } from '../../hooks/useAlunos'
+import { usePendenciasConfirmacao, useConfirmarAvaliacaoTecnica, useResumoTecnicoTurma } from '../../hooks/useAlunos'
 import { useAbrirConversaDoAluno } from '../../hooks/useMensagens'
-import { nivelPorPcScore } from '../../lib/pcScore'
+import { nivelPorPcScore, REAVALIACAO_PRAZO_DIAS } from '../../lib/pcScore'
 import useAppStore from '../../store/useAppStore'
 import { horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula, diaSemanaDaData } from '../../constants/modalidades'
 import { Loading } from '../../components/ui/Loading'
@@ -690,7 +690,46 @@ function ModalCelula({ celulaAtiva, onClose }) {
           </div>
         )}
         {info.removida && <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '6px' }}>Turma removida</div>}
+        {info.turmaRecorrente?.id && <ResumoTecnicoTurma turmaId={info.turmaRecorrente.id} />}
       </div>
     </div>
   ), document.body)
+}
+
+// Item 14 (Fase 3): média por dimensão dos alunos da turma com avaliação confirmada recente,
+// cobertura e gargalo coletivo — só matemática sobre dado já existente, sem custo de IA (o
+// botão de plano sugerido por IA vem no item 15, usando esse mesmo resumo como entrada).
+function ResumoTecnicoTurma({ turmaId }) {
+  const { data: resumo, isLoading } = useResumoTecnicoTurma(turmaId)
+  if (isLoading || !resumo || resumo.totalAlunos === 0) return null
+
+  return (
+    <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #2a2a2a' }}>
+      <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700', marginBottom: '8px' }}>
+        Resumo técnico da turma
+      </div>
+      <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px' }}>
+        {resumo.alunosAvaliados} de {resumo.totalAlunos} avaliados nos últimos {REAVALIACAO_PRAZO_DIAS} dias
+      </div>
+      {resumo.mediaPorDimensao.length > 0 ? (
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '8px' }}>
+            {resumo.mediaPorDimensao.map(d => (
+              <div key={d.dimensao} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#ccc' }}>
+                <span>{d.dimensao}</span>
+                <strong style={{ color: d.dimensao === resumo.gargaloColetivo?.dimensao ? '#cf1b9b' : '#fcc825' }}>{d.media}/5</strong>
+              </div>
+            ))}
+          </div>
+          {resumo.gargaloColetivo && (
+            <div style={{ fontSize: '11px', color: '#cf1b9b' }}>
+              Gargalo coletivo: {resumo.gargaloColetivo.dimensao} ({resumo.gargaloColetivo.media}/5)
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ fontSize: '11px', color: '#555' }}>Sem avaliações recentes o suficiente pra calcular a média da turma.</div>
+      )}
+    </div>
+  )
 }
