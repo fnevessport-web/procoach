@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Trophy, Plus, ChevronDown, ChevronUp, Check, AlertTriangle, X } from 'lucide-react'
+import { Trophy, Plus, ChevronDown, ChevronUp, Check, AlertTriangle, X, Award } from 'lucide-react'
 import {
   useClassificacaoRanking, useJogosEmAberto,
   useCriarJogo, useLancarPlacar, useConfirmarPlacar, useContestarPlacar, useCancelarJogo,
 } from '../../hooks/useRanking'
+import { useTorneios, useCriarTorneio, useAtualizarStatusTorneio } from '../../hooks/useTorneios'
 import { useModalidades } from '../../hooks/useModalidades'
 import { useQuadras } from '../../hooks/useQuadras'
 import { useAlunos } from '../../hooks/useAlunos'
@@ -114,20 +115,25 @@ function SeletorAlunosLado({ label, quantidade, selecionados, onMudar, excluirId
 
 function ModalCriarJogo({ modalidadeId, onClose }) {
   const { data: quadras } = useQuadras(modalidadeId)
+  const { data: torneios } = useTorneios(modalidadeId)
   const criarJogo = useCriarJogo()
   const [tipo, setTipo] = useState('simples')
+  const [origem, setOrigem] = useState('avulso')
+  const [torneioId, setTorneioId] = useState('')
   const [dataJogo, setDataJogo] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [quadraId, setQuadraId] = useState('')
   const [lado1, setLado1] = useState([])
   const [lado2, setLado2] = useState([])
 
+  const torneiosAbertos = (torneios || []).filter(t => t.status === 'planejado' || t.status === 'em_andamento')
   const quantidade = tipo === 'dupla' ? 2 : 1
-  const pronto = lado1.length === quantidade && lado2.length === quantidade
+  const pronto = lado1.length === quantidade && lado2.length === quantidade && (origem === 'avulso' || !!torneioId)
 
   async function handleCriar() {
     try {
       await criarJogo.mutateAsync({
         modalidadeId, tipo, dataJogo, quadraId: quadraId || null,
+        origem, torneioId: origem === 'torneio' ? torneioId : null,
         participantesLado1: lado1.map(a => a.id),
         participantesLado2: lado2.map(a => a.id),
       })
@@ -144,6 +150,28 @@ function ModalCriarJogo({ modalidadeId, onClose }) {
         <div style={{ display: 'flex', gap: '8px' }}>
           <Pill ativo={tipo === 'simples'} onClick={() => { setTipo('simples'); setLado1([]); setLado2([]) }}>Simples</Pill>
           <Pill ativo={tipo === 'dupla'} onClick={() => { setTipo('dupla'); setLado1([]); setLado2([]) }}>Dupla</Pill>
+        </div>
+
+        <div>
+          <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Origem</div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Pill ativo={origem === 'avulso'} onClick={() => { setOrigem('avulso'); setTorneioId('') }}>Avulso</Pill>
+            <Pill ativo={origem === 'torneio'} onClick={() => setOrigem('torneio')}>Torneio (pontos em dobro)</Pill>
+          </div>
+          {origem === 'torneio' && (
+            !torneiosAbertos.length ? (
+              <div style={{ fontSize: '11px', color: '#f97316', marginTop: '8px' }}>
+                Nenhum torneio aberto nessa modalidade ainda — crie um na seção "Torneios internos".
+              </div>
+            ) : (
+              <div style={{ marginTop: '8px' }}>
+                <Select value={torneioId} onChange={e => setTorneioId(e.target.value)}>
+                  <option value="">Selecione o torneio...</option>
+                  {torneiosAbertos.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                </Select>
+              </div>
+            )
+          )}
         </div>
 
         <SeletorAlunosLado label="Lado 1" quantidade={quantidade} selecionados={lado1} onMudar={setLado1} excluirIds={lado2.map(a => a.id)} />
@@ -169,6 +197,112 @@ function ModalCriarJogo({ modalidadeId, onClose }) {
         </button>
       </div>
     </Modal>
+  )
+}
+
+function ModalCriarTorneio({ modalidadeId, categorias, onClose }) {
+  const criarTorneio = useCriarTorneio()
+  const [nome, setNome] = useState('')
+  const [categoriaId, setCategoriaId] = useState('')
+  const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [dataFim, setDataFim] = useState('')
+
+  async function handleCriar() {
+    try {
+      await criarTorneio.mutateAsync({ nome, modalidadeId, categoriaId: categoriaId || null, dataInicio, dataFim: dataFim || null })
+      toast.success('Torneio criado!', { style: toastStyle })
+      onClose()
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Criar torneio interno" size="md">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <Input label="Nome do torneio" placeholder="Ex: Torneio de Inverno 2026" value={nome} onChange={e => setNome(e.target.value)} />
+        <Select label="Categoria (opcional — vazio vale pra todas)" value={categoriaId} onChange={e => setCategoriaId(e.target.value)}>
+          <option value="">Todas as categorias</option>
+          {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+        </Select>
+        <Input type="date" label="Data de início" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
+        <Input type="date" label="Data de fim (opcional)" value={dataFim} onChange={e => setDataFim(e.target.value)} />
+        <button
+          onClick={handleCriar}
+          disabled={!nome || !dataInicio || criarTorneio.isPending}
+          style={{
+            padding: '12px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white',
+            fontSize: '14px', fontWeight: '700', opacity: (!nome || !dataInicio) ? 0.5 : 1,
+          }}
+        >
+          {criarTorneio.isPending ? 'Criando...' : 'Criar torneio'}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+const LABEL_STATUS_TORNEIO = {
+  planejado: { texto: 'Planejado', cor: '#888' },
+  em_andamento: { texto: 'Em andamento', cor: '#22c55e' },
+  encerrado: { texto: 'Encerrado', cor: '#555' },
+  cancelado: { texto: 'Cancelado', cor: '#EF4444' },
+}
+
+function CardTorneio({ torneio }) {
+  const atualizarStatus = useAtualizarStatusTorneio()
+  const label = LABEL_STATUS_TORNEIO[torneio.status] || LABEL_STATUS_TORNEIO.planejado
+
+  async function mudarStatus(novoStatus) {
+    try {
+      await atualizarStatus.mutateAsync({ torneioId: torneio.id, status: novoStatus })
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    }
+  }
+
+  return (
+    <div style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+        <div>
+          <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>{torneio.nome}</div>
+          <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+            {torneio.ranking_categorias?.nome || 'Todas as categorias'} ·{' '}
+            {format(new Date(torneio.data_inicio + 'T12:00'), 'dd/MM/yyyy', { locale: ptBR })}
+            {torneio.data_fim ? ` a ${format(new Date(torneio.data_fim + 'T12:00'), 'dd/MM/yyyy', { locale: ptBR })}` : ''}
+          </div>
+        </div>
+        <span style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '6px', fontWeight: '700', flexShrink: 0, backgroundColor: `${label.cor}22`, color: label.cor }}>
+          {label.texto}
+        </span>
+      </div>
+      {(torneio.status === 'planejado' || torneio.status === 'em_andamento') && (
+        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+          {torneio.status === 'planejado' && (
+            <button onClick={() => mudarStatus('em_andamento')} disabled={atualizarStatus.isPending} style={{
+              flex: 1, padding: '7px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+              backgroundColor: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: '11px', fontWeight: '700',
+            }}>
+              Iniciar
+            </button>
+          )}
+          {torneio.status === 'em_andamento' && (
+            <button onClick={() => mudarStatus('encerrado')} disabled={atualizarStatus.isPending} style={{
+              flex: 1, padding: '7px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+              backgroundColor: 'rgba(255,255,255,0.06)', color: '#888', fontSize: '11px', fontWeight: '700',
+            }}>
+              Encerrar
+            </button>
+          )}
+          <button onClick={() => mudarStatus('cancelado')} disabled={atualizarStatus.isPending} style={{
+            padding: '7px 12px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer',
+          }}>
+            Cancelar
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -370,7 +504,9 @@ export function RankingPage() {
   const [genero, setGenero] = useState('masculino')
   const [expandidoId, setExpandidoId] = useState(null)
   const [criandoJogo, setCriandoJogo] = useState(false)
+  const [criandoTorneio, setCriandoTorneio] = useState(false)
   const [jogosAbertosVisivel, setJogosAbertosVisivel] = useState(false)
+  const [torneiosVisivel, setTorneiosVisivel] = useState(false)
   const [categorias, setCategorias] = useState([])
 
   const ciclo = cicloAtual()
@@ -392,6 +528,7 @@ export function RankingPage() {
     modalidadeId, tipoRanking, categoriaId: tipoRanking === 'categoria' ? categoriaId : null, genero, ciclo,
   })
   const { data: jogosAbertos } = useJogosEmAberto({ modalidadeId })
+  const { data: torneios } = useTorneios(modalidadeId)
 
   return (
     <div className="fade-in" style={{ paddingBottom: '20px' }}>
@@ -474,8 +611,46 @@ export function RankingPage() {
         </div>
       )}
 
+      <div style={{ marginTop: '10px' }}>
+        <button
+          onClick={() => setTorneiosVisivel(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+            padding: '12px 14px', borderRadius: '10px', border: '1px solid #2a2a2a', backgroundColor: '#1a1a1a',
+            color: '#F0F2F5', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Award size={14} color="#fcc825" /> Torneios internos {torneios?.length ? `(${torneios.length})` : ''}
+          </span>
+          {torneiosVisivel ? <ChevronUp size={16} color="#555" /> : <ChevronDown size={16} color="#555" />}
+        </button>
+        {torneiosVisivel && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+            <button
+              onClick={() => setCriandoTorneio(true)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', width: '100%',
+                padding: '10px', borderRadius: '10px', border: '1px solid #2a2a2a', cursor: 'pointer',
+                backgroundColor: '#111', color: '#F0F2F5', fontSize: '12px', fontWeight: '600',
+              }}
+            >
+              <Plus size={14} /> Criar torneio
+            </button>
+            {!torneios?.length ? (
+              <div style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '#555' }}>Nenhum torneio cadastrado ainda.</div>
+            ) : (
+              torneios.map(t => <CardTorneio key={t.id} torneio={t} />)
+            )}
+          </div>
+        )}
+      </div>
+
       {criandoJogo && (
         <ModalCriarJogo modalidadeId={modalidadeId} onClose={() => setCriandoJogo(false)} />
+      )}
+      {criandoTorneio && (
+        <ModalCriarTorneio modalidadeId={modalidadeId} categorias={categorias} onClose={() => setCriandoTorneio(false)} />
       )}
     </div>
   )
