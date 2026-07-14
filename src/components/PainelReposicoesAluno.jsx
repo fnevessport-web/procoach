@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useReposicoesDoAluno } from '../hooks/useAulas'
 import { calcStatusPorPrazo } from '../constants/reposicao'
 import { Loading } from './ui/Loading'
+import { GradeSemanalReposicao } from './GradeSemanalReposicao'
 
 const STATUS_LABEL = {
   pendente: 'Pendente',
@@ -20,6 +22,10 @@ function fmtData(d) {
 export function PainelReposicoesAluno({ alunoId, alunoNome }) {
   const navigate = useNavigate()
   const { data: reposicoes, isLoading } = useReposicoesDoAluno(alunoId)
+  // { modalidadeId, proximaFalta } | null — mesma grade semanal usada em AulasAdmin.jsx pra
+  // escolher a aula de reposição, agora acessível direto daqui em vez do fluxo antigo
+  // (/agenda-aluno).
+  const [agendando, setAgendando] = useState(null)
 
   if (isLoading) return <Loading />
   if (!reposicoes?.length) {
@@ -31,6 +37,20 @@ export function PainelReposicoesAluno({ alunoId, alunoNome }) {
   function abrirAula(dataStr, aulaId) {
     if (!dataStr || !aulaId) return
     navigate('/aulas', { state: { data: dataStr, highlightAulaId: aulaId } })
+  }
+
+  // A baixa é sempre FIFO (a falta pendente mais antiga da modalidade) — não importa em qual
+  // card "Agendar reposição" foi clicado, então recalcula sempre a mais antiga de verdade pra
+  // a faixa "vai baixar" da grade não mostrar uma data errada.
+  function iniciarAgendamento(modalidadeId) {
+    const pendentesModalidade = (reposicoes || [])
+      .filter(r => r.status === 'pendente' && r.modalidades?.id === modalidadeId)
+      .sort((a, b) => (a.aula_origem?.data_aula || '').localeCompare(b.aula_origem?.data_aula || ''))
+    const maisAntiga = pendentesModalidade[0]
+    setAgendando({
+      modalidadeId,
+      proximaFalta: maisAntiga?.aula_origem?.data_aula ? { dataAula: maisAntiga.aula_origem.data_aula } : null,
+    })
   }
 
   return (
@@ -96,7 +116,7 @@ export function PainelReposicoesAluno({ alunoId, alunoNome }) {
                   </div>
                 </div>
                 <div
-                  onClick={e => { e.stopPropagation(); navigate('/agenda-aluno', { state: { alunoId, alunoNome, modalidadeId: r.modalidades?.id } }) }}
+                  onClick={e => { e.stopPropagation(); iniciarAgendamento(r.modalidades?.id) }}
                   style={{
                     width: '100%', marginTop: '10px', padding: '8px', borderRadius: '8px', border: 'none',
                     background: 'rgba(252,200,37,0.12)', color: '#fcc825', fontSize: '12px', fontWeight: '600',
@@ -110,6 +130,16 @@ export function PainelReposicoesAluno({ alunoId, alunoNome }) {
           </button>
         )
       })}
+
+      {agendando && (
+        <GradeSemanalReposicao
+          aluno={{ id: alunoId, nome: alunoNome }}
+          modalidadeId={agendando.modalidadeId}
+          proximaFalta={agendando.proximaFalta}
+          onVoltar={() => setAgendando(null)}
+          onFecharTudo={() => setAgendando(null)}
+        />
+      )}
     </div>
   )
 }

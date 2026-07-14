@@ -126,7 +126,14 @@ function isAulaFutura(dataAula, horarioInicio) {
 // professorProprioId: modo "Minhas Aulas" do professor — mesmo layout/modal do gestor, mas só
 // mostra as próprias aulas e esconde ações de gestor (editar aula, excluir, editar turma, ação em
 // massa). O professor continua podendo confirmar status, discutir a aula e mexer nos alunos.
-export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, professorProprioId = null }) {
+// podeMarcarPresenca: fatia estreita de escrita (adicionar aluno na lista, marcar
+// presente/falta, salvar presenças) sem liberar o resto das ações administrativas que
+// somenteLeitura trava (editar turma, mover horário, excluir aula, substituir professor,
+// confirmar/cancelar aula, ação em massa). Por padrão espelha `!somenteLeitura` — quem já
+// chamava esse componente sem passar essa prop continua com o comportamento de sempre
+// (gestor/coordenador com tudo liberado, financeiro/auxiliar/leitura só consulta). Só o
+// role recepção passa isso explicitamente `true` com `somenteLeitura` também `true`.
+export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMarcarPresenca = !somenteLeitura, professorProprioId = null }) {
   const { modalidadeSelecionada, setOrigemAulas, user, setNavRecolhida } = useAppStore()
   const alturaVisivel = useVisualViewportHeight()
   const qc = useQueryClient()
@@ -2368,7 +2375,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                           </button>
                         )}
                       </div>
-                      {!somenteLeitura && (
+                      {podeMarcarPresenca && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <button onClick={() => toggleAlertaNivel(aluno.aluno_id, aluno)} title="Alerta de nível" style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: temAlerta ? 'rgba(252,200,37,0.15)' : '#1a1a1a', color: temAlerta ? '#fcc825' : '#555' }}>
                             <AlertTriangle size={12} />
@@ -2396,7 +2403,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                       </div>
                     )}
 
-                    {ehNovo && !somenteLeitura && (
+                    {ehNovo && podeMarcarPresenca && (
                       <div style={{ marginBottom: '10px' }}>
                         <div style={{ fontSize: '11px', color: '#fcc825', fontWeight: '600', marginBottom: '6px' }}>
                           Novo aluno — como é a participação dele(a)?
@@ -2466,7 +2473,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                       </div>
                     )}
 
-                    {!aulaFutura && !somenteLeitura && (
+                    {!aulaFutura && podeMarcarPresenca && (
                       <div style={{ display: 'flex', gap: '6px' }}>
                         {STATUS_PRESENCA.map(sp => (
                           <button key={sp.value} onClick={() => updatePresenca(aula.id, aluno.aluno_id, 'status_presenca', sp.value)} style={{
@@ -2484,7 +2491,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
               })}
             </div>
 
-            {!somenteLeitura && (adicionandoAluno === aula.id ? (
+            {podeMarcarPresenca && (adicionandoAluno === aula.id ? (
               <div style={{ marginTop: '10px' }}>
                 <div style={{ position: 'relative', marginBottom: '8px' }}>
                   <input placeholder="Buscar aluno cadastrado..." value={buscaAdicionando}
@@ -2575,7 +2582,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
               </button>
             ))}
 
-            {!somenteLeitura && (
+            {podeMarcarPresenca && (
               <button onClick={() => handleSalvarPresencas(aula.id)} disabled={salvarPresencas.isPending} style={{
                 marginTop: '12px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
                 background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',

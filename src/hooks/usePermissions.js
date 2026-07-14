@@ -20,6 +20,7 @@ const PERMISSOES_POR_ROLE = {
     podeVerSino: true,
     podeVerDisponibilidade: true,
     podeEditarAvaliacaoTecnica: true,
+    podeIncluirAlunoAula: true,
     homeRoute: '/',
   },
   financeiro: {
@@ -36,6 +37,7 @@ const PERMISSOES_POR_ROLE = {
     podeVerSino: true,
     podeVerDisponibilidade: true,
     podeEditarAvaliacaoTecnica: false,
+    podeIncluirAlunoAula: false,
     homeRoute: '/',
   },
   coordenador: {
@@ -52,6 +54,7 @@ const PERMISSOES_POR_ROLE = {
     podeVerSino: true,
     podeVerDisponibilidade: true,
     podeEditarAvaliacaoTecnica: false,
+    podeIncluirAlunoAula: true,
     homeRoute: '/',
   },
   professor: {
@@ -67,6 +70,7 @@ const PERMISSOES_POR_ROLE = {
     podeVerInboxGeral: false,
     podeVerSino: true,
     podeEditarAvaliacaoTecnica: false,
+    podeIncluirAlunoAula: false,
     homeRoute: '/dashboard-professor',
   },
   auxiliar: {
@@ -82,6 +86,7 @@ const PERMISSOES_POR_ROLE = {
     podeVerInboxGeral: false,
     podeVerSino: false,
     podeEditarAvaliacaoTecnica: false,
+    podeIncluirAlunoAula: false,
     homeRoute: '/aulas',
   },
   leitura: {
@@ -98,7 +103,29 @@ const PERMISSOES_POR_ROLE = {
     podeVerSino: false,
     podeVerDisponibilidade: true,
     podeEditarAvaliacaoTecnica: false,
+    podeIncluirAlunoAula: false,
     homeRoute: '/',
+  },
+  // Recepção do clube — vê a grade de aulas igual todo mundo, pode incluir aluno na lista de
+  // presença e marcar presente/falta (podeIncluirAlunoAula), mas continua sem nenhum acesso
+  // administrativo (não edita turma, não move horário, não exclui aula, não substitui
+  // professor, sem financeiro/cadastros/KPIs) — só essa fatia específica da grade.
+  recepcao: {
+    podeAcessarCadastros: false,
+    podeEditarCadastros: false,
+    podeCadastrarAluno: false,
+    podeVerTodosSalarios: false,
+    podeAcessarFinanceiro: false,
+    podeEditarFinanceiro: false,
+    podeAcessarKPIs: false,
+    podeEditarAulas: false,
+    podeEditarPropriaAula: false,
+    podeVerInboxGeral: false,
+    podeVerSino: false,
+    podeVerDisponibilidade: true,
+    podeEditarAvaliacaoTecnica: false,
+    podeIncluirAlunoAula: true,
+    homeRoute: '/aulas',
   },
 }
 
