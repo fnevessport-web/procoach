@@ -132,7 +132,7 @@ export function AlunoCard({ alunoId }) {
   return (
     <div className="fade-in">
       {/* Foto + dados básicos */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '18px' }}>
         <div style={{ position: 'relative', width: 84, height: 84, flexShrink: 0 }}>
           <input ref={fotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadFoto} />
           <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', padding: '2px', boxSizing: 'border-box' }}>
@@ -163,6 +163,14 @@ export function AlunoCard({ alunoId }) {
               </span>
             )}
           </div>
+
+          {/* Conquistas — dentro da coluna do nome (não embaixo da foto inteira), pra ficar
+              logo abaixo do nome mesmo, sem o espaço vazio que sobrava quando a foto (mais alta
+              que o texto) empurrava esse bloco pra baixo. */}
+          <div style={{ marginTop: '6px' }}>
+            <ConquistasCard alunoId={aluno.id} />
+          </div>
+
           {aluno.telefone && (
             <button onClick={() => abrirWhatsApp(aluno.telefone)} style={{
               display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px',
@@ -174,9 +182,6 @@ export function AlunoCard({ alunoId }) {
           )}
         </div>
       </div>
-
-      {/* Conquistas */}
-      <ConquistasCard alunoId={aluno.id} />
 
       {/* Dados pessoais */}
       <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', border: '1px solid #2a2a2a', padding: '14px 16px', marginBottom: '20px' }}>

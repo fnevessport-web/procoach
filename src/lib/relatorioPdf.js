@@ -1281,7 +1281,7 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
   doc.roundedRect(margem, cursorY, colunaW, alturaBlocoRadar, 8, 8, 'F')
   doc.setDrawColor(215, 210, 200)
   doc.roundedRect(margem, cursorY, colunaW, alturaBlocoRadar, 8, 8, 'S')
-  desenharRadarPdf(doc, { cx: margem + colunaW / 2, cy: cursorY + alturaBlocoRadar / 2, raio: 48, dimensoes, cor: COR_VINHO })
+  desenharRadarPdf(doc, { cx: margem + colunaW / 2, cy: cursorY + alturaBlocoRadar / 2, raio: 48, dimensoes, cor: COR_MARINHO })
 
   const tabelaX = margem + colunaW + 16
   let linhaY = cursorY
@@ -1353,7 +1353,7 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
 
       desenharLinhaEvolucaoPdf(doc, {
         x: cardX + 8, y: cardY + alturaTitulo, largura: larguraCard - 16, altura: alturaCard - alturaTitulo - 14,
-        pontos: g.pontos, cor: COR_VINHO, valorFn: g.valorFn, min: g.min, max: g.max,
+        pontos: g.pontos, cor: COR_LARANJA, valorFn: g.valorFn, min: g.min, max: g.max,
         inverterEixo: g.inverterEixo, fonteValor: 6, casasDecimais: g.casasDecimais,
       })
     })

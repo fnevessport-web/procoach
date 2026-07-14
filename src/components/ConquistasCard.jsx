@@ -172,7 +172,7 @@ export function ConquistasCard({ alunoId }) {
   const desbloqueadas = catalogo.filter(c => minhasPorId[c.id]?.ativa)
 
   return (
-    <div style={{ marginTop: '2px', marginBottom: '20px' }}>
+    <div>
       {desbloqueadas.length > 0 && (
         <div style={{ marginBottom: '10px' }}>
           <FileiraConquistas conquistas={desbloqueadas} onSelecionar={setDetalheId} />
