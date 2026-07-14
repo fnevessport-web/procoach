@@ -133,25 +133,53 @@ export function AlunoCard({ alunoId }) {
     <div className="fade-in">
       {/* Foto + dados básicos */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '18px' }}>
-        <div style={{ position: 'relative', width: 84, height: 84, flexShrink: 0 }}>
-          <input ref={fotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadFoto} />
-          <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', padding: '2px', boxSizing: 'border-box' }}>
-            <div style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: '#1a1a1a', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {aluno.foto_url
-                ? <img src={aluno.foto_url} alt={aluno.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <SilhuetaAluno size={40} />
-              }
+        {/* Coluna esquerda: foto e, logo abaixo dela (mesma largura), o ranking */}
+        <div style={{ flexShrink: 0 }}>
+          <div style={{ position: 'relative', width: 84, height: 84 }}>
+            <input ref={fotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadFoto} />
+            <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', padding: '2px', boxSizing: 'border-box' }}>
+              <div style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: '#1a1a1a', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {aluno.foto_url
+                  ? <img src={aluno.foto_url} alt={aluno.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <SilhuetaAluno size={40} />
+                }
+              </div>
+            </div>
+            <button onClick={() => fotoInputRef.current?.click()} style={{
+              position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: '50%',
+              border: 'none', backgroundColor: '#fcc825', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {uploadandoFoto ? '...' : <Camera size={13} color="#110f0f" />}
+            </button>
+          </div>
+
+          {/* Ranking — placeholder até o módulo entrar em produção (só "-" por enquanto,
+              campo já deixado pronto pra receber a posição real depois). Mesma largura da
+              foto (2 quadrados de 40px + 4px de gap = 84px), bem abaixo dela. */}
+          <div style={{ display: 'flex', gap: '4px', marginTop: '10px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: '10px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '800', color: '#F0F2F5',
+              }}>
+                -
+              </div>
+              <div style={{ fontSize: '8px', color: '#555', marginTop: '3px' }}>Categoria</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: '10px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '800', color: '#F0F2F5',
+              }}>
+                -
+              </div>
+              <div style={{ fontSize: '8px', color: '#555', marginTop: '3px' }}>Geral</div>
             </div>
           </div>
-          <button onClick={() => fotoInputRef.current?.click()} style={{
-            position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: '50%',
-            border: 'none', backgroundColor: '#fcc825', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            {uploadandoFoto ? '...' : <Camera size={13} color="#110f0f" />}
-          </button>
         </div>
 
+        {/* Coluna direita: nome, conquistas e metas */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '18px', fontWeight: '800', color: '#F0F2F5', lineHeight: 1.25 }}>
             {aluno.nome}
@@ -169,30 +197,6 @@ export function AlunoCard({ alunoId }) {
               que o texto) empurrava esse bloco pra baixo. */}
           <div style={{ marginTop: '6px' }}>
             <ConquistasCard alunoId={aluno.id} />
-          </div>
-
-          {/* Ranking — placeholder até o módulo entrar em produção (só "-" por enquanto,
-              campo já deixado pronto pra receber a posição real depois). Mesma coluna das
-              conquistas acima, pra ficar alinhado/uniforme com aquele bloco. */}
-          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                width: 56, height: 56, borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '800', color: '#F0F2F5',
-              }}>
-                -
-              </div>
-              <div style={{ fontSize: '9px', color: '#555', marginTop: '4px' }}>Categoria</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                width: 56, height: 56, borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '800', color: '#F0F2F5',
-              }}>
-                -
-              </div>
-              <div style={{ fontSize: '9px', color: '#555', marginTop: '4px' }}>Geral</div>
-            </div>
           </div>
 
           {aluno.telefone && (
