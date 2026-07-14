@@ -171,7 +171,10 @@ export function TurmasPage({ onIrParaProfessores }) {
                         <span className="font-semibold text-[#F0F2F5]">{turma.nome}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#8B8FA8]">
-                        {turma.professores?.nome && <span>👨‍🏫 {turma.professores.nome}</span>}
+                        {turma.professores?.nome
+                          ? <span>👨‍🏫 {turma.professores.nome}</span>
+                          : <span style={{ color: '#e0a856' }}>⚠️ sem professor</span>
+                        }
                         {turma.horario_dia_semana && (
                           <span className="flex items-center gap-1">
                             <Clock size={11} />
@@ -235,8 +238,8 @@ export function TurmasPage({ onIrParaProfessores }) {
           </Select>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <Select label="Professor Titular" value={form.professor_titular_id} onChange={e => update('professor_titular_id', e.target.value)}>
-              <option value="">Selecione...</option>
+            <Select label="Professor Titular (opcional)" value={form.professor_titular_id} onChange={e => update('professor_titular_id', e.target.value)}>
+              <option value="">Sem professor definido ainda</option>
               {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
             </Select>
             {!professores?.length && form.modalidade_id && (

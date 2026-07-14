@@ -100,7 +100,11 @@ export function useTurma(id) {
 export function useSalvarTurma() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, alunos_ids = [], ...dados }) => {
+    mutationFn: async ({ id, alunos_ids = [], ...dadosBrutos }) => {
+      // professor_titular_id é opcional (turma pode existir sem professor definido ainda) —
+      // o formulário manda '' quando não selecionado, e '' não é um uuid válido pro Postgres
+      // (dava erro genérico em vez de simplesmente salvar sem professor).
+      const dados = { ...dadosBrutos, professor_titular_id: dadosBrutos.professor_titular_id || null }
       let turmaId = id
       if (id) {
         const { data: anterior } = await supabase.from('turmas').select('*').eq('id', id).single()

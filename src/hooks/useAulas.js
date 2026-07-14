@@ -679,8 +679,10 @@ export function useGerarAulas() {
 
       if (aulasParaInserir.length === 0) return 0
 
-      // paga_professor: false por padrão — só vira true quando professor confirmar a aula
-      aulasParaInserir.forEach(a => { a.paga_professor = false; a.status_aula = 'agendada' })
+      // paga_professor: false por padrão — só vira true quando professor confirmar a aula.
+      // (status_aula fica 'dada', já setado no push acima — 'agendada' não existe na
+      // constraint aulas_status_aula_check e travava a criação de qualquer turma nova.)
+      aulasParaInserir.forEach(a => { a.paga_professor = false })
 
       const { data: aulasCriadas, error } = await supabase
         .from('aulas')
