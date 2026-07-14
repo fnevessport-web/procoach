@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Camera, MessageCircle, ChevronRight, ClipboardList } from 'lucide-react'
+import { Camera, MessageCircle, ChevronRight, ClipboardList, Plus, Trophy } from 'lucide-react'
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -16,6 +16,7 @@ import { useReposicoesDoAluno } from '../hooks/useAulas'
 import { useProfessoresDoAlunoNaModalidade } from '../hooks/useProfessoresDoAluno'
 import { useAbrirConversaDoAluno } from '../hooks/useMensagens'
 import { calcStatusPorPrazo } from '../constants/reposicao'
+import { ICONES_MODALIDADES } from '../constants/modalidades'
 import { supabase } from '../lib/supabase'
 import useAppStore from '../store/useAppStore'
 import { Modal } from './ui/Modal'
@@ -94,6 +95,7 @@ export function AlunoCard({ alunoId }) {
   const { data: aluno, isLoading } = useAlunoCompleto(alunoId)
   const [uploadandoFoto, setUploadandoFoto] = useState(false)
   const [modalidadeSel, setModalidadeSel] = useState(null)
+  const [adicionandoModalidade, setAdicionandoModalidade] = useState(false)
   const fotoInputRef = useRef(null)
 
   async function handleUploadFoto(e) {
@@ -241,8 +243,20 @@ export function AlunoCard({ alunoId }) {
 
       {/* Modalidades */}
       <div>
-        <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', fontWeight: '700' }}>
-          Modalidades
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+          <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>
+            Modalidades
+          </div>
+          <button
+            onClick={() => setAdicionandoModalidade(true)}
+            title="Adicionar modalidade"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22,
+              borderRadius: '7px', border: 'none', backgroundColor: 'rgba(252,200,37,0.12)', color: '#fcc825', cursor: 'pointer',
+            }}
+          >
+            <Plus size={14} strokeWidth={2.5} />
+          </button>
         </div>
         {aluno.modalidadesDetalhe.length === 0 ? (
           <div style={{ fontSize: '12px', color: '#444' }}>Nenhuma modalidade matriculada</div>
@@ -250,6 +264,7 @@ export function AlunoCard({ alunoId }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {aluno.modalidadesDetalhe.map(m => {
               const cor = m.cor_hex || '#fcc825'
+              const icone = ICONES_MODALIDADES[m.nome]
               return (
                 <button key={m.id} onClick={() => setModalidadeSel(m)} style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
@@ -258,9 +273,12 @@ export function AlunoCard({ alunoId }) {
                 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: '10px', flexShrink: 0,
-                    backgroundColor: `${cor}1a`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px',
+                    backgroundColor: `${cor}1a`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
                   }}>
-                    {m.icone_emoji || '🏅'}
+                    {icone
+                      ? <img src={icone} alt={m.nome} style={{ width: 22, height: 22, objectFit: 'contain' }} />
+                      : <Trophy size={17} color={cor} />
+                    }
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '11px', fontWeight: '700', color: cor, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
@@ -277,6 +295,14 @@ export function AlunoCard({ alunoId }) {
           </div>
         )}
       </div>
+
+      {adicionandoModalidade && (
+        <ModalAdicionarModalidade
+          alunoId={aluno.id}
+          modalidadesJaVinculadas={aluno.modalidadesDetalhe.map(m => m.id)}
+          onClose={() => setAdicionandoModalidade(false)}
+        />
+      )}
 
       {/* Minhas Reposições */}
       <div style={{ marginTop: '20px' }}>
@@ -306,6 +332,84 @@ function DadoLinha({ label, valor, placeholder = 'Não informado', mostrarSempre
         {temValor ? valor : placeholder}
       </span>
     </div>
+  )
+}
+
+// Adiciona uma modalidade nova ao aluno sem mexer nas que ele já tem — diferente do fluxo de
+// edição completa em AlunosPage.jsx (que apaga e reinsere todo mundo), aqui é só um insert
+// simples pro botão "+" da ficha do aluno.
+function ModalAdicionarModalidade({ alunoId, modalidadesJaVinculadas, onClose }) {
+  const qc = useQueryClient()
+  const [adicionando, setAdicionando] = useState(null)
+  const { data: todasModalidades, isLoading } = useQuery({
+    queryKey: ['modalidades_clube'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('modalidades').select('id, nome, cor_hex').order('nome')
+      if (error) throw error
+      return data || []
+    },
+  })
+
+  const disponiveis = (todasModalidades || []).filter(m => !modalidadesJaVinculadas.includes(m.id))
+
+  async function handleAdicionar(modalidadeId) {
+    setAdicionando(modalidadeId)
+    try {
+      const { error } = await supabase.from('alunos_modalidades').insert({ aluno_id: alunoId, modalidade_id: modalidadeId })
+      if (error) throw error
+      qc.invalidateQueries({ queryKey: ['aluno_completo', alunoId] })
+      toast.success('Modalidade adicionada!', { style: toastStyle })
+      onClose()
+    } catch (err) {
+      toast.error('Erro ao adicionar modalidade: ' + err.message, { style: toastStyle })
+    } finally {
+      setAdicionando(null)
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Adicionar modalidade" size="sm">
+      {isLoading ? (
+        <Loading />
+      ) : disponiveis.length === 0 ? (
+        <div style={{ fontSize: '12px', color: '#444', textAlign: 'center', padding: '12px' }}>
+          O aluno já está matriculado em todas as modalidades do clube.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {disponiveis.map(m => {
+            const cor = m.cor_hex || '#fcc825'
+            const icone = ICONES_MODALIDADES[m.nome]
+            return (
+              <button
+                key={m.id}
+                onClick={() => handleAdicionar(m.id)}
+                disabled={!!adicionando}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  backgroundColor: '#111', border: `1px solid ${cor}33`, borderRadius: '12px',
+                  padding: '12px 14px', cursor: adicionando ? 'default' : 'pointer', textAlign: 'left', width: '100%',
+                  opacity: adicionando && adicionando !== m.id ? 0.5 : 1,
+                }}
+              >
+                <div style={{
+                  width: 32, height: 32, borderRadius: '9px', flexShrink: 0,
+                  backgroundColor: `${cor}1a`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+                }}>
+                  {icone
+                    ? <img src={icone} alt={m.nome} style={{ width: 20, height: 20, objectFit: 'contain' }} />
+                    : <Trophy size={15} color={cor} />
+                  }
+                </div>
+                <span style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>
+                  {adicionando === m.id ? 'Adicionando...' : m.nome}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </Modal>
   )
 }
 
