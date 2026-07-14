@@ -219,6 +219,7 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
   const [dataAvaliacao, setDataAvaliacao] = useState(avaliacaoParaEditar?.data_avaliacao || format(new Date(), 'yyyy-MM-dd'))
   const [etapa, setEtapa] = useState('preenchimento') // 'preenchimento' | 'resumo'
   const [subitemAberto, setSubitemAberto] = useState(null) // definição do subitem com a ajuda aberta, ou null
+  const [ajudaNotaAberta, setAjudaNotaAberta] = useState(false)
 
   const { data: dimensoes, isLoading: loadingDimensoes } = useDimensoesModalidade(modalidadeId)
   const { data: avaliacoesAnteriores } = useAvaliacoesModalidade(alunoId, modalidadeId)
@@ -485,7 +486,15 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
       {/* Nota geral */}
       <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <span style={{ fontSize: '12px', color: '#888' }}>Nota geral</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#888' }}>
+            Nota geral
+            <button onClick={() => setAjudaNotaAberta(true)} title="Como essa nota é calculada?" style={{
+              background: 'none', border: 'none', cursor: 'pointer', color: '#555',
+              padding: '2px', display: 'flex', alignItems: 'center',
+            }}>
+              <Info size={13} />
+            </button>
+          </span>
           <span style={{ fontSize: '22px', fontWeight: '800', color: '#fcc825' }}>
             {notaGeral != null ? formataNota(notaGeral) : '—'}
           </span>
@@ -545,6 +554,25 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
 
       <Modal open={!!subitemAberto} onClose={() => setSubitemAberto(null)} title={subitemAberto?.nome_dimensao} size="sm">
         {subitemAberto && <AjudaSubitem d={subitemAberto} />}
+      </Modal>
+
+      <Modal open={ajudaNotaAberta} onClose={() => setAjudaNotaAberta(false)} title="Nota geral" size="sm">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <p style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.5', margin: 0 }}>
+            É a média simples das notas de cada {gruposDominio.grupos.length > 0 ? 'domínio' : 'dimensão'} preenchidas
+            acima, na escala 1 a {escalaMax}.
+          </p>
+          {ehTenis && (
+            <p style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.5', margin: 0 }}>
+              Pra Tênis, essas mesmas notas por domínio também alimentam o PC Score — o índice de 1 a 100
+              (quanto menor, melhor o nível) que aparece no card do aluno, calculado com pesos por faixa etária.
+            </p>
+          )}
+          <p style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.5', margin: 0 }}>
+            Você pode sobrescrever esse valor manualmente pelo controle logo abaixo dele, se achar que a média
+            automática não reflete bem o nível do aluno.
+          </p>
+        </div>
       </Modal>
     </div>
   )
