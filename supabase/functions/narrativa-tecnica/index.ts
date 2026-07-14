@@ -39,7 +39,7 @@ function jsonResponse(body, status = 200) {
 
 // Monta o prompt em português, com os dados estruturados já resolvidos pelo app (nunca deixa
 // o modelo "adivinhar" nível ou faixa etária — isso já vem calculado por pcScore.js).
-function montarPrompt({ alunoNome, modalidadeNome, faixaEtariaLabel, dimensoes, pcScoreAtual, nivelAtualLabel, historico }) {
+function montarPrompt({ alunoNome, modalidadeNome, faixaEtariaLabel, dimensoes, pcScoreAtual, nivelAtualLabel, historico, comentarioProfessor }) {
   const entradasDimensoes = Object.entries(dimensoes || {})
   const ordenadas = [...entradasDimensoes].sort((a, b) => b[1] - a[1])
   const destaque = ordenadas[0]
@@ -51,6 +51,10 @@ function montarPrompt({ alunoNome, modalidadeNome, faixaEtariaLabel, dimensoes, 
     ? historico.map(h => `${h.dataAvaliacao}: PC Score ${h.pcScore}`).join(' · ')
     : 'nenhuma avaliação anterior — esta é a primeira avaliação registrada.'
 
+  const blocoObservacao = comentarioProfessor
+    ? `\n\nO professor também registrou esta observação sobre o aluno nesta avaliação: "${comentarioProfessor}"`
+    : ''
+
   return `Aluno: ${alunoNome || 'aluno'} · Modalidade: ${modalidadeNome} · Faixa etária: ${faixaEtariaLabel}
 
 PC Score atual: ${pcScoreAtual} (nível ${nivelAtualLabel}) — lembre-se: nesta escala, QUANTO MENOR o número, melhor o nível técnico.
@@ -59,9 +63,9 @@ Notas por dimensão nesta avaliação (escala 1 a 5, 5 é o melhor): ${linhasDim
 Dimensão em maior destaque: ${destaque?.[0]} (nota ${destaque?.[1]}).
 Dimensão que mais precisa de atenção: ${deficit?.[0]} (nota ${deficit?.[1]}).
 
-Histórico de PC Score em avaliações anteriores (mais recente primeiro, menor é melhor): ${linhasHistorico}
+Histórico de PC Score em avaliações anteriores (mais recente primeiro, menor é melhor): ${linhasHistorico}${blocoObservacao}
 
-Escreva um único parágrafo, em português do Brasil, analisando a evolução técnica desse aluno e apontando claramente qual deve ser o próximo foco de treino. Tom positivo, profissional e encorajador — mesmo se algum número tiver piorado, trate como parte natural da evolução, nunca de forma negativa ou desmotivadora.`
+Escreva um único parágrafo, em português do Brasil, analisando a evolução técnica desse aluno e apontando claramente qual deve ser o próximo foco de treino. Tom positivo, profissional e encorajador — mesmo se algum número tiver piorado, trate como parte natural da evolução, nunca de forma negativa ou desmotivadora.${comentarioProfessor ? ' Funda a observação do professor dentro do mesmo parágrafo, de forma natural — não cite entre aspas, não repita a frase literalmente, não trate como um bloco separado: é uma única análise, com uma única voz.' : ''}`
 }
 
 async function chamarClaude(prompt, apiKey) {
@@ -108,7 +112,7 @@ Deno.serve(async (req) => {
 
   const {
     avaliacaoId, alunoNome, modalidadeNome, faixaEtariaLabel,
-    dimensoes, pcScoreAtual, nivelAtualLabel, historico,
+    dimensoes, pcScoreAtual, nivelAtualLabel, historico, comentarioProfessor,
   } = payload || {}
 
   if (!avaliacaoId || !dimensoes || pcScoreAtual == null) {
@@ -127,7 +131,7 @@ Deno.serve(async (req) => {
     console.error('ANTHROPIC_API_KEY não configurada nos secrets da Edge Function')
   } else {
     try {
-      const prompt = montarPrompt({ alunoNome, modalidadeNome, faixaEtariaLabel, dimensoes, pcScoreAtual, nivelAtualLabel, historico })
+      const prompt = montarPrompt({ alunoNome, modalidadeNome, faixaEtariaLabel, dimensoes, pcScoreAtual, nivelAtualLabel, historico, comentarioProfessor })
       narrativa = await chamarClaude(prompt, apiKey)
       gerouComSucesso = true
     } catch (err) {

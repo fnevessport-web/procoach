@@ -366,15 +366,6 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
         </div>
       )}
 
-      {ultimaAvaliacao.comentario && (
-        <div>
-          <SecaoTitulo>Observação do professor</SecaoTitulo>
-          <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: '#111', fontSize: '12px', color: '#888', fontStyle: 'italic' }}>
-            "{ultimaAvaliacao.comentario}"
-          </div>
-        </div>
-      )}
-
       {/* Histórico completo + edição — exclusivo de quem tem podeEditarAvaliacaoTecnica
           (hoje só o role gestor). Mostra TODAS as avaliações (inclusive pendentes), não só a
           última confirmada — é justamente o que falta pro resto da tela, que só olha a

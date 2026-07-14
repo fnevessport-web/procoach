@@ -234,14 +234,14 @@ export function useAvaliacoesModalidade(alunoId, modalidadeId) {
 // avaliação por causa disso (1-2s de latência da Anthropic não deveria bloquear o
 // professor seguindo pro próximo aluno). A própria function já cai num texto de
 // fallback e grava sozinha em avaliacoes_tecnicas.narrativa_ia se algo falhar.
-function dispararNarrativaIA({ avaliacaoId, alunoNome, modalidadeNome, faixaEtaria, dimensoes, pcScore, historico }) {
+function dispararNarrativaIA({ avaliacaoId, alunoNome, modalidadeNome, faixaEtaria, dimensoes, pcScore, historico, comentario }) {
   const faixaLabel = FAIXAS_ETARIAS.find(f => f.chave === faixaEtaria)?.label || faixaEtaria
   const nivelLabel = nivelPorPcScore(pcScore)?.label || ''
   supabase.functions.invoke('narrativa-tecnica', {
     body: {
       avaliacaoId, alunoNome, modalidadeNome,
       faixaEtariaLabel: faixaLabel, dimensoes, pcScoreAtual: pcScore,
-      nivelAtualLabel: nivelLabel, historico,
+      nivelAtualLabel: nivelLabel, historico, comentarioProfessor: comentario || null,
     },
   }).catch(() => {
     // Sem internet / function fora do ar — a avaliação já foi salva com as notas certas,
@@ -304,7 +304,7 @@ export function useSalvarAvaliacao() {
       if (pcScore != null) {
         dispararNarrativaIA({
           avaliacaoId: nova.id, alunoNome, modalidadeNome, faixaEtaria, dimensoes, pcScore,
-          historico: historicoPcScore || [],
+          historico: historicoPcScore || [], comentario,
         })
         // Conquista é coisa "oficial" — só recalcula quando a avaliação já nasce confirmada
         // (sem outro professor titular pra confirmar). Uma pendente pode ainda mudar.
@@ -323,17 +323,19 @@ export function useSalvarAvaliacao() {
 }
 
 // Edição de uma avaliação já lançada — capacidade nova, exclusiva de quem tem
-// podeEditarAvaliacaoTecnica (hoje só o role gestor, ver usePermissions.js). Só atualiza os
-// campos da nota em si; diferente de useSalvarAvaliacao, não mexe em status/confirmação
-// multi-professor nem redispara narrativa da IA/concessão de badge — isso é fluxo de
-// avaliação NOVA, corrigir uma nota já lançada não deveria reabrir tudo isso de novo.
+// podeEditarAvaliacaoTecnica (hoje só o role gestor, ver usePermissions.js). Não mexe em
+// status/confirmação multi-professor nem concessão de conquista (isso é fluxo de avaliação
+// NOVA, corrigir uma nota já lançada não deveria reabrir tudo isso de novo) — mas REDISPARA a
+// narrativa da IA quando pcScore existe, porque agora ela funde as notas com o comentário do
+// professor (ver Fase 3): editar o comentário sem regerar deixaria o texto salvo desatualizado
+// e o comentário editado sem aparecer em lugar nenhum.
 // Registra em audit_log (dados_anteriores/dados_novos) porque reescrever a avaliação de um
 // professor é uma ação sensível — precisa ficar rastreável quem mudou o quê.
 export function useEditarAvaliacao() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({
-      avaliacaoId,
+      avaliacaoId, alunoNome, modalidadeNome, historicoPcScore,
       dimensoes, notaGeral, notaGeralManual, comentario, dataAvaliacao, pcScore, faixaEtaria,
     }) => {
       const { data: anterior } = await supabase.from('avaliacoes_tecnicas').select('*').eq('id', avaliacaoId).single()
@@ -349,6 +351,14 @@ export function useEditarAvaliacao() {
       if (error) throw error
 
       await logAudit('avaliacoes_tecnicas', avaliacaoId, 'UPDATE', anterior, atualizada)
+
+      if (pcScore != null) {
+        dispararNarrativaIA({
+          avaliacaoId, alunoNome, modalidadeNome, faixaEtaria, dimensoes, pcScore,
+          historico: historicoPcScore || [], comentario,
+        })
+      }
+
       return atualizada
     },
     onSuccess: (_, { alunoId, modalidadeId }) => {

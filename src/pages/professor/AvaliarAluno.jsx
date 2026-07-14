@@ -294,9 +294,14 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
     }
     try {
       let mensagemSucesso = '✅ Avaliação atualizada!'
+      const historicoPcScore = (avaliacoesAnteriores || [])
+        .slice(-4)
+        .filter(a => a.pc_score != null)
+        .map(a => ({ dataAvaliacao: a.data_avaliacao, pcScore: a.pc_score }))
+
       if (avaliacaoParaEditar) {
         await editarAvaliacao.mutateAsync({
-          avaliacaoId: avaliacaoParaEditar.id, alunoId, modalidadeId,
+          avaliacaoId: avaliacaoParaEditar.id, alunoId, modalidadeId, alunoNome, modalidadeNome,
           dimensoes: valores,
           notaGeral,
           notaGeralManual: notaManual != null,
@@ -304,13 +309,9 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
           dataAvaliacao,
           pcScore: resultadoPcScore?.pcScore ?? null,
           faixaEtaria: resultadoPcScore?.faixaEtaria ?? null,
+          historicoPcScore,
         })
       } else {
-        const historicoPcScore = (avaliacoesAnteriores || [])
-          .slice(-4)
-          .filter(a => a.pc_score != null)
-          .map(a => ({ dataAvaliacao: a.data_avaliacao, pcScore: a.pc_score }))
-
         const avaliacaoSalva = await salvarAvaliacao.mutateAsync({
           alunoId, modalidadeId, professorId, professorNome, alunoNome, modalidadeNome,
           dimensoes: valores,
