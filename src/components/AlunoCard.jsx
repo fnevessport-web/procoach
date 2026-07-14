@@ -183,6 +183,29 @@ export function AlunoCard({ alunoId }) {
         </div>
       </div>
 
+      {/* Ranking — placeholder até o módulo de ranking entrar em produção (só "-" por
+          enquanto, campo já deixado pronto pra receber a posição real depois). */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '800', color: '#F0F2F5',
+          }}>
+            -
+          </div>
+          <div style={{ fontSize: '9px', color: '#555', marginTop: '4px' }}>Categoria</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '800', color: '#F0F2F5',
+          }}>
+            -
+          </div>
+          <div style={{ fontSize: '9px', color: '#555', marginTop: '4px' }}>Geral</div>
+        </div>
+      </div>
+
       {/* Dados pessoais */}
       <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', border: '1px solid #2a2a2a', padding: '14px 16px', marginBottom: '20px' }}>
         <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', fontWeight: '700' }}>
