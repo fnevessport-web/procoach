@@ -1,10 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { logAudit } from '../lib/audit'
-import { format, subMonths, subDays } from 'date-fns'
+import { format, subDays } from 'date-fns'
 import { getModalidadeDaAula } from '../constants/modalidades'
 import { nivelPorPcScore, FAIXAS_ETARIAS, REAVALIACAO_PRAZO_DIAS } from '../lib/pcScore'
-import { badgesTecnicosElegiveis } from '../constants/badges'
 import { buscarProfessoresDoAlunoNaModalidade } from './useProfessoresDoAluno'
 import { criarAlerta } from './useAlertas'
 import { verificarEAtualizarConquistas } from './useConquistas'
@@ -60,67 +59,19 @@ export function useExcluirAluno() {
   })
 }
 
-// Badges (Fase 3): confere as condições de cada selo e concede os que faltam. Chamado a
-// cada carregamento do card do aluno — sem cron, "de graça" (mesmo padrão de
-// confirmarAulasElegiveis/expirarReposicoesPendentesVencidas em useAulas.js). Idempotente
-// via unique(aluno_id, tipo_badge) + upsert ignorando duplicata.
-export async function verificarEConcederBadges(alunoId) {
-  try {
-    const { data: jaConcedidos } = await supabase
-      .from('badges_aluno').select('tipo_badge').eq('aluno_id', alunoId)
-    const concedidos = new Set((jaConcedidos || []).map(b => b.tipo_badge))
-    const novos = []
-
-    // primeira_aula / 10_aulas — presenças confirmadas em qualquer modalidade
-    if (!concedidos.has('primeira_aula') || !concedidos.has('10_aulas')) {
-      const { data: presencas } = await supabase
-        .from('presencas').select('presente, status_presenca').eq('aluno_id', alunoId)
-      const confirmadas = (presencas || []).filter(p => p.status_presenca === 'presente' || p.presente).length
-      if (confirmadas >= 1 && !concedidos.has('primeira_aula')) novos.push('primeira_aula')
-      if (confirmadas >= 10 && !concedidos.has('10_aulas')) novos.push('10_aulas')
-    }
-
-    // 3_meses_sem_falta — nenhuma falta (não justificada) nos últimos 90 dias
-    if (!concedidos.has('3_meses_sem_falta')) {
-      const tresMesesAtras = format(subMonths(new Date(), 3), 'yyyy-MM-dd')
-      const { data: faltas } = await supabase
-        .from('presencas')
-        .select('id, aulas!inner(data_aula)')
-        .eq('aluno_id', alunoId)
-        .eq('status_presenca', 'falta')
-        .gte('aulas.data_aula', tresMesesAtras)
-      if (!faltas?.length) novos.push('3_meses_sem_falta')
-    }
-
-    // evoluiu_nivel é concedido diretamente por useAtualizarNivelModalidade (no momento da
-    // troca), não recalculado aqui.
-
-    if (novos.length > 0) {
-      await supabase.from('badges_aluno').upsert(
-        novos.map(tipo => ({ aluno_id: alunoId, tipo_badge: tipo })),
-        { onConflict: 'aluno_id,tipo_badge', ignoreDuplicates: true }
-      )
-    }
-  } catch {
-    // não trava o card por causa disso
-  }
-}
-
 // Aluno + vínculos familiares + modalidades matriculadas (com o nível ativo de cada
-// uma, se já houver histórico registrado em aluno_modalidade_nivel) + badges conquistados.
+// uma, se já houver histórico registrado em aluno_modalidade_nivel).
 export function useAlunoCompleto(alunoId) {
   return useQuery({
     queryKey: ['aluno_completo', alunoId],
     queryFn: async () => {
-      await verificarEConcederBadges(alunoId)
       await verificarEAtualizarConquistas(alunoId)
 
-      const [{ data: aluno, error: erroAluno }, { data: familia }, { data: modsAluno }, { data: niveisAtivos }, { data: badges }, { data: presencasAluno }] = await Promise.all([
+      const [{ data: aluno, error: erroAluno }, { data: familia }, { data: modsAluno }, { data: niveisAtivos }, { data: presencasAluno }] = await Promise.all([
         supabase.from('alunos').select('*').eq('id', alunoId).single(),
         supabase.from('aluno_familia').select('*, vinculo:alunos!vinculo_aluno_id(id, nome)').eq('aluno_id', alunoId).order('created_at'),
         supabase.from('alunos_modalidades').select('created_at, modalidade_id, modalidades(id, nome, icone_emoji, cor_hex)').eq('aluno_id', alunoId),
         supabase.from('aluno_modalidade_nivel').select('*').eq('aluno_id', alunoId).eq('ativo', true),
-        supabase.from('badges_aluno').select('*').eq('aluno_id', alunoId),
         // Só pra achar a data real de entrada em cada modalidade (primeira aula que o aluno
         // de fato teve) — alunos_modalidades.created_at não serve pra isso porque a linha pode
         // ter sido criada bem depois (ex.: backfill), sem relação com quando o aluno começou.
@@ -165,7 +116,7 @@ export function useAlunoCompleto(alunoId) {
         }
       })
 
-      return { ...aluno, familia: familia || [], modalidadesDetalhe, badges: badges || [] }
+      return { ...aluno, familia: familia || [], modalidadesDetalhe }
     },
     enabled: !!alunoId,
   })
@@ -298,24 +249,6 @@ function dispararNarrativaIA({ avaliacaoId, alunoNome, modalidadeNome, faixaEtar
   })
 }
 
-// Concede badges técnicos elegíveis a partir do histórico atualizado (pós-insert) — usa a
-// mesma regra pura de src/constants/badges.js, então ajustar uma regra lá já vale aqui
-// sem precisar tocar neste arquivo.
-async function concederBadgesTecnicos(alunoId, modalidadeId) {
-  const { data: avaliacoes } = await supabase
-    .from('avaliacoes_tecnicas')
-    .select('data_avaliacao, pc_score, dimensoes')
-    .eq('aluno_id', alunoId)
-    .eq('modalidade_id', modalidadeId)
-    .order('data_avaliacao', { ascending: true })
-  const elegiveis = badgesTecnicosElegiveis(avaliacoes || [])
-  if (elegiveis.length === 0) return
-  await supabase.from('badges_aluno').upsert(
-    elegiveis.map(tipo_badge => ({ aluno_id: alunoId, tipo_badge })),
-    { onConflict: 'aluno_id,tipo_badge', ignoreDuplicates: true }
-  )
-}
-
 // Se o aluno tem mais de um professor titular na modalidade avaliada, a avaliação nasce
 // 'pendente' (e cria uma linha de confirmação + um alerta pra cada um dos outros) em vez de
 // 'confirmada' direto — ninguém deve ver uma nota que ainda pode ser corrigida em conjunto.
@@ -373,10 +306,9 @@ export function useSalvarAvaliacao() {
           avaliacaoId: nova.id, alunoNome, modalidadeNome, faixaEtaria, dimensoes, pcScore,
           historico: historicoPcScore || [],
         })
-        // Badge/conquista é coisa "oficial" — só concede quando a avaliação já nasce
-        // confirmada (sem outro professor titular pra confirmar). Uma pendente pode ainda mudar.
+        // Conquista é coisa "oficial" — só recalcula quando a avaliação já nasce confirmada
+        // (sem outro professor titular pra confirmar). Uma pendente pode ainda mudar.
         if (avaliacaoFinal.status === 'confirmada') {
-          await concederBadgesTecnicos(alunoId, modalidadeId)
           await verificarEAtualizarConquistas(alunoId)
         }
       }
@@ -458,7 +390,7 @@ export function usePendenciasConfirmacao(professorId) {
 export function useConfirmarAvaliacaoTecnica() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ confirmacaoId, avaliacaoId, alunoId, modalidadeId }) => {
+    mutationFn: async ({ confirmacaoId, avaliacaoId, alunoId }) => {
       const { error } = await supabase
         .from('avaliacoes_tecnicas_confirmacoes')
         .update({ confirmado_em: new Date().toISOString() })
@@ -473,7 +405,6 @@ export function useConfirmarAvaliacaoTecnica() {
 
       if (faltam === 0) {
         await supabase.from('avaliacoes_tecnicas').update({ status: 'confirmada' }).eq('id', avaliacaoId)
-        await concederBadgesTecnicos(alunoId, modalidadeId)
         await verificarEAtualizarConquistas(alunoId)
       }
     },
@@ -504,8 +435,7 @@ export function useAtualizarFaixaEtariaManual() {
 
 // Atualiza o nível do aluno numa modalidade (Fase 3, usado no formulário de avaliação) —
 // nunca sobrescreve o registro anterior, sempre insere um novo e desativa o(s) antigo(s)
-// (mesma regra de "histórico, nunca overwrite" definida na Fase 1). Concede o badge
-// evoluiu_nivel diretamente aqui, no momento da troca.
+// (mesma regra de "histórico, nunca overwrite" definida na Fase 1).
 export function useAtualizarNivelModalidade() {
   const qc = useQueryClient()
   return useMutation({
@@ -525,9 +455,6 @@ export function useAtualizarNivelModalidade() {
         ativo: true,
       })
       if (error) throw error
-
-      await supabase.from('badges_aluno')
-        .upsert({ aluno_id: alunoId, tipo_badge: 'evoluiu_nivel' }, { onConflict: 'aluno_id,tipo_badge', ignoreDuplicates: true })
     },
     onSuccess: (_, { alunoId, modalidadeId }) => {
       qc.invalidateQueries({ queryKey: ['aluno_completo', alunoId] })

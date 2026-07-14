@@ -16,7 +16,6 @@ import { useReposicoesDoAluno } from '../hooks/useAulas'
 import { useProfessoresDoAlunoNaModalidade } from '../hooks/useProfessoresDoAluno'
 import { useAbrirConversaDoAluno } from '../hooks/useMensagens'
 import { calcStatusPorPrazo } from '../constants/reposicao'
-import { BADGES } from '../constants/badges'
 import { supabase } from '../lib/supabase'
 import useAppStore from '../store/useAppStore'
 import { Modal } from './ui/Modal'
@@ -160,19 +159,6 @@ export function AlunoCard({ alunoId }) {
                 menor de idade
               </span>
             )}
-            {aluno.badges.map(b => {
-              const info = BADGES[b.tipo_badge]
-              if (!info) return null
-              return (
-                <span key={b.id} title={info.label} style={{
-                  fontSize: '10px', padding: '2px 7px', borderRadius: '5px',
-                  backgroundColor: 'rgba(255,255,255,0.06)', color: '#F0F2F5', fontWeight: '600',
-                  display: 'flex', alignItems: 'center', gap: '3px',
-                }}>
-                  {info.emoji} {info.label}
-                </span>
-              )
-            })}
           </div>
           {aluno.telefone && (
             <button onClick={() => abrirWhatsApp(aluno.telefone)} style={{

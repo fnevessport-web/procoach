@@ -14,9 +14,11 @@ function progressoPct(minha) {
   return Math.min(100, Math.round((minha.progresso_atual / minha.progresso_alvo) * 100))
 }
 
-// Mini-card retangular — usado tanto na fileira de conquistadas do Card do Aluno (item A.5)
-// quanto (numa versão maior) dentro do catálogo completo (A.6).
-function IconeConquista({ icone, nome, tamanho, desbloqueada }) {
+// Mini-card retangular — usado tanto no catálogo completo (A.6) quanto no modal de detalhe
+// (A.7). `mostrarCheck` fica desligado na fileira de "figurinhas" do Card do Aluno (item A.5)
+// e da Evolução Técnica, onde só aparecem itens já desbloqueados — o selo verde de check ali
+// seria redundante (só faz sentido quando tem bloqueada do lado pra comparar, como no catálogo).
+function IconeConquista({ icone, nome, tamanho, desbloqueada, mostrarCheck = true }) {
   const url = ICONE_CONQUISTA_URL[icone]
   return (
     <div style={{ position: 'relative', width: tamanho, height: tamanho, flexShrink: 0 }}>
@@ -26,7 +28,7 @@ function IconeConquista({ icone, nome, tamanho, desbloqueada }) {
           style={{ borderRadius: '20%', display: 'block', filter: desbloqueada ? 'none' : 'grayscale(1)', opacity: desbloqueada ? 1 : 0.55 }}
         />
       )}
-      {desbloqueada && (
+      {desbloqueada && mostrarCheck && (
         <span style={{
           position: 'absolute', bottom: -2, right: -2, width: 15, height: 15, borderRadius: '50%',
           backgroundColor: '#22c55e', border: '2px solid #110f0f',
@@ -35,6 +37,33 @@ function IconeConquista({ icone, nome, tamanho, desbloqueada }) {
           <Check size={8} color="white" strokeWidth={3.5} />
         </span>
       )}
+    </div>
+  )
+}
+
+// Fileira de "figurinhas" das conquistas já desbloqueadas — ícone grande em destaque, nome
+// embaixo em cinza, sem fundo/borda/check (minimalista, pedido explícito do usuário). Usada
+// tanto no Card do Aluno (logo abaixo do nome) quanto dentro do detalhe de Evolução Técnica.
+export function FileiraConquistas({ conquistas, onSelecionar }) {
+  if (!conquistas?.length) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
+      {conquistas.map(c => (
+        <button
+          key={c.id}
+          onClick={() => onSelecionar?.(c.id)}
+          title={c.nome}
+          style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px',
+            width: 64, border: 'none', background: 'none', cursor: onSelecionar ? 'pointer' : 'default', padding: 0,
+          }}
+        >
+          <IconeConquista icone={c.icone} nome={c.nome} tamanho={40} desbloqueada mostrarCheck={false} />
+          <span style={{ fontSize: '10px', color: '#888', textAlign: 'center', lineHeight: '1.25' }}>
+            {c.nome}
+          </span>
+        </button>
+      ))}
     </div>
   )
 }
@@ -145,21 +174,8 @@ export function ConquistasCard({ alunoId }) {
   return (
     <div style={{ marginTop: '10px' }}>
       {desbloqueadas.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-          {desbloqueadas.map(c => (
-            <button
-              key={c.id}
-              onClick={() => setDetalheId(c.id)}
-              title={c.nome}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px 4px 4px',
-                borderRadius: '10px', border: '1px solid #2a2a2a', backgroundColor: '#1a1a1a', cursor: 'pointer',
-              }}
-            >
-              <IconeConquista icone={c.icone} nome={c.nome} tamanho={24} desbloqueada />
-              <span style={{ fontSize: '11px', fontWeight: '600', color: '#F0F2F5', whiteSpace: 'nowrap' }}>{c.nome}</span>
-            </button>
-          ))}
+        <div style={{ marginBottom: '10px' }}>
+          <FileiraConquistas conquistas={desbloqueadas} onSelecionar={setDetalheId} />
         </div>
       )}
 

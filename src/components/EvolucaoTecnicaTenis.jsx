@@ -8,11 +8,11 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronDown, ChevronUp, HelpCircle, AlertTriangle, Download, Pencil } from 'lucide-react'
 import { NIVEIS_PC_SCORE, nivelPorPcScore, precisaReavaliar, REAVALIACAO_PRAZO_DIAS, calcularMediasDominios } from '../lib/pcScore'
-import { BADGES } from '../constants/badges'
 import { MODALIDADE_EMPRESA } from '../constants/modalidades'
 import { exportarEvolucaoTecnicaPDF } from '../lib/relatorioPdf'
 import { usePermissions } from '../hooks/usePermissions'
 import { useCatalogoConquistas, useConquistasDoAluno } from '../hooks/useConquistas'
+import { FileiraConquistas } from './ConquistasCard'
 import toast from 'react-hot-toast'
 
 const toastStyle = {
@@ -125,10 +125,8 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
     pcScore: a.pc_score,
   }))
 
-  // Badges (sistema antigo, emoji) — continua alimentando só a seção "Conquistas" mostrada
-  // em tela mais abaixo, sem mudança. O PDF agora usa o catálogo novo (conquistasDesbloqueadas),
-  // que tem ícone SVG de verdade — ver item 4.3.
-  const badgesConquistados = (aluno.badges || []).filter(b => BADGES[b.tipo_badge])
+  // Conquistas desbloqueadas (catálogo novo, com ícone SVG oficial) — alimenta tanto a seção
+  // "Conquistas" em tela (estilo figurinha) quanto o PDF.
   const minhasConquistasPorId = Object.fromEntries((minhasConquistas || []).map(m => [m.conquista_id, m]))
   const conquistasDesbloqueadas = (catalogoConquistas || []).filter(c => minhasConquistasPorId[c.id]?.ativa)
 
@@ -360,24 +358,11 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
         )}
       </div>
 
-      {/* Badges */}
-      {badgesConquistados.length > 0 && (
+      {/* Conquistas */}
+      {conquistasDesbloqueadas.length > 0 && (
         <div>
           <SecaoTitulo>Conquistas</SecaoTitulo>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {badgesConquistados.map(b => {
-              const info = BADGES[b.tipo_badge]
-              return (
-                <span key={b.id} style={{
-                  fontSize: '11px', padding: '5px 10px', borderRadius: '7px',
-                  backgroundColor: 'rgba(255,255,255,0.06)', color: '#F0F2F5', fontWeight: '600',
-                  display: 'flex', alignItems: 'center', gap: '5px',
-                }}>
-                  {info.emoji} {info.label}
-                </span>
-              )
-            })}
-          </div>
+          <FileiraConquistas conquistas={conquistasDesbloqueadas} />
         </div>
       )}
 
