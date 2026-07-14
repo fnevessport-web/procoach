@@ -1300,63 +1300,65 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
     linhaY += alturaLinha
   })
 
-  cursorY += alturaBlocoRadar + 16
+  cursorY += alturaBlocoRadar + 12
 
-  // ---------- Evolução do PC Score (principal, em destaque) + mini-gráficos por domínio ----------
+  // ---------- Evolução — grade uniforme: PC Score + os 5 domínios, todos do mesmo tamanho ----------
+  // Antes o gráfico do PC Score era um card enorme sozinho e os domínios ficavam espremidos
+  // numa fileira embaixo; agora os 6 entram juntos numa mesma grade (3 colunas), todos com a
+  // mesma "moldura" — resolve tanto o tamanho desproporcional quanto o excesso de altura que
+  // jogava o relatório pra uma segunda página.
+  const graficosEvolucao = []
   if (evolucaoPcScore?.length > 1) {
+    graficosEvolucao.push({ nome: 'PC Score', pontos: evolucaoPcScore, valorFn: p => p.pcScore, min: 1, max: 100, inverterEixo: true, casasDecimais: 0 })
+  }
+  ;(evolucaoPorDominio || []).forEach(dom => {
+    if (dom.pontos.length > 1) graficosEvolucao.push({ nome: dom.nome, pontos: dom.pontos, valorFn: p => p.valor, min: 0, max: 10, inverterEixo: false, casasDecimais: 1 })
+  })
+
+  if (graficosEvolucao.length > 0) {
     fontePadrao('bold', 9)
     doc.setTextColor(...COR_TINTA)
     doc.text('EVOLUÇÃO DO PC SCORE', margem, cursorY)
     cursorY += 12
 
-    // Gráfico principal em destaque, num card do mesmo tamanho/estilo do bloco "Perfil
-    // técnico" acima — antes era bem menor que os outros gráficos da página.
-    const alturaGraficoBox = 95
-    doc.setFillColor(...COR_BRANCO)
-    doc.roundedRect(margem, cursorY, larguraUtil, alturaGraficoBox, 8, 8, 'F')
-    doc.setDrawColor(215, 210, 200)
-    doc.roundedRect(margem, cursorY, larguraUtil, alturaGraficoBox, 8, 8, 'S')
-    desenharLinhaEvolucaoPdf(doc, {
-      x: margem + 16, y: cursorY + 20, largura: larguraUtil - 32, altura: alturaGraficoBox - 40,
-      pontos: evolucaoPcScore, cor: COR_VINHO,
-    })
-    cursorY += alturaGraficoBox + 16
+    const colunas = 3
+    const gap = 10
+    const larguraCard = (larguraUtil - gap * (colunas - 1)) / colunas
+    const alturaCard = 68
+    const alturaTitulo = 19
+    const linhas = Math.ceil(graficosEvolucao.length / colunas)
+    const gridY = cursorY
 
-    if (evolucaoPorDominio?.length > 0) {
-      // Um mini-gráfico por domínio, cada um no seu próprio card — mesmo espaçamento entre
-      // eles (gap) e a mesma "moldura" visual do gráfico principal, só menor.
-      const gap = 10
-      const larguraMini = (larguraUtil - gap * (evolucaoPorDominio.length - 1)) / evolucaoPorDominio.length
-      const alturaCardMini = 68
-      const miniY = cursorY
-      evolucaoPorDominio.forEach((dom, i) => {
-        const miniX = margem + i * (larguraMini + gap)
-        doc.setFillColor(...COR_BRANCO)
-        doc.roundedRect(miniX, miniY, larguraMini, alturaCardMini, 6, 6, 'F')
-        doc.setDrawColor(215, 210, 200)
-        doc.roundedRect(miniX, miniY, larguraMini, alturaCardMini, 6, 6, 'S')
+    graficosEvolucao.forEach((g, i) => {
+      const col = i % colunas
+      const linha = Math.floor(i / colunas)
+      const cardX = margem + col * (larguraCard + gap)
+      const cardY = gridY + linha * (alturaCard + gap)
 
-        fontePadrao('bold', 6.5)
-        doc.setTextColor(...COR_TEXTO_SUAVE)
-        const palavras = dom.nome.toUpperCase().split(' ')
-        let tituloFimY = miniY + 11
-        if (palavras.length > 1) {
-          const meio = Math.ceil(palavras.length / 2)
-          doc.text(palavras.slice(0, meio).join(' '), miniX + larguraMini / 2, tituloFimY, { align: 'center' })
-          doc.text(palavras.slice(meio).join(' '), miniX + larguraMini / 2, tituloFimY + 8, { align: 'center' })
-          tituloFimY += 8
-        } else {
-          doc.text(palavras.join(' '), miniX + larguraMini / 2, tituloFimY, { align: 'center' })
-        }
+      doc.setFillColor(...COR_BRANCO)
+      doc.roundedRect(cardX, cardY, larguraCard, alturaCard, 6, 6, 'F')
+      doc.setDrawColor(215, 210, 200)
+      doc.roundedRect(cardX, cardY, larguraCard, alturaCard, 6, 6, 'S')
 
-        desenharLinhaEvolucaoPdf(doc, {
-          x: miniX + 8, y: tituloFimY + 8, largura: larguraMini - 16, altura: 20,
-          pontos: dom.pontos, cor: COR_VINHO, valorFn: p => p.valor, min: 0, max: 10,
-          inverterEixo: false, fonteValor: 6, casasDecimais: 1,
-        })
+      fontePadrao('bold', 6.5)
+      doc.setTextColor(...COR_TEXTO_SUAVE)
+      const palavras = g.nome.toUpperCase().split(' ')
+      if (palavras.length > 1) {
+        const meio = Math.ceil(palavras.length / 2)
+        doc.text(palavras.slice(0, meio).join(' '), cardX + larguraCard / 2, cardY + 11, { align: 'center' })
+        doc.text(palavras.slice(meio).join(' '), cardX + larguraCard / 2, cardY + 19, { align: 'center' })
+      } else {
+        doc.text(palavras.join(' '), cardX + larguraCard / 2, cardY + 15, { align: 'center' })
+      }
+
+      desenharLinhaEvolucaoPdf(doc, {
+        x: cardX + 8, y: cardY + alturaTitulo, largura: larguraCard - 16, altura: alturaCard - alturaTitulo - 14,
+        pontos: g.pontos, cor: COR_VINHO, valorFn: g.valorFn, min: g.min, max: g.max,
+        inverterEixo: g.inverterEixo, fonteValor: 6, casasDecimais: g.casasDecimais,
       })
-      cursorY = miniY + alturaCardMini + 16
-    }
+    })
+
+    cursorY = gridY + linhas * alturaCard + (linhas - 1) * gap + 16
   }
 
   // ---------- Análise inteligente ----------
@@ -1372,7 +1374,7 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
     doc.setFillColor(...COR_BRANCO)
     doc.roundedRect(margem, cursorY, larguraUtil, alturaTexto, 8, 8, 'F')
     doc.text(linhas, margem + 10, cursorY + 14)
-    cursorY += alturaTexto + 16
+    cursorY += alturaTexto + 10
   }
 
   // ---------- Conquistas ----------

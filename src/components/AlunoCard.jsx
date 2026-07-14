@@ -132,7 +132,7 @@ export function AlunoCard({ alunoId }) {
   return (
     <div className="fade-in">
       {/* Foto + dados básicos */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '10px' }}>
         <div style={{ position: 'relative', width: 84, height: 84, flexShrink: 0 }}>
           <input ref={fotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadFoto} />
           <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', padding: '2px', boxSizing: 'border-box' }}>
