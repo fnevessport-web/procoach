@@ -1172,12 +1172,25 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
     }
   }
 
+  // Excluir aula nunca ficava registrada em audit_log (diferente de praticamente toda outra
+  // ação de aula/turma nessa tela) — uma exclusão sem querer não deixava rastro nenhum de quem
+  // fez, quando, nem de qual aula era, tornando impossível saber depois o que sumiu e recriar.
+  // Salva o snapshot ANTES de apagar, já que depois do delete não sobra nada pra reconstruir.
   async function handleExcluirAula(aulaId) {
     try {
+      const aula = aulas?.find(a => a.id === aulaId)
       await supabase.from('presencas').delete().eq('aula_id', aulaId)
       await supabase.from('reposicoes').delete().eq('aula_origem_id', aulaId)
       const { error } = await supabase.from('aulas').delete().eq('id', aulaId)
       if (error) throw error
+      await logAudit('aulas', aulaId, 'DELETE',
+        {
+          turma: getNivel(aula) || aula?.turmas?.nome, horario: getHorario(aula), data: aula?.data_aula,
+          professor: aula?.professores?.nome, quadra: getQuadraNome(aula),
+          alunos: (aula?.presencas || []).map(p => p.alunos?.nome).filter(Boolean),
+        },
+        null
+      )
       qc.invalidateQueries({ queryKey: ['aulas'] })
       toast.success('Aula excluída!', { style: toastStyle })
       fecharModal()

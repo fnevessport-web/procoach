@@ -1288,11 +1288,24 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
       const quadraNome = quadras?.find(q => q.id === form.quadra_id)?.nome
         || todasQuadras?.find(q => q.id === form.quadra_id)?.nome || ''
 
-      const { data: aulasExistentes } = await supabase
-        .from('aulas').select('id').eq('data_aula', form.data)
-        .ilike('observacoes', `%${quadraNome}%`).ilike('observacoes', `%${form.horario}%`)
+      // Checa conflito nas aulas do dia — turma-linked não tem `observacoes` preenchido (só
+      // avulsa usa esse texto pra descrever quadra/horário), então checar só por `ilike` em
+      // observacoes nunca detecta um horário já ocupado por uma turma normal (falso negativo:
+      // deixava criar avulsa em cima de turma existente) nem é confiável pra achar conflito de
+      // verdade (falso positivo: texto de outra aula avulsa em quadra/horário parecido também
+      // batia). Olha os dois casos: turma (via quadra_id/horario_inicio) e avulsa (via texto).
+      const { data: aulasDoDia } = await supabase
+        .from('aulas')
+        .select('id, observacoes, turmas(quadra_id, horario_inicio)')
+        .eq('data_aula', form.data)
+        .neq('status_aula', 'cancelada')
 
-      if (aulasExistentes && aulasExistentes.length > 0) {
+      const temConflito = (aulasDoDia || []).some(a => a.turmas
+        ? a.turmas.quadra_id === form.quadra_id && a.turmas.horario_inicio?.slice(0, 5) === form.horario
+        : a.observacoes?.includes(quadraNome) && a.observacoes?.includes(form.horario)
+      )
+
+      if (temConflito) {
         toast.error(`⚠️ Já existe uma aula em ${quadraNome} às ${form.horario} neste dia!`)
         setSalvando(false)
         return
