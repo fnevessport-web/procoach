@@ -1245,16 +1245,28 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
   doc.text('PC', boxPcScoreX + 20 + larguraNumero, cursorY + boxPcScoreH / 2 - 3)
   doc.text('SCORE', boxPcScoreX + 20 + larguraNumero, cursorY + boxPcScoreH / 2 + 9)
   if (variacaoPcScore != null && variacaoPcScore !== 0) {
+    // Setinha desenhada como triângulo de verdade — o caractere unicode ▼/▲ não existe na
+    // fonte padrão do jsPDF (helvetica) e virava um símbolo errado ("%¼") no PDF gerado.
     const melhorou = variacaoPcScore < 0
+    const numeroDelta = String(Math.abs(variacaoPcScore))
+    const larguraDelta = doc.getTextWidth(numeroDelta)
+    const setaX = boxPcScoreX + boxPcScoreW - 10 - larguraDelta - 9
+    const setaY = cursorY + 11
+    doc.setFillColor(...COR_BRANCO)
+    if (melhorou) {
+      doc.triangle(setaX, setaY - 3, setaX + 6, setaY - 3, setaX + 3, setaY + 3, 'F')
+    } else {
+      doc.triangle(setaX, setaY + 3, setaX + 6, setaY + 3, setaX + 3, setaY - 3, 'F')
+    }
     fontePadrao('bold', 9)
     doc.setTextColor(...COR_BRANCO)
-    doc.text(`${melhorou ? '▼' : '▲'} ${Math.abs(variacaoPcScore)}`, boxPcScoreX + boxPcScoreW - 10, cursorY + 14, { align: 'right' })
+    doc.text(numeroDelta, boxPcScoreX + boxPcScoreW - 10, cursorY + 14, { align: 'right' })
   }
   fontePadrao('bold', 10)
   doc.setTextColor(...COR_TINTA)
   doc.text(nivelLabel || '', boxPcScoreX + boxPcScoreW / 2, cursorY + boxPcScoreH + 14, { align: 'center' })
 
-  cursorY += avatarTam + 30
+  cursorY += avatarTam + 22
 
   // ---------- Radar + tabela de dimensões, lado a lado ----------
   const colunaW = (larguraUtil - 16) / 2
@@ -1290,33 +1302,60 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
 
   cursorY += alturaBlocoRadar + 16
 
-  // ---------- Evolução do PC Score (principal, menor) + mini-gráficos por domínio ----------
+  // ---------- Evolução do PC Score (principal, em destaque) + mini-gráficos por domínio ----------
   if (evolucaoPcScore?.length > 1) {
     fontePadrao('bold', 9)
     doc.setTextColor(...COR_TINTA)
     doc.text('EVOLUÇÃO DO PC SCORE', margem, cursorY)
     cursorY += 12
-    const alturaGrafico = 50
-    desenharLinhaEvolucaoPdf(doc, { x: margem + 10, y: cursorY, largura: larguraUtil - 20, altura: alturaGrafico, pontos: evolucaoPcScore, cor: COR_VINHO })
-    cursorY += alturaGrafico + 26
+
+    // Gráfico principal em destaque, num card do mesmo tamanho/estilo do bloco "Perfil
+    // técnico" acima — antes era bem menor que os outros gráficos da página.
+    const alturaGraficoBox = 95
+    doc.setFillColor(...COR_BRANCO)
+    doc.roundedRect(margem, cursorY, larguraUtil, alturaGraficoBox, 8, 8, 'F')
+    doc.setDrawColor(215, 210, 200)
+    doc.roundedRect(margem, cursorY, larguraUtil, alturaGraficoBox, 8, 8, 'S')
+    desenharLinhaEvolucaoPdf(doc, {
+      x: margem + 16, y: cursorY + 20, largura: larguraUtil - 32, altura: alturaGraficoBox - 40,
+      pontos: evolucaoPcScore, cor: COR_VINHO,
+    })
+    cursorY += alturaGraficoBox + 16
 
     if (evolucaoPorDominio?.length > 0) {
-      const gap = 8
+      // Um mini-gráfico por domínio, cada um no seu próprio card — mesmo espaçamento entre
+      // eles (gap) e a mesma "moldura" visual do gráfico principal, só menor.
+      const gap = 10
       const larguraMini = (larguraUtil - gap * (evolucaoPorDominio.length - 1)) / evolucaoPorDominio.length
-      const alturaMini = 34
-      let miniY = cursorY
+      const alturaCardMini = 68
+      const miniY = cursorY
       evolucaoPorDominio.forEach((dom, i) => {
         const miniX = margem + i * (larguraMini + gap)
+        doc.setFillColor(...COR_BRANCO)
+        doc.roundedRect(miniX, miniY, larguraMini, alturaCardMini, 6, 6, 'F')
+        doc.setDrawColor(215, 210, 200)
+        doc.roundedRect(miniX, miniY, larguraMini, alturaCardMini, 6, 6, 'S')
+
         fontePadrao('bold', 6.5)
         doc.setTextColor(...COR_TEXTO_SUAVE)
-        doc.text(dom.nome.toUpperCase(), miniX + larguraMini / 2, miniY, { align: 'center' })
+        const palavras = dom.nome.toUpperCase().split(' ')
+        let tituloFimY = miniY + 11
+        if (palavras.length > 1) {
+          const meio = Math.ceil(palavras.length / 2)
+          doc.text(palavras.slice(0, meio).join(' '), miniX + larguraMini / 2, tituloFimY, { align: 'center' })
+          doc.text(palavras.slice(meio).join(' '), miniX + larguraMini / 2, tituloFimY + 8, { align: 'center' })
+          tituloFimY += 8
+        } else {
+          doc.text(palavras.join(' '), miniX + larguraMini / 2, tituloFimY, { align: 'center' })
+        }
+
         desenharLinhaEvolucaoPdf(doc, {
-          x: miniX, y: miniY + 8, largura: larguraMini, altura: alturaMini, pontos: dom.pontos,
-          cor: COR_VINHO, valorFn: p => p.valor, min: 0, max: 10, inverterEixo: false,
-          fonteValor: 6, casasDecimais: 1,
+          x: miniX + 8, y: tituloFimY + 8, largura: larguraMini - 16, altura: 20,
+          pontos: dom.pontos, cor: COR_VINHO, valorFn: p => p.valor, min: 0, max: 10,
+          inverterEixo: false, fonteValor: 6, casasDecimais: 1,
         })
       })
-      cursorY = miniY + 8 + alturaMini + 26
+      cursorY = miniY + alturaCardMini + 16
     }
   }
 
@@ -1378,11 +1417,15 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
   }
 
   // ---------- Presença mês a mês ----------
-  // Uma linha por mês (X presenças, incluindo reposição — já entra como presença normal —
-  // · Y faltas não justificadas), no lugar do antigo bloco só do mês corrente + gráfico de
-  // barras separado (dado redundante, mesma fonte).
+  // Uma fileira compacta (não uma linha por mês) — MÊS + "X · Y" (X presenças, incluindo
+  // reposição, já que ela entra em status_presenca='presente'; Y faltas não justificadas),
+  // quebrando em mais de uma fileira só se não couber tudo numa linha só.
   if (historicoMensal?.length > 0) {
-    const alturaEstimada = 20 + historicoMensal.length * 16
+    const larguraMinColuna = 46
+    const porLinha = Math.max(1, Math.min(historicoMensal.length, Math.floor(larguraUtil / larguraMinColuna)))
+    const numLinhas = Math.ceil(historicoMensal.length / porLinha)
+    const alturaLinhaMes = 24
+    const alturaEstimada = 16 + numLinhas * alturaLinhaMes
     if (cursorY + alturaEstimada > doc.internal.pageSize.getHeight() - 90) {
       doc.addPage()
       doc.setFillColor(...COR_CREME)
@@ -1398,22 +1441,24 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
     doc.text(String(new Date().getFullYear()), pageWidth - margem, cursorY, { align: 'right' })
     cursorY += 16
 
+    const colW = larguraUtil / porLinha
     historicoMensal.forEach((m, i) => {
-      if (i % 2 === 1) {
-        doc.setFillColor(249, 247, 243)
-        doc.rect(margem, cursorY - 10, larguraUtil, 15, 'F')
-      }
-      fontePadrao('bold', 8)
-      doc.setTextColor(...COR_TINTA)
-      doc.text(m.mes, margem + 6, cursorY)
-      fontePadrao('normal', 8)
+      const col = i % porLinha
+      const linha = Math.floor(i / porLinha)
+      const x = margem + col * colW + colW / 2
+      const y = cursorY + linha * alturaLinhaMes
+      fontePadrao('bold', 7.5)
+      doc.setTextColor(...COR_TEXTO_SUAVE)
+      doc.text(m.mes, x, y, { align: 'center' })
+      fontePadrao('bold', 8.5)
       doc.setTextColor(...COR_VERDE)
-      doc.text(`${m.presentes} presença${m.presentes === 1 ? '' : 's'}`, margem + larguraUtil / 2, cursorY, { align: 'center' })
+      doc.text(String(m.presentes), x - 7, y + 11, { align: 'center' })
+      doc.setTextColor(...COR_TEXTO_SUAVE)
+      doc.text('·', x, y + 11, { align: 'center' })
       doc.setTextColor(...COR_VERMELHO)
-      doc.text(`${m.faltas} falta${m.faltas === 1 ? '' : 's'}`, pageWidth - margem - 6, cursorY, { align: 'right' })
-      cursorY += 15
+      doc.text(String(m.faltas), x + 7, y + 11, { align: 'center' })
     })
-    cursorY += 10
+    cursorY += numLinhas * alturaLinhaMes + 8
   }
 
   // ---------- Legenda dos 5 níveis do PC Score (rodapé didático) ----------

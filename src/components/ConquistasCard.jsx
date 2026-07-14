@@ -47,7 +47,7 @@ function IconeConquista({ icone, nome, tamanho, desbloqueada, mostrarCheck = tru
 export function FileiraConquistas({ conquistas, onSelecionar }) {
   if (!conquistas?.length) return null
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', justifyContent: 'center' }}>
       {conquistas.map(c => (
         <button
           key={c.id}
