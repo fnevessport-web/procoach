@@ -171,6 +171,30 @@ export function AlunoCard({ alunoId }) {
             <ConquistasCard alunoId={aluno.id} />
           </div>
 
+          {/* Ranking — placeholder até o módulo entrar em produção (só "-" por enquanto,
+              campo já deixado pronto pra receber a posição real depois). Mesma coluna das
+              conquistas acima, pra ficar alinhado/uniforme com aquele bloco. */}
+          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '800', color: '#F0F2F5',
+              }}>
+                -
+              </div>
+              <div style={{ fontSize: '9px', color: '#555', marginTop: '4px' }}>Categoria</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '800', color: '#F0F2F5',
+              }}>
+                -
+              </div>
+              <div style={{ fontSize: '9px', color: '#555', marginTop: '4px' }}>Geral</div>
+            </div>
+          </div>
+
           {aluno.telefone && (
             <button onClick={() => abrirWhatsApp(aluno.telefone)} style={{
               display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px',
@@ -180,29 +204,6 @@ export function AlunoCard({ alunoId }) {
               <MessageCircle size={13} /> {aluno.telefone}
             </button>
           )}
-        </div>
-      </div>
-
-      {/* Ranking — placeholder até o módulo de ranking entrar em produção (só "-" por
-          enquanto, campo já deixado pronto pra receber a posição real depois). */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '800', color: '#F0F2F5',
-          }}>
-            -
-          </div>
-          <div style={{ fontSize: '9px', color: '#555', marginTop: '4px' }}>Categoria</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '800', color: '#F0F2F5',
-          }}>
-            -
-          </div>
-          <div style={{ fontSize: '9px', color: '#555', marginTop: '4px' }}>Geral</div>
         </div>
       </div>
 

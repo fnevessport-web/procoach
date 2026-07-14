@@ -184,11 +184,14 @@ export function ConquistasCard({ alunoId }) {
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
           padding: '9px 12px', borderRadius: '10px', border: '1px solid #2a2a2a', backgroundColor: '#1a1a1a',
-          color: '#888', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+          color: '#888', cursor: 'pointer', textAlign: 'left',
         }}
       >
-        <span>🏆 Ver todas as metas — {desbloqueadas.length} de {catalogo.length} conquistadas</span>
-        <ChevronRight size={14} color="#555" />
+        <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <span style={{ fontSize: '12px', fontWeight: '600' }}>Ver todas as metas</span>
+          <span style={{ fontSize: '11px', color: '#555' }}>{desbloqueadas.length}/{catalogo.length} metas conquistadas</span>
+        </span>
+        <ChevronRight size={14} color="#555" style={{ flexShrink: 0 }} />
       </button>
 
       {catalogoAberto && (
