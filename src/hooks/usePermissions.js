@@ -19,6 +19,7 @@ const PERMISSOES_POR_ROLE = {
     podeVerInboxGeral: true,
     podeVerSino: true,
     podeVerDisponibilidade: true,
+    podeEditarAvaliacaoTecnica: true,
     homeRoute: '/',
   },
   financeiro: {
@@ -34,6 +35,7 @@ const PERMISSOES_POR_ROLE = {
     podeVerInboxGeral: false,
     podeVerSino: true,
     podeVerDisponibilidade: true,
+    podeEditarAvaliacaoTecnica: false,
     homeRoute: '/',
   },
   coordenador: {
@@ -49,6 +51,7 @@ const PERMISSOES_POR_ROLE = {
     podeVerInboxGeral: false,
     podeVerSino: true,
     podeVerDisponibilidade: true,
+    podeEditarAvaliacaoTecnica: false,
     homeRoute: '/',
   },
   professor: {
@@ -63,6 +66,7 @@ const PERMISSOES_POR_ROLE = {
     podeEditarPropriaAula: true,
     podeVerInboxGeral: false,
     podeVerSino: true,
+    podeEditarAvaliacaoTecnica: false,
     homeRoute: '/dashboard-professor',
   },
   auxiliar: {
@@ -77,6 +81,7 @@ const PERMISSOES_POR_ROLE = {
     podeEditarPropriaAula: false,
     podeVerInboxGeral: false,
     podeVerSino: false,
+    podeEditarAvaliacaoTecnica: false,
     homeRoute: '/aulas',
   },
   leitura: {
@@ -92,6 +97,7 @@ const PERMISSOES_POR_ROLE = {
     podeVerInboxGeral: false,
     podeVerSino: false,
     podeVerDisponibilidade: true,
+    podeEditarAvaliacaoTecnica: false,
     homeRoute: '/',
   },
 }

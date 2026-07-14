@@ -470,7 +470,7 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
         {modalidade.nome === 'Tênis' ? (
           loadingAvaliacoes ? <Loading /> : (
             <>
-              <EvolucaoTecnicaTenis aluno={aluno} modalidadeNome={modalidade.nome} avaliacoes={avaliacoes} presencas={presencas} />
+              <EvolucaoTecnicaTenis aluno={aluno} modalidadeId={modalidade.id} modalidadeNome={modalidade.nome} avaliacoes={avaliacoes} presencas={presencas} definicoesDimensoes={dimensoes} />
               <BlocoPontuacaoBeyond aluno={aluno} modalidadeId={modalidade.id} />
             </>
           )

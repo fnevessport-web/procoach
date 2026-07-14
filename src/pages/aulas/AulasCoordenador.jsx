@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown } from 'lucide-react'
+import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown, Info, History, Repeat } from 'lucide-react'
 import { horarioParaMinutos } from '../../constants/modalidades'
 import { getFeriado } from '../../constants/feriados'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas, confirmarAulasElegiveis, gerarReposicoesPorCancelamento, useAvisarFalta } from '../../hooks/useAulas'
@@ -139,6 +139,20 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   const highlightAulaId = location.state?.highlightAulaId
   const fromHome = location.state?.fromHome
   const abrirAoDestacar = location.state?.abrirAoDestacar
+  const alunoParaRepor = location.state?.alunoParaRepor
+
+  // location.state.data só é lido uma vez, na inicialização do state acima (useState lazy) —
+  // se essa tela já estiver montada (ex: dentro da aba "Por Dia" de AulasAdmin) e chegar um
+  // novo state pra uma data diferente (ex: escolheu um slot de reposição numa semana futura),
+  // precisa sincronizar de novo, senão a busca de aulas continua presa na data antiga e o
+  // "abrirAoDestacar" abaixo nunca acha a aula alvo. Ajusta durante o render (não num efeito) —
+  // padrão recomendado pelo React pra "sincronizar estado quando algo externo muda":
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [locationStateDataVista, setLocationStateDataVista] = useState(location.state?.data)
+  if (location.state?.data && location.state.data !== locationStateDataVista) {
+    setLocationStateDataVista(location.state.data)
+    setData(location.state.data)
+  }
 
   // Segurança: se sair da tela sem fechar o modal (ex: "Discutir esta aula" navega direto
   // pra Mensagens), garante que o rodapé volte a aparecer normalmente na próxima tela.
@@ -168,6 +182,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   const [alertaNivel, setAlertaNivel] = useState({})
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(null)
+  // Rastreabilidade: quem incluiu cada aluno na aula (aluno.aula_id => bool) e histórico
+  // completo da aula (audit_log), ambos abertos sob demanda pra não poluir a tela.
+  const [origemAberta, setOrigemAberta] = useState(null)
+  const [historicoAula, setHistoricoAula] = useState(null) // { aulaId, carregando, itens } | null
   const [editandoNivelTurma, setEditandoNivelTurma] = useState(false)
   const [novoNivelId, setNovoNivelId] = useState('')
   const [novoProfessorTurmaId, setNovoProfessorTurmaId] = useState('')
@@ -176,6 +194,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
   const [novoHorarioMover, setNovoHorarioMover] = useState('')
   const [novaQuadraMoverId, setNovaQuadraMoverId] = useState('')
   const [salvandoHorarioAula, setSalvandoHorarioAula] = useState(false)
+  // Substituição pontual de professor (só essa data, sem mexer no titular da turma) — ver
+  // handleSubstituirProfessor/handleRemoverSubstituicao.
+  const [substituindoProfessor, setSubstituindoProfessor] = useState(false)
+  const [novoProfessorSubstitutoId, setNovoProfessorSubstitutoId] = useState('')
+  const [salvandoSubstituicao, setSalvandoSubstituicao] = useState(false)
   const [modalExportarPDF, setModalExportarPDF] = useState(false)
   const [pdfSomenteComAluno, setPdfSomenteComAluno] = useState(true)
   const [pdfQuadras, setPdfQuadras] = useState(() => [...QUADRAS_EMPRESA.procopio, ...QUADRAS_EMPRESA.beach_arena])
@@ -324,8 +347,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       setHighlightedAulaId(highlightAulaId)
       if (fromHome) setOrigemAulas({ data, aulaId: highlightAulaId })
       // Veio de um alerta (ex: "fulano foi incluído na sua aula") — abre a aula direto em
-      // vez de só destacar a célula, pra não precisar de mais um clique.
-      if (abrirAoDestacar) abrirAula(aulaAlvo)
+      // vez de só destacar a célula, pra não precisar de mais um clique. Se veio da grade de
+      // reposição (alunoParaRepor), já entra com o aluno pré-adicionado como reposição.
+      if (abrirAoDestacar) abrirAula(aulaAlvo, alunoParaRepor)
       setTimeout(() => setHighlightedAulaId(null), 2000)
     }, 400)
     return () => clearTimeout(timer)
@@ -485,7 +509,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
     }
   }
 
-  function abrirAula(aula) {
+  // alunoParaRepor: vem da grade de reposição (ModalReposicao, AulasAdmin.jsx) — { id, nome }
+  // do aluno que acabou de escolher essa aula/data pra repor uma falta. Entra já marcado como
+  // "reposição" e fora de alunosOriginais, então o resto da tela trata ele como recém-adicionado
+  // (mesmo prompt de tipo de participação, mesmo aviso pro professor, mesma baixa FIFO da falta
+  // mais antiga ao salvar — ver resolverReposicaoFIFO em useSalvarPresencas).
+  function abrirAula(aula, alunoParaRepor = null) {
     setAulaModal(aula)
     setNavRecolhida(true)
     setNotasLocal(prev => ({ ...prev, [aula.id]: aula.notas || '' }))
@@ -503,11 +532,26 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         alerta_nivel: alertaPresenca,
         nivel_avaliado_prof: nivelPresenca,
         obs_nivel_prof: obsPresenca,
+        criado_por: p.criado_por || null,
+        criado_por_nome: p.criado_por_nome || null,
+        criado_em: p.criado_em || null,
       }
     })
+    const alunosOriginaisIds = new Set(Object.keys(inicial))
+    if (alunoParaRepor && !inicial[alunoParaRepor.id]) {
+      inicial[alunoParaRepor.id] = {
+        aluno_id: alunoParaRepor.id, nome: alunoParaRepor.nome,
+        status_presenca: 'presente', tipo_participacao: 'reposicao',
+        alerta_nivel: false, nivel_avaliado_prof: '', obs_nivel_prof: '',
+      }
+    }
     setPresencasLocal(prev => ({ ...prev, [aula.id]: inicial }))
-    setAlunosOriginais(new Set(Object.keys(inicial)))
-    setAlunoRecemAdicionado(null)
+    setAlunosOriginais(alunosOriginaisIds)
+    setAlunoRecemAdicionado(alunoParaRepor && !alunosOriginaisIds.has(alunoParaRepor.id) ? alunoParaRepor.id : null)
+    setOrigemAberta(null)
+    setHistoricoAula(null)
+    setSubstituindoProfessor(false)
+    setNovoProfessorSubstitutoId('')
   }
 
   function fecharModal() {
@@ -519,6 +563,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
     setAlertaNivel({})
     setConfirmandoExclusao(false)
     setConfirmandoRemocao(null)
+    setOrigemAberta(null)
+    setHistoricoAula(null)
+    setSubstituindoProfessor(false)
+    setNovoProfessorSubstitutoId('')
     setEditandoNivelTurma(false)
     setNovoNivelId('')
     setEditandoHorarioAula(false)
@@ -612,6 +660,23 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         ? null
         : { nivel: alunoData.nivel_avaliado_prof || '', obs: alunoData.obs_nivel_prof || '' }
     }))
+  }
+
+  async function handleAbrirHistorico(aulaAlvo) {
+    setHistoricoAula({ aulaId: aulaAlvo.id, carregando: true, itens: [] })
+    try {
+      const { data, error } = await supabase
+        .from('audit_log')
+        .select('*')
+        .eq('tabela', 'aulas')
+        .eq('registro_id', String(aulaAlvo.id))
+        .order('criado_em', { ascending: false })
+      if (error) throw error
+      setHistoricoAula({ aulaId: aulaAlvo.id, carregando: false, itens: data || [] })
+    } catch {
+      toast.error('Não foi possível carregar o histórico.', { style: toastStyle })
+      setHistoricoAula(null)
+    }
   }
 
   async function handleSalvarNotas(aulaId) {
@@ -759,12 +824,13 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       const idsAnteriores = presencasAnteriores?.map(p => p.aluno_id) || []
       const idsAtuais = lista.map(p => p.aluno_id)
       const idsRemovidos = idsAnteriores.filter(id => !idsAtuais.includes(id))
+      const idsAdicionados = idsAtuais.filter(id => !idsAnteriores.includes(id))
       if (idsRemovidos.length > 0) {
         await supabase.from('presencas').delete().eq('aula_id', aulaId).in('aluno_id', idsRemovidos)
       }
       let reposicoesBaixadas = []
       if (lista.length > 0) {
-        const resultado = await salvarPresencas.mutateAsync({ aulaId, presencas: lista })
+        const resultado = await salvarPresencas.mutateAsync({ aulaId, presencas: lista, idsNovos: idsAdicionados })
         reposicoesBaixadas = resultado?.reposicoesBaixadas || []
       }
       const mensalistas = lista.filter(p => p.tipo_participacao === 'mensalista')
@@ -772,7 +838,6 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
         await vincularMensalistasNaTurma(aula, mensalistas)
       }
 
-      const idsAdicionados = idsAtuais.filter(id => !idsAnteriores.includes(id))
       if (idsAdicionados.length > 0 || idsRemovidos.length > 0) {
         const nomesAdicionados = lista.filter(p => idsAdicionados.includes(p.aluno_id)).map(p => p.nome)
         const nomesRemovidos = (aula?.presencas || [])
@@ -947,16 +1012,19 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       const { error: erroAulas } = await query
       if (erroAulas) throw erroAulas
 
-      // Trocar o professor titular da turma não preenche sozinho quem vai dar as aulas já
-      // geradas sem professor — sem isso o aviso "sem professor" e a grade continuam vazios
-      // mesmo depois de escolher alguém aqui. Só entra nas que ainda não têm ninguém, pra não
-      // sobrescrever uma substituição específica que já tenha sido atribuída numa data.
+      // Trocar o professor titular da turma precisa refletir na grade de quem vai dar cada
+      // aula futura — senão a agenda continua mostrando o professor antigo mesmo depois da
+      // troca (era exatamente esse o bug: antes só preenchia aula sem professor NENHUM, e
+      // toda aula já gerada nasce com professor_executou_id preenchido — então na prática
+      // nunca atualizava nada). Só preserva quem já tem uma SUBSTITUIÇÃO PONTUAL marcada
+      // (eh_substituicao=true, ver handleSubstituirProfessor) — essa sim não pode ser
+      // sobrescrita por uma troca de titular que vale "daqui pra frente".
       if (novoProfessorTurmaId) {
         const { error: erroProfExecutou } = await supabase
           .from('aulas')
           .update({ professor_executou_id: professorIdFinal })
           .eq('turma_id', turmaNova.id)
-          .is('professor_executou_id', null)
+          .or('eh_substituicao.is.null,eh_substituicao.eq.false')
         if (erroProfExecutou) throw erroProfExecutou
       }
 
@@ -977,6 +1045,58 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
       toast.error(err.message, { style: toastStyle })
     } finally {
       setSalvandoNivelTurma(false)
+    }
+  }
+
+  // Substituição pontual — só essa data, sem clonar turma nem mexer no titular. Diferente de
+  // handleEditarNivelTurma (que muda quem dá aula "daqui pra frente"), isso é "hoje o titular
+  // não pode, fulano cobre" — marca eh_substituicao=true pra (a) a grade mostrar quem realmente
+  // vai dar a aula e (b) a troca de titular em massa (acima) nunca sobrescrever essa data.
+  async function handleSubstituirProfessor(aula) {
+    if (!novoProfessorSubstitutoId) return toast.error('Selecione o professor substituto', { style: toastStyle })
+    setSalvandoSubstituicao(true)
+    try {
+      const { error } = await supabase.from('aulas').update({
+        professor_executou_id: novoProfessorSubstitutoId,
+        eh_substituicao: true,
+      }).eq('id', aula.id)
+      if (error) throw error
+
+      const nomeSubstituto = todoProfessores?.find(p => p.id === novoProfessorSubstitutoId)?.nome || ''
+      await logAudit('aulas', aula.id, 'UPDATE',
+        { professor_executou: aula.professores?.nome, data: aula.data_aula },
+        { professor_executou: nomeSubstituto, eh_substituicao: true }
+      )
+
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      toast.success(`✅ ${nomeSubstituto} substituindo nessa aula!`, { style: toastStyle })
+      setSubstituindoProfessor(false)
+      setNovoProfessorSubstitutoId('')
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    } finally {
+      setSalvandoSubstituicao(false)
+    }
+  }
+
+  async function handleRemoverSubstituicao(aula) {
+    setSalvandoSubstituicao(true)
+    try {
+      const professorTitularId = aula.turmas?.professor_titular_id || null
+      const { error } = await supabase.from('aulas').update({
+        professor_executou_id: professorTitularId,
+        eh_substituicao: false,
+      }).eq('id', aula.id)
+      if (error) throw error
+
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      toast.success('Substituição removida — volta pro professor titular.', { style: toastStyle })
+      setSubstituindoProfessor(false)
+      setNovoProfessorSubstitutoId('')
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    } finally {
+      setSalvandoSubstituicao(false)
     }
   }
 
@@ -1703,7 +1823,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                         {nivel || (isAv ? 'Avulsa' : aulaCelula.turmas?.nome || '—')}
                       </div>
                       <div style={{ fontSize: '10px', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: semProfessor ? '#e0a856' : '#555' }}>
-                        {semProfessor ? '⚠️ sem professor' : aulaCelula.professores?.nome?.split(' ')[0]}
+                        {semProfessor
+                          ? '⚠️ sem professor'
+                          : <>{aulaCelula.eh_substituicao && <span title="Substituição">🔁 </span>}{aulaCelula.professores?.nome?.split(' ')[0]}</>
+                        }
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {aulaEhFutura
@@ -1749,8 +1872,19 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                 <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>
                   {getNivel(aula) || (isAvulsa ? 'Aula Avulsa' : aula.turmas?.nome)}
                 </div>
-                <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>
-                  {getQuadraNome(aula)} · {getHorario(aula)} · Prof: {aula.professores?.nome}
+                <div style={{ fontSize: '12px', color: '#555', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <span>{getQuadraNome(aula)} · {getHorario(aula)} · Prof: {aula.professores?.nome}</span>
+                  {aula.eh_substituicao && (
+                    <span
+                      title={aula.prof_titular?.nome ? `Titular da turma: ${aula.prof_titular.nome}` : 'Substituição'}
+                      style={{
+                        fontSize: '9px', fontWeight: '700', padding: '2px 6px', borderRadius: '5px',
+                        backgroundColor: 'rgba(59,130,246,0.15)', color: COR_REPOSICAO,
+                      }}
+                    >
+                      🔁 Substituição
+                    </span>
+                  )}
                 </div>
               </div>
               <button onClick={fecharModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px' }}>
@@ -1795,6 +1929,22 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                   <Clock size={12} /> Mover horário
                 </button>
               )}
+              {!somenteLeitura && (!professorProprioId || ehTitularDaTurma) && !isAvulsa && !substituindoProfessor && (
+                <button onClick={() => { setSubstituindoProfessor(true); setNovoProfessorSubstitutoId('') }} style={{
+                  display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
+                  borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
+                  color: '#888', fontSize: '12px', cursor: 'pointer',
+                }}>
+                  <Repeat size={12} /> Substituir professor
+                </button>
+              )}
+              <button onClick={() => handleAbrirHistorico(aula)} style={{
+                display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
+                borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
+                color: '#888', fontSize: '12px', cursor: 'pointer',
+              }}>
+                <History size={12} /> Histórico
+              </button>
             </div>
 
             {escolhendoDestinatario === aula.id && (
@@ -1851,6 +2001,39 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                       {destinatariosSelecionados.length > 1 ? `Enviar para ${destinatariosSelecionados.length} pessoas` : 'Enviar'}
                     </button>
                   </>
+                )}
+              </div>
+            )}
+
+            {historicoAula?.aulaId === aula.id && (
+              <div style={{ backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', padding: '10px', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Histórico de alterações</div>
+                  <button onClick={() => setHistoricoAula(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+                {historicoAula.carregando ? (
+                  <div style={{ fontSize: '12px', color: '#555' }}>Carregando...</div>
+                ) : historicoAula.itens.length === 0 ? (
+                  <div style={{ fontSize: '12px', color: '#555' }}>Nenhuma alteração registrada ainda pra essa aula.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto' }}>
+                    {historicoAula.itens.map(item => {
+                      const adicionados = item.dados_novos?.adicionados?.filter(Boolean) || []
+                      const removidos = item.dados_novos?.removidos?.filter(Boolean) || []
+                      return (
+                        <div key={item.id} style={{ fontSize: '11px', color: '#888', borderBottom: '1px solid #1f1f1f', paddingBottom: '8px' }}>
+                          <div style={{ color: '#F0F2F5', marginBottom: '2px' }}>
+                            {item.usuario || 'sistema'} · {format(new Date(item.criado_em), "dd/MM/yyyy 'às' HH:mm")}
+                          </div>
+                          {adicionados.length > 0 && <div>➕ Adicionado(s): {adicionados.join(', ')}</div>}
+                          {removidos.length > 0 && <div>➖ Removido(s): {removidos.join(', ')}</div>}
+                          {adicionados.length === 0 && removidos.length === 0 && <div>Aula atualizada.</div>}
+                        </div>
+                      )
+                    })}
+                  </div>
                 )}
               </div>
             )}
@@ -1913,6 +2096,36 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                     Sempre
                   </button>
                   <button onClick={() => setEditandoHorarioAula(false)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {substituindoProfessor && (
+              <div style={{ backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', padding: '12px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Substituto só pra essa aula ({format(new Date(aula.data_aula + 'T12:00'), 'dd/MM')}) — não muda o titular da turma
+                </div>
+                <select value={novoProfessorSubstitutoId} onChange={e => setNovoProfessorSubstitutoId(e.target.value)} style={inputStyle}>
+                  <option value="">Selecione o substituto...</option>
+                  {todoProfessores?.filter(p => p.id !== aula.professores?.id).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button onClick={() => handleSubstituirProfessor(aula)} disabled={salvandoSubstituicao} style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
+                    background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+                  }}>
+                    Confirmar substituição
+                  </button>
+                  {aula.eh_substituicao && (
+                    <button onClick={() => handleRemoverSubstituicao(aula)} disabled={salvandoSubstituicao} style={{
+                      padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.3)', background: 'none', color: '#EF4444', fontSize: '11px', cursor: 'pointer',
+                    }}>
+                      Remover substituição
+                    </button>
+                  )}
+                  <button onClick={() => { setSubstituindoProfessor(false); setNovoProfessorSubstitutoId('') }} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>
                     Cancelar
                   </button>
                 </div>
@@ -2132,6 +2345,15 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                         {isReposicao && (
                           <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(59,130,246,0.15)', color: COR_REPOSICAO, fontWeight: '600' }}>reposição</span>
                         )}
+                        {aluno.criado_por_nome && (
+                          <button
+                            onClick={() => setOrigemAberta(prev => prev === aluno.aluno_id ? null : aluno.aluno_id)}
+                            title={`Incluído por ${aluno.criado_por_nome}`}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#444', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                          >
+                            <Info size={11} />
+                          </button>
+                        )}
                       </div>
                       {!somenteLeitura && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -2153,6 +2375,13 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, profes
                         </div>
                       )}
                     </div>
+
+                    {origemAberta === aluno.aluno_id && aluno.criado_por_nome && (
+                      <div style={{ fontSize: '10px', color: '#888', marginBottom: '8px', backgroundColor: '#1a1a1a', borderRadius: '6px', padding: '6px 8px' }}>
+                        👤 Incluído por <span style={{ color: '#F0F2F5' }}>{aluno.criado_por_nome}</span>
+                        {aluno.criado_em && ` em ${format(new Date(aluno.criado_em), "dd/MM/yyyy 'às' HH:mm")}`}
+                      </div>
+                    )}
 
                     {ehNovo && !somenteLeitura && (
                       <div style={{ marginBottom: '10px' }}>

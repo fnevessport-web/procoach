@@ -6,11 +6,13 @@ import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronDown, ChevronUp, HelpCircle, AlertTriangle, Download } from 'lucide-react'
-import { NIVEIS_PC_SCORE, nivelPorPcScore, precisaReavaliar, REAVALIACAO_PRAZO_DIAS } from '../lib/pcScore'
+import { ChevronDown, ChevronUp, HelpCircle, AlertTriangle, Download, Pencil } from 'lucide-react'
+import { NIVEIS_PC_SCORE, nivelPorPcScore, precisaReavaliar, REAVALIACAO_PRAZO_DIAS, calcularMediasDominios } from '../lib/pcScore'
 import { BADGES } from '../constants/badges'
 import { MODALIDADE_EMPRESA } from '../constants/modalidades'
 import { exportarEvolucaoTecnicaPDF } from '../lib/relatorioPdf'
+import { usePermissions } from '../hooks/usePermissions'
+import { useCatalogoConquistas, useConquistasDoAluno } from '../hooks/useConquistas'
 import toast from 'react-hot-toast'
 
 const toastStyle = {
@@ -47,27 +49,22 @@ function CardVazio({ texto }) {
   )
 }
 
-// Bolinhas 1-5 preenchidas — mesma linguagem visual usada em qualquer nota do app.
-function DotsNota({ nota, cor }) {
-  return (
-    <div style={{ display: 'flex', gap: '3px' }}>
-      {[1, 2, 3, 4, 5].map(n => (
-        <span key={n} style={{
-          width: '9px', height: '9px', borderRadius: '50%',
-          backgroundColor: n <= nota ? cor : '#2a2a2a',
-        }} />
-      ))}
-    </div>
-  )
+function formataNota(n) {
+  return n.toFixed(1).replace('.', ',')
 }
 
 // Módulo de Evolução Técnica — só Tênis nesta primeira versão (arquitetura pronta pra
 // outras modalidades entrarem depois, ver pcScore.js). Recebe a lista completa de
 // avaliações da modalidade (mais antiga primeiro, mesmo formato de useAvaliacoesModalidade)
 // + as presenças já buscadas pelo card, pra não duplicar consulta.
-export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presencas }) {
+export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, avaliacoes, presencas, definicoesDimensoes }) {
   const navigate = useNavigate()
+  const { podeEditarAvaliacaoTecnica } = usePermissions()
   const [exportando, setExportando] = useState(false)
+  // Mesmas duas queries que o ConquistasCard.jsx (Card do Aluno) já usa — react-query dedupe
+  // pela queryKey, então não duplica request nenhum quando os dois estão montados juntos.
+  const { data: catalogoConquistas } = useCatalogoConquistas()
+  const { data: minhasConquistas } = useConquistasDoAluno(aluno?.id)
 
   // Avaliação 'pendente' (aguardando confirmação de outro professor da modalidade, ver
   // migration 011) ainda não conta pro histórico oficial — não entra no radar, na evolução
@@ -90,6 +87,11 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presen
         ) : (
           <CardVazio texto="Nenhuma avaliação técnica ainda nesta modalidade — clique em &quot;Avaliar aluno&quot; pra começar." />
         )}
+        {podeEditarAvaliacaoTecnica && (
+          <div style={{ marginTop: '18px' }}>
+            <HistoricoCompleto aluno={aluno} modalidadeId={modalidadeId} avaliacoes={avaliacoes} navigate={navigate} />
+          </div>
+        )}
       </div>
     )
   }
@@ -108,10 +110,13 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presen
   const totalPresencas = (presencas || []).filter(p => p.status_presenca === 'presente').length
   const reavaliacaoPendente = precisaReavaliar(ultimaAvaliacao.data_avaliacao)
 
-  const entradasDimensoes = Object.entries(ultimaAvaliacao.dimensoes || {})
-  const radarData = entradasDimensoes.map(([dimensao, valor]) => ({ dimensao, valor }))
-  const proximoFoco = entradasDimensoes.length
-    ? entradasDimensoes.reduce((pior, atual) => (atual[1] < pior[1] ? atual : pior))
+  // Um subitem sozinho (1 de 19) é ruído demais pra virar radar ou "próximo foco" — as
+  // médias por domínio (Saque, Jogo de Fundo, Jogo de Rede, Tática, Condicionamento
+  // Físico) são a unidade certa aqui, mesma lista que já alimenta o PC Score (pcScore.js).
+  const mediasDominio = calcularMediasDominios(ultimaAvaliacao.dimensoes, definicoesDimensoes)
+  const radarData = mediasDominio.map(u => ({ dimensao: u.nome, valor: u.media }))
+  const proximoFoco = mediasDominio.length
+    ? mediasDominio.reduce((pior, atual) => (atual.media < pior.media ? atual : pior))
     : null
 
   const ultimasQuatro = avaliacoesConfirmadas.slice(-4).filter(a => a.pc_score != null)
@@ -120,7 +125,12 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presen
     pcScore: a.pc_score,
   }))
 
+  // Badges (sistema antigo, emoji) — continua alimentando só a seção "Conquistas" mostrada
+  // em tela mais abaixo, sem mudança. O PDF agora usa o catálogo novo (conquistasDesbloqueadas),
+  // que tem ícone SVG de verdade — ver item 4.3.
   const badgesConquistados = (aluno.badges || []).filter(b => BADGES[b.tipo_badge])
+  const minhasConquistasPorId = Object.fromEntries((minhasConquistas || []).map(m => [m.conquista_id, m]))
+  const conquistasDesbloqueadas = (catalogoConquistas || []).filter(c => minhasConquistasPorId[c.id]?.ativa)
 
   const hoje = new Date()
   const mesAtualStr = format(hoje, 'yyyy-MM')
@@ -133,6 +143,19 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presen
     reposicoes: presencasDoMes.filter(p => p.tipo_participacao === 'reposicao').length,
   }
 
+  // Histórico mensal do ano corrente (janeiro até o mês atual) — mesma fonte de `presencas`
+  // usada em `totalPresencas` acima, agora sem o corte de 100 linhas que existia antes em
+  // useHistoricoPresencaModalidade (senão os meses mais antigos do ano ficariam faltando pra
+  // aluno assíduo/antigo).
+  const historicoMensalAno = Array.from({ length: hoje.getMonth() + 1 }, (_, i) => {
+    const mesData = new Date(hoje.getFullYear(), i, 1)
+    const mesStr = format(mesData, 'yyyy-MM')
+    return {
+      mes: format(mesData, 'MMM', { locale: ptBR }).toUpperCase().replace('.', ''),
+      total: (presencas || []).filter(p => p.aulas?.data_aula?.startsWith(mesStr) && p.status_presenca === 'presente').length,
+    }
+  })
+
   async function handleExportarPDF() {
     setExportando(true)
     try {
@@ -144,13 +167,15 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presen
         pcScoreAtual,
         variacaoPcScore,
         nivelLabel: nivelAtual?.label || 'Faixa etária não definida',
-        nivelCor: nivelAtual ? hexParaRgb(nivelAtual.cor) : [136, 136, 136],
-        dimensoes: entradasDimensoes.map(([nome, valor]) => ({ nome, valor })),
-        proximoFoco: proximoFoco ? { nome: proximoFoco[0], valor: proximoFoco[1] } : null,
+        nivelChave: nivelAtual?.chave || null,
+        dimensoes: mediasDominio.map(u => ({ nome: u.nome, valor: u.media })),
+        proximoFoco: proximoFoco ? { nome: proximoFoco.nome, valor: proximoFoco.media } : null,
         evolucaoPcScore,
         narrativaIA: ultimaAvaliacao.narrativa_ia,
-        badges: badgesConquistados.map(b => BADGES[b.tipo_badge]),
+        conquistas: conquistasDesbloqueadas.map(c => ({ nome: c.nome, icone: c.icone })),
         historicoMes,
+        somaGeralAulas: totalPresencas,
+        historicoMensalAno,
         niveisPcScore: NIVEIS_PC_SCORE.map(n => ({ ...n, cor: hexParaRgb(n.cor) })),
       }, { empresa: MODALIDADE_EMPRESA[modalidadeNome] || 'procopio' })
     } catch (err) {
@@ -252,7 +277,7 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presen
         </div>
       )}
 
-      {/* Radar das 6 dimensões */}
+      {/* Radar dos 5 domínios (cada um é a média dos seus subitens, nota 1-10) */}
       <div>
         <SecaoTitulo>Perfil técnico</SecaoTitulo>
         <div style={{ backgroundColor: '#111', borderRadius: '12px', border: '1px solid #2a2a2a', padding: '10px' }}>
@@ -262,7 +287,7 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presen
               <RadarChart data={radarData} outerRadius="70%">
                 <PolarGrid stroke="#2a2a2a" />
                 <PolarAngleAxis dataKey="dimensao" tick={{ fill: '#888', fontSize: 11 }} />
-                <PolarRadiusAxis domain={[0, 5]} tick={{ fill: '#444', fontSize: 9 }} axisLine={false} />
+                <PolarRadiusAxis domain={[0, 10]} tick={{ fill: '#444', fontSize: 9 }} axisLine={false} />
                 <Radar dataKey="valor" stroke="#fcc825" fill="#fcc825" fillOpacity={0.35} strokeWidth={2} />
                 <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#F0F2F5' }} />
               </RadarChart>
@@ -271,17 +296,17 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presen
         </div>
       </div>
 
-      {/* Tabela de dimensões com dots */}
+      {/* Domínios */}
       <div>
-        <SecaoTitulo>Dimensões</SecaoTitulo>
+        <SecaoTitulo>Domínios</SecaoTitulo>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {entradasDimensoes.map(([nome, valor]) => (
-            <div key={nome} style={{
+          {mediasDominio.map(u => (
+            <div key={u.nome} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '9px 12px', borderRadius: '9px', backgroundColor: '#111', border: '1px solid #2a2a2a',
             }}>
-              <span style={{ fontSize: '13px', color: '#F0F2F5' }}>{nome}</span>
-              <DotsNota nota={valor} cor="#fcc825" />
+              <span style={{ fontSize: '13px', color: '#F0F2F5' }}>{u.nome}</span>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825' }}>{formataNota(u.media)}</span>
             </div>
           ))}
         </div>
@@ -296,8 +321,8 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presen
           <div style={{ fontSize: '10px', color: '#cf1b9b', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700', marginBottom: '4px' }}>
             Próximo foco
           </div>
-          <div style={{ fontSize: '15px', color: '#F0F2F5', fontWeight: '700' }}>{proximoFoco[0]}</div>
-          <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>Nota atual: {proximoFoco[1]}/5 — a dimensão com mais espaço pra evoluir.</div>
+          <div style={{ fontSize: '15px', color: '#F0F2F5', fontWeight: '700' }}>{proximoFoco.nome}</div>
+          <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>Nota atual: {formataNota(proximoFoco.media)}/10 — o domínio com mais espaço pra evoluir.</div>
         </div>
       )}
 
@@ -364,6 +389,55 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeNome, avaliacoes, presen
           </div>
         </div>
       )}
+
+      {/* Histórico completo + edição — exclusivo de quem tem podeEditarAvaliacaoTecnica
+          (hoje só o role gestor). Mostra TODAS as avaliações (inclusive pendentes), não só a
+          última confirmada — é justamente o que falta pro resto da tela, que só olha a
+          confirmada mais recente. */}
+      {podeEditarAvaliacaoTecnica && (
+        <HistoricoCompleto aluno={aluno} modalidadeId={modalidadeId} avaliacoes={avaliacoes} navigate={navigate} />
+      )}
+    </div>
+  )
+}
+
+// Lista de toda avaliação (confirmada ou pendente) com botão de editar — navega pra
+// /avaliar-aluno em modo edição (ver AvaliarAluno.jsx, avaliacaoParaEditar).
+function HistoricoCompleto({ aluno, modalidadeId, avaliacoes, navigate }) {
+  if (!avaliacoes?.length) return null
+  const maisRecentesPrimeiro = [...avaliacoes].reverse()
+  return (
+    <div>
+      <SecaoTitulo>Histórico completo (gestor)</SecaoTitulo>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {maisRecentesPrimeiro.map(a => {
+          const nivel = a.pc_score != null ? nivelPorPcScore(a.pc_score) : null
+          return (
+            <div key={a.id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '9px 12px', borderRadius: '9px', backgroundColor: '#111', border: '1px solid #2a2a2a',
+            }}>
+              <div>
+                <div style={{ fontSize: '12px', color: '#F0F2F5' }}>{fmtData(a.data_avaliacao)}</div>
+                <div style={{ fontSize: '10px', color: '#666' }}>
+                  {a.professores?.nome || 'Professor não identificado'}
+                  {a.status === 'pendente' && ' · pendente de confirmação'}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {nivel && <span style={{ fontSize: '12px', fontWeight: '700', color: nivel.cor }}>{a.pc_score}</span>}
+                <button
+                  onClick={() => navigate('/avaliar-aluno', { state: { alunoId: aluno.id, alunoNome: aluno.nome, modalidadeId, avaliacaoParaEditar: a } })}
+                  title="Editar avaliação"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', padding: '4px', display: 'flex', alignItems: 'center' }}
+                >
+                  <Pencil size={13} />
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { format } from 'date-fns'
 import { gerarInsights } from '../hooks/useRelatorioMensal'
 import { classificarPct } from '../constants/semaforo'
 import { PONTOS_POR_RESULTADO, NIVEIS_ASSIDUIDADE, JANELA_DIAS, MINIMO_JOGOS_CLASSIFICACAO, PESO_CATEGORIA, pontuacaoComPesoCategoria } from './pontuacaoBeyond'
+import { ICONE_CONQUISTA_URL } from '../constants/conquistasIcones'
 
 const COR_CREME = [241, 239, 234]
 const COR_TINTA = [26, 24, 24]
@@ -16,8 +17,19 @@ const COR_VERMELHO = [176, 54, 54]
 const COR_AZUL_INFO = [59, 130, 246]
 const CORES_CHIP = [COR_SALVIA, COR_LARANJA, COR_VINHO, COR_MARINHO]
 const CORES_SEVERIDADE = { bom: COR_VERDE, atencao: COR_LARANJA, critico: COR_VERMELHO, info: COR_AZUL_INFO }
+// Card do PC Score (exportarEvolucaoTecnicaPDF) — mesma paleta das 4 tarjas do cabeçalho
+// (CORES_CHIP), mapeada pro nível do aluno. Só 4 cores pra 5 níveis: Básico compartilha com
+// Iniciante (os dois ainda "em construção"), Intermediário/Avançado/Elite ficam com uma cor
+// só cada, como pedido.
+const CARD_PC_SCORE_COR_POR_NIVEL = {
+  iniciante: COR_SALVIA,
+  basico: COR_SALVIA,
+  intermediario: COR_LARANJA,
+  avancado: COR_VINHO,
+  elite: COR_MARINHO,
+}
 
-const NOME_EMPRESA = { procopio: 'Procópio Arena', beach_arena: 'Beach Arena' }
+const NOME_EMPRESA = { procopio: 'Procopio', beach_arena: 'Beach Arena' }
 // Versões pretas das marcas, pensadas pra página clara do relatório (fundo creme) — o
 // cabeçalho é um lockup minimalista: logo do clube (BEYOND) + linha fina + logo da unidade,
 // lado a lado, sem selo/fundo.
@@ -1103,8 +1115,9 @@ function desenharLinhaEvolucaoPdf(doc, { x, y, largura, altura, pontos, cor }) {
 export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
   const {
     alunoNome, fotoUrl, modalidadeNome,
-    totalPresencas, pcScoreAtual, variacaoPcScore, nivelLabel, nivelCor,
-    dimensoes, proximoFoco, evolucaoPcScore, narrativaIA, badges, historicoMes,
+    totalPresencas, pcScoreAtual, variacaoPcScore, nivelLabel, nivelChave,
+    dimensoes, proximoFoco, evolucaoPcScore, narrativaIA, conquistas, historicoMes,
+    somaGeralAulas, historicoMensalAno,
     niveisPcScore,
   } = dados
 
@@ -1120,6 +1133,18 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
   try { logoBeyond = await carregarLogoAutoCrop(LOGO_BEYOND_PRETO, 260) } catch {}
   try { logoUnidade = await carregarLogoAutoCrop(LOGO_UNIDADE_PRETO[empresa], 260) } catch {}
   if (fotoUrl) { try { fotoBase64 = await carregarImagemRedimensionada(fotoUrl, 200, 'image/jpeg', 0.85) } catch {} }
+
+  // Ícones de conquista são SVG (src/assets/conquistas/) — jsPDF não desenha SVG direto, então
+  // rasteriza cada um pra PNG aqui (mesmo helper usado pra logo/foto) antes de começar a
+  // desenhar. Se um ícone específico falhar (ex.: SVG num formato que createImageBitmap não
+  // decodifica nesse navegador), a conquista some com o ícone mas o nome dela continua
+  // aparecendo — nunca deixa uma falha de imagem derrubar o PDF inteiro.
+  const iconesConquistas = {}
+  for (const c of conquistas || []) {
+    const url = ICONE_CONQUISTA_URL[c.icone]
+    if (!url || iconesConquistas[c.icone]) continue
+    try { iconesConquistas[c.icone] = await carregarImagemRedimensionada(url, 60, 'image/png') } catch {}
+  }
 
   function fontePadrao(estilo, tamanho) {
     doc.setFont('helvetica', estilo)
@@ -1173,25 +1198,25 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
   doc.setTextColor(...COR_TEXTO_SUAVE)
   doc.text(`${totalPresencas} aula${totalPresencas === 1 ? '' : 's'} com presença`, margem + avatarTam + 14, cursorY + 36)
 
+  // Card cheio da cor do nível (não mais fundo branco + número colorido) — mesma paleta das
+  // 4 tarjas do cabeçalho (CARD_PC_SCORE_COR_POR_NIVEL), texto sempre branco por cima.
+  const corCardPcScore = CARD_PC_SCORE_COR_POR_NIVEL[nivelChave] || [136, 136, 136]
   const boxPcScoreW = 130
   const boxPcScoreX = pageWidth - margem - boxPcScoreW
-  doc.setFillColor(...COR_BRANCO)
+  doc.setFillColor(...corCardPcScore)
   doc.roundedRect(boxPcScoreX, cursorY, boxPcScoreW, avatarTam, 8, 8, 'F')
-  doc.setDrawColor(215, 210, 200)
-  doc.roundedRect(boxPcScoreX, cursorY, boxPcScoreW, avatarTam, 8, 8, 'S')
   fontePadrao('normal', 7.5)
-  doc.setTextColor(...COR_TEXTO_SUAVE)
-  doc.text('PC SCORE', boxPcScoreX + 10, cursorY + 15)
-  fontePadrao('bold', 22)
-  doc.setTextColor(...nivelCor)
-  doc.text(pcScoreAtual != null ? String(pcScoreAtual) : '—', boxPcScoreX + 10, cursorY + 38)
+  doc.setTextColor(...COR_BRANCO)
+  doc.text('PC SCORE', boxPcScoreX + 10, cursorY + 14)
+  fontePadrao('bold', 30)
+  doc.text(pcScoreAtual != null ? String(pcScoreAtual) : '—', boxPcScoreX + 10, cursorY + 42)
   fontePadrao('normal', 8)
-  doc.text(nivelLabel || '', boxPcScoreX + 10, cursorY + 48)
+  doc.text(nivelLabel || '', boxPcScoreX + 10, cursorY + 50)
   if (variacaoPcScore != null && variacaoPcScore !== 0) {
     const melhorou = variacaoPcScore < 0
     fontePadrao('bold', 9)
-    doc.setTextColor(...(melhorou ? COR_VERDE : COR_VERMELHO))
-    doc.text(`${melhorou ? '▼' : '▲'} ${Math.abs(variacaoPcScore)}`, boxPcScoreX + boxPcScoreW - 10, cursorY + 20, { align: 'right' })
+    doc.setTextColor(...COR_BRANCO)
+    doc.text(`${melhorou ? '▼' : '▲'} ${Math.abs(variacaoPcScore)}`, boxPcScoreX + boxPcScoreW - 10, cursorY + 18, { align: 'right' })
   }
 
   cursorY += avatarTam + 22
@@ -1272,26 +1297,35 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
     cursorY += alturaTexto + 16
   }
 
-  // ---------- Badges ----------
-  if (badges?.length > 0) {
+  // ---------- Conquistas ----------
+  // Mesmo catálogo/ícones do sistema de conquistas usado no Card do Aluno (não mais o
+  // dicionário antigo de badges com emoji, que quebrava no jsPDF — a fonte helvetica padrão
+  // não tem glifo de emoji).
+  if (conquistas?.length > 0) {
     fontePadrao('bold', 9)
     doc.setTextColor(...COR_TINTA)
     doc.text('CONQUISTAS', margem, cursorY)
     cursorY += 12
     let bx = margem
     let by = cursorY
+    const iconTam = 14
     fontePadrao('normal', 8)
-    badges.forEach(b => {
-      const texto = `${b.emoji} ${b.label}`
-      const larguraTexto = doc.getTextWidth(texto) + 16
-      if (bx + larguraTexto > pageWidth - margem) { bx = margem; by += 20 }
+    conquistas.forEach(c => {
+      const iconUrl = iconesConquistas[c.icone]
+      const larguraTexto = doc.getTextWidth(c.nome) + (iconUrl ? iconTam + 20 : 16)
+      if (bx + larguraTexto > pageWidth - margem) { bx = margem; by += 22 }
       doc.setFillColor(...COR_BRANCO)
-      doc.roundedRect(bx, by, larguraTexto, 16, 8, 8, 'F')
+      doc.roundedRect(bx, by, larguraTexto, 20, 10, 10, 'F')
+      let textoX = bx + 10
+      if (iconUrl) {
+        try { doc.addImage(iconUrl, 'PNG', bx + 5, by + 3, iconTam, iconTam, undefined, 'FAST') } catch {}
+        textoX = bx + 5 + iconTam + 6
+      }
       doc.setTextColor(...COR_TINTA)
-      doc.text(texto, bx + 8, by + 11)
+      doc.text(c.nome, textoX, by + 13)
       bx += larguraTexto + 6
     })
-    cursorY = by + 26
+    cursorY = by + 30
   }
 
   // ---------- Histórico de presença do mês ----------
@@ -1316,6 +1350,55 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
       doc.text(item.label, margem + i * colW + colW / 2, cursorY + 25, { align: 'center' })
     })
     cursorY += 40
+  }
+
+  // ---------- Soma geral + histórico mensal ----------
+  // Minimalista de propósito (pedido explícito): só um número grande + uma linha compacta de
+  // barrinhas por mês, sem tabela nem grade. Esse documento nunca teve paginação (sempre foi
+  // "1 página fixa" — ver comentário no topo do arquivo) e essa é a última seção de conteúdo
+  // antes da legenda/rodapé, que ficam em posição FIXA a partir do fim da página — se sobrar
+  // pouco espaço aqui (aluno com narrativa longa + muitas conquistas), abre página nova em vez
+  // de desenhar em cima da legenda.
+  if (somaGeralAulas != null) {
+    const alturaEstimada = 34 + (historicoMensalAno?.length ? 34 : 0)
+    if (cursorY + alturaEstimada > doc.internal.pageSize.getHeight() - 90) {
+      doc.addPage()
+      doc.setFillColor(...COR_CREME)
+      doc.rect(0, 0, pageWidth, doc.internal.pageSize.getHeight(), 'F')
+      cursorY = margem
+    }
+
+    fontePadrao('bold', 9)
+    doc.setTextColor(...COR_TINTA)
+    doc.text('SOMA GERAL DE AULAS', margem, cursorY)
+    fontePadrao('bold', 20)
+    doc.setTextColor(...COR_VINHO)
+    doc.text(String(somaGeralAulas), margem, cursorY + 22)
+    cursorY += 34
+
+    if (historicoMensalAno?.length) {
+      const anoAtual = new Date().getFullYear()
+      fontePadrao('normal', 7)
+      doc.setTextColor(...COR_TEXTO_SUAVE)
+      doc.text(String(anoAtual), margem, cursorY)
+      const inicioMesesX = margem + 32
+      const colWMes = (larguraUtil - 32) / historicoMensalAno.length
+      const maxTotal = Math.max(1, ...historicoMensalAno.map(m => m.total))
+      const alturaBarraMax = 16
+      historicoMensalAno.forEach((m, i) => {
+        const x = inicioMesesX + i * colWMes + colWMes / 2
+        const alturaBarra = Math.max(1, (m.total / maxTotal) * alturaBarraMax)
+        doc.setFillColor(...COR_VINHO)
+        doc.rect(x - 3, cursorY - alturaBarra, 6, alturaBarra, 'F')
+        fontePadrao('bold', 7)
+        doc.setTextColor(...COR_TINTA)
+        doc.text(String(m.total), x, cursorY + 10, { align: 'center' })
+        fontePadrao('normal', 6)
+        doc.setTextColor(...COR_TEXTO_SUAVE)
+        doc.text(m.mes, x, cursorY + 18, { align: 'center' })
+      })
+      cursorY += 32
+    }
   }
 
   // ---------- Legenda dos 5 níveis do PC Score (rodapé didático) ----------

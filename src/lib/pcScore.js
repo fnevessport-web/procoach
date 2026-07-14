@@ -1,14 +1,20 @@
 // PC Score — índice interno de evolução técnica (menor = melhor, mesmo conceito de
 // organização usado por sistemas de rating de tênis conhecidos no mercado, mas é um índice
 // próprio do ProCoach, não afiliado a nenhuma marca). Função pura, sem I/O — recebe tudo já
-// carregado (notas, data de nascimento, faixa manual) e devolve o resultado calculado, pra
-// dar pra testar sem precisar de banco nem de mock de rede.
+// carregado (notas, definições de dimensão/domínio, data de nascimento, faixa manual) e
+// devolve o resultado calculado, pra dar pra testar sem precisar de banco nem de mock de rede.
 //
-// Arquitetura modular por modalidade: os pesos por dimensão/faixa etária ficam num objeto de
-// config (PESOS_POR_MODALIDADE) chaveado pelo NOME da modalidade — igual ao formato que
-// `dimensoes` já usa no banco (jsonb chaveado por nome de dimensão, não colunas fixas). Uma
-// modalidade nova (Padel, Beach Tennis...) só precisa de uma entrada nova aqui; nenhuma
-// modalidade sem entrada quebra — cai no padrão de peso 1.0 pra todas as dimensões.
+// Arquitetura modular por modalidade: os pesos por unidade/faixa etária ficam num objeto de
+// config (PESOS_POR_MODALIDADE) chaveado pelo NOME da modalidade. Uma modalidade nova (Padel,
+// Beach Tennis...) só precisa de uma entrada nova aqui; nenhuma modalidade sem entrada quebra
+// — cai no padrão de peso 1.0 pra todas as unidades.
+//
+// Duas formas de "unidade de pontuação" convivem no mesmo código (ver calcularMediasDominios):
+// modalidades com subitens agrupados por domínio (Tênis: 19 subitens em 5 domínios, nota
+// 1-10) e modalidades com dimensões soltas, sem agrupamento (as demais, nota 1-5 — modelo
+// original). Cada subitem/dimensão é reduzido pra uma escala 1-5 equivalente antes de entrar
+// na fórmula, então o mesmo cálculo final e as mesmas faixas de corte (NIVEIS_PC_SCORE)
+// valem pras duas formas sem precisar de nenhum caso especial por modalidade.
 
 // Faixas etárias reconhecidas — as mesmas em toda a régua (cálculo automático por idade e
 // seleção manual do professor usam exatamente essas três chaves).
@@ -18,14 +24,22 @@ export const FAIXAS_ETARIAS = [
   { chave: 'adulto', label: 'Adulto/Juvenil', faixaIdade: '14 anos ou mais', min: 14, max: Infinity },
 ]
 
-// Pesos por dimensão que fogem do padrão 1.0 — só precisa listar as exceções. Chaves de
-// dimensão têm que bater com o nome salvo em `dimensoes` (mesmo nome_dimensao de
-// modalidade_dimensoes, ex.: "Saque", "Condicionamento").
+// Pesos por unidade de pontuação que fogem do padrão 1.0 — só precisa listar as exceções.
+// "Unidade" é um DOMÍNIO nas modalidades com subitens agrupados (Tênis: Saque, Jogo de
+// Fundo, Jogo de Rede, Tática, Condicionamento Físico — ver modalidade_dimensoes.dominio),
+// ou a própria dimensão solta nas modalidades que ainda não migraram pra esse modelo (a
+// chave então é o nome_dimensao de sempre, ex. "Saque", "Condicionamento").
+//
+// Tênis: "Condicionamento" e "Posicionamento" (pesos antigos, kids) viraram respectivamente
+// o domínio "Condicionamento Físico" e um subitem dentro de "Jogo de Fundo" — como
+// Posicionamento não é mais um domínio inteiro (só 1 de 5 subitens ali), o peso extra dele
+// não tem pra onde migrar sem distorcer o resto de Jogo de Fundo, e foi deixado de fora;
+// "Saque" e "Voleio" (pesos antigos, adulto) mapeiam direto pra "Saque" e "Jogo de Rede".
 const PESOS_POR_MODALIDADE = {
   'Tênis': {
-    kids: { Condicionamento: 1.3, Posicionamento: 1.3 },
+    kids: { 'Condicionamento Físico': 1.3 },
     infantil: {},
-    adulto: { Saque: 1.3, Voleio: 1.3 },
+    adulto: { Saque: 1.3, 'Jogo de Rede': 1.3 },
   },
 }
 
@@ -84,28 +98,90 @@ export function nivelPorPcScore(pcScore) {
   return NIVEIS_PC_SCORE.find(n => pcScore >= n.min && pcScore <= n.max) || NIVEIS_PC_SCORE[NIVEIS_PC_SCORE.length - 1]
 }
 
-// Cálculo central. `dimensoes` é um objeto { nomeDimensao: nota(1-5) } — mesmo formato salvo
-// em avaliacoes_tecnicas.dimensoes, então o resultado dessa função pode ser gravado direto.
+// Reduz a nota de um subitem (numa escala qualquer, ex. 1-10) pra escala equivalente 1-5 —
+// é nessa escala que o resto da fórmula do PC Score sempre trabalhou. Manter a conversão só
+// aqui, num único lugar, é o que deixa a fórmula final (e as faixas de corte do PC Score,
+// NIVEIS_PC_SCORE) livres pra nunca precisar mudar, não importa a escala de entrada de cada
+// modalidade — o "recalibrar" que a escala 1-10 do Tênis pede acontece na entrada, não na
+// régua de saída.
+function paraEscala5(nota, escalaMax) {
+  return (nota / (escalaMax || 5)) * 5
+}
+
+// Agrupa as notas de `dimensoes` ({ chave: nota }) pelas definições de
+// modalidade_dimensoes (`definicoesDimensoes`, mesmo formato de useDimensoesModalidade).
+// Cada subitem com `dominio` preenchido (modelo novo, ex. Tênis) entra na média do domínio
+// dele; sem `dominio` (modelo antigo, ainda usado por Padel/Beach Tennis/Futevôlei/Vôlei de
+// Praia), cada dimensão é sua própria "unidade" — exatamente o comportamento de sempre.
+//
+// Devolve uma lista de unidades: { nome, media (1 casa decimal, escala original do
+// domínio/dimensão), notaEm5 (escala equivalente 1-5, uso interno do PC Score), subitens }.
+export function calcularMediasDominios(dimensoes, definicoesDimensoes) {
+  if (!definicoesDimensoes?.length) return []
+
+  const porDominio = {}
+  const soltas = []
+
+  definicoesDimensoes.forEach(d => {
+    const nota = dimensoes?.[d.chave]
+    if (typeof nota !== 'number' || Number.isNaN(nota)) return
+    const escalaMax = d.escala_max || 5
+    const subitem = { nome: d.nome_dimensao, chave: d.chave, nota, escalaMax }
+
+    if (d.dominio) {
+      if (!porDominio[d.dominio]) porDominio[d.dominio] = { nome: d.dominio, subitens: [] }
+      porDominio[d.dominio].subitens.push(subitem)
+    } else {
+      soltas.push(subitem)
+    }
+  })
+
+  const unidadesDominio = Object.values(porDominio).map(dom => {
+    const somaOriginal = dom.subitens.reduce((s, sub) => s + sub.nota, 0)
+    const somaEm5 = dom.subitens.reduce((s, sub) => s + paraEscala5(sub.nota, sub.escalaMax), 0)
+    return {
+      nome: dom.nome,
+      media: Math.round((somaOriginal / dom.subitens.length) * 10) / 10,
+      notaEm5: somaEm5 / dom.subitens.length,
+      subitens: dom.subitens,
+    }
+  })
+
+  const unidadesSoltas = soltas.map(sub => ({
+    nome: sub.nome,
+    media: sub.nota,
+    notaEm5: paraEscala5(sub.nota, sub.escalaMax),
+    subitens: [sub],
+  }))
+
+  return [...unidadesDominio, ...unidadesSoltas]
+}
+
+// Cálculo central. `dimensoes` é um objeto { chave: nota } — mesmo formato salvo em
+// avaliacoes_tecnicas.dimensoes, então o resultado dessa função pode ser gravado direto.
+// `definicoesDimensoes` são as linhas de modalidade_dimensoes da modalidade em questão (o
+// retorno de useDimensoesModalidade) — é o que diz quais subitens pertencem a qual domínio
+// e em que escala cada um foi avaliado.
 //
 // Retorna pcScore/mediaPonderada/nivel como null (em vez de estimar um valor) quando a faixa
 // etária não pôde ser determinada — nunca gera um score "advinhando" a idade do aluno.
-export function calcularPcScore({ dimensoes, modalidadeNome, dataNascimento, faixaManual, dataAvaliacao = new Date() }) {
+export function calcularPcScore({ dimensoes, definicoesDimensoes, modalidadeNome, dataNascimento, faixaManual, dataAvaliacao = new Date() }) {
   const faixaEtaria = resolverFaixaEtaria({ dataNascimento, faixaManual, dataAvaliacao })
   if (!faixaEtaria) {
-    return { pcScore: null, mediaPonderada: null, faixaEtaria: null, nivel: null }
+    return { pcScore: null, mediaPonderada: null, faixaEtaria: null, nivel: null, dominios: [] }
   }
 
-  const entradas = Object.entries(dimensoes || {}).filter(([, nota]) => typeof nota === 'number' && !Number.isNaN(nota))
-  if (entradas.length === 0) {
-    return { pcScore: null, mediaPonderada: null, faixaEtaria, nivel: null }
+  const unidades = calcularMediasDominios(dimensoes, definicoesDimensoes)
+  if (unidades.length === 0) {
+    return { pcScore: null, mediaPonderada: null, faixaEtaria, nivel: null, dominios: [] }
   }
 
   const pesosDaFaixa = PESOS_POR_MODALIDADE[modalidadeNome]?.[faixaEtaria] || {}
   let somaPonderada = 0
   let somaPesos = 0
-  entradas.forEach(([nomeDimensao, nota]) => {
-    const peso = pesosDaFaixa[nomeDimensao] ?? 1
-    somaPonderada += nota * peso
+  unidades.forEach(({ nome, notaEm5 }) => {
+    const peso = pesosDaFaixa[nome] ?? 1
+    somaPonderada += notaEm5 * peso
     somaPesos += peso
   })
 
@@ -117,6 +193,7 @@ export function calcularPcScore({ dimensoes, modalidadeNome, dataNascimento, fai
     mediaPonderada: Math.round(mediaPonderada * 100) / 100,
     faixaEtaria,
     nivel: nivelPorPcScore(pcScore),
+    dominios: unidades,
   }
 }
 

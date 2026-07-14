@@ -390,6 +390,42 @@ export function useSalvarAvaliacao() {
   })
 }
 
+// Edição de uma avaliação já lançada — capacidade nova, exclusiva de quem tem
+// podeEditarAvaliacaoTecnica (hoje só o role gestor, ver usePermissions.js). Só atualiza os
+// campos da nota em si; diferente de useSalvarAvaliacao, não mexe em status/confirmação
+// multi-professor nem redispara narrativa da IA/concessão de badge — isso é fluxo de
+// avaliação NOVA, corrigir uma nota já lançada não deveria reabrir tudo isso de novo.
+// Registra em audit_log (dados_anteriores/dados_novos) porque reescrever a avaliação de um
+// professor é uma ação sensível — precisa ficar rastreável quem mudou o quê.
+export function useEditarAvaliacao() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      avaliacaoId,
+      dimensoes, notaGeral, notaGeralManual, comentario, dataAvaliacao, pcScore, faixaEtaria,
+    }) => {
+      const { data: anterior } = await supabase.from('avaliacoes_tecnicas').select('*').eq('id', avaliacaoId).single()
+      const { data: atualizada, error } = await supabase.from('avaliacoes_tecnicas').update({
+        dimensoes,
+        nota_geral: notaGeral,
+        nota_geral_manual: notaGeralManual,
+        comentario: comentario || null,
+        data_avaliacao: dataAvaliacao,
+        pc_score: pcScore ?? null,
+        faixa_etaria: faixaEtaria ?? null,
+      }).eq('id', avaliacaoId).select().single()
+      if (error) throw error
+
+      await logAudit('avaliacoes_tecnicas', avaliacaoId, 'UPDATE', anterior, atualizada)
+      return atualizada
+    },
+    onSuccess: (_, { alunoId, modalidadeId }) => {
+      qc.invalidateQueries({ queryKey: ['avaliacoes_modalidade', alunoId, modalidadeId] })
+      qc.invalidateQueries({ queryKey: ['aluno_completo', alunoId] })
+    }
+  })
+}
+
 // Confirmações pendentes de um professor — avaliações feitas por outro professor do mesmo
 // aluno que aguardam ele confirmar (fase 2, ver migration 011). Alimenta o painel no
 // DashboardProfessor.jsx.
@@ -526,7 +562,11 @@ export function useHistoricoPresencaModalidade(alunoId, modalidadeId, modalidade
         .filter(p => p.aulas.data_aula <= hoje)
         .filter(p => p.aulas.turma_id ? p.aulas.turmas?.modalidade_id === modalidadeId : getModalidadeDaAula(p.aulas) === modalidadeNome)
         .sort((a, b) => (b.aulas.data_aula || '').localeCompare(a.aulas.data_aula || ''))
-        .slice(0, 100)
+        // Sem limite de linhas — o PDF de Evolução Técnica soma "aulas com presença desde o
+        // início" (EvolucaoTecnicaTenis.jsx), e um corte fixo de 100 truncava esse total pra
+        // qualquer aluno com mais de ~2 anos de frequência regular. A tela que agrupa isso por
+        // mês (AlunoCard.jsx) já é paginada visualmente por mês, então não precisa de um cap
+        // aqui pra não crescer demais.
     },
     enabled: !!alunoId && !!modalidadeId,
   })

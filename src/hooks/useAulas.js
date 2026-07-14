@@ -21,7 +21,7 @@ export function useAulas({ data, professorId, modalidadeId, status } = {}) {
           turmas(nome, horario_inicio, horario_fim, horario_dia_semana, professor_titular_id, quadras(nome), modalidades(nome, icone_emoji, cor_hex), turmas_alunos(id, ativo)),
           professores!professor_executou_id(id, nome, foto_url),
           prof_titular:professores!professor_titular_id(id, nome),
-          presencas(id, aluno_id, presente, status_presenca, tipo_participacao, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof, alunos(id, nome, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof))
+          presencas(id, aluno_id, presente, status_presenca, tipo_participacao, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof, criado_por, criado_por_nome, criado_em, alunos(id, nome, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof))
         `)
         .order('data_aula', { ascending: false })
 
@@ -336,8 +336,26 @@ export function useAtualizarStatusAula() {
 export function useSalvarPresencas() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ aulaId, presencas }) => {
-      const rows = presencas.map(p => ({
+    // idsNovos: aluno_ids que estão sendo incluídos na aula agora (não existiam antes) —
+    // só essas linhas recebem criado_por/criado_por_nome. Precisa ser um INSERT/upsert
+    // separado do resto: se o mesmo upsert misturasse linhas com e sem essas chaves, o
+    // PostgREST monta um único INSERT com a união das colunas e preenche de NULL quem não
+    // mandou a chave, apagando o "quem incluiu" de presenças já existentes a cada salvamento.
+    mutationFn: async ({ aulaId, presencas, idsNovos = [] }) => {
+      const novosSet = new Set(idsNovos)
+
+      let criadoPor = null, criadoPorNome = null
+      if (novosSet.size > 0) {
+        const { data: { session } } = await supabase.auth.getSession()
+        criadoPor = session?.user?.email || null
+        if (session?.user?.id) {
+          const { data: perfil } = await supabase
+            .from('perfis_usuario').select('nome').eq('user_id', session.user.id).maybeSingle()
+          criadoPorNome = perfil?.nome || null
+        }
+      }
+
+      const rowBase = p => ({
         aula_id: aulaId,
         aluno_id: p.aluno_id,
         presente: p.status_presenca === 'presente',
@@ -345,11 +363,20 @@ export function useSalvarPresencas() {
         // senão viola presencas_status_presenca_check.
         status_presenca: p.status_presenca || null,
         tipo_participacao: p.tipo_participacao || 'mensalista',
-      }))
-      const { error } = await supabase
-        .from('presencas')
-        .upsert(rows, { onConflict: 'aula_id,aluno_id' })
-      if (error) throw error
+      })
+
+      const linhasNovas = presencas.filter(p => novosSet.has(p.aluno_id))
+        .map(p => ({ ...rowBase(p), criado_por: criadoPor, criado_por_nome: criadoPorNome }))
+      const linhasExistentes = presencas.filter(p => !novosSet.has(p.aluno_id)).map(rowBase)
+
+      if (linhasNovas.length > 0) {
+        const { error } = await supabase.from('presencas').upsert(linhasNovas, { onConflict: 'aula_id,aluno_id' })
+        if (error) throw error
+      }
+      if (linhasExistentes.length > 0) {
+        const { error } = await supabase.from('presencas').upsert(linhasExistentes, { onConflict: 'aula_id,aluno_id' })
+        if (error) throw error
+      }
 
       // Modalidade da aula (turma-linked ou avulsa) — usada tanto pra manter alunos_modalidades
       // sincronizado quanto pra preencher reposicoes.modalidade_id. turmas_alunos/presencas já
@@ -524,6 +551,32 @@ export function useAulasDiaParaReposicao(data) {
       )
     },
     enabled: !!data,
+    staleTime: 30000,
+  })
+}
+
+// Mesma ideia de useAulasDiaParaReposicao, mas pro intervalo de uma semana inteira de uma vez
+// (grade estilo Disponibilidade — dias x horário) em vez de um dia por consulta. Usado pelo
+// picker visual de reposição em AulasAdmin.jsx (ModalReposicao).
+export function useAulasSemanaParaReposicao(dataInicio, dataFim) {
+  return useQuery({
+    queryKey: ['aulas_semana_repos', dataInicio, dataFim],
+    queryFn: async () => {
+      const { data: aulas, error } = await supabase
+        .from('aulas')
+        .select(`
+          id, data_aula, turma_id,
+          turmas(id, nome, modalidade_id, horario_inicio, horario_fim, quadras(id, nome), niveis(nome)),
+          presencas(id, aluno_id)
+        `)
+        .gte('data_aula', dataInicio)
+        .lte('data_aula', dataFim)
+        .not('turma_id', 'is', null)
+        .neq('status_aula', 'cancelada')
+      if (error) throw error
+      return aulas || []
+    },
+    enabled: !!dataInicio && !!dataFim,
     staleTime: 30000,
   })
 }

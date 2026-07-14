@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
-import { ChevronLeft, Check } from 'lucide-react'
+import { ChevronLeft, Check, Info } from 'lucide-react'
 import {
   useAlunos, useAlunoCompleto, useDimensoesModalidade, useAvaliacoesModalidade,
-  useSalvarAvaliacao, useAtualizarNivelModalidade,
+  useSalvarAvaliacao, useEditarAvaliacao, useAtualizarNivelModalidade,
 } from '../../hooks/useAlunos'
-import { calcularPcScore, nivelPorPcScore } from '../../lib/pcScore'
+import { useProfessores } from '../../hooks/useProfessores'
+import { calcularPcScore, calcularMediasDominios, nivelPorPcScore } from '../../lib/pcScore'
+import { DESCRICOES_SUBITENS_TENIS, FAIXAS_REFERENCIA_1_10 } from '../../constants/avaliacaoTecnicaTenis'
 import { Input, Textarea } from '../../components/ui/Input'
 import { Loading } from '../../components/ui/Loading'
+import { Modal } from '../../components/ui/Modal'
 import { SeletorFaixaEtariaManual } from '../../components/SeletorFaixaEtariaManual'
 import { supabase } from '../../lib/supabase'
 import useAppStore from '../../store/useAppStore'
@@ -32,11 +35,31 @@ function media(valores) {
   return Math.round((valores.reduce((s, v) => s + v, 0) / valores.length) * 10) / 10
 }
 
+function formataNota(n) {
+  return n.toFixed(1).replace('.', ',')
+}
+
 export function AvaliarAluno() {
   const location = useLocation()
   const navigate = useNavigate()
   const { perfil } = useAppStore()
-  const professorId = perfil?.professor_id
+  // Login de professor já traz o vínculo pronto em perfis_usuario.professor_id — nesse caso
+  // a avaliação é sempre dele mesmo, sem escolha. Gestor/coordenador/financeiro/auxiliar não
+  // têm esse vínculo (não são "um professor"), então precisam escolher em nome de quem estão
+  // lançando a avaliação — sem isso, professor_id chegava nulo no insert e o Postgres rejeitava
+  // (NOT NULL constraint), travando a tela pra quem não fosse professor logado.
+  const professorIdProprio = perfil?.professor_id
+  const [professorSelecionadoId, setProfessorSelecionadoId] = useState('')
+  const { professores: todosProfessores } = useProfessores()
+  const professorId = professorIdProprio || professorSelecionadoId || null
+  const professorNome = professorIdProprio
+    ? perfil?.nome
+    : todosProfessores.find(p => p.id === professorSelecionadoId)?.nome
+
+  // Edição de avaliação já lançada (capacidade exclusiva de gestor — ver EvolucaoTecnicaTenis.jsx
+  // "Histórico completo") chega via location.state com a linha inteira da avaliação, evitando
+  // um fetch novo já que quem navegou pra cá já tinha ela carregada.
+  const avaliacaoParaEditar = location.state?.avaliacaoParaEditar || null
 
   const [alunoId, setAlunoId] = useState(location.state?.alunoId || null)
   const [alunoNome, setAlunoNome] = useState(location.state?.alunoNome || '')
@@ -80,7 +103,7 @@ export function AvaliarAluno() {
           <ChevronLeft size={24} />
         </button>
         <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
-          Avaliar aluno
+          {avaliacaoParaEditar ? 'Editar avaliação' : 'Avaliar aluno'}
         </h1>
       </div>
 
@@ -124,6 +147,28 @@ export function AvaliarAluno() {
             }}>trocar aluno</button>
           </div>
 
+          {!professorIdProprio && !avaliacaoParaEditar && (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
+                Avaliação em nome de qual professor?
+              </div>
+              <select
+                value={professorSelecionadoId}
+                onChange={e => setProfessorSelecionadoId(e.target.value)}
+                style={{
+                  width: '100%', padding: '12px 14px', borderRadius: '10px', border: 'none',
+                  outline: '1px solid #2a2a2a', backgroundColor: '#1a1a1a',
+                  color: '#F0F2F5', fontSize: '13px', boxSizing: 'border-box',
+                }}
+              >
+                <option value="">Selecione o professor...</option>
+                {todosProfessores.map(p => (
+                  <option key={p.id} value={p.id}>{p.nome}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {!modalidadeId ? (
             <div>
               <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Modalidade</div>
@@ -149,9 +194,10 @@ export function AvaliarAluno() {
               alunoId={alunoId}
               alunoNome={alunoNome}
               professorId={professorId}
-              professorNome={perfil?.nome}
+              professorNome={professorNome}
               modalidadeId={modalidadeId}
               modalidadeNome={modalidadeNome}
+              avaliacaoParaEditar={avaliacaoParaEditar}
               onVoltar={() => setModalidadeId(null)}
               onSalvo={() => navigate(-1)}
             />
@@ -164,18 +210,20 @@ export function AvaliarAluno() {
 
 // Componente separado e keyed por modalidadeId — trocar de modalidade remonta com estado
 // limpo de propósito (sem precisar de um efeito resetando manualmente cada campo).
-function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professorNome, modalidadeId, modalidadeNome, onVoltar, onSalvo }) {
+function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professorNome, modalidadeId, modalidadeNome, avaliacaoParaEditar, onVoltar, onSalvo }) {
   const [nivelAtual, setNivelAtual] = useState(null)
   const [novoNivel, setNovoNivel] = useState('')
-  const [valores, setValores] = useState({})
-  const [notaManual, setNotaManual] = useState(null)
-  const [comentario, setComentario] = useState('')
-  const [dataAvaliacao, setDataAvaliacao] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [valores, setValores] = useState(() => avaliacaoParaEditar?.dimensoes || {})
+  const [notaManual, setNotaManual] = useState(() => avaliacaoParaEditar?.nota_geral_manual ? avaliacaoParaEditar.nota_geral : null)
+  const [comentario, setComentario] = useState(avaliacaoParaEditar?.comentario || '')
+  const [dataAvaliacao, setDataAvaliacao] = useState(avaliacaoParaEditar?.data_avaliacao || format(new Date(), 'yyyy-MM-dd'))
   const [etapa, setEtapa] = useState('preenchimento') // 'preenchimento' | 'resumo'
+  const [subitemAberto, setSubitemAberto] = useState(null) // definição do subitem com a ajuda aberta, ou null
 
   const { data: dimensoes, isLoading: loadingDimensoes } = useDimensoesModalidade(modalidadeId)
   const { data: avaliacoesAnteriores } = useAvaliacoesModalidade(alunoId, modalidadeId)
   const salvarAvaliacao = useSalvarAvaliacao()
+  const editarAvaliacao = useEditarAvaliacao()
   const atualizarNivel = useAtualizarNivelModalidade()
 
   useEffect(() => {
@@ -183,25 +231,52 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
       .then(({ data }) => setNivelAtual(data?.nivel || null))
   }, [alunoId, modalidadeId])
 
-  const notaCalculada = useMemo(() => media(Object.values(valores)), [valores])
+  // Domínios têm subitens agrupados (ex.: Tênis — Saque, Jogo de Fundo...); sem domínio é o
+  // modelo antigo, cada dimensão solta (Padel, Beach Tennis...) — os dois convivem no mesmo
+  // formulário, só muda como agrupa visualmente.
+  const gruposDominio = useMemo(() => {
+    const grupos = {}
+    const soltas = []
+    ;(dimensoes || []).forEach(d => {
+      if (d.dominio) {
+        if (!grupos[d.dominio]) grupos[d.dominio] = []
+        grupos[d.dominio].push(d)
+      } else {
+        soltas.push(d)
+      }
+    })
+    return { grupos: Object.entries(grupos), soltas }
+  }, [dimensoes])
+
+  // Escala do formulário: 10 pro Tênis (novo modelo), 5 pras demais (modelo antigo) — lida
+  // direto de escala_max em vez de checar o nome da modalidade, então uma modalidade nova
+  // com escala diferente já funciona sem mexer nessa tela.
+  const escalaMax = useMemo(() => Math.max(5, ...(dimensoes || []).map(d => d.escala_max || 5)), [dimensoes])
+
+  // Médias ao vivo — reaproveita a mesma função usada no cálculo do PC Score (calcularPcScore
+  // usa exatamente essa lista de "unidades" por baixo), então o número que o professor vê
+  // enquanto preenche é sempre o mesmo que vai valer no resumo e no PC Score final.
+  const unidades = useMemo(() => calcularMediasDominios(valores, dimensoes), [valores, dimensoes])
+  const notaCalculada = useMemo(() => media(unidades.map(u => u.media)), [unidades])
   const notaGeral = notaManual != null ? notaManual : notaCalculada
-  const salvando = salvarAvaliacao.isPending || atualizarNivel.isPending
+  const salvando = salvarAvaliacao.isPending || editarAvaliacao.isPending || atualizarNivel.isPending
   const todasPreenchidas = !!dimensoes?.length && Object.keys(valores).length >= dimensoes.length
 
-  // PC Score ao vivo — só é possível calcular pra Tênis (única modalidade com pesos
-  // configurados em pcScore.js por enquanto); pra outras, cai em faixaEtaria null e o
-  // resumo mostra "sem PC Score" sem bloquear o salvamento (nota_geral continua valendo
-  // normalmente pra elas, como já era antes desta entrega).
+  // PC Score ao vivo — só calcula depois de todas as notas preenchidas (senão a média fica
+  // artificialmente alta/baixa pelo que falta). Pra modalidades sem pesos configurados em
+  // PESOS_POR_MODALIDADE (todas exceto Tênis, por enquanto) cai no padrão peso 1.0, então o
+  // cálculo funciona igual — só não é exibido pra elas (ver `ehTenis` abaixo).
   const resultadoPcScore = useMemo(() => {
     if (!todasPreenchidas || !aluno) return null
     return calcularPcScore({
       dimensoes: valores,
+      definicoesDimensoes: dimensoes,
       modalidadeNome,
       dataNascimento: aluno.data_nascimento,
       faixaManual: aluno.faixa_etaria_manual,
       dataAvaliacao,
     })
-  }, [todasPreenchidas, valores, modalidadeNome, aluno, dataAvaliacao])
+  }, [todasPreenchidas, valores, dimensoes, modalidadeNome, aluno, dataAvaliacao])
 
   const ehTenis = modalidadeNome === 'Tênis'
   const faltaFaixaEtaria = ehTenis && todasPreenchidas && !resultadoPcScore?.faixaEtaria
@@ -214,32 +289,47 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
   }
 
   async function handleConfirmar() {
+    if (!avaliacaoParaEditar && !professorId) {
+      return toast.error('Selecione o professor responsável pela avaliação antes de confirmar.', { style: toastStyle })
+    }
     try {
-      const historicoPcScore = (avaliacoesAnteriores || [])
-        .slice(-4)
-        .filter(a => a.pc_score != null)
-        .map(a => ({ dataAvaliacao: a.data_avaliacao, pcScore: a.pc_score }))
+      let mensagemSucesso = '✅ Avaliação atualizada!'
+      if (avaliacaoParaEditar) {
+        await editarAvaliacao.mutateAsync({
+          avaliacaoId: avaliacaoParaEditar.id, alunoId, modalidadeId,
+          dimensoes: valores,
+          notaGeral,
+          notaGeralManual: notaManual != null,
+          comentario,
+          dataAvaliacao,
+          pcScore: resultadoPcScore?.pcScore ?? null,
+          faixaEtaria: resultadoPcScore?.faixaEtaria ?? null,
+        })
+      } else {
+        const historicoPcScore = (avaliacoesAnteriores || [])
+          .slice(-4)
+          .filter(a => a.pc_score != null)
+          .map(a => ({ dataAvaliacao: a.data_avaliacao, pcScore: a.pc_score }))
 
-      const avaliacaoSalva = await salvarAvaliacao.mutateAsync({
-        alunoId, modalidadeId, professorId, professorNome, alunoNome, modalidadeNome,
-        dimensoes: valores,
-        notaGeral,
-        notaGeralManual: notaManual != null,
-        comentario,
-        dataAvaliacao,
-        pcScore: resultadoPcScore?.pcScore ?? null,
-        faixaEtaria: resultadoPcScore?.faixaEtaria ?? null,
-        historicoPcScore,
-      })
+        const avaliacaoSalva = await salvarAvaliacao.mutateAsync({
+          alunoId, modalidadeId, professorId, professorNome, alunoNome, modalidadeNome,
+          dimensoes: valores,
+          notaGeral,
+          notaGeralManual: notaManual != null,
+          comentario,
+          dataAvaliacao,
+          pcScore: resultadoPcScore?.pcScore ?? null,
+          faixaEtaria: resultadoPcScore?.faixaEtaria ?? null,
+          historicoPcScore,
+        })
+        mensagemSucesso = avaliacaoSalva?.status === 'pendente'
+          ? '✅ Avaliação registrada — aguardando confirmação do(s) outro(s) professor(es).'
+          : '✅ Avaliação registrada!'
+      }
       if (novoNivel && novoNivel !== nivelAtual) {
         await atualizarNivel.mutateAsync({ alunoId, modalidadeId, nivel: novoNivel })
       }
-      toast.success(
-        avaliacaoSalva?.status === 'pendente'
-          ? '✅ Avaliação registrada — aguardando confirmação do(s) outro(s) professor(es).'
-          : '✅ Avaliação registrada!',
-        { style: toastStyle }
-      )
+      toast.success(mensagemSucesso, { style: toastStyle })
       onSalvo()
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
@@ -258,7 +348,7 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
 
         <div>
           <div style={{ fontSize: '11px', fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
-            Confira sua avaliação
+            {avaliacaoParaEditar ? 'Confira a edição' : 'Confira sua avaliação'}
           </div>
           <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', marginBottom: '10px' }}>
             <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>{alunoNome}</div>
@@ -267,14 +357,26 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-            {Object.entries(valores).map(([nome, nota]) => (
-              <div key={nome} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '9px 12px', borderRadius: '9px', backgroundColor: '#111', border: '1px solid #2a2a2a',
-              }}>
-                <span style={{ fontSize: '13px', color: '#F0F2F5' }}>{nome}</span>
-                <span style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825' }}>{nota}/5</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
+            {unidades.map(u => (
+              <div key={u.nome} style={{ borderRadius: '9px', backgroundColor: '#111', border: '1px solid #2a2a2a', overflow: 'hidden' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '9px 12px', backgroundColor: u.subitens.length > 1 ? 'rgba(252,200,37,0.06)' : 'transparent',
+                }}>
+                  <span style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: u.subitens.length > 1 ? '700' : '400' }}>{u.nome}</span>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825' }}>{formataNota(u.media)}{u.subitens.length === 1 ? `/${u.subitens[0].escalaMax}` : ''}</span>
+                </div>
+                {u.subitens.length > 1 && (
+                  <div style={{ padding: '0 12px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {u.subitens.map(s => (
+                      <div key={s.chave} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '11px', color: '#888' }}>{s.nome}</span>
+                        <span style={{ fontSize: '11px', color: '#aaa' }}>{s.nota}/{s.escalaMax}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -315,17 +417,17 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
 
         <button
           onClick={handleConfirmar}
-          disabled={salvando || faltaFaixaEtaria}
+          disabled={salvando || faltaFaixaEtaria || !professorId}
           style={{
             width: '100%', padding: '13px', borderRadius: '12px', border: 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
             background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
             color: 'white', fontSize: '14px', fontWeight: '600',
-            cursor: (salvando || faltaFaixaEtaria) ? 'not-allowed' : 'pointer',
-            opacity: faltaFaixaEtaria ? 0.5 : 1,
+            cursor: (salvando || faltaFaixaEtaria || !professorId) ? 'not-allowed' : 'pointer',
+            opacity: (faltaFaixaEtaria || !professorId) ? 0.5 : 1,
           }}
         >
-          <Check size={16} /> {salvando ? 'Salvando...' : 'Confirmar avaliação'}
+          <Check size={16} /> {salvando ? 'Salvando...' : avaliacaoParaEditar ? 'Salvar edição' : 'Confirmar avaliação'}
         </button>
       </div>
     )
@@ -343,24 +445,40 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
         value={dataAvaliacao} onChange={e => e.target.value && setDataAvaliacao(e.target.value)}
       />
 
-      {/* Dimensões técnicas */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        {dimensoes?.map(d => (
-          <div key={d.id}>
-            <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>{d.nome_dimensao}</div>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {[1, 2, 3, 4, 5].map(n => (
-                <button key={n} onClick={() => setValores(v => ({ ...v, [d.nome_dimensao]: n }))} style={{
-                  flex: 1, padding: '10px 0', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                  fontSize: '14px', fontWeight: '700',
-                  background: valores[d.nome_dimensao] === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
-                  color: valores[d.nome_dimensao] === n ? 'white' : '#555',
-                  outline: valores[d.nome_dimensao] === n ? 'none' : '1px solid #2a2a2a',
-                }}>{n}</button>
-              ))}
+      {/* Dimensões técnicas — agrupadas por domínio quando existe (Tênis), lista solta senão */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {gruposDominio.grupos.map(([nomeDominio, subitens]) => {
+          const mediaDominio = unidades.find(u => u.nome === nomeDominio && u.subitens.length > 1)
+          return (
+            <div key={nomeDominio}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: '#fcc825', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {nomeDominio}
+                </div>
+                {mediaDominio && (
+                  <div style={{ fontSize: '11px', color: '#888' }}>média {formataNota(mediaDominio.media)}</div>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {subitens.map(d => (
+                  <CampoSubitem key={d.id} d={d} valor={valores[d.chave]}
+                    onEscolher={n => setValores(v => ({ ...v, [d.chave]: n }))}
+                    onAbrirAjuda={() => setSubitemAberto(d)} />
+                ))}
+              </div>
             </div>
+          )
+        })}
+
+        {gruposDominio.soltas.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {gruposDominio.soltas.map(d => (
+              <CampoSubitem key={d.id} d={d} valor={valores[d.chave]}
+                onEscolher={n => setValores(v => ({ ...v, [d.chave]: n }))}
+                onAbrirAjuda={() => setSubitemAberto(d)} />
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
       {/* Nota geral */}
@@ -368,17 +486,17 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
           <span style={{ fontSize: '12px', color: '#888' }}>Nota geral</span>
           <span style={{ fontSize: '22px', fontWeight: '800', color: '#fcc825' }}>
-            {notaGeral != null ? notaGeral.toFixed(1) : '—'}
+            {notaGeral != null ? formataNota(notaGeral) : '—'}
           </span>
         </div>
         {notaManual == null ? (
-          <button onClick={() => setNotaManual(notaCalculada || 3)} style={{
+          <button onClick={() => setNotaManual(notaCalculada || escalaMax / 2)} style={{
             fontSize: '11px', color: '#888', background: 'none', border: 'none', cursor: 'pointer',
           }}>calculada automaticamente — sobrescrever manualmente</button>
         ) : (
           <div>
             <input
-              type="range" min="1" max="5" step="0.5"
+              type="range" min="1" max={escalaMax} step="0.5"
               value={notaManual}
               onChange={e => setNotaManual(Number(e.target.value))}
               style={{ width: '100%' }}
@@ -423,6 +541,84 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
       }}>
         Continuar — revisar antes de salvar
       </button>
+
+      <Modal open={!!subitemAberto} onClose={() => setSubitemAberto(null)} title={subitemAberto?.nome_dimensao} size="sm">
+        {subitemAberto && <AjudaSubitem d={subitemAberto} />}
+      </Modal>
+    </div>
+  )
+}
+
+// Um subitem/dimensão: título + ícone de ajuda (só aparece se houver texto de apoio pra essa
+// chave — hoje só os 19 subitens do Tênis têm, ver DESCRICOES_SUBITENS_TENIS) + botões de
+// nota de 1 até a escala daquele subitem (10 no modelo novo, 5 no antigo).
+function CampoSubitem({ d, valor, onEscolher, onAbrirAjuda }) {
+  const escala = d.escala_max || 5
+  const temAjuda = !!DESCRICOES_SUBITENS_TENIS[d.chave]
+  // Escala 1-10 (Tênis) quebra em 2 linhas de 5 — 10 botões numa linha só fica pequeno
+  // demais pra tocar no celular. Escala 1-5 (modelo antigo) continua numa linha só, como
+  // sempre foi.
+  const linhas = escala > 5
+    ? [Array.from({ length: 5 }, (_, i) => i + 1), Array.from({ length: escala - 5 }, (_, i) => i + 6)]
+    : [Array.from({ length: escala }, (_, i) => i + 1)]
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+        <span style={{ fontSize: '12px', color: '#888' }}>{d.nome_dimensao}</span>
+        {temAjuda && (
+          <button onClick={onAbrirAjuda} title="O que estamos avaliando aqui?" style={{
+            background: 'none', border: 'none', cursor: 'pointer', color: '#555',
+            padding: '2px', display: 'flex', alignItems: 'center',
+          }}>
+            <Info size={13} />
+          </button>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {linhas.map((linha, i) => (
+          <div key={i} style={{ display: 'flex', gap: '6px' }}>
+            {linha.map(n => (
+              <button key={n} onClick={() => onEscolher(n)} style={{
+                flex: 1, padding: '10px 0', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                fontSize: '14px', fontWeight: '700',
+                background: valor === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
+                color: valor === n ? 'white' : '#555',
+                outline: valor === n ? 'none' : '1px solid #2a2a2a',
+              }}>{n}</button>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Conteúdo do modal de ajuda: frase do que está sendo avaliado + as 4 faixas de referência
+// (mesma régua 1-10 pra qualquer subitem).
+function AjudaSubitem({ d }) {
+  const descricao = DESCRICOES_SUBITENS_TENIS[d.chave]
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {d.dominio && (
+        <div style={{ fontSize: '10px', color: '#fcc825', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>
+          {d.dominio}
+        </div>
+      )}
+      {descricao && (
+        <p style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.5', margin: 0 }}>{descricao}</p>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {FAIXAS_REFERENCIA_1_10.map(f => (
+          <div key={f.chave} style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#111', border: '1px solid #2a2a2a' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#fcc825' }}>{f.faixa}</span>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#F0F2F5' }}>{f.label}</span>
+            </div>
+            <div style={{ fontSize: '12px', color: '#888' }}>{f.descricao}</div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
