@@ -10,11 +10,12 @@ export function SelecionarEmpresaPage({ empresas, onSelecionar }) {
 
   return (
     <div className="fade-in" style={{
-      minHeight: '100vh', width: '100%',
+      height: '100vh', width: '100%',
       backgroundColor: '#110f0f',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: '24px 16px',
+      overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
     }}>
       <div style={{ width: '100%', maxWidth: '420px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>

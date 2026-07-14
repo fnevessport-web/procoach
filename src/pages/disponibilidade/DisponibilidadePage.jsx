@@ -132,7 +132,10 @@ export function DisponibilidadePage() {
   )
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', padding: '20px 16px', boxSizing: 'border-box' }}>
+    <div style={{
+      height: '100vh', backgroundColor: '#0f0f0f', padding: '20px 16px', boxSizing: 'border-box',
+      overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
+    }}>
 
       {/* Header */}
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>

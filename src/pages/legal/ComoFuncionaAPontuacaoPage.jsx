@@ -29,9 +29,10 @@ export function ComoFuncionaAPontuacaoPage() {
 
   return (
     <div style={{
-      minHeight: '100vh', width: '100%', backgroundColor: '#110f0f',
+      height: '100vh', width: '100%', backgroundColor: '#110f0f',
       display: 'flex', justifyContent: 'center', padding: '24px 16px',
       boxSizing: 'border-box',
+      overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
     }}>
       <div style={{ width: '100%', maxWidth: '640px' }}>
         <button onClick={() => navigate(-1)} style={{
