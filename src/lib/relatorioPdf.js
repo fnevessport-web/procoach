@@ -2,7 +2,6 @@ import { format } from 'date-fns'
 import { gerarInsights } from '../hooks/useRelatorioMensal'
 import { classificarPct } from '../constants/semaforo'
 import { PONTOS_POR_RESULTADO, NIVEIS_ASSIDUIDADE, JANELA_DIAS, MINIMO_JOGOS_CLASSIFICACAO, PESO_CATEGORIA, pontuacaoComPesoCategoria } from './pontuacaoBeyond'
-import { ICONE_CONQUISTA_URL } from '../constants/conquistasIcones'
 
 const COR_CREME = [241, 239, 234]
 const COR_TINTA = [26, 24, 24]
@@ -82,6 +81,36 @@ async function carregarImagemRedimensionada(url, maxLado, formato = 'image/png',
   } catch {
     return await blobParaDataUrl(blob)
   }
+}
+
+// Recorta a foto num círculo (canvas + clip), com "cover" — preenche o círculo inteiro sem
+// distorcer, cortando o excesso do lado mais comprido. Devolve PNG com fundo transparente
+// fora do círculo (addImage compõe a transparência direto em cima do fundo creme da página).
+async function carregarImagemCircular(url, diametro) {
+  const resp = await fetch(url)
+  const blob = await resp.blob()
+  const bitmap = await createImageBitmap(blob)
+
+  const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(diametro, diametro) : document.createElement('canvas')
+  canvas.width = diametro
+  canvas.height = diametro
+  const ctx = canvas.getContext('2d')
+
+  const ladoMenor = Math.min(bitmap.width, bitmap.height)
+  const sx = (bitmap.width - ladoMenor) / 2
+  const sy = (bitmap.height - ladoMenor) / 2
+
+  ctx.beginPath()
+  ctx.arc(diametro / 2, diametro / 2, diametro / 2, 0, Math.PI * 2)
+  ctx.closePath()
+  ctx.clip()
+  ctx.drawImage(bitmap, sx, sy, ladoMenor, ladoMenor, 0, 0, diametro, diametro)
+
+  if (canvas.convertToBlob) {
+    const outBlob = await canvas.convertToBlob({ type: 'image/png' })
+    return await blobParaDataUrl(outBlob)
+  }
+  return canvas.toDataURL('image/png')
 }
 
 async function carregarBitmap(url) {
@@ -1027,13 +1056,14 @@ export async function exportarRelatorioCompletoPNG(dados, { empresa }) {
 // ============================================================================================
 
 // Radar de N dimensões (genérico — não fixo em 6, já que outras modalidades vão ter outra
-// quantidade de dimensões no futuro). Escala igual à do app (Recharts domain [0,5]).
+// quantidade de dimensões no futuro). Escala igual à do app (Recharts domain [0,10] — domínios
+// de Tênis são médias na escala original 1-10, não 1-5).
 function desenharRadarPdf(doc, { cx, cy, raio, dimensoes, cor }) {
   const n = dimensoes.length
   if (n < 3) return
   const angulo = i => -Math.PI / 2 + i * (2 * Math.PI / n)
   const pontoNaFracao = (i, fracao) => [cx + raio * fracao * Math.cos(angulo(i)), cy + raio * fracao * Math.sin(angulo(i))]
-  const pontoDado = i => pontoNaFracao(i, Math.max(0, Math.min(1, dimensoes[i].valor / 5)))
+  const pontoDado = i => pontoNaFracao(i, Math.max(0, Math.min(1, dimensoes[i].valor / 10)))
 
   doc.setDrawColor(215, 210, 200)
   doc.setLineWidth(0.4)
@@ -1067,21 +1097,33 @@ function desenharRadarPdf(doc, { cx, cy, raio, dimensoes, cor }) {
     doc.line(x1, y1, x2, y2)
   }
 
+  // Nomes com mais de uma palavra quebram em duas linhas (ex. "Condicionamento Físico" →
+  // "CONDICIONAMENTO" / "FÍSICO") — uma linha só nesse tamanho de fonte atravessava o gráfico.
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
   doc.setTextColor(...COR_TINTA)
   for (let i = 0; i < n; i++) {
     const [x, y] = pontoNaFracao(i, 1.3)
-    doc.text(dimensoes[i].nome, x, y, { align: 'center' })
+    const palavras = dimensoes[i].nome.split(' ')
+    if (palavras.length > 1) {
+      const meio = Math.ceil(palavras.length / 2)
+      doc.text(palavras.slice(0, meio).join(' '), x, y - 3, { align: 'center' })
+      doc.text(palavras.slice(meio).join(' '), x, y + 5, { align: 'center' })
+    } else {
+      doc.text(dimensoes[i].nome, x, y, { align: 'center' })
+    }
   }
 }
 
-// Linha de evolução do PC Score — eixo Y invertido (score baixo = melhor = fica mais alto
-// no desenho), mesma leitura visual do gráfico em tela.
-function desenharLinhaEvolucaoPdf(doc, { x, y, largura, altura, pontos, cor }) {
+// Linha de evolução genérica — usada tanto pro PC Score (eixo invertido, score baixo = melhor
+// = fica mais alto no desenho, mesma leitura do gráfico em tela) quanto pra evolução de cada
+// domínio técnico (eixo normal, nota alta = melhor, escala 0-10).
+function desenharLinhaEvolucaoPdf(doc, { x, y, largura, altura, pontos, cor, valorFn = p => p.pcScore, min = 1, max = 100, inverterEixo = true, fonteValor = 8, casasDecimais = 0 }) {
   if (pontos.length < 2) return
   const passoX = largura / (pontos.length - 1)
-  const posY = valor => y + ((valor - 1) / 99) * altura
+  const posY = valor => inverterEixo
+    ? y + ((valor - min) / (max - min)) * altura
+    : y + altura - ((valor - min) / (max - min)) * altura
 
   doc.setDrawColor(215, 210, 200)
   doc.setLineWidth(0.5)
@@ -1091,18 +1133,19 @@ function desenharLinhaEvolucaoPdf(doc, { x, y, largura, altura, pontos, cor }) {
   doc.setDrawColor(...cor)
   doc.setLineWidth(1.5)
   for (let i = 0; i < pontos.length - 1; i++) {
-    doc.line(x + i * passoX, posY(pontos[i].pcScore), x + (i + 1) * passoX, posY(pontos[i + 1].pcScore))
+    doc.line(x + i * passoX, posY(valorFn(pontos[i])), x + (i + 1) * passoX, posY(valorFn(pontos[i + 1])))
   }
 
   pontos.forEach((p, i) => {
     const px = x + i * passoX
-    const py = posY(p.pcScore)
+    const valor = valorFn(p)
+    const py = posY(valor)
     doc.setFillColor(...cor)
     doc.circle(px, py, 2.2, 'F')
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
+    doc.setFontSize(fonteValor)
     doc.setTextColor(...cor)
-    doc.text(String(p.pcScore), px, py - 7, { align: 'center' })
+    doc.text(valor.toFixed(casasDecimais), px, py - 7, { align: 'center' })
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7)
     doc.setTextColor(...COR_TEXTO_SUAVE)
@@ -1116,8 +1159,8 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
   const {
     alunoNome, fotoUrl, modalidadeNome,
     totalPresencas, pcScoreAtual, variacaoPcScore, nivelLabel, nivelChave,
-    dimensoes, proximoFoco, evolucaoPcScore, narrativaIA, conquistas, historicoMes,
-    somaGeralAulas, historicoMensalAno,
+    dimensoes, evolucaoPcScore, evolucaoPorDominio, narrativaIA, conquistas,
+    historicoMensal,
     niveisPcScore,
   } = dados
 
@@ -1132,19 +1175,7 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
   let fotoBase64 = null
   try { logoBeyond = await carregarLogoAutoCrop(LOGO_BEYOND_PRETO, 260) } catch {}
   try { logoUnidade = await carregarLogoAutoCrop(LOGO_UNIDADE_PRETO[empresa], 260) } catch {}
-  if (fotoUrl) { try { fotoBase64 = await carregarImagemRedimensionada(fotoUrl, 200, 'image/jpeg', 0.85) } catch {} }
-
-  // Ícones de conquista são SVG (src/assets/conquistas/) — jsPDF não desenha SVG direto, então
-  // rasteriza cada um pra PNG aqui (mesmo helper usado pra logo/foto) antes de começar a
-  // desenhar. Se um ícone específico falhar (ex.: SVG num formato que createImageBitmap não
-  // decodifica nesse navegador), a conquista some com o ícone mas o nome dela continua
-  // aparecendo — nunca deixa uma falha de imagem derrubar o PDF inteiro.
-  const iconesConquistas = {}
-  for (const c of conquistas || []) {
-    const url = ICONE_CONQUISTA_URL[c.icone]
-    if (!url || iconesConquistas[c.icone]) continue
-    try { iconesConquistas[c.icone] = await carregarImagemRedimensionada(url, 60, 'image/png') } catch {}
-  }
+  if (fotoUrl) { try { fotoBase64 = await carregarImagemCircular(fotoUrl, 200) } catch {} }
 
   function fontePadrao(estilo, tamanho) {
     doc.setFont('helvetica', estilo)
@@ -1182,10 +1213,10 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
   // ---------- Foto + nome + PC Score em destaque ----------
   const avatarTam = 52
   if (fotoBase64) {
-    try { doc.addImage(fotoBase64, 'JPEG', margem, cursorY, avatarTam, avatarTam, undefined, 'FAST') } catch {}
+    try { doc.addImage(fotoBase64, 'PNG', margem, cursorY, avatarTam, avatarTam, undefined, 'FAST') } catch {}
   } else {
     doc.setFillColor(...COR_VINHO)
-    doc.roundedRect(margem, cursorY, avatarTam, avatarTam, 8, 8, 'F')
+    doc.circle(margem + avatarTam / 2, cursorY + avatarTam / 2, avatarTam / 2, 'F')
     const iniciais = alunoNome.trim().split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('')
     fontePadrao('bold', 18)
     doc.setTextColor(...COR_BRANCO)
@@ -1198,28 +1229,32 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
   doc.setTextColor(...COR_TEXTO_SUAVE)
   doc.text(`${totalPresencas} aula${totalPresencas === 1 ? '' : 's'} com presença`, margem + avatarTam + 14, cursorY + 36)
 
-  // Card cheio da cor do nível (não mais fundo branco + número colorido) — mesma paleta das
-  // 4 tarjas do cabeçalho (CARD_PC_SCORE_COR_POR_NIVEL), texto sempre branco por cima.
+  // Card cheio da cor do nível — número grande preenchendo o quadro, "PC SCORE" deitado ao
+  // lado dele (não empilhado em cima pequeno) e o nível FORA da área colorida, em texto preto.
   const corCardPcScore = CARD_PC_SCORE_COR_POR_NIVEL[nivelChave] || [136, 136, 136]
   const boxPcScoreW = 130
+  const boxPcScoreH = avatarTam
   const boxPcScoreX = pageWidth - margem - boxPcScoreW
   doc.setFillColor(...corCardPcScore)
-  doc.roundedRect(boxPcScoreX, cursorY, boxPcScoreW, avatarTam, 8, 8, 'F')
-  fontePadrao('normal', 7.5)
+  doc.roundedRect(boxPcScoreX, cursorY, boxPcScoreW, boxPcScoreH, 8, 8, 'F')
+  fontePadrao('bold', 34)
   doc.setTextColor(...COR_BRANCO)
-  doc.text('PC SCORE', boxPcScoreX + 10, cursorY + 14)
-  fontePadrao('bold', 30)
-  doc.text(pcScoreAtual != null ? String(pcScoreAtual) : '—', boxPcScoreX + 10, cursorY + 42)
-  fontePadrao('normal', 8)
-  doc.text(nivelLabel || '', boxPcScoreX + 10, cursorY + 50)
+  doc.text(pcScoreAtual != null ? String(pcScoreAtual) : '—', boxPcScoreX + 12, cursorY + boxPcScoreH / 2 + 12)
+  const larguraNumero = doc.getTextWidth(pcScoreAtual != null ? String(pcScoreAtual) : '—')
+  fontePadrao('bold', 9)
+  doc.text('PC', boxPcScoreX + 20 + larguraNumero, cursorY + boxPcScoreH / 2 - 3)
+  doc.text('SCORE', boxPcScoreX + 20 + larguraNumero, cursorY + boxPcScoreH / 2 + 9)
   if (variacaoPcScore != null && variacaoPcScore !== 0) {
     const melhorou = variacaoPcScore < 0
     fontePadrao('bold', 9)
     doc.setTextColor(...COR_BRANCO)
-    doc.text(`${melhorou ? '▼' : '▲'} ${Math.abs(variacaoPcScore)}`, boxPcScoreX + boxPcScoreW - 10, cursorY + 18, { align: 'right' })
+    doc.text(`${melhorou ? '▼' : '▲'} ${Math.abs(variacaoPcScore)}`, boxPcScoreX + boxPcScoreW - 10, cursorY + 14, { align: 'right' })
   }
+  fontePadrao('bold', 10)
+  doc.setTextColor(...COR_TINTA)
+  doc.text(nivelLabel || '', boxPcScoreX + boxPcScoreW / 2, cursorY + boxPcScoreH + 14, { align: 'center' })
 
-  cursorY += avatarTam + 22
+  cursorY += avatarTam + 30
 
   // ---------- Radar + tabela de dimensões, lado a lado ----------
   const colunaW = (larguraUtil - 16) / 2
@@ -1249,36 +1284,40 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
     doc.text(d.nome, tabelaX + 8, linhaY + alturaLinha / 2 + 3)
     fontePadrao('bold', 9)
     doc.setTextColor(...COR_VINHO)
-    doc.text(`${d.valor}/5`, tabelaX + colunaW - 8, linhaY + alturaLinha / 2 + 3, { align: 'right' })
+    doc.text(`${d.valor}/10`, tabelaX + colunaW - 8, linhaY + alturaLinha / 2 + 3, { align: 'right' })
     linhaY += alturaLinha
   })
 
   cursorY += alturaBlocoRadar + 16
 
-  // ---------- Próximo foco ----------
-  if (proximoFoco) {
-    const alturaFoco = 34
-    doc.setFillColor(207, 27, 155, 0.08)
-    doc.setFillColor(250, 240, 247)
-    doc.roundedRect(margem, cursorY, larguraUtil, alturaFoco, 8, 8, 'F')
-    fontePadrao('bold', 8)
-    doc.setTextColor(207, 27, 155)
-    doc.text('PRÓXIMO FOCO', margem + 12, cursorY + 14)
-    fontePadrao('normal', 10)
-    doc.setTextColor(...COR_TINTA)
-    doc.text(`${proximoFoco.nome} — nota atual ${proximoFoco.valor}/5`, margem + 12, cursorY + 27)
-    cursorY += alturaFoco + 16
-  }
-
-  // ---------- Evolução do PC Score ----------
+  // ---------- Evolução do PC Score (principal, menor) + mini-gráficos por domínio ----------
   if (evolucaoPcScore?.length > 1) {
     fontePadrao('bold', 9)
     doc.setTextColor(...COR_TINTA)
     doc.text('EVOLUÇÃO DO PC SCORE', margem, cursorY)
     cursorY += 12
-    const alturaGrafico = 70
+    const alturaGrafico = 50
     desenharLinhaEvolucaoPdf(doc, { x: margem + 10, y: cursorY, largura: larguraUtil - 20, altura: alturaGrafico, pontos: evolucaoPcScore, cor: COR_VINHO })
     cursorY += alturaGrafico + 26
+
+    if (evolucaoPorDominio?.length > 0) {
+      const gap = 8
+      const larguraMini = (larguraUtil - gap * (evolucaoPorDominio.length - 1)) / evolucaoPorDominio.length
+      const alturaMini = 34
+      let miniY = cursorY
+      evolucaoPorDominio.forEach((dom, i) => {
+        const miniX = margem + i * (larguraMini + gap)
+        fontePadrao('bold', 6.5)
+        doc.setTextColor(...COR_TEXTO_SUAVE)
+        doc.text(dom.nome.toUpperCase(), miniX + larguraMini / 2, miniY, { align: 'center' })
+        desenharLinhaEvolucaoPdf(doc, {
+          x: miniX, y: miniY + 8, largura: larguraMini, altura: alturaMini, pontos: dom.pontos,
+          cor: COR_VINHO, valorFn: p => p.valor, min: 0, max: 10, inverterEixo: false,
+          fonteValor: 6, casasDecimais: 1,
+        })
+      })
+      cursorY = miniY + 8 + alturaMini + 26
+    }
   }
 
   // ---------- Análise inteligente ----------
@@ -1298,69 +1337,52 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
   }
 
   // ---------- Conquistas ----------
-  // Mesmo catálogo/ícones do sistema de conquistas usado no Card do Aluno (não mais o
-  // dicionário antigo de badges com emoji, que quebrava no jsPDF — a fonte helvetica padrão
-  // não tem glifo de emoji).
+  // Sem ícone (pedido explícito) — só as pílulas de texto, centralizadas na largura útil.
   if (conquistas?.length > 0) {
     fontePadrao('bold', 9)
     doc.setTextColor(...COR_TINTA)
     doc.text('CONQUISTAS', margem, cursorY)
     cursorY += 12
-    let bx = margem
-    let by = cursorY
-    const iconTam = 14
     fontePadrao('normal', 8)
+
+    // Monta as linhas primeiro (sem desenhar) pra poder centralizar cada uma depois de saber
+    // a largura total — jsPDF não tem flexbox, então o centro tem que ser calculado na mão.
+    const linhas = []
+    let linhaAtual = []
+    let larguraLinhaAtual = 0
     conquistas.forEach(c => {
-      const iconUrl = iconesConquistas[c.icone]
-      const larguraTexto = doc.getTextWidth(c.nome) + (iconUrl ? iconTam + 20 : 16)
-      if (bx + larguraTexto > pageWidth - margem) { bx = margem; by += 22 }
-      doc.setFillColor(...COR_BRANCO)
-      doc.roundedRect(bx, by, larguraTexto, 20, 10, 10, 'F')
-      let textoX = bx + 10
-      if (iconUrl) {
-        try { doc.addImage(iconUrl, 'PNG', bx + 5, by + 3, iconTam, iconTam, undefined, 'FAST') } catch {}
-        textoX = bx + 5 + iconTam + 6
+      const larguraPilula = doc.getTextWidth(c.nome) + 20
+      if (larguraLinhaAtual + larguraPilula > larguraUtil && linhaAtual.length) {
+        linhas.push({ itens: linhaAtual, largura: larguraLinhaAtual - 6 })
+        linhaAtual = []
+        larguraLinhaAtual = 0
       }
-      doc.setTextColor(...COR_TINTA)
-      doc.text(c.nome, textoX, by + 13)
-      bx += larguraTexto + 6
+      linhaAtual.push({ nome: c.nome, largura: larguraPilula })
+      larguraLinhaAtual += larguraPilula + 6
     })
-    cursorY = by + 30
+    if (linhaAtual.length) linhas.push({ itens: linhaAtual, largura: larguraLinhaAtual - 6 })
+
+    let by = cursorY
+    linhas.forEach(linha => {
+      let bx = margem + (larguraUtil - linha.largura) / 2
+      linha.itens.forEach(item => {
+        doc.setFillColor(...COR_BRANCO)
+        doc.roundedRect(bx, by, item.largura, 20, 10, 10, 'F')
+        doc.setTextColor(...COR_TINTA)
+        doc.text(item.nome, bx + item.largura / 2, by + 13, { align: 'center' })
+        bx += item.largura + 6
+      })
+      by += 26
+    })
+    cursorY = by + 6
   }
 
-  // ---------- Histórico de presença do mês ----------
-  if (historicoMes) {
-    fontePadrao('bold', 9)
-    doc.setTextColor(...COR_TINTA)
-    doc.text(`PRESENÇA — ${historicoMes.mesLabel.toUpperCase()}`, margem, cursorY)
-    cursorY += 12
-    const itensMes = [
-      { label: 'Presenças', valor: historicoMes.presentes, cor: COR_VERDE },
-      { label: 'Faltas', valor: historicoMes.faltas, cor: COR_VERMELHO },
-      { label: 'Falta Just.', valor: historicoMes.faltasJustificadas, cor: COR_LARANJA },
-      { label: 'Reposições', valor: historicoMes.reposicoes, cor: COR_MARINHO },
-    ]
-    const colW = larguraUtil / 4
-    itensMes.forEach((item, i) => {
-      fontePadrao('bold', 14)
-      doc.setTextColor(...item.cor)
-      doc.text(String(item.valor), margem + i * colW + colW / 2, cursorY + 14, { align: 'center' })
-      fontePadrao('normal', 7)
-      doc.setTextColor(...COR_TEXTO_SUAVE)
-      doc.text(item.label, margem + i * colW + colW / 2, cursorY + 25, { align: 'center' })
-    })
-    cursorY += 40
-  }
-
-  // ---------- Soma geral + histórico mensal ----------
-  // Minimalista de propósito (pedido explícito): só um número grande + uma linha compacta de
-  // barrinhas por mês, sem tabela nem grade. Esse documento nunca teve paginação (sempre foi
-  // "1 página fixa" — ver comentário no topo do arquivo) e essa é a última seção de conteúdo
-  // antes da legenda/rodapé, que ficam em posição FIXA a partir do fim da página — se sobrar
-  // pouco espaço aqui (aluno com narrativa longa + muitas conquistas), abre página nova em vez
-  // de desenhar em cima da legenda.
-  if (somaGeralAulas != null) {
-    const alturaEstimada = 34 + (historicoMensalAno?.length ? 34 : 0)
+  // ---------- Presença mês a mês ----------
+  // Uma linha por mês (X presenças, incluindo reposição — já entra como presença normal —
+  // · Y faltas não justificadas), no lugar do antigo bloco só do mês corrente + gráfico de
+  // barras separado (dado redundante, mesma fonte).
+  if (historicoMensal?.length > 0) {
+    const alturaEstimada = 20 + historicoMensal.length * 16
     if (cursorY + alturaEstimada > doc.internal.pageSize.getHeight() - 90) {
       doc.addPage()
       doc.setFillColor(...COR_CREME)
@@ -1370,35 +1392,28 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
 
     fontePadrao('bold', 9)
     doc.setTextColor(...COR_TINTA)
-    doc.text('SOMA GERAL DE AULAS', margem, cursorY)
-    fontePadrao('bold', 20)
-    doc.setTextColor(...COR_VINHO)
-    doc.text(String(somaGeralAulas), margem, cursorY + 22)
-    cursorY += 34
+    doc.text('PRESENÇA', margem, cursorY)
+    fontePadrao('normal', 7)
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    doc.text(String(new Date().getFullYear()), pageWidth - margem, cursorY, { align: 'right' })
+    cursorY += 16
 
-    if (historicoMensalAno?.length) {
-      const anoAtual = new Date().getFullYear()
-      fontePadrao('normal', 7)
-      doc.setTextColor(...COR_TEXTO_SUAVE)
-      doc.text(String(anoAtual), margem, cursorY)
-      const inicioMesesX = margem + 32
-      const colWMes = (larguraUtil - 32) / historicoMensalAno.length
-      const maxTotal = Math.max(1, ...historicoMensalAno.map(m => m.total))
-      const alturaBarraMax = 16
-      historicoMensalAno.forEach((m, i) => {
-        const x = inicioMesesX + i * colWMes + colWMes / 2
-        const alturaBarra = Math.max(1, (m.total / maxTotal) * alturaBarraMax)
-        doc.setFillColor(...COR_VINHO)
-        doc.rect(x - 3, cursorY - alturaBarra, 6, alturaBarra, 'F')
-        fontePadrao('bold', 7)
-        doc.setTextColor(...COR_TINTA)
-        doc.text(String(m.total), x, cursorY + 10, { align: 'center' })
-        fontePadrao('normal', 6)
-        doc.setTextColor(...COR_TEXTO_SUAVE)
-        doc.text(m.mes, x, cursorY + 18, { align: 'center' })
-      })
-      cursorY += 32
-    }
+    historicoMensal.forEach((m, i) => {
+      if (i % 2 === 1) {
+        doc.setFillColor(249, 247, 243)
+        doc.rect(margem, cursorY - 10, larguraUtil, 15, 'F')
+      }
+      fontePadrao('bold', 8)
+      doc.setTextColor(...COR_TINTA)
+      doc.text(m.mes, margem + 6, cursorY)
+      fontePadrao('normal', 8)
+      doc.setTextColor(...COR_VERDE)
+      doc.text(`${m.presentes} presença${m.presentes === 1 ? '' : 's'}`, margem + larguraUtil / 2, cursorY, { align: 'center' })
+      doc.setTextColor(...COR_VERMELHO)
+      doc.text(`${m.faltas} falta${m.faltas === 1 ? '' : 's'}`, pageWidth - margem - 6, cursorY, { align: 'right' })
+      cursorY += 15
+    })
+    cursorY += 10
   }
 
   // ---------- Legenda dos 5 níveis do PC Score (rodapé didático) ----------
@@ -1425,7 +1440,13 @@ export async function exportarEvolucaoTecnicaPDF(dados, { empresa }) {
   doc.text(`Gerado pelo ProCoach em ${geradoEm} · procoachsport.com.br`, pageWidth / 2, pageHeight - 24, { align: 'center' })
   doc.text(`BEYOND · ${nomeEmpresa.toUpperCase()} · ${new Date().getFullYear()}`, pageWidth / 2, pageHeight - 14, { align: 'center' })
 
-  doc.save(`evolucao-tecnica-${slugificar(alunoNome)}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+  // Devolve o blob em vez de chamar doc.save() direto — quem chama decide se baixa
+  // (URL.createObjectURL + <a download>, mais confiável entre navegadores que o fallback do
+  // jsPDF) ou encaminha via Web Share API (navigator.share com o arquivo de verdade anexado).
+  return {
+    blob: doc.output('blob'),
+    filename: `evolucao-tecnica-${slugificar(alunoNome)}-${format(new Date(), 'yyyy-MM-dd')}.pdf`,
+  }
 }
 
 // ============================================================================================

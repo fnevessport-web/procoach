@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronDown, ChevronUp, HelpCircle, AlertTriangle, Download, Pencil } from 'lucide-react'
+import { ChevronDown, ChevronUp, HelpCircle, AlertTriangle, Download, Pencil, Share2 } from 'lucide-react'
 import { NIVEIS_PC_SCORE, nivelPorPcScore, precisaReavaliar, REAVALIACAO_PRAZO_DIAS, calcularMediasDominios } from '../lib/pcScore'
 import { MODALIDADE_EMPRESA } from '../constants/modalidades'
 import { exportarEvolucaoTecnicaPDF } from '../lib/relatorioPdf'
@@ -61,6 +61,9 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
   const navigate = useNavigate()
   const { podeEditarAvaliacaoTecnica } = usePermissions()
   const [exportando, setExportando] = useState(false)
+  // { blob, filename } | null — depois de gerado, troca o botão único "Exportar PDF" por
+  // "Baixar" + "Encaminhar" (arquivo de verdade, via Web Share API — sem link, sem login).
+  const [pdfPronto, setPdfPronto] = useState(null)
   // Mesmas duas queries que o ConquistasCard.jsx (Card do Aluno) já usa — react-query dedupe
   // pela queryKey, então não duplica request nenhum quando os dois estão montados juntos.
   const { data: catalogoConquistas } = useCatalogoConquistas()
@@ -110,14 +113,11 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
   const totalPresencas = (presencas || []).filter(p => p.status_presenca === 'presente').length
   const reavaliacaoPendente = precisaReavaliar(ultimaAvaliacao.data_avaliacao)
 
-  // Um subitem sozinho (1 de 19) é ruído demais pra virar radar ou "próximo foco" — as
-  // médias por domínio (Saque, Jogo de Fundo, Jogo de Rede, Tática, Condicionamento
-  // Físico) são a unidade certa aqui, mesma lista que já alimenta o PC Score (pcScore.js).
+  // Médias por domínio (Saque, Jogo de Fundo, Jogo de Rede, Tática, Condicionamento Físico) —
+  // mesma unidade que já alimenta o PC Score (pcScore.js), 1 subitem sozinho seria ruído
+  // demais pro radar.
   const mediasDominio = calcularMediasDominios(ultimaAvaliacao.dimensoes, definicoesDimensoes)
   const radarData = mediasDominio.map(u => ({ dimensao: u.nome, valor: u.media }))
-  const proximoFoco = mediasDominio.length
-    ? mediasDominio.reduce((pior, atual) => (atual.media < pior.media ? atual : pior))
-    : null
 
   const ultimasQuatro = avaliacoesConfirmadas.slice(-4).filter(a => a.pc_score != null)
   const evolucaoPcScore = ultimasQuatro.map(a => ({
@@ -125,39 +125,46 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
     pcScore: a.pc_score,
   }))
 
+  // Evolução por domínio (mesmas últimas avaliações confirmadas do PC Score) — pro PDF poder
+  // desenhar um mini-gráfico por domínio ao lado do gráfico geral.
+  const mediasPorAvaliacao = ultimasQuatro.map(a => ({
+    data: format(new Date(a.data_avaliacao + 'T12:00'), 'dd/MM', { locale: ptBR }),
+    medias: calcularMediasDominios(a.dimensoes, definicoesDimensoes),
+  }))
+  const evolucaoPorDominio = mediasDominio
+    .map(dom => ({
+      nome: dom.nome,
+      pontos: mediasPorAvaliacao
+        .map(mp => ({ data: mp.data, valor: mp.medias.find(m => m.nome === dom.nome)?.media }))
+        .filter(p => p.valor != null),
+    }))
+    .filter(d => d.pontos.length > 1)
+
   // Conquistas desbloqueadas (catálogo novo, com ícone SVG oficial) — alimenta tanto a seção
   // "Conquistas" em tela (estilo figurinha) quanto o PDF.
   const minhasConquistasPorId = Object.fromEntries((minhasConquistas || []).map(m => [m.conquista_id, m]))
   const conquistasDesbloqueadas = (catalogoConquistas || []).filter(c => minhasConquistasPorId[c.id]?.ativa)
 
+  // Histórico mensal do ano corrente (janeiro até o mês atual) — presenças (conta reposição
+  // como aula normal, já que ela já entra em status_presenca='presente') e faltas não
+  // justificadas, lado a lado por mês. Sem corte de linhas (useHistoricoPresencaModalidade já
+  // não limita mais), senão meses mais antigos do ano ficariam faltando pra aluno assíduo.
   const hoje = new Date()
-  const mesAtualStr = format(hoje, 'yyyy-MM')
-  const presencasDoMes = (presencas || []).filter(p => p.aulas?.data_aula?.startsWith(mesAtualStr))
-  const historicoMes = {
-    mesLabel: format(hoje, 'MMMM/yy', { locale: ptBR }),
-    presentes: presencasDoMes.filter(p => p.status_presenca === 'presente').length,
-    faltas: presencasDoMes.filter(p => p.status_presenca === 'falta').length,
-    faltasJustificadas: presencasDoMes.filter(p => p.status_presenca === 'falta_justificada').length,
-    reposicoes: presencasDoMes.filter(p => p.tipo_participacao === 'reposicao').length,
-  }
-
-  // Histórico mensal do ano corrente (janeiro até o mês atual) — mesma fonte de `presencas`
-  // usada em `totalPresencas` acima, agora sem o corte de 100 linhas que existia antes em
-  // useHistoricoPresencaModalidade (senão os meses mais antigos do ano ficariam faltando pra
-  // aluno assíduo/antigo).
-  const historicoMensalAno = Array.from({ length: hoje.getMonth() + 1 }, (_, i) => {
+  const historicoMensal = Array.from({ length: hoje.getMonth() + 1 }, (_, i) => {
     const mesData = new Date(hoje.getFullYear(), i, 1)
     const mesStr = format(mesData, 'yyyy-MM')
+    const doMes = (presencas || []).filter(p => p.aulas?.data_aula?.startsWith(mesStr))
     return {
       mes: format(mesData, 'MMM', { locale: ptBR }).toUpperCase().replace('.', ''),
-      total: (presencas || []).filter(p => p.aulas?.data_aula?.startsWith(mesStr) && p.status_presenca === 'presente').length,
+      presentes: doMes.filter(p => p.status_presenca === 'presente').length,
+      faltas: doMes.filter(p => p.status_presenca === 'falta').length,
     }
   })
 
   async function handleExportarPDF() {
     setExportando(true)
     try {
-      await exportarEvolucaoTecnicaPDF({
+      const resultado = await exportarEvolucaoTecnicaPDF({
         alunoNome: aluno.nome,
         fotoUrl: aluno.foto_url,
         modalidadeNome,
@@ -167,15 +174,14 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
         nivelLabel: nivelAtual?.label || 'Faixa etária não definida',
         nivelChave: nivelAtual?.chave || null,
         dimensoes: mediasDominio.map(u => ({ nome: u.nome, valor: u.media })),
-        proximoFoco: proximoFoco ? { nome: proximoFoco.nome, valor: proximoFoco.media } : null,
         evolucaoPcScore,
+        evolucaoPorDominio,
         narrativaIA: ultimaAvaliacao.narrativa_ia,
         conquistas: conquistasDesbloqueadas.map(c => ({ nome: c.nome, icone: c.icone })),
-        historicoMes,
-        somaGeralAulas: totalPresencas,
-        historicoMensalAno,
+        historicoMensal,
         niveisPcScore: NIVEIS_PC_SCORE.map(n => ({ ...n, cor: hexParaRgb(n.cor) })),
       }, { empresa: MODALIDADE_EMPRESA[modalidadeNome] || 'procopio' })
+      setPdfPronto(resultado)
     } catch (err) {
       toast.error('Erro ao gerar PDF: ' + err.message, { style: toastStyle })
     } finally {
@@ -183,23 +189,70 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
     }
   }
 
+  function handleBaixarPDF() {
+    const url = URL.createObjectURL(pdfPronto.blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = pdfPronto.filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function handleEncaminharPDF() {
+    try {
+      const arquivo = new File([pdfPronto.blob], pdfPronto.filename, { type: 'application/pdf' })
+      await navigator.share({ files: [arquivo], title: pdfPronto.filename, text: `Evolução técnica de ${aluno.nome}` })
+    } catch {
+      // Usuário cancelou o menu de compartilhamento ou o SO recusou — nada a fazer.
+    }
+  }
+
+  const podeEncaminhar = typeof navigator !== 'undefined' && !!navigator.canShare?.({ files: [new File([], 'x.pdf', { type: 'application/pdf' })] })
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          onClick={handleExportarPDF}
-          disabled={exportando}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '8px 14px', borderRadius: '9px', border: '1px solid #2a2a2a', cursor: exportando ? 'default' : 'pointer',
-            backgroundColor: '#111', color: '#F0F2F5', fontSize: '12px', fontWeight: '600',
-            opacity: exportando ? 0.6 : 1,
-          }}
-        >
-          <Download size={13} />
-          {exportando ? 'Gerando PDF...' : 'Exportar PDF'}
-        </button>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+        {!pdfPronto ? (
+          <button
+            onClick={handleExportarPDF}
+            disabled={exportando}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '8px 14px', borderRadius: '9px', border: '1px solid #2a2a2a', cursor: exportando ? 'default' : 'pointer',
+              backgroundColor: '#111', color: '#F0F2F5', fontSize: '12px', fontWeight: '600',
+              opacity: exportando ? 0.6 : 1,
+            }}
+          >
+            <Download size={13} />
+            {exportando ? 'Gerando PDF...' : 'Exportar PDF'}
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={handleBaixarPDF}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '8px 14px', borderRadius: '9px', border: '1px solid #2a2a2a', cursor: 'pointer',
+                backgroundColor: '#111', color: '#F0F2F5', fontSize: '12px', fontWeight: '600',
+              }}
+            >
+              <Download size={13} /> Baixar PDF
+            </button>
+            {podeEncaminhar && (
+              <button
+                onClick={handleEncaminharPDF}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '8px 14px', borderRadius: '9px', border: 'none', cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '12px', fontWeight: '600',
+                }}
+              >
+                <Share2 size={13} /> Encaminhar
+              </button>
+            )}
+          </>
+        )}
       </div>
 
       {pendenteMaisRecente && (
@@ -309,20 +362,6 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
           ))}
         </div>
       </div>
-
-      {/* Próximo foco */}
-      {proximoFoco && (
-        <div style={{
-          padding: '14px', borderRadius: '12px',
-          backgroundColor: 'rgba(207,27,155,0.08)', border: '1px solid rgba(207,27,155,0.25)',
-        }}>
-          <div style={{ fontSize: '10px', color: '#cf1b9b', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700', marginBottom: '4px' }}>
-            Próximo foco
-          </div>
-          <div style={{ fontSize: '15px', color: '#F0F2F5', fontWeight: '700' }}>{proximoFoco.nome}</div>
-          <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>Nota atual: {formataNota(proximoFoco.media)}/10 — o domínio com mais espaço pra evoluir.</div>
-        </div>
-      )}
 
       {/* Evolução do PC Score — eixo invertido, menor é melhor */}
       {evolucaoPcScore.length > 1 && (
