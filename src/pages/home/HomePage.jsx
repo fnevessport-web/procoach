@@ -5,6 +5,7 @@ import { Timer, ChevronRight } from 'lucide-react'
 import { useModalidades } from '../../hooks/useModalidades'
 import { useHomeDashboard } from '../../hooks/useHomeDashboard'
 import { useRelatorioMensal, gerarInsights } from '../../hooks/useRelatorioMensal'
+import { useAlertaFaltasConsecutivas } from '../../hooks/useAlertaFaltas'
 import { classificarPct, CORES_SEMAFORO, LABEL_SEMAFORO } from '../../constants/semaforo'
 import useAppStore from '../../store/useAppStore'
 import { Loading } from '../../components/ui/Loading'
@@ -110,6 +111,10 @@ export function HomePage() {
   const insightsMes = saudeMes ? gerarInsights(saudeMes) : []
   const insightDestaque = insightsMes.find(i => i.severidade === 'critico' || i.severidade === 'atencao') || insightsMes[0]
 
+  // Aviso cedo: aluno com aula hoje/amanhã que já emenda 2+ faltas seguidas — dá tempo do
+  // professor abordar antes de virar "risco alto de evasão" (3+, esse sim já mostrado acima).
+  const { data: alertasFaltas = [] } = useAlertaFaltasConsecutivas()
+
   const [filtroAoVivo, setFiltroAoVivo] = useState('todas')
   const [filtroAoVivoAberto, setFiltroAoVivoAberto] = useState(false)
 
@@ -174,6 +179,38 @@ export function HomePage() {
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Aviso: aluno com aula hoje/amanhã já emendando 2+ faltas seguidas */}
+      {alertasFaltas.length > 0 && (
+        <div style={{
+          marginBottom: '22px', borderRadius: '12px', padding: '14px 16px',
+          backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.3)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '14px' }}>👀</span>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: '#fcc825', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {alertasFaltas.length} {alertasFaltas.length === 1 ? 'aluno de olho' : 'alunos de olho'} — faltando seguido
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {alertasFaltas.map(a => {
+              const proxima = a.ocorrencias[0]
+              const ehHoje = proxima?.data === format(new Date(), 'yyyy-MM-dd')
+              return (
+                <div key={`${a.alunoId}-${a.modalidadeId}`} onClick={() => proxima && abrirAula(proxima.aulaId)} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+                  fontSize: '12px', color: '#F0F2F5', cursor: proxima ? 'pointer' : 'default',
+                }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <b>{a.alunoNome}</b> · {a.faltasConsecutivas} faltas seguidas · {a.modalidadeNome}
+                    {proxima && <> · aula {ehHoje ? 'hoje' : 'amanhã'} {proxima.horario}</>}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

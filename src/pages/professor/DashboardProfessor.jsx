@@ -8,6 +8,7 @@ import { ChevronRight, X, AlertTriangle, Check, MessageCircle, Sparkles } from '
 import { supabase } from '../../lib/supabase'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { usePendenciasConfirmacao, useConfirmarAvaliacaoTecnica, useResumoTecnicoTurma } from '../../hooks/useAlunos'
+import { useAlertaFaltasConsecutivas } from '../../hooks/useAlertaFaltas'
 import { useAbrirConversaDoAluno } from '../../hooks/useMensagens'
 import { nivelPorPcScore, REAVALIACAO_PRAZO_DIAS } from '../../lib/pcScore'
 import useAppStore from '../../store/useAppStore'
@@ -66,6 +67,20 @@ export function DashboardProfessor({ professorIdProp } = {}) {
   const { data: pendencias = [] } = usePendenciasConfirmacao(!professorIdProp ? professorId : null)
   const confirmarAvaliacao = useConfirmarAvaliacaoTecnica()
   const abrirConversaDoAluno = useAbrirConversaDoAluno()
+
+  // Mesmo aviso da Home do gestor (aluno com aula hoje/amanhã já emendando 2+ faltas
+  // seguidas), mas só as ocorrências onde ESSE professor é quem vai dar a aula — um professor
+  // não precisa (nem deveria) ver esse alerta sobre aluno de outro professor.
+  const { data: alertasFaltas = [] } = useAlertaFaltasConsecutivas()
+  const meusAlertasFaltas = professorId
+    ? alertasFaltas
+        .map(a => ({ ...a, ocorrencias: a.ocorrencias.filter(o => o.professorId === professorId) }))
+        .filter(a => a.ocorrencias.length > 0)
+    : []
+
+  function abrirAulaDoAlerta(aulaId) {
+    navigate('/aulas', { state: { highlightAulaId: aulaId } })
+  }
 
   async function handleConfirmarPendencia(pendencia) {
     try {
@@ -345,6 +360,36 @@ export function DashboardProfessor({ professorIdProp } = {}) {
                 onDiscutir={() => handleDiscutirPendencia(p)}
               />
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Alunos meus com aula hoje/amanhã já emendando 2+ faltas seguidas */}
+      {meusAlertasFaltas.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <h3 style={{
+            fontSize: '13px', fontWeight: '700', color: '#fcc825', textTransform: 'uppercase',
+            letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px',
+          }}>
+            👀 De olho ({meusAlertasFaltas.length})
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {meusAlertasFaltas.map(a => {
+              const proxima = a.ocorrencias[0]
+              const ehHoje = proxima?.data === hoje
+              return (
+                <div key={`${a.alunoId}-${a.modalidadeId}`}
+                  onClick={() => proxima && abrirAulaDoAlerta(proxima.aulaId)}
+                  style={{
+                    padding: '10px 12px', borderRadius: '10px', cursor: proxima ? 'pointer' : 'default',
+                    backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.25)',
+                    fontSize: '12px', color: '#F0F2F5',
+                  }}>
+                  <b>{a.alunoNome}</b> · {a.faltasConsecutivas} faltas seguidas · {a.modalidadeNome}
+                  {proxima && <> · aula {ehHoje ? 'hoje' : 'amanhã'} {proxima.horario}</>}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
