@@ -30,3 +30,5 @@ dist-ssr
 
 # Estado local do Supabase CLI (link do projeto, versões) — não é pra compartilhar
 supabase/.temp
+
+.vercel

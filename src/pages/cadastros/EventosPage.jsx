@@ -1,7 +1,22 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Copy, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Copy, Check, ChevronDown, ChevronUp, Trash2, UserPlus } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
+
+const toastStyle = {
+  background: '#1a1a1a', color: '#F0F2F5',
+  border: '1px solid rgba(252,200,37,0.3)',
+  borderRadius: '10px', fontSize: '13px',
+}
+
+const inputStyle = {
+  width: '100%', padding: '8px 10px', borderRadius: '8px',
+  backgroundColor: '#0f0f0f', border: '1px solid #2a2a2a', color: '#F0F2F5',
+  fontSize: '12px', outline: 'none', boxSizing: 'border-box',
+}
+
+const FORM_VAZIO = { nome_crianca: '', data_nascimento: '', nome_responsavel: '', whatsapp_responsavel: '', status: 'confirmado' }
 
 function useEventos() {
   return useQuery({
@@ -25,6 +40,28 @@ function useInscricoes(eventoId) {
       return data
     },
     enabled: !!eventoId,
+  })
+}
+
+function useExcluirInscricao(eventoId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase.from('evento_inscricoes').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['evento_inscricoes', eventoId] }),
+  })
+}
+
+function useIncluirInscricao(eventoId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (dados) => {
+      const { error } = await supabase.from('evento_inscricoes').insert({ ...dados, evento_id: eventoId })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['evento_inscricoes', eventoId] }),
   })
 }
 
@@ -69,7 +106,8 @@ function whatsappLink(numero) {
   return `https://wa.me/${comDDI}`
 }
 
-function LinhaInscricao({ inscricao, dataEvento }) {
+function LinhaInscricao({ inscricao, dataEvento, onExcluir, excluindo }) {
+  const [confirmando, setConfirmando] = useState(false)
   const idade = calcularIdade(inscricao.data_nascimento, dataEvento)
   const espera = inscricao.status === 'lista_espera'
   return (
@@ -98,6 +136,75 @@ function LinhaInscricao({ inscricao, dataEvento }) {
         }}>
           WhatsApp
         </a>
+        {confirmando ? (
+          <>
+            <button onClick={() => { onExcluir(inscricao.id); setConfirmando(false) }} disabled={excluindo} style={{
+              fontSize: '11px', color: 'white', background: '#EF4444', border: 'none',
+              padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600',
+            }}>
+              Confirmar
+            </button>
+            <button onClick={() => setConfirmando(false)} style={{
+              fontSize: '11px', color: '#888', background: 'none', border: '1px solid #2a2a2a',
+              padding: '5px 10px', borderRadius: '6px', cursor: 'pointer',
+            }}>
+              Cancelar
+            </button>
+          </>
+        ) : (
+          <button onClick={() => setConfirmando(true)} title="Excluir inscrição" style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '28px', height: '28px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)',
+            background: 'none', color: '#EF4444', cursor: 'pointer',
+          }}>
+            <Trash2 size={13} />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function FormIncluirInscricao({ eventoId, onFechar }) {
+  const [form, setForm] = useState(FORM_VAZIO)
+  const incluir = useIncluirInscricao(eventoId)
+
+  async function handleSalvar() {
+    if (!form.nome_crianca.trim() || !form.data_nascimento || !form.nome_responsavel.trim() || !form.whatsapp_responsavel.trim()) {
+      return toast.error('Preencha todos os campos', { style: toastStyle })
+    }
+    try {
+      await incluir.mutateAsync({
+        nome_crianca: form.nome_crianca.trim(),
+        data_nascimento: form.data_nascimento,
+        nome_responsavel: form.nome_responsavel.trim(),
+        whatsapp_responsavel: form.whatsapp_responsavel.trim(),
+        status: form.status,
+      })
+      toast.success('Inscrição incluída!', { style: toastStyle })
+      onFechar()
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    }
+  }
+
+  return (
+    <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: '#111', border: '1px solid rgba(252,200,37,0.2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+        <input placeholder="Nome da criança" style={inputStyle} value={form.nome_crianca} onChange={e => setForm(f => ({ ...f, nome_crianca: e.target.value }))} />
+        <input type="date" style={inputStyle} value={form.data_nascimento} onChange={e => setForm(f => ({ ...f, data_nascimento: e.target.value }))} />
+        <input placeholder="Nome do responsável" style={inputStyle} value={form.nome_responsavel} onChange={e => setForm(f => ({ ...f, nome_responsavel: e.target.value }))} />
+        <input placeholder="WhatsApp do responsável" style={inputStyle} value={form.whatsapp_responsavel} onChange={e => setForm(f => ({ ...f, whatsapp_responsavel: e.target.value }))} />
+      </div>
+      <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} style={inputStyle}>
+        <option value="confirmado">Confirmado</option>
+        <option value="lista_espera">Lista de espera</option>
+      </select>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button onClick={onFechar} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>Cancelar</button>
+        <button onClick={handleSalvar} disabled={incluir.isPending} style={{ flex: 2, padding: '8px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
+          {incluir.isPending ? 'Salvando...' : '✓ Incluir'}
+        </button>
       </div>
     </div>
   )
@@ -105,10 +212,21 @@ function LinhaInscricao({ inscricao, dataEvento }) {
 
 function CardEvento({ evento }) {
   const [aberto, setAberto] = useState(false)
+  const [incluindoNovo, setIncluindoNovo] = useState(false)
   const { data: inscricoes } = useInscricoes(aberto ? evento.id : null)
+  const excluir = useExcluirInscricao(evento.id)
   const confirmados = inscricoes?.filter(i => i.status === 'confirmado') || []
   const espera = inscricoes?.filter(i => i.status === 'lista_espera') || []
   const link = `${window.location.origin}/eventos/${evento.slug}`
+
+  async function handleExcluir(id) {
+    try {
+      await excluir.mutateAsync(id)
+      toast.success('Inscrição excluída.', { style: toastStyle })
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    }
+  }
 
   return (
     <div style={{ borderRadius: '14px', backgroundColor: '#161616', border: '1px solid #2a2a2a', overflow: 'hidden' }}>
@@ -138,13 +256,30 @@ function CardEvento({ evento }) {
         <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {!inscricoes ? (
             <div style={{ fontSize: '12px', color: '#555', padding: '8px 0' }}>Carregando inscrições...</div>
-          ) : inscricoes.length === 0 ? (
-            <div style={{ fontSize: '12px', color: '#555', padding: '8px 0' }}>Nenhuma inscrição ainda.</div>
           ) : (
             <>
-              {confirmados.map(i => <LinhaInscricao key={i.id} inscricao={i} dataEvento={evento.data_evento} />)}
-              {espera.map(i => <LinhaInscricao key={i.id} inscricao={i} dataEvento={evento.data_evento} />)}
+              {inscricoes.length === 0 && (
+                <div style={{ fontSize: '12px', color: '#555', padding: '8px 0' }}>Nenhuma inscrição ainda.</div>
+              )}
+              {confirmados.map(i => (
+                <LinhaInscricao key={i.id} inscricao={i} dataEvento={evento.data_evento} onExcluir={handleExcluir} excluindo={excluir.isPending} />
+              ))}
+              {espera.map(i => (
+                <LinhaInscricao key={i.id} inscricao={i} dataEvento={evento.data_evento} onExcluir={handleExcluir} excluindo={excluir.isPending} />
+              ))}
             </>
+          )}
+
+          {incluindoNovo ? (
+            <FormIncluirInscricao eventoId={evento.id} onFechar={() => setIncluindoNovo(false)} />
+          ) : (
+            <button onClick={() => setIncluindoNovo(true)} style={{
+              marginTop: '4px', padding: '8px', borderRadius: '8px', border: '1px dashed #2a2a2a',
+              background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+            }}>
+              <UserPlus size={13} /> Incluir inscrição manualmente
+            </button>
           )}
         </div>
       )}

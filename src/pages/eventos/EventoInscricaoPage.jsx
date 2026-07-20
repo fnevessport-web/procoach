@@ -159,8 +159,14 @@ export function EventoInscricaoPage() {
       overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
     }}>
       <div style={{ maxWidth: '520px', margin: '0 auto' }}>
-        <div style={{ fontSize: '22px', fontWeight: '800', marginBottom: '20px', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          ▶ PRO COACH
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ fontSize: '20px', fontWeight: '800', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            ▶ PRO COACH
+          </div>
+          <div style={{ width: '1px', height: '26px', backgroundColor: '#2a2a2a' }} />
+          <img src="/images/logoprocopio.png" alt="Procópio" style={{ height: '28px', objectFit: 'contain' }} />
+          <div style={{ width: '1px', height: '26px', backgroundColor: '#2a2a2a' }} />
+          <img src="/images/logobeyond.png" alt="Beyond" style={{ height: '28px', objectFit: 'contain' }} />
         </div>
 
         <div style={{ marginBottom: '20px' }}>
