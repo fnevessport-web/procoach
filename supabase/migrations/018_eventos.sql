@@ -32,10 +32,15 @@ CREATE INDEX IF NOT EXISTS idx_evento_inscricoes_evento ON evento_inscricoes(eve
 ALTER TABLE eventos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE evento_inscricoes ENABLE ROW LEVEL SECURITY;
 
+-- DROP + CREATE (em vez de só CREATE) pra essa migração poder ser rodada de novo sem
+-- quebrar com "policy already exists" — Postgres não tem CREATE POLICY IF NOT EXISTS.
+
 -- Info do evento (nome/data/vagas) precisa ser lida pela página pública sem login.
+DROP POLICY IF EXISTS "Qualquer um pode ler eventos ativos" ON eventos;
 CREATE POLICY "Qualquer um pode ler eventos ativos" ON eventos
   FOR SELECT TO anon, authenticated USING (true);
 
+DROP POLICY IF EXISTS "Usuarios autenticados gerenciam eventos" ON eventos;
 CREATE POLICY "Usuarios autenticados gerenciam eventos" ON eventos
   FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
@@ -43,9 +48,11 @@ CREATE POLICY "Usuarios autenticados gerenciam eventos" ON eventos
 -- inscrever_evento (abaixo), que roda com privilégio elevado e checa a vaga de forma atômica.
 -- Isso evita tanto escrita direta descontrolada quanto expor a lista de inscritos (dados de
 -- criança/responsável) pra qualquer visitante da página pública.
+DROP POLICY IF EXISTS "Usuarios autenticados leem inscricoes" ON evento_inscricoes;
 CREATE POLICY "Usuarios autenticados leem inscricoes" ON evento_inscricoes
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Usuarios autenticados gerenciam inscricoes" ON evento_inscricoes;
 CREATE POLICY "Usuarios autenticados gerenciam inscricoes" ON evento_inscricoes
   FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
