@@ -32,6 +32,7 @@ import { ModalTurmaAtivada } from './components/ModalTurmaAtivada'
 import { InstallBanner } from './components/ui/InstallBanner'
 import { DisponibilidadePage } from './pages/disponibilidade/DisponibilidadePage'
 import { DisponibilidadeTurmasPage } from './pages/disponibilidade/DisponibilidadeTurmasPage'
+import { EventoInscricaoPage } from './pages/eventos/EventoInscricaoPage'
 import { PoliticaPrivacidadePage } from './pages/legal/PoliticaPrivacidadePage'
 import { ComoFuncionaAPontuacaoPage } from './pages/legal/ComoFuncionaAPontuacaoPage'
 import { ComoFuncionaORankingPage } from './pages/legal/ComoFuncionaORankingPage'
@@ -158,6 +159,7 @@ export default function App() {
         <Routes>
           {/* Rota pública — sem login */}
           <Route path="/disponibilidade/:token" element={<DisponibilidadePage />} />
+          <Route path="/eventos/:slug" element={<EventoInscricaoPage />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/politica-de-privacidade" element={<PoliticaPrivacidadePage />} />
           <Route path="/pontuacao" element={<ComoFuncionaAPontuacaoPage />} />
