@@ -37,20 +37,15 @@ export function DisponibilidadePage() {
 
   useEffect(() => {
     async function carregar() {
-      const { data: prof, error } = await supabase
-        .from('professores')
-        .select('id, nome')
-        .eq('token_disponibilidade', token)
-        .single()
+      // Acesso público (sem login) passa por RPC — nunca lê a tabela professores/disponibilidades
+      // direto, pra não expor CPF/dados bancários nem os tokens de outros professores.
+      const { data: profs, error } = await supabase.rpc('buscar_professor_por_token', { p_token: token })
+      const prof = profs?.[0]
 
       if (error || !prof) { setLoading(false); return }
       setProfessor(prof)
 
-      // Carrega disponibilidades já salvas
-      const { data: disps } = await supabase
-        .from('disponibilidades')
-        .select('dia_semana, horario, status')
-        .eq('professor_id', prof.id)
+      const { data: disps } = await supabase.rpc('buscar_disponibilidade_por_token', { p_token: token })
 
       const gradeInicial = {}
       disps?.forEach(d => {
@@ -74,28 +69,16 @@ export function DisponibilidadePage() {
     if (!professor) return
     setSalvando(true)
     try {
-      const rows = []
+      const linhas = []
       DIAS.forEach(({ key: dia }) => {
         HORARIOS.forEach(horario => {
           const status = grade[`${dia}-${horario}`]
-          if (status) {
-            rows.push({
-              professor_id: professor.id,
-              dia_semana: dia,
-              horario,
-              status,
-              atualizado_em: new Date().toISOString(),
-            })
-          }
+          if (status) linhas.push({ dia_semana: dia, horario, status })
         })
       })
 
-      // Deleta antigas e insere novas
-      await supabase.from('disponibilidades').delete().eq('professor_id', professor.id)
-      if (rows.length > 0) {
-        const { error } = await supabase.from('disponibilidades').insert(rows)
-        if (error) throw error
-      }
+      const { error } = await supabase.rpc('salvar_disponibilidade_por_token', { p_token: token, p_linhas: linhas })
+      if (error) throw error
 
       setEnviado(true)
     } catch (err) {
