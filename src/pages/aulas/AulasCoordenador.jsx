@@ -219,7 +219,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   const [motivoCancelamentoMassa, setMotivoCancelamentoMassa] = useState('')
   const [novoAlunoModal, setNovoAlunoModal] = useState({
     show: false, nome: '', telefone: '', nivel: '',
-    menor_idade: false, nome_responsavel: '',
+    menor_idade: false, nome_responsavel: '', tipo_participacao: 'mensalista',
   })
   // Depois de cadastrar um aluno novo, pergunta se ele também entra em outra turma (ex:
   // matriculou 2x/semana) — evita repetir o fluxo inteiro de "Novo Aluno" pra cada dia.
@@ -822,8 +822,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
     }
   }
 
-  async function handleSalvarPresencas(aulaId) {
-    const lista = Object.values(presencasLocal[aulaId] || {})
+  // listaOverride: usado por handleCadastrarNovoAluno pra salvar direto (cadastro + inclusão na
+  // aula num passo só) sem depender do estado local já ter sido re-renderizado.
+  async function handleSalvarPresencas(aulaId, listaOverride) {
+    const lista = listaOverride || Object.values(presencasLocal[aulaId] || {})
     const aula = aulas?.find(a => a.id === aulaId)
     try {
       const { data: presencasAnteriores } = await supabase
@@ -1204,6 +1206,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
+  // Cadastra o aluno e já grava a presença na aula no mesmo clique — antes disso o fluxo
+  // exigia um segundo clique em "Salvar alunos da turma" pra persistir, e fechar/reabrir o
+  // modal nesse meio-tempo descartava a inclusão em silêncio (aluno ficava cadastrado mas
+  // sem aparecer na turma). Ver conversa com a recepção do clube sobre o Tom Osório Falbo.
   async function handleCadastrarNovoAluno(aulaId) {
     if (!novoAlunoModal.nome.trim()) return toast.error('Nome obrigatório', { style: toastStyle })
     try {
@@ -1214,9 +1220,14 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
         ativo: true,
       })
       await refetchAlunos()
-      adicionarAlunoNaLista(aulaId, { id: result.id, nome: result.nome })
-      setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '' })
-      toast.success('Aluno cadastrado e adicionado!', { style: toastStyle })
+      const novaPresenca = {
+        aluno_id: result.id, nome: result.nome, status_presenca: 'presente',
+        tipo_participacao: novoAlunoModal.tipo_participacao, alerta_nivel: false,
+        nivel_avaliado_prof: '', obs_nivel_prof: '',
+      }
+      const listaAtual = [...Object.values(presencasLocal[aulaId] || {}), novaPresenca]
+      setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '', tipo_participacao: 'mensalista' })
+      await handleSalvarPresencas(aulaId, listaAtual)
       setPromptOutraTurma({ alunoId: result.id, alunoNome: result.nome })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
@@ -2545,6 +2556,19 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     </div>
                     <input placeholder="Telefone (WhatsApp)" value={novoAlunoModal.telefone} onChange={e => setNovoAlunoModal(n => ({ ...n, telefone: e.target.value }))} style={inputStyle} />
                     <div>
+                      <div style={{ fontSize: '10px', color: '#888', marginBottom: '5px' }}>Tipo de participação</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {TIPO_PARTICIPACAO.map(t => (
+                          <button key={t.value} onClick={() => setNovoAlunoModal(n => ({ ...n, tipo_participacao: t.value }))} style={{
+                            flex: 1, padding: '6px 4px', borderRadius: '6px', border: 'none', fontSize: '11px', fontWeight: '500', cursor: 'pointer',
+                            background: novoAlunoModal.tipo_participacao === t.value ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
+                            outline: novoAlunoModal.tipo_participacao === t.value ? 'none' : '1px solid #2a2a2a',
+                            color: novoAlunoModal.tipo_participacao === t.value ? 'white' : '#888',
+                          }}>{t.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
                       <div style={{ fontSize: '10px', color: '#888', marginBottom: '5px' }}>Nível (opcional)</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                         {NIVEIS_ALUNO.map(n => (
@@ -2565,8 +2589,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     )}
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button onClick={() => setNovoAlunoModal(n => ({ ...n, show: false }))} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>Cancelar</button>
-                      <button onClick={() => handleCadastrarNovoAluno(aula.id)} disabled={salvarAluno.isPending} style={{ flex: 2, padding: '8px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
-                        {salvarAluno.isPending ? 'Salvando...' : '✓ Cadastrar e Adicionar'}
+                      <button onClick={() => handleCadastrarNovoAluno(aula.id)} disabled={salvarAluno.isPending || salvarPresencas.isPending} style={{ flex: 2, padding: '8px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
+                        {(salvarAluno.isPending || salvarPresencas.isPending) ? 'Salvando...' : '✓ Cadastrar e Adicionar'}
                       </button>
                     </div>
                   </div>
