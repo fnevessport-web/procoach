@@ -16,7 +16,7 @@ const inputStyle = {
   fontSize: '12px', outline: 'none', boxSizing: 'border-box',
 }
 
-const FORM_VAZIO = { nome_crianca: '', data_nascimento: '', nome_responsavel: '', whatsapp_responsavel: '', status: 'confirmado' }
+const FORM_VAZIO = { nome_crianca: '', data_nascimento: '', nome_responsavel: '', whatsapp_responsavel: '', status: 'confirmado', slot_id: '' }
 
 function useEventos() {
   return useQuery({
@@ -29,12 +29,26 @@ function useEventos() {
   })
 }
 
+function useSlots(eventoId) {
+  return useQuery({
+    queryKey: ['evento_slots', eventoId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('evento_slots').select('*')
+        .eq('evento_id', eventoId).order('ordem', { ascending: true })
+      if (error) throw error
+      return data
+    },
+    enabled: !!eventoId,
+  })
+}
+
 function useInscricoes(eventoId) {
   return useQuery({
     queryKey: ['evento_inscricoes', eventoId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evento_inscricoes').select('*')
+        .from('evento_inscricoes').select('*, evento_slots(horario, quadra)')
         .eq('evento_id', eventoId).order('criado_em', { ascending: true })
       if (error) throw error
       return data
@@ -122,6 +136,7 @@ function LinhaInscricao({ inscricao, dataEvento, onExcluir, excluindo }) {
         </div>
         <div style={{ fontSize: '11px', color: '#888' }}>
           Responsável: {inscricao.nome_responsavel}
+          {inscricao.evento_slots && ` · ${inscricao.evento_slots.horario?.slice(0, 5)} ${inscricao.evento_slots.quadra}`}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -165,16 +180,26 @@ function LinhaInscricao({ inscricao, dataEvento, onExcluir, excluindo }) {
   )
 }
 
-function FormIncluirInscricao({ eventoId, onFechar }) {
+function FormIncluirInscricao({ eventoId, inscricoes, onFechar }) {
   const [form, setForm] = useState(FORM_VAZIO)
+  const { data: slots } = useSlots(eventoId)
   const incluir = useIncluirInscricao(eventoId)
 
+  // Inclusão manual é INSERT direto (não passa pela RPC nem pelo lock de capacidade) — mostra
+  // vagas restantes na própria opção pra reduzir o risco de estourar um slot de 4 vagas sem
+  // perceber, já que aqui não há trava de banco, só aviso visual.
+  const confirmadosPorSlot = {}
+  ;(inscricoes || []).forEach(i => {
+    if (i.status === 'confirmado') confirmadosPorSlot[i.slot_id] = (confirmadosPorSlot[i.slot_id] || 0) + 1
+  })
+
   async function handleSalvar() {
-    if (!form.nome_crianca.trim() || !form.data_nascimento || !form.nome_responsavel.trim() || !form.whatsapp_responsavel.trim()) {
+    if (!form.slot_id || !form.nome_crianca.trim() || !form.data_nascimento || !form.nome_responsavel.trim() || !form.whatsapp_responsavel.trim()) {
       return toast.error('Preencha todos os campos', { style: toastStyle })
     }
     try {
       await incluir.mutateAsync({
+        slot_id: form.slot_id,
         nome_crianca: form.nome_crianca.trim(),
         data_nascimento: form.data_nascimento,
         nome_responsavel: form.nome_responsavel.trim(),
@@ -190,6 +215,14 @@ function FormIncluirInscricao({ eventoId, onFechar }) {
 
   return (
     <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: '#111', border: '1px solid rgba(252,200,37,0.2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <select value={form.slot_id} onChange={e => setForm(f => ({ ...f, slot_id: e.target.value }))} style={inputStyle}>
+        <option value="">Escolha o horário...</option>
+        {slots?.map(s => (
+          <option key={s.id} value={s.id}>
+            {s.horario?.slice(0, 5)} · {s.quadra} ({confirmadosPorSlot[s.id] || 0}/{s.capacidade} vagas)
+          </option>
+        ))}
+      </select>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
         <input placeholder="Nome da criança" style={inputStyle} value={form.nome_crianca} onChange={e => setForm(f => ({ ...f, nome_crianca: e.target.value }))} />
         <input type="date" style={inputStyle} value={form.data_nascimento} onChange={e => setForm(f => ({ ...f, data_nascimento: e.target.value }))} />
@@ -214,9 +247,13 @@ function CardEvento({ evento }) {
   const [aberto, setAberto] = useState(false)
   const [incluindoNovo, setIncluindoNovo] = useState(false)
   const { data: inscricoes } = useInscricoes(aberto ? evento.id : null)
+  const { data: slots } = useSlots(aberto ? evento.id : null)
   const excluir = useExcluirInscricao(evento.id)
   const confirmados = inscricoes?.filter(i => i.status === 'confirmado') || []
   const espera = inscricoes?.filter(i => i.status === 'lista_espera') || []
+  // Soma da capacidade dos slots em vez de evento.capacidade_maxima direto — evita duas fontes
+  // de verdade divergirem se algum slot for editado depois de criado.
+  const totalVagas = slots?.reduce((soma, s) => soma + s.capacidade, 0)
   const link = `${window.location.origin}/eventos/${evento.slug}`
 
   async function handleExcluir(id) {
@@ -243,7 +280,7 @@ function CardEvento({ evento }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
           <div style={{ fontSize: '12px', color: '#fcc825', fontWeight: '600' }}>
-            {aberto ? confirmados.length : '...'} / {evento.capacidade_maxima} vagas
+            {aberto ? confirmados.length : '...'} / {aberto ? (totalVagas ?? '...') : evento.capacidade_maxima} vagas
           </div>
           {aberto && espera.length > 0 && (
             <div style={{ fontSize: '12px', color: '#888' }}>· {espera.length} na lista de espera</div>
@@ -271,7 +308,7 @@ function CardEvento({ evento }) {
           )}
 
           {incluindoNovo ? (
-            <FormIncluirInscricao eventoId={evento.id} onFechar={() => setIncluindoNovo(false)} />
+            <FormIncluirInscricao eventoId={evento.id} inscricoes={inscricoes} onFechar={() => setIncluindoNovo(false)} />
           ) : (
             <button onClick={() => setIncluindoNovo(true)} style={{
               marginTop: '4px', padding: '8px', borderRadius: '8px', border: '1px dashed #2a2a2a',
