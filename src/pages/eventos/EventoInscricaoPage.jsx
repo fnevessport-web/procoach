@@ -47,9 +47,18 @@ function calcularIdade(dataNascimento, dataReferencia) {
 // altura conforme o formulário/estado.
 function FundoClube({ children }) {
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', backgroundColor: C.creme }}>
+    // height + overflowY:auto (em vez de minHeight) porque html/body do app inteiro têm
+    // overflow:hidden global (index.css) — sem um contêiner próprio de scroll aqui, a página
+    // trava e nada abaixo da primeira tela fica clicável (mesmo truque da versão anterior
+    // desta página, que usava exatamente isso).
+    <div style={{
+      position: 'relative', height: '100vh', backgroundColor: C.creme,
+      overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
+    }}>
+      {/* position:fixed (não absolute) — fica preso ao viewport em vez de precisar acompanhar
+          a altura do conteúdo rolável, que muda conforme o formulário/estado. */}
       <div style={{
-        position: 'absolute', inset: 0, opacity: 0.35, pointerEvents: 'none', zIndex: 0,
+        position: 'fixed', inset: 0, opacity: 0.35, pointerEvents: 'none', zIndex: 0,
         backgroundImage: 'url(/images/bg-texture.png)', backgroundRepeat: 'repeat', backgroundSize: '420px',
       }} />
       <div style={{ position: 'relative', zIndex: 1 }}>{children}</div>
@@ -60,10 +69,10 @@ function FundoClube({ children }) {
 function Cabecalho() {
   return (
     <div style={{ marginBottom: '22px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '10px' }}>
-        <img src="/images/logobeyond_preto.png" alt="Beyond The Club" style={{ height: '26px', objectFit: 'contain' }} />
-        <div style={{ width: '1px', height: '22px', backgroundColor: `${C.textoSuave}55` }} />
-        <img src="/images/logoprocopio_preto.png" alt="Procópio" style={{ height: '26px', objectFit: 'contain' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '14px' }}>
+        <img src="/images/logobeyond_preto.png" alt="Beyond The Club" style={{ height: '44px', objectFit: 'contain' }} />
+        <div style={{ width: '1px', height: '36px', backgroundColor: `${C.textoSuave}55` }} />
+        <img src="/images/logoprocopio_preto.png" alt="Procópio" style={{ height: '44px', objectFit: 'contain' }} />
       </div>
       <div style={{ display: 'flex', height: '4px', borderRadius: '2px', overflow: 'hidden' }}>
         <div style={{ flex: 1, backgroundColor: C.salvia }} />
