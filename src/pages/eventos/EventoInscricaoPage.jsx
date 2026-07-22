@@ -22,6 +22,17 @@ const cardStyle = {
 
 const FORM_VAZIO = { nome_crianca: '', data_nascimento: '', nome_responsavel: '', whatsapp_responsavel: '' }
 
+// Checklist "se aprovado, quais turmas regulares funcionam" — chaves fixas gravadas em
+// evento_inscricoes.disponibilidade_turmas, pra equipe já saber qual turma oferecer no contato
+// pós-seletiva sem perguntar de novo.
+const OPCOES_DISPONIBILIDADE = [
+  { value: 'turma1', label: 'Turma 1', dias: 'Segunda e Quarta 17h' },
+  { value: 'turma2', label: 'Turma 2', dias: 'Segunda e Quarta 18h' },
+  { value: 'turma3', label: 'Turma 3', dias: 'Terça e Quinta 17h' },
+  { value: 'turma4', label: 'Turma 4', dias: 'Terça e Quinta 18h' },
+  { value: 'nenhuma', label: 'Nenhuma dessas opções', dias: null },
+]
+
 function formatarData(dataStr) {
   if (!dataStr) return ''
   const [ano, mes, dia] = dataStr.split('-')
@@ -109,15 +120,15 @@ function TelaCentralizada({ children }) {
 }
 
 // Todos os cards têm a mesma estrutura (fundo/borda), lotado ou não — só a cor da bolinha e do
-// horário mudam com a disponibilidade. Antes o card inteiro ficava tingido na cor do status, e
-// como salvia (bastante vaga) é um tom claro, isso deixava o card com cara de "sem vaga"/apagado
-// mesmo tendo vaga de sobra — pedido do cliente pra tirar essa impressão.
-function CardSlot({ slot, selecionado, onSelecionar }) {
+// horário mudam com a disponibilidade. Um card lotado não é mais selecionável direto (ver
+// clicarSlot na página) — clicar nele só mostra um aviso, pra não deixar entrar na lista de
+// espera de UM horário lotado enquanto outros ainda têm vaga.
+function CardSlot({ slot, selecionado, onClick }) {
   const estado = classificarVaga(slot.confirmados, slot.capacidade)
   const cor = COR_VAGA[estado]
   const lotado = estado === 'lotado'
   return (
-    <button onClick={() => onSelecionar(slot)} style={{
+    <button onClick={() => onClick(slot)} style={{
       textAlign: 'left', cursor: 'pointer', borderRadius: '12px', padding: '12px 14px',
       backgroundColor: selecionado ? C.marinho : C.branco,
       border: selecionado ? `2px solid ${C.tinta}` : `1px solid ${C.textoSuave}33`,
@@ -138,6 +149,40 @@ function CardSlot({ slot, selecionado, onSelecionar }) {
         {lotado ? 'Lotado' : `${slot.vagas_restantes} de ${slot.capacidade} vagas`}
       </span>
     </button>
+  )
+}
+
+function Checklist({ selecionadas, onToggle }) {
+  return (
+    <div>
+      <div style={labelStyle}>Se seu filho(a) for aprovado(a), quais desses dias/horários funcionam pra vocês, pra treinar no Kids Competitivo?</div>
+      <div style={{ fontSize: '11px', color: C.textoSuave, marginBottom: '8px' }}>Pode selecionar mais de uma opção.</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {OPCOES_DISPONIBILIDADE.map(op => {
+          const marcado = selecionadas.includes(op.value)
+          return (
+            <button key={op.value} type="button" onClick={() => onToggle(op.value)} style={{
+              display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderRadius: '10px',
+              border: marcado ? `2px solid ${C.marinho}` : `1px solid ${C.textoSuave}33`,
+              backgroundColor: marcado ? `${C.marinho}12` : C.branco, cursor: 'pointer', textAlign: 'left',
+              boxSizing: 'border-box', transition: 'all 0.12s',
+            }}>
+              <span style={{
+                width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0,
+                border: `2px solid ${marcado ? C.marinho : C.textoSuave}88`,
+                backgroundColor: marcado ? C.marinho : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {marcado && <span style={{ color: C.branco, fontSize: '11px', fontWeight: '900', lineHeight: 1 }}>✓</span>}
+              </span>
+              <span style={{ fontSize: '13px', color: C.tinta, fontWeight: marcado ? '700' : '400' }}>
+                {op.label}{op.dias ? ` — ${op.dias}` : ''}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -179,7 +224,9 @@ function Modal({ children, onFechar }) {
 export function EventoInscricaoPage() {
   const { slug } = useParams()
   const [form, setForm] = useState(FORM_VAZIO)
+  const [disponibilidade, setDisponibilidade] = useState([])
   const [slotSelecionado, setSlotSelecionado] = useState(null)
+  const [avisoLotado, setAvisoLotado] = useState(false)
   const [modalAberto, setModalAberto] = useState(false)
   const [etapaModal, setEtapaModal] = useState('form') // 'form' | 'confirmar' | 'esgotado'
   const [erro, setErro] = useState('')
@@ -212,11 +259,17 @@ export function EventoInscricaoPage() {
     refetchInterval: 15000,
   })
 
+  // Só oferece lista de espera quando TODOS os horários já lotaram — antes dava pra entrar na
+  // fila de um horário lotado mesmo com outros livres, o que não fazia sentido (pedido do
+  // cliente pra mudar).
+  const todasLotadas = !!slots?.length && slots.every(s => s.vagas_restantes <= 0)
+
   // Pais com mais de um filho inscrevem um de cada vez — volta pro início do formulário já
   // com as vagas atualizadas na hora (sem esperar o próximo refetch de 15s), pra não deixar a
   // pessoa escolher um horário que acabou de lotar com a inscrição anterior.
   function novaInscricao() {
     setForm(FORM_VAZIO)
+    setDisponibilidade([])
     setSlotSelecionado(null)
     setResultado(null)
     setModalAberto(false)
@@ -225,8 +278,28 @@ export function EventoInscricaoPage() {
     refetchSlots()
   }
 
+  // Clique num card do grid: se tiver vaga, seleciona normalmente; se estiver lotado, só avisa
+  // (some sozinho em 3s) em vez de deixar escolher esse horário específico pra lista de espera.
+  function clicarSlot(slot) {
+    if (classificarVaga(slot.confirmados, slot.capacidade) === 'lotado') {
+      setAvisoLotado(true)
+      setTimeout(() => setAvisoLotado(false), 3000)
+      return
+    }
+    setSlotSelecionado(slot)
+  }
+
   function abrirModal() {
     if (!slotSelecionado) return
+    setErro('')
+    setEtapaModal('form')
+    setModalAberto(true)
+  }
+
+  // Só aparece quando todasLotadas — não passa pela grade (não tem mais nenhuma vaga real pra
+  // clicar), abre o modal direto pedindo o horário de preferência dentro do próprio formulário.
+  function abrirModalListaEspera() {
+    setSlotSelecionado(null)
     setErro('')
     setEtapaModal('form')
     setModalAberto(true)
@@ -237,7 +310,16 @@ export function EventoInscricaoPage() {
     setErro('')
   }
 
+  function toggleDisponibilidade(value) {
+    setDisponibilidade(prev => {
+      if (value === 'nenhuma') return prev.includes('nenhuma') ? [] : ['nenhuma']
+      const semNenhuma = prev.filter(v => v !== 'nenhuma')
+      return semNenhuma.includes(value) ? semNenhuma.filter(v => v !== value) : [...semNenhuma, value]
+    })
+  }
+
   function validarForm() {
+    if (todasLotadas && !slotSelecionado) return 'Escolha o horário de sua preferência.'
     if (!form.nome_crianca.trim()) return 'Informe o nome completo da criança.'
     if (!form.data_nascimento) return 'Informe a data de nascimento.'
     if (!form.nome_responsavel.trim()) return 'Informe o nome do responsável.'
@@ -267,6 +349,7 @@ export function EventoInscricaoPage() {
       p_nome_responsavel: form.nome_responsavel.trim(),
       p_whatsapp_responsavel: form.whatsapp_responsavel.trim(),
       p_aceitar_espera: aceitarEspera,
+      p_disponibilidade_turmas: disponibilidade.length ? disponibilidade : null,
     })
     if (error) throw error
     return data?.[0]?.status
@@ -276,8 +359,13 @@ export function EventoInscricaoPage() {
     setErro('')
     setEnviando(true)
     try {
-      const status = await inscrever(false)
+      // Já sabemos de antemão que é lista de espera (todasLotadas) — pula a detecção de
+      // "esgotado", já manda p_aceitar_espera=true direto.
+      const status = await inscrever(todasLotadas)
       if (status === 'esgotado') {
+        // Corrida rara: a vaga que parecia livre (leitura de até 15s atrás) sumiu entre o
+        // carregamento da página e a confirmação — cai no mesmo prompt de lista de espera
+        // como rede de segurança, sem travar o fluxo.
         setEtapaModal('esgotado')
       } else {
         setResultado(status)
@@ -369,7 +457,7 @@ export function EventoInscricaoPage() {
           </div>
 
           <div style={{ ...cardStyle, marginBottom: '14px', fontSize: '13px', color: C.tinta, lineHeight: '1.7' }}>
-            Escolha abaixo o dia e horário em que seu filho(a) vai participar. As vagas são limitadas por horário e quadra — se o horário que você quer já estiver lotado, você pode entrar na lista de espera.
+            Escolha abaixo o dia e horário em que seu filho(a) vai participar. As vagas são limitadas por horário e quadra.
           </div>
 
           <div style={{ ...cardStyle, marginBottom: '14px' }}>
@@ -386,27 +474,50 @@ export function EventoInscricaoPage() {
             </div>
           </div>
 
-          <div>
-            <div style={labelStyle}>Dia e horário *</div>
-            {!slots ? (
-              <div style={{ fontSize: '12px', color: C.textoSuave, padding: '8px 0' }}>Carregando horários...</div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {slots.map(slot => (
-                  <CardSlot key={slot.slot_id} slot={slot} selecionado={slotSelecionado?.slot_id === slot.slot_id} onSelecionar={setSlotSelecionado} />
-                ))}
+          {todasLotadas ? (
+            <div style={{ padding: '18px 16px', borderRadius: '12px', backgroundColor: `${C.vinho}18`, border: `1px solid ${C.vinho}66`, textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px' }}>⏳</div>
+              <div style={{ fontSize: '15px', fontWeight: '700', color: C.vinho, marginBottom: '6px' }}>Vagas encerradas</div>
+              <div style={{ fontSize: '13px', color: C.tinta, lineHeight: '1.6', marginBottom: '18px' }}>
+                Todas as turmas do Kids Competitivo já estão lotadas. Você pode entrar na lista de espera — se abrir uma vaga, avisaremos por WhatsApp.
               </div>
-            )}
-          </div>
+              <button onClick={abrirModalListaEspera} style={{
+                width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+                backgroundColor: C.marinho, color: C.branco, fontSize: '14px', fontWeight: '700', cursor: 'pointer',
+              }}>
+                Quero entrar na lista de espera
+              </button>
+            </div>
+          ) : (
+            <>
+              <div>
+                <div style={labelStyle}>Dia e horário *</div>
+                {!slots ? (
+                  <div style={{ fontSize: '12px', color: C.textoSuave, padding: '8px 0' }}>Carregando horários...</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {slots.map(slot => (
+                      <CardSlot key={slot.slot_id} slot={slot} selecionado={slotSelecionado?.slot_id === slot.slot_id} onClick={clicarSlot} />
+                    ))}
+                  </div>
+                )}
+                {avisoLotado && (
+                  <div style={{ marginTop: '8px', padding: '10px 12px', borderRadius: '8px', backgroundColor: `${C.vinho}18`, border: `1px solid ${C.vinho}66`, color: C.vinho, fontSize: '12px', fontWeight: '600' }}>
+                    Turma lotada — escolha outro horário.
+                  </div>
+                )}
+              </div>
 
-          <button onClick={abrirModal} disabled={!slotSelecionado} style={{
-            width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
-            backgroundColor: slotSelecionado ? C.marinho : `${C.textoSuave}33`,
-            color: slotSelecionado ? C.branco : C.textoSuave, fontSize: '15px', fontWeight: '700',
-            cursor: slotSelecionado ? 'pointer' : 'not-allowed', marginTop: '16px',
-          }}>
-            Prosseguir
-          </button>
+              <button onClick={abrirModal} disabled={!slotSelecionado} style={{
+                width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+                backgroundColor: slotSelecionado ? C.marinho : `${C.textoSuave}33`,
+                color: slotSelecionado ? C.branco : C.textoSuave, fontSize: '15px', fontWeight: '700',
+                cursor: slotSelecionado ? 'pointer' : 'not-allowed', marginTop: '16px',
+              }}>
+                Prosseguir
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -415,6 +526,20 @@ export function EventoInscricaoPage() {
           {etapaModal === 'form' && (
             <form onSubmit={handleContinuar} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ fontSize: '16px', fontWeight: '700', color: C.tinta, marginBottom: '2px' }}>Dados da inscrição</div>
+
+              {todasLotadas && (
+                <div>
+                  <div style={labelStyle}>Horário de preferência *</div>
+                  <select style={inputStyle} value={slotSelecionado?.slot_id || ''}
+                    onChange={e => setSlotSelecionado(slots.find(s => s.slot_id === e.target.value) || null)}>
+                    <option value="">Escolha um horário...</option>
+                    {slots.map(s => (
+                      <option key={s.slot_id} value={s.slot_id}>{formatarHora(s.horario)} · {s.quadra}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <div style={labelStyle}>Nome completo da criança *</div>
                 <input style={inputStyle} value={form.nome_crianca} onChange={e => setForm(f => ({ ...f, nome_crianca: e.target.value }))} placeholder="Nome completo" />
@@ -437,6 +562,8 @@ export function EventoInscricaoPage() {
                 </div>
               </div>
 
+              <Checklist selecionadas={disponibilidade} onToggle={toggleDisponibilidade} />
+
               {erro && (
                 <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: `${C.vinho}18`, border: `1px solid ${C.vinho}66`, color: C.vinho, fontSize: '12px' }}>
                   {erro}
@@ -454,12 +581,19 @@ export function EventoInscricaoPage() {
 
           {etapaModal === 'confirmar' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ fontSize: '16px', fontWeight: '700', color: C.tinta, marginBottom: '2px' }}>Confira o agendamento</div>
+              <div style={{ fontSize: '16px', fontWeight: '700', color: C.tinta, marginBottom: '2px' }}>
+                {todasLotadas ? 'Confira a lista de espera' : 'Confira o agendamento'}
+              </div>
               <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: `${C.salvia}18`, border: `1px solid ${C.salvia}66`, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <div style={{ fontSize: '13px', color: C.tinta }}><strong>Dia:</strong> {formatarData(evento.data_evento)}</div>
-                <div style={{ fontSize: '13px', color: C.tinta }}><strong>Horário:</strong> {formatarHora(slotSelecionado?.horario)}</div>
+                <div style={{ fontSize: '13px', color: C.tinta }}><strong>Horário{todasLotadas ? ' preferido' : ''}:</strong> {formatarHora(slotSelecionado?.horario)}</div>
                 <div style={{ fontSize: '13px', color: C.tinta }}><strong>Quadra:</strong> {slotSelecionado?.quadra}</div>
               </div>
+              {todasLotadas && (
+                <div style={{ fontSize: '12px', color: C.textoSuave, lineHeight: '1.6' }}>
+                  Todos os horários estão lotados no momento — ao confirmar, {form.nome_crianca || 'seu filho(a)'} entra na lista de espera. Avisaremos por WhatsApp se abrir vaga.
+                </div>
+              )}
               <div style={{ fontSize: '12px', color: C.textoSuave, lineHeight: '1.6' }}>
                 {form.nome_crianca} · Responsável: {form.nome_responsavel}
               </div>
@@ -486,7 +620,7 @@ export function EventoInscricaoPage() {
               <div style={{ fontSize: '32px', textAlign: 'center' }}>⏳</div>
               <div style={{ fontSize: '16px', fontWeight: '700', color: C.tinta, textAlign: 'center' }}>Esse horário está lotado!</div>
               <div style={{ fontSize: '13px', color: C.textoSuave, lineHeight: '1.6', textAlign: 'center', marginBottom: '10px' }}>
-                O horário das {formatarHora(slotSelecionado?.horario)} na {slotSelecionado?.quadra} já foi preenchido. Podemos colocar {form.nome_crianca || 'seu filho(a)'} na lista de espera desse horário — se abrir vaga, avisaremos vocês por WhatsApp.
+                O horário das {formatarHora(slotSelecionado?.horario)} na {slotSelecionado?.quadra} acabou de ser preenchido. Podemos colocar {form.nome_crianca || 'seu filho(a)'} na lista de espera desse horário — se abrir vaga, avisaremos vocês por WhatsApp.
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button onClick={() => setEtapaModal('confirmar')} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: `1px solid ${C.textoSuave}55`, background: 'none', color: C.textoSuave, fontSize: '13px', cursor: 'pointer' }}>

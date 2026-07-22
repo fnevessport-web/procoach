@@ -18,6 +18,14 @@ const inputStyle = {
 
 const FORM_VAZIO = { nome_crianca: '', data_nascimento: '', nome_responsavel: '', whatsapp_responsavel: '', status: 'confirmado', slot_id: '' }
 
+// Mesmas chaves do checklist "disponibilidade" preenchido no formulário público
+// (EventoInscricaoPage.jsx) — só pra rotular o array salvo em disponibilidade_turmas.
+const LABEL_DISPONIBILIDADE = {
+  turma1: 'Turma 1 (Seg/Qua 17h)', turma2: 'Turma 2 (Seg/Qua 18h)',
+  turma3: 'Turma 3 (Ter/Qui 17h)', turma4: 'Turma 4 (Ter/Qui 18h)',
+  nenhuma: 'Nenhuma opção',
+}
+
 function useEventos() {
   return useQuery({
     queryKey: ['eventos'],
@@ -138,6 +146,11 @@ function LinhaInscricao({ inscricao, dataEvento, onExcluir, excluindo }) {
           Responsável: {inscricao.nome_responsavel}
           {inscricao.evento_slots && ` · ${inscricao.evento_slots.horario?.slice(0, 5)} ${inscricao.evento_slots.quadra}`}
         </div>
+        {inscricao.disponibilidade_turmas?.length > 0 && (
+          <div style={{ fontSize: '10px', color: '#666', marginTop: '2px' }}>
+            Disponibilidade: {inscricao.disponibilidade_turmas.map(v => LABEL_DISPONIBILIDADE[v] || v).join(', ')}
+          </div>
+        )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
         {espera && (
