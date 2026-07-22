@@ -925,7 +925,6 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   }
 
   async function handleStatusAula(aulaId, statusAula, motivoCancelamento) {
-    if (isFuturo) return toast.error('Aula futura — aguarde o dia da aula', { style: toastStyle })
     const pagaProfessor = STATUS_AULA.find(s => s.value === statusAula)?.paga ?? true
     setStatusLocal(prev => ({ ...prev, [aulaId]: statusAula }))
     setMostrarMotivoCancelamento(false)
@@ -2169,7 +2168,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                 borderRadius: '10px', padding: '10px 14px', marginBottom: '14px',
                 fontSize: '12px', color: '#fcc825',
               }}>
-                📅 Aula agendada para o futuro — status e presenças disponíveis no dia da aula.
+                📅 Aula agendada para o futuro — dá pra marcar como Sem Aula/Cancelada e ajustar presenças com antecedência, se já souber que não vai acontecer.
               </div>
             )}
 
@@ -2306,7 +2305,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
               </div>
             )}
 
-            {!aulaFutura && !somenteLeitura && (
+            {!somenteLeitura && (
               <div style={{ marginBottom: '14px' }}>
                 <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status da Aula</div>
                 <div style={{ display: 'flex', gap: '6px' }}>
@@ -2484,7 +2483,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                       </div>
                     )}
 
-                    {!aulaFutura && podeMarcarPresenca && (
+                    {podeMarcarPresenca && (
                       <div style={{ display: 'flex', gap: '6px' }}>
                         {STATUS_PRESENCA.map(sp => (
                           <button key={sp.value} onClick={() => updatePresenca(aula.id, aluno.aluno_id, 'status_presenca', sp.value)} style={{

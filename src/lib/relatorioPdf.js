@@ -216,6 +216,65 @@ function corRisco(texto) {
 }
 
 // ============================================================================================
+// PDF — lista simplificada de alunos ativos (aba "Lista de Alunos" em KPIs): nome, turma/dia/
+// horário e contagem de presença no período, sem capa/logos/insights — só a tabela, pensada
+// pra abrir rápido e imprimir.
+// ============================================================================================
+export async function exportarListaAlunosPDF(linhas, { empresa, periodo }) {
+  const { jsPDF } = await import('jspdf')
+  const { autoTable } = await import('jspdf-autotable')
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const margem = 40
+
+  const nomeEmpresa = NOME_EMPRESA[empresa] || empresa
+  const periodoLabel = `${format(new Date(periodo.inicio + 'T12:00'), 'dd/MM/yyyy')} a ${format(new Date(periodo.fim + 'T12:00'), 'dd/MM/yyyy')}`
+  const geradoEm = format(new Date(), "dd/MM/yyyy 'às' HH:mm")
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(14)
+  doc.setTextColor(...COR_TINTA)
+  doc.text(`Lista de Alunos — ${nomeEmpresa}`, margem, 40)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(...COR_TEXTO_SUAVE)
+  doc.text(`Período: ${periodoLabel}  ·  ${linhas.length} aluno${linhas.length === 1 ? '' : 's'}  ·  Gerado em ${geradoEm}`, margem, 56)
+
+  autoTable(doc, {
+    startY: 74,
+    head: [['Aluno', 'Turma/Nível', 'Dia da Semana', 'Horário', 'Total de Aulas', 'Presença', 'Falta', 'Falta Justificada', '% Frequência']],
+    body: linhas.map(l => [
+      l.nome,
+      l.nivel ? `${l.turma} — ${l.nivel}` : l.turma,
+      l.diaSemana,
+      l.horario,
+      String(l.totalAulas),
+      String(l.presentes),
+      String(l.faltas),
+      String(l.faltasJustificadas),
+      `${l.pctFrequencia}%`,
+    ]),
+    theme: 'plain',
+    styles: { fontSize: 8.5, cellPadding: 6, valign: 'middle', textColor: COR_TINTA, lineColor: [215, 210, 200], lineWidth: 0.5 },
+    headStyles: { fillColor: COR_MARINHO, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 8 },
+    alternateRowStyles: { fillColor: [249, 247, 243] },
+    columnStyles: { 4: { halign: 'center' }, 5: { halign: 'center' }, 6: { halign: 'center' }, 7: { halign: 'center' }, 8: { halign: 'center' } },
+    margin: { left: margem, right: margem },
+  })
+
+  const totalPaginas = doc.internal.getNumberOfPages()
+  for (let i = 1; i <= totalPaginas; i++) {
+    doc.setPage(i)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(...COR_TEXTO_SUAVE)
+    doc.text(`Gerado pelo ProCoach em ${geradoEm}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 16, { align: 'center' })
+  }
+
+  doc.save(`lista-alunos-${empresa}-${periodo.inicio}-a-${periodo.fim}.pdf`)
+}
+
+// ============================================================================================
 // PDF — relatório completo (capa + resumo executivo + mapa de calor de cada modalidade em
 // escopo + presença por aluno), tudo num documento só por unidade.
 // ============================================================================================

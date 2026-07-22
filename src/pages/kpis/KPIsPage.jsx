@@ -1,17 +1,22 @@
 import { useState } from 'react'
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { TrendingUp, TrendingDown, Download } from 'lucide-react'
-import { useRelatorioMensal, buscarRelatorioCompleto, gerarInsights } from '../../hooks/useRelatorioMensal'
+import { useRelatorioMensal, useListaAlunosAtivos, buscarRelatorioCompleto, buscarListaAlunosAtivos, gerarInsights } from '../../hooks/useRelatorioMensal'
 import { useModalidades } from '../../hooks/useModalidades'
 import { EMPRESAS, MODALIDADE_EMPRESA, ICONES_MODALIDADES } from '../../constants/modalidades'
 import { classificarPct, CORES_SEMAFORO, LABEL_SEMAFORO } from '../../constants/semaforo'
 import { Input } from '../../components/ui/Input'
 import { Loading } from '../../components/ui/Loading'
-import { exportarRelatorioCompletoPDF, exportarRelatorioCompletoPNG } from '../../lib/relatorioPdf'
+import { exportarRelatorioCompletoPDF, exportarRelatorioCompletoPNG, exportarListaAlunosPDF } from '../../lib/relatorioPdf'
 import toast from 'react-hot-toast'
 
 const toastStyle = { background: '#1a1a1a', color: '#F0F2F5', border: '1px solid #2a2a2a' }
 const COR_UNIDADE = { procopio: '#fcc825', beach_arena: '#cf1b9b' }
+const inputBuscaStyle = {
+  width: '100%', padding: '10px 14px 10px 36px', borderRadius: '10px',
+  backgroundColor: '#110f0f', border: '1px solid #2a2a2a',
+  color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+}
 
 export function KPIsPage() {
   // "Mês atual" por padrão vai do dia 1 até hoje (o mês ainda não fechou) — mesma regra do
@@ -22,6 +27,9 @@ export function KPIsPage() {
   const [unidadesSelecionadas, setUnidadesSelecionadas] = useState([])
   const [modalidadesSelecionadas, setModalidadesSelecionadas] = useState([])
   const [gerando, setGerando] = useState(null)
+  const [aba, setAba] = useState('completo')
+  const [buscaAluno, setBuscaAluno] = useState('')
+  const [gerandoLista, setGerandoLista] = useState(false)
   const { data: modalidades } = useModalidades()
 
   const modalidadesDisponiveis = (modalidades || []).filter(m => unidadesSelecionadas.includes(MODALIDADE_EMPRESA[m.nome]))
@@ -33,6 +41,11 @@ export function KPIsPage() {
     periodoInicio, periodoFim, empresa: empresaPreview, modalidades: modalidadesSelecionadas,
   })
   const insights = rel ? gerarInsights(rel) : []
+
+  const { data: listaAlunos, isLoading: isLoadingLista } = useListaAlunosAtivos({
+    periodoInicio, periodoFim, empresa: empresaPreview, modalidades: modalidadesSelecionadas,
+  })
+  const listaAlunosFiltrada = (listaAlunos || []).filter(a => a.nome.toLowerCase().includes(buscaAluno.toLowerCase()))
 
   // Mês atual = do dia 1 até hoje (o mês ainda tá em andamento, não faz sentido pedir dado que
   // ainda não aconteceu). Mês passado = ciclo completo, dia 1 até o último dia daquele mês.
@@ -98,6 +111,28 @@ export function KPIsPage() {
     }
   }
 
+  // Um PDF por unidade marcada, mesmo padrão do relatório completo — se as duas estiverem
+  // marcadas, gera um pra cada em vez de misturar Procópio e Beach Arena numa tabela só.
+  async function handleGerarLista() {
+    if (unidadesSelecionadas.length === 0) {
+      return toast.error('Selecione Procópio, Beach Arena ou as duas', { style: toastStyle })
+    }
+    setGerandoLista(true)
+    try {
+      for (const empresaAlvo of unidadesSelecionadas) {
+        const modalidadesDaUnidade = modalidadesSelecionadas.filter(m => MODALIDADE_EMPRESA[m] === empresaAlvo)
+        const filtroModalidades = modalidadesSelecionadas.length > 0 ? modalidadesDaUnidade : null
+        const linhas = await buscarListaAlunosAtivos({ periodoInicio, periodoFim, empresa: empresaAlvo, modalidades: filtroModalidades })
+        await exportarListaAlunosPDF(linhas, { empresa: empresaAlvo, periodo: { inicio: periodoInicio, fim: periodoFim } })
+      }
+      toast.success(unidadesSelecionadas.length > 1 ? 'PDFs gerados!' : 'PDF gerado!', { style: toastStyle })
+    } catch (err) {
+      toast.error('Erro ao gerar lista: ' + err.message, { style: toastStyle })
+    } finally {
+      setGerandoLista(false)
+    }
+  }
+
   const mesInicio = periodoInicio.slice(0, 7)
   const mesFim = periodoFim.slice(0, 7)
   const periodoSuspeito = mesInicio !== mesFim
@@ -108,6 +143,22 @@ export function KPIsPage() {
         <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
           Relatório Mensal
         </h1>
+      </div>
+
+      {/* Aba: relatório completo (KPIs/insights) x lista simplificada de alunos ativos */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+        <button onClick={() => setAba('completo')} style={{
+          flex: 1, padding: '10px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+          background: aba === 'completo' ? '#1a1a1a' : 'transparent',
+          outline: aba === 'completo' ? '1px solid #fcc825' : '1px solid #2a2a2a',
+          color: aba === 'completo' ? '#fcc825' : '#888', fontSize: '12px', fontWeight: '600',
+        }}>Relatório Completo</button>
+        <button onClick={() => setAba('lista')} style={{
+          flex: 1, padding: '10px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+          background: aba === 'lista' ? '#1a1a1a' : 'transparent',
+          outline: aba === 'lista' ? '1px solid #fcc825' : '1px solid #2a2a2a',
+          color: aba === 'lista' ? '#fcc825' : '#888', fontSize: '12px', fontWeight: '600',
+        }}>Lista de Alunos</button>
       </div>
 
       {/* 1. Unidade — sempre o primeiro passo. Pode marcar as duas. */}
@@ -203,6 +254,8 @@ export function KPIsPage() {
         {periodoSuspeito && ' — atenção: as datas caem em meses diferentes, confira se é isso mesmo antes de gerar.'}
       </div>
 
+      {aba === 'completo' && (
+      <>
       {/* 4. Gerar */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
         <button onClick={() => handleGerar('pdf')} disabled={!!gerando} style={{
@@ -343,6 +396,69 @@ export function KPIsPage() {
           )}
         </div>
       ) : null}
+      </>
+      )}
+
+      {aba === 'lista' && (
+      <>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+        <button onClick={handleGerarLista} disabled={gerandoLista} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px',
+          borderRadius: '12px', border: 'none', cursor: unidadesSelecionadas.length === 0 ? 'not-allowed' : 'pointer',
+          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '14px', fontWeight: '700',
+          opacity: gerandoLista ? 0.5 : 1,
+        }}>
+          <Download size={16} /> {gerandoLista ? 'Gerando PDF...' : 'Exportar Lista em PDF'}
+        </button>
+      </div>
+
+      <div style={{ position: 'relative', marginBottom: '14px' }}>
+        <input
+          style={inputBuscaStyle}
+          placeholder="Buscar aluno pelo nome..."
+          value={buscaAluno}
+          onChange={e => setBuscaAluno(e.target.value)}
+        />
+        <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#555', fontSize: '14px' }}>🔍</span>
+      </div>
+
+      {isLoadingLista ? <Loading /> : (
+        <>
+          <div style={{ fontSize: '11px', color: '#555', marginBottom: '10px' }}>
+            {listaAlunosFiltrada.length} aluno{listaAlunosFiltrada.length === 1 ? '' : 's'}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {listaAlunosFiltrada.map(a => (
+              <div key={`${a.turmaId}_${a.alunoId}`} style={{
+                padding: '12px 14px', borderRadius: '12px', backgroundColor: '#1a1a1a',
+                border: '1px solid rgba(255,255,255,0.06)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5' }}>{a.nome}</span>
+                  <span style={{ fontSize: '11px', color: '#888', textAlign: 'right' }}>{a.turma}{a.nivel ? ` — ${a.nivel}` : ''}</span>
+                </div>
+                <div style={{ fontSize: '11px', color: '#555', marginBottom: '10px' }}>
+                  {a.diaSemana}{a.horario ? ` · ${a.horario}` : ''}
+                </div>
+                <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+                  <MiniStat label="Aulas" value={a.totalAulas} cor="#888" />
+                  <MiniStat label="Presença" value={a.presentes} cor="#22c55e" />
+                  <MiniStat label="Falta" value={a.faltas} cor="#EF4444" />
+                  <MiniStat label="Falta Just." value={a.faltasJustificadas} cor="#d28c3c" />
+                  <MiniStat label="Frequência" value={`${a.pctFrequencia}%`} cor={CORES_SEMAFORO[classificarPct(a.pctFrequencia)]} />
+                </div>
+              </div>
+            ))}
+            {listaAlunosFiltrada.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#555', fontSize: '13px' }}>
+                Nenhum aluno ativo encontrado{unidadesSelecionadas.length === 0 ? ' — selecione uma unidade acima' : ''}.
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      </>
+      )}
     </div>
   )
 }
@@ -433,6 +549,15 @@ function rotuloTipo(tipo) {
 
 function rotuloEmpresa(empresa) {
   return empresa === 'procopio' ? 'Procópio' : empresa === 'beach_arena' ? 'Beach Arena' : 'Outro'
+}
+
+function MiniStat({ label, value, cor }) {
+  return (
+    <div>
+      <div style={{ fontSize: '13px', fontWeight: '700', color: cor }}>{value}</div>
+      <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{label}</div>
+    </div>
+  )
 }
 
 function KpiCard({ emoji, label, value, dot }) {

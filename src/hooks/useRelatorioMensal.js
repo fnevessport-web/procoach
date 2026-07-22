@@ -371,3 +371,98 @@ export function useRelatorioMensal({ periodoInicio, periodoFim, empresa, modalid
     queryFn: () => buscarRelatorioMensal({ periodoInicio, periodoFim, empresa, modalidades }),
   })
 }
+
+const DIAS_SEMANA_LABEL = { segunda: 'Segunda', terca: 'Terça', quarta: 'Quarta', quinta: 'Quinta', sexta: 'Sexta', sabado: 'Sábado', domingo: 'Domingo' }
+
+function empresaDaTurma(turma) {
+  const modalidade = turma.modalidades?.nome
+  if (MODALIDADE_EMPRESA[modalidade]) return MODALIDADE_EMPRESA[modalidade]
+  const quadra = turma.quadras?.nome
+  if (QUADRAS_EMPRESA.procopio.includes(quadra)) return 'procopio'
+  if (QUADRAS_EMPRESA.beach_arena.includes(quadra)) return 'beach_arena'
+  return null
+}
+
+// Relatório simplificado (aba "Lista de Alunos" em KPIs): uma linha por matrícula ativa
+// (turma_id + aluno_id), com dia da semana/horário/turma-nível da turma e as contagens de
+// presença dentro do período pedido — diferente de construirPresencaPorAluno (que só lista
+// quem teve presença marcada no período), aqui entra todo aluno ativo na turma mesmo que
+// ainda não tenha nenhuma aula computada no período (fica com os números zerados).
+export async function buscarListaAlunosAtivos({ periodoInicio, periodoFim, empresa, modalidades } = {}) {
+  const inicio = periodoInicio || format(startOfMonth(new Date()), 'yyyy-MM-dd')
+  const fim = periodoFim || format(endOfMonth(new Date()), 'yyyy-MM-dd')
+
+  const { data: turmas, error: erroTurmas } = await supabase
+    .from('turmas')
+    .select(`
+      id, nome, horario_dia_semana, horario_inicio, modalidade_id,
+      modalidades(nome), niveis!nivel_id(nome), quadras!quadra_id(nome),
+      turmas_alunos(aluno_id, ativo, alunos(id, nome, ativo))
+    `)
+    .eq('ativo', true)
+  if (erroTurmas) throw erroTurmas
+
+  const modalidadesEmEscopo = modalidades && modalidades.length > 0 ? modalidades : null
+
+  const turmasFiltradas = (turmas || [])
+    .filter(t => !empresa || empresaDaTurma(t) === empresa)
+    .filter(t => !modalidadesEmEscopo || modalidadesEmEscopo.includes(t.modalidades?.nome))
+
+  const turmaIds = turmasFiltradas.map(t => t.id)
+  if (turmaIds.length === 0) return []
+
+  const { data: aulas, error: erroAulas } = await supabase
+    .from('aulas')
+    .select('id, turma_id, presencas(aluno_id, status_presenca)')
+    .in('turma_id', turmaIds)
+    .gte('data_aula', inicio)
+    .lte('data_aula', fim)
+  if (erroAulas) throw erroAulas
+
+  const contagem = {}
+  ;(aulas || []).forEach(a => {
+    ;(a.presencas || []).forEach(p => {
+      if (!p.aluno_id) return
+      const chave = `${a.turma_id}_${p.aluno_id}`
+      if (!contagem[chave]) contagem[chave] = { presentes: 0, faltas: 0, faltasJustificadas: 0 }
+      if (p.status_presenca === 'presente') contagem[chave].presentes++
+      else if (p.status_presenca === 'falta') contagem[chave].faltas++
+      else if (p.status_presenca === 'falta_justificada') contagem[chave].faltasJustificadas++
+    })
+  })
+
+  const linhas = []
+  turmasFiltradas.forEach(t => {
+    (t.turmas_alunos || [])
+      .filter(ta => ta.ativo && ta.alunos?.ativo !== false && ta.alunos?.nome)
+      .forEach(ta => {
+        const c = contagem[`${t.id}_${ta.aluno_id}`] || { presentes: 0, faltas: 0, faltasJustificadas: 0 }
+        const totalAulas = c.presentes + c.faltas + c.faltasJustificadas
+        const totalMarcado = c.presentes + c.faltas
+        const pctFrequencia = totalMarcado > 0 ? Math.round((c.presentes / totalMarcado) * 100) : 0
+        linhas.push({
+          alunoId: ta.aluno_id,
+          nome: ta.alunos.nome,
+          turmaId: t.id,
+          turma: t.nome,
+          nivel: t.niveis?.nome || '',
+          diaSemana: DIAS_SEMANA_LABEL[t.horario_dia_semana] || t.horario_dia_semana || '',
+          horario: t.horario_inicio?.slice(0, 5) || '',
+          totalAulas,
+          presentes: c.presentes,
+          faltas: c.faltas,
+          faltasJustificadas: c.faltasJustificadas,
+          pctFrequencia,
+        })
+      })
+  })
+
+  return linhas.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+}
+
+export function useListaAlunosAtivos({ periodoInicio, periodoFim, empresa, modalidades } = {}) {
+  return useQuery({
+    queryKey: ['lista-alunos-ativos', periodoInicio, periodoFim, empresa, modalidades],
+    queryFn: () => buscarListaAlunosAtivos({ periodoInicio, periodoFim, empresa, modalidades }),
+  })
+}
