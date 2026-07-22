@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
+import { mascararTelefoneBR, apenasDigitosTelefone } from '../../lib/telefone'
 import { CORES_CLUBE, COR_VAGA, classificarVaga } from '../../constants/coresClube'
 
 const C = CORES_CLUBE
@@ -70,8 +71,19 @@ function Cabecalho() {
   return (
     <div style={{ marginBottom: '22px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '14px' }}>
-        <img src="/images/logobeyond_preto.png" alt="Beyond The Club" style={{ height: '44px', objectFit: 'contain' }} />
-        <div style={{ width: '1px', height: '36px', backgroundColor: `${C.textoSuave}55` }} />
+        {/* logobeyond_preto.png tem uma margem transparente enorme (o texto "BEYOND" ocupa só
+            ~19% da altura do canvas, contra ~68% no logo da Procópio) — só definir a mesma
+            `height` nos dois deixa o Beyond visualmente minúsculo. Em vez de esticar o height
+            (o que deixaria o cabeçalho gigante pra compensar), recorto por CSS: renderiza a
+            imagem bem maior e esconde o excesso com overflow:hidden num contêiner do tamanho
+            visível desejado, centralizado — medido pixel a pixel direto no PNG. */}
+        <div style={{ height: '34px', width: '150px', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+          <img src="/images/logobeyond_preto.png" alt="Beyond The Club" style={{
+            position: 'absolute', top: '50%', left: '50%', height: '178px', width: '178px',
+            transform: 'translate(-50%, -50%)',
+          }} />
+        </div>
+        <div style={{ width: '1px', height: '30px', backgroundColor: `${C.textoSuave}55` }} />
         <img src="/images/logoprocopio_preto.png" alt="Procópio" style={{ height: '44px', objectFit: 'contain' }} />
       </div>
       <div style={{ display: 'flex', height: '4px', borderRadius: '2px', overflow: 'hidden' }}>
@@ -101,19 +113,38 @@ function CardSlot({ slot, selecionado, onSelecionar }) {
   return (
     <button onClick={() => onSelecionar(slot)} style={{
       textAlign: 'left', cursor: 'pointer', borderRadius: '12px', padding: '12px 14px',
-      backgroundColor: `${cor}18`,
+      backgroundColor: selecionado ? cor : `${cor}18`,
       border: selecionado ? `2px solid ${C.tinta}` : `1px solid ${cor}66`,
+      boxShadow: selecionado ? `0 0 0 3px ${cor}55` : 'none',
       display: 'flex', flexDirection: 'column', gap: '4px', boxSizing: 'border-box',
+      transition: 'all 0.12s',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '15px', fontWeight: '700', color: C.tinta }}>{formatarHora(slot.horario)}</span>
-        <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: cor, flexShrink: 0 }} />
+        <span style={{ fontSize: '15px', fontWeight: '700', color: selecionado ? C.branco : C.tinta }}>{formatarHora(slot.horario)}</span>
+        {selecionado ? (
+          <span style={{ fontSize: '13px', color: C.branco }}>✓</span>
+        ) : (
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: cor, flexShrink: 0 }} />
+        )}
       </div>
-      <span style={{ fontSize: '12px', color: C.textoSuave }}>{slot.quadra}</span>
-      <span style={{ fontSize: '11px', fontWeight: '700', color: cor }}>
+      <span style={{ fontSize: '12px', color: selecionado ? C.branco : C.textoSuave }}>{slot.quadra}</span>
+      <span style={{ fontSize: '11px', fontWeight: '700', color: selecionado ? C.branco : cor }}>
         {lotado ? 'Lotado' : `${slot.vagas_restantes} de ${slot.capacidade} vagas`}
       </span>
     </button>
+  )
+}
+
+function Modal({ children, onFechar }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(26,24,24,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 50 }}>
+      <div style={{ backgroundColor: C.branco, border: `1px solid ${C.textoSuave}33`, borderRadius: '16px', padding: '22px', maxWidth: '420px', width: '100%', boxSizing: 'border-box', maxHeight: '85vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
+          <button onClick={onFechar} style={{ background: 'none', border: 'none', color: C.textoSuave, fontSize: '18px', cursor: 'pointer', lineHeight: 1, padding: '4px' }}>×</button>
+        </div>
+        {children}
+      </div>
+    </div>
   )
 }
 
@@ -121,10 +152,11 @@ export function EventoInscricaoPage() {
   const { slug } = useParams()
   const [form, setForm] = useState(FORM_VAZIO)
   const [slotSelecionado, setSlotSelecionado] = useState(null)
+  const [modalAberto, setModalAberto] = useState(false)
+  const [etapaModal, setEtapaModal] = useState('form') // 'form' | 'confirmar' | 'esgotado'
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [resultado, setResultado] = useState(null) // 'confirmado' | 'lista_espera' | null
-  const [mostrarPromptEspera, setMostrarPromptEspera] = useState(false)
 
   const { data: evento, isLoading: carregandoEvento } = useQuery({
     queryKey: ['evento-publico', slug],
@@ -151,8 +183,19 @@ export function EventoInscricaoPage() {
     refetchInterval: 15000,
   })
 
-  function validar() {
-    if (!slotSelecionado) return 'Escolha o dia e horário.'
+  function abrirModal() {
+    if (!slotSelecionado) return
+    setErro('')
+    setEtapaModal('form')
+    setModalAberto(true)
+  }
+
+  function fecharModal() {
+    setModalAberto(false)
+    setErro('')
+  }
+
+  function validarForm() {
     if (!form.nome_crianca.trim()) return 'Informe o nome completo da criança.'
     if (!form.data_nascimento) return 'Informe a data de nascimento.'
     if (!form.nome_responsavel.trim()) return 'Informe o nome do responsável.'
@@ -164,6 +207,14 @@ export function EventoInscricaoPage() {
       }
     }
     return ''
+  }
+
+  function handleContinuar(e) {
+    e.preventDefault()
+    const msgErro = validarForm()
+    if (msgErro) { setErro(msgErro); return }
+    setErro('')
+    setEtapaModal('confirmar')
   }
 
   async function inscrever(aceitarEspera) {
@@ -179,18 +230,16 @@ export function EventoInscricaoPage() {
     return data?.[0]?.status
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    const msgErro = validar()
-    if (msgErro) { setErro(msgErro); return }
+  async function handleConfirmar() {
     setErro('')
     setEnviando(true)
     try {
       const status = await inscrever(false)
       if (status === 'esgotado') {
-        setMostrarPromptEspera(true)
+        setEtapaModal('esgotado')
       } else {
         setResultado(status)
+        setModalAberto(false)
       }
     } catch (err) {
       setErro(err.message)
@@ -204,7 +253,7 @@ export function EventoInscricaoPage() {
     try {
       const status = await inscrever(true)
       setResultado(status)
-      setMostrarPromptEspera(false)
+      setModalAberto(false)
     } catch (err) {
       setErro(err.message)
     } finally {
@@ -283,73 +332,119 @@ export function EventoInscricaoPage() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div>
-              <div style={labelStyle}>Dia e horário *</div>
-              {!slots ? (
-                <div style={{ fontSize: '12px', color: C.textoSuave, padding: '8px 0' }}>Carregando horários...</div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  {slots.map(slot => (
-                    <CardSlot key={slot.slot_id} slot={slot} selecionado={slotSelecionado?.slot_id === slot.slot_id} onSelecionar={setSlotSelecionado} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div style={labelStyle}>Nome completo da criança *</div>
-              <input style={inputStyle} value={form.nome_crianca} onChange={e => setForm(f => ({ ...f, nome_crianca: e.target.value }))} placeholder="Nome completo" />
-            </div>
-            <div>
-              <div style={labelStyle}>Data de nascimento *</div>
-              <input type="date" style={inputStyle} value={form.data_nascimento} onChange={e => setForm(f => ({ ...f, data_nascimento: e.target.value }))} />
-            </div>
-            <div>
-              <div style={labelStyle}>Nome do responsável *</div>
-              <input style={inputStyle} value={form.nome_responsavel} onChange={e => setForm(f => ({ ...f, nome_responsavel: e.target.value }))} placeholder="Nome completo" />
-            </div>
-            <div>
-              <div style={labelStyle}>WhatsApp do responsável *</div>
-              <input style={inputStyle} value={form.whatsapp_responsavel} onChange={e => setForm(f => ({ ...f, whatsapp_responsavel: e.target.value }))} placeholder="(11) 99999-9999" />
-            </div>
-
-            {erro && (
-              <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: `${C.vinho}18`, border: `1px solid ${C.vinho}66`, color: C.vinho, fontSize: '12px' }}>
-                {erro}
+          <div>
+            <div style={labelStyle}>Dia e horário *</div>
+            {!slots ? (
+              <div style={{ fontSize: '12px', color: C.textoSuave, padding: '8px 0' }}>Carregando horários...</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {slots.map(slot => (
+                  <CardSlot key={slot.slot_id} slot={slot} selecionado={slotSelecionado?.slot_id === slot.slot_id} onSelecionar={setSlotSelecionado} />
+                ))}
               </div>
             )}
+          </div>
 
-            <button type="submit" disabled={enviando} style={{
-              width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
-              backgroundColor: C.marinho,
-              color: C.branco, fontSize: '15px', fontWeight: '700',
-              cursor: enviando ? 'not-allowed' : 'pointer', marginTop: '4px', marginBottom: '10px',
-            }}>
-              {enviando ? 'Enviando...' : 'Inscrever'}
-            </button>
-          </form>
+          <button onClick={abrirModal} disabled={!slotSelecionado} style={{
+            width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+            backgroundColor: slotSelecionado ? C.marinho : `${C.textoSuave}33`,
+            color: slotSelecionado ? C.branco : C.textoSuave, fontSize: '15px', fontWeight: '700',
+            cursor: slotSelecionado ? 'pointer' : 'not-allowed', marginTop: '16px',
+          }}>
+            Prosseguir
+          </button>
         </div>
       </div>
 
-      {mostrarPromptEspera && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(26,24,24,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 50 }}>
-          <div style={{ backgroundColor: C.branco, border: `1px solid ${C.textoSuave}33`, borderRadius: '16px', padding: '24px', maxWidth: '380px', width: '100%', boxSizing: 'border-box' }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px', textAlign: 'center' }}>⏳</div>
-            <div style={{ fontSize: '16px', fontWeight: '700', color: C.tinta, marginBottom: '8px', textAlign: 'center' }}>Esse horário está lotado!</div>
-            <div style={{ fontSize: '13px', color: C.textoSuave, lineHeight: '1.6', marginBottom: '20px', textAlign: 'center' }}>
-              O horário das {formatarHora(slotSelecionado?.horario)} na {slotSelecionado?.quadra} já foi preenchido. Podemos colocar {form.nome_crianca || 'seu filho(a)'} na lista de espera desse horário — se abrir vaga, avisaremos vocês por WhatsApp.
-            </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setMostrarPromptEspera(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: `1px solid ${C.textoSuave}55`, background: 'none', color: C.textoSuave, fontSize: '13px', cursor: 'pointer' }}>
-                Cancelar
+      {modalAberto && (
+        <Modal onFechar={fecharModal}>
+          {etapaModal === 'form' && (
+            <form onSubmit={handleContinuar} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ fontSize: '16px', fontWeight: '700', color: C.tinta, marginBottom: '2px' }}>Dados da inscrição</div>
+              <div>
+                <div style={labelStyle}>Nome completo da criança *</div>
+                <input style={inputStyle} value={form.nome_crianca} onChange={e => setForm(f => ({ ...f, nome_crianca: e.target.value }))} placeholder="Nome completo" />
+              </div>
+              <div>
+                <div style={labelStyle}>Data de nascimento *</div>
+                <input type="date" style={inputStyle} value={form.data_nascimento} onChange={e => setForm(f => ({ ...f, data_nascimento: e.target.value }))} />
+              </div>
+              <div>
+                <div style={labelStyle}>Nome do responsável *</div>
+                <input style={inputStyle} value={form.nome_responsavel} onChange={e => setForm(f => ({ ...f, nome_responsavel: e.target.value }))} placeholder="Nome completo" />
+              </div>
+              <div>
+                <div style={labelStyle}>WhatsApp do responsável *</div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <span style={{ ...inputStyle, width: 'auto', flexShrink: 0, color: C.textoSuave, textAlign: 'center' }}>+55</span>
+                  <input style={{ ...inputStyle, flex: 1 }} inputMode="numeric" placeholder="(11) 99999-9999"
+                    value={mascararTelefoneBR(form.whatsapp_responsavel)}
+                    onChange={e => setForm(f => ({ ...f, whatsapp_responsavel: apenasDigitosTelefone(e.target.value) }))} />
+                </div>
+              </div>
+
+              {erro && (
+                <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: `${C.vinho}18`, border: `1px solid ${C.vinho}66`, color: C.vinho, fontSize: '12px' }}>
+                  {erro}
+                </div>
+              )}
+
+              <button type="submit" style={{
+                width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+                backgroundColor: C.marinho, color: C.branco, fontSize: '15px', fontWeight: '700', cursor: 'pointer',
+              }}>
+                Continuar
               </button>
-              <button onClick={handleConfirmarListaEspera} disabled={enviando} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', backgroundColor: C.marinho, color: C.branco, fontSize: '13px', fontWeight: '700', cursor: enviando ? 'not-allowed' : 'pointer' }}>
-                {enviando ? 'Enviando...' : 'Entrar na lista de espera'}
-              </button>
+            </form>
+          )}
+
+          {etapaModal === 'confirmar' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ fontSize: '16px', fontWeight: '700', color: C.tinta, marginBottom: '2px' }}>Confira o agendamento</div>
+              <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: `${C.salvia}18`, border: `1px solid ${C.salvia}66`, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ fontSize: '13px', color: C.tinta }}><strong>Dia:</strong> {formatarData(evento.data_evento)}</div>
+                <div style={{ fontSize: '13px', color: C.tinta }}><strong>Horário:</strong> {formatarHora(slotSelecionado?.horario)}</div>
+                <div style={{ fontSize: '13px', color: C.tinta }}><strong>Quadra:</strong> {slotSelecionado?.quadra}</div>
+              </div>
+              <div style={{ fontSize: '12px', color: C.textoSuave, lineHeight: '1.6' }}>
+                {form.nome_crianca} · Responsável: {form.nome_responsavel}
+              </div>
+
+              {erro && (
+                <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: `${C.vinho}18`, border: `1px solid ${C.vinho}66`, color: C.vinho, fontSize: '12px' }}>
+                  {erro}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => setEtapaModal('form')} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: `1px solid ${C.textoSuave}55`, background: 'none', color: C.textoSuave, fontSize: '13px', cursor: 'pointer' }}>
+                  Voltar
+                </button>
+                <button onClick={handleConfirmar} disabled={enviando} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', backgroundColor: C.marinho, color: C.branco, fontSize: '13px', fontWeight: '700', cursor: enviando ? 'not-allowed' : 'pointer' }}>
+                  {enviando ? 'Confirmando...' : 'Confirmar'}
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
+          )}
+
+          {etapaModal === 'esgotado' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontSize: '32px', textAlign: 'center' }}>⏳</div>
+              <div style={{ fontSize: '16px', fontWeight: '700', color: C.tinta, textAlign: 'center' }}>Esse horário está lotado!</div>
+              <div style={{ fontSize: '13px', color: C.textoSuave, lineHeight: '1.6', textAlign: 'center', marginBottom: '10px' }}>
+                O horário das {formatarHora(slotSelecionado?.horario)} na {slotSelecionado?.quadra} já foi preenchido. Podemos colocar {form.nome_crianca || 'seu filho(a)'} na lista de espera desse horário — se abrir vaga, avisaremos vocês por WhatsApp.
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => setEtapaModal('confirmar')} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: `1px solid ${C.textoSuave}55`, background: 'none', color: C.textoSuave, fontSize: '13px', cursor: 'pointer' }}>
+                  Cancelar
+                </button>
+                <button onClick={handleConfirmarListaEspera} disabled={enviando} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', backgroundColor: C.marinho, color: C.branco, fontSize: '13px', fontWeight: '700', cursor: enviando ? 'not-allowed' : 'pointer' }}>
+                  {enviando ? 'Enviando...' : 'Entrar na lista de espera'}
+                </button>
+              </div>
+            </div>
+          )}
+        </Modal>
       )}
     </FundoClube>
   )
