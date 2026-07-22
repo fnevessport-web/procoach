@@ -77,20 +77,22 @@ function Cabecalho() {
             (o que deixaria o cabeçalho gigante pra compensar), recorto por CSS: renderiza a
             imagem bem maior e esconde o excesso com overflow:hidden num contêiner do tamanho
             visível desejado, centralizado — medido pixel a pixel direto no PNG. */}
-        <div style={{ height: '42px', width: '155px', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+        <div style={{ height: '35px', width: '130px', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
           <img src="/images/logobeyond_preto.png" alt="Beyond The Club" style={{
-            position: 'absolute', top: '50%', left: '50%', height: '156px', width: '156px',
+            position: 'absolute', top: '50%', left: '50%', height: '135px', width: '135px',
             transform: 'translate(-50%, -50%)',
           }} />
         </div>
-        <div style={{ width: '1px', height: '34px', backgroundColor: `${C.textoSuave}55` }} />
-        <img src="/images/logoprocopio_preto.png" alt="Procópio" style={{ height: '44px', objectFit: 'contain' }} />
+        <div style={{ width: '1px', height: '30px', backgroundColor: `${C.textoSuave}55` }} />
+        <img src="/images/logoprocopio_preto.png" alt="Procópio" style={{ height: '38px', objectFit: 'contain' }} />
       </div>
-      <div style={{ display: 'flex', height: '4px', borderRadius: '2px', overflow: 'hidden' }}>
-        <div style={{ flex: 1, backgroundColor: C.salvia }} />
-        <div style={{ flex: 1, backgroundColor: C.laranja }} />
-        <div style={{ flex: 1, backgroundColor: C.vinho }} />
-        <div style={{ flex: 1, backgroundColor: C.marinho }} />
+      {/* Tarja com espaçamento pequeno entre os segmentos, igual ao papel timbrado de
+          referência (PAGINA_LINK.png) — cada cor é um bloco separado, não uma barra contínua. */}
+      <div style={{ display: 'flex', gap: '5px' }}>
+        <div style={{ flex: 1, height: '4px', borderRadius: '2px', backgroundColor: C.salvia }} />
+        <div style={{ flex: 1, height: '4px', borderRadius: '2px', backgroundColor: C.laranja }} />
+        <div style={{ flex: 1, height: '4px', borderRadius: '2px', backgroundColor: C.vinho }} />
+        <div style={{ flex: 1, height: '4px', borderRadius: '2px', backgroundColor: C.marinho }} />
       </div>
     </div>
   )

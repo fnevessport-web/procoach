@@ -15,10 +15,15 @@ export const CORES_CLUBE = {
 // 4 estados de disponibilidade de vaga por slot — usa só as cores da marca (não semáforo
 // genérico), pedido explícito do clube: vinho=lotado, laranja=quase esgotando, salvia=bastante
 // vaga, marinho=livre (ninguém inscrito ainda).
+//
+// salviaEscura (não salvia puro) pro estado "bastante vaga": o salvia da marca (#A3BFAE) é bem
+// mais claro/menos saturado que vinho/laranja/marinho (mesma família, tom escurecido/saturado
+// pra ter peso visual equivalente) — usado puro, ficava com aparência "apagada"/quase
+// transparente ao lado dos outros 3 estados, como se não tivesse vaga nenhuma.
 export const COR_VAGA = {
   lotado: CORES_CLUBE.vinho,
   quase_esgotando: CORES_CLUBE.laranja,
-  bastante_vaga: CORES_CLUBE.salvia,
+  bastante_vaga: '#3F835B',
   livre: CORES_CLUBE.marinho,
 }
 
