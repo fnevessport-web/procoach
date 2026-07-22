@@ -83,8 +83,8 @@ function Cabecalho() {
             transform: 'translate(-50%, -50%)',
           }} />
         </div>
-        <div style={{ width: '1px', height: '30px', backgroundColor: `${C.textoSuave}55` }} />
-        <img src="/images/logoprocopio_preto.png" alt="Procópio" style={{ height: '38px', objectFit: 'contain' }} />
+        <div style={{ width: '1px', height: '32px', backgroundColor: `${C.textoSuave}55` }} />
+        <img src="/images/logoprocopio_preto.png" alt="Procópio" style={{ height: '44px', objectFit: 'contain' }} />
       </div>
       {/* Tarja com espaçamento pequeno entre os segmentos, igual ao papel timbrado de
           referência (PAGINA_LINK.png) — cada cor é um bloco separado, não uma barra contínua. */}
@@ -141,6 +141,28 @@ function CardSlot({ slot, selecionado, onSelecionar }) {
   )
 }
 
+// Depois de confirmar (ou entrar na lista de espera), a maioria dos pais que abre esse link
+// no fim das contas tem só um filho pra inscrever — mas quem tem mais de um precisa poder
+// inscrever o próximo sem sair da página e procurar o link de novo.
+function BotoesFinais({ onNovaInscricao, onEncerrar }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <button onClick={onNovaInscricao} style={{
+        width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+        backgroundColor: C.marinho, color: C.branco, fontSize: '14px', fontWeight: '700', cursor: 'pointer',
+      }}>
+        Inscrever outro filho(a)
+      </button>
+      <button onClick={onEncerrar} style={{
+        width: '100%', padding: '14px', borderRadius: '12px', border: `1px solid ${C.textoSuave}55`,
+        background: 'none', color: C.textoSuave, fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+      }}>
+        Encerrar
+      </button>
+    </div>
+  )
+}
+
 function Modal({ children, onFechar }) {
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(26,24,24,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 50 }}>
@@ -163,6 +185,7 @@ export function EventoInscricaoPage() {
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [resultado, setResultado] = useState(null) // 'confirmado' | 'lista_espera' | null
+  const [sessaoEncerrada, setSessaoEncerrada] = useState(false)
 
   const { data: evento, isLoading: carregandoEvento } = useQuery({
     queryKey: ['evento-publico', slug],
@@ -178,7 +201,7 @@ export function EventoInscricaoPage() {
   // sem precisar de Supabase Realtime (baixo tráfego de um formulário sazonal não compensa a
   // complexidade extra). A decisão de vaga real sempre é do servidor (lock na RPC), então uma
   // tela com até 15s de atraso não gera overselling, só uma janela pequena de estimativa.
-  const { data: slots } = useQuery({
+  const { data: slots, refetch: refetchSlots } = useQuery({
     queryKey: ['vagas-evento', slug],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('vagas_evento', { p_slug: slug })
@@ -188,6 +211,19 @@ export function EventoInscricaoPage() {
     enabled: !!evento,
     refetchInterval: 15000,
   })
+
+  // Pais com mais de um filho inscrevem um de cada vez — volta pro início do formulário já
+  // com as vagas atualizadas na hora (sem esperar o próximo refetch de 15s), pra não deixar a
+  // pessoa escolher um horário que acabou de lotar com a inscrição anterior.
+  function novaInscricao() {
+    setForm(FORM_VAZIO)
+    setSlotSelecionado(null)
+    setResultado(null)
+    setModalAberto(false)
+    setEtapaModal('form')
+    setErro('')
+    refetchSlots()
+  }
 
   function abrirModal() {
     if (!slotSelecionado) return
@@ -283,14 +319,25 @@ export function EventoInscricaoPage() {
     </TelaCentralizada>
   )
 
+  if (sessaoEncerrada) return (
+    <TelaCentralizada>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '40px', marginBottom: '16px' }}>👋</div>
+        <div style={{ color: C.tinta, fontSize: '16px', fontWeight: '700' }}>Até já!</div>
+        <div style={{ color: C.textoSuave, fontSize: '13px', marginTop: '8px' }}>Pode fechar esta página com tranquilidade.</div>
+      </div>
+    </TelaCentralizada>
+  )
+
   if (resultado === 'confirmado') return (
     <TelaCentralizada>
       <div style={{ textAlign: 'center', maxWidth: '380px' }}>
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
         <div style={{ color: C.tinta, fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Inscrição confirmada!</div>
-        <div style={{ color: C.textoSuave, fontSize: '13px', lineHeight: '1.6' }}>
+        <div style={{ color: C.textoSuave, fontSize: '13px', lineHeight: '1.6', marginBottom: '24px' }}>
           {form.nome_crianca} está inscrito(a) na {evento.nome}, no horário das {formatarHora(slotSelecionado?.horario)} · {slotSelecionado?.quadra}. Qualquer novidade, avisaremos {form.nome_responsavel} por WhatsApp.
         </div>
+        <BotoesFinais onNovaInscricao={novaInscricao} onEncerrar={() => setSessaoEncerrada(true)} />
       </div>
     </TelaCentralizada>
   )
@@ -300,9 +347,10 @@ export function EventoInscricaoPage() {
       <div style={{ textAlign: 'center', maxWidth: '380px' }}>
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
         <div style={{ color: C.tinta, fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Você está na lista de espera!</div>
-        <div style={{ color: C.textoSuave, fontSize: '13px', lineHeight: '1.6' }}>
+        <div style={{ color: C.textoSuave, fontSize: '13px', lineHeight: '1.6', marginBottom: '24px' }}>
           {form.nome_crianca} entrou na lista de espera do horário das {formatarHora(slotSelecionado?.horario)} · {slotSelecionado?.quadra}. Se abrir vaga, avisaremos {form.nome_responsavel} por WhatsApp.
         </div>
+        <BotoesFinais onNovaInscricao={novaInscricao} onEncerrar={() => setSessaoEncerrada(true)} />
       </div>
     </TelaCentralizada>
   )
