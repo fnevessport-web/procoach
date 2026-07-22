@@ -77,13 +77,13 @@ function Cabecalho() {
             (o que deixaria o cabeçalho gigante pra compensar), recorto por CSS: renderiza a
             imagem bem maior e esconde o excesso com overflow:hidden num contêiner do tamanho
             visível desejado, centralizado — medido pixel a pixel direto no PNG. */}
-        <div style={{ height: '34px', width: '150px', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+        <div style={{ height: '42px', width: '155px', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
           <img src="/images/logobeyond_preto.png" alt="Beyond The Club" style={{
-            position: 'absolute', top: '50%', left: '50%', height: '178px', width: '178px',
+            position: 'absolute', top: '50%', left: '50%', height: '156px', width: '156px',
             transform: 'translate(-50%, -50%)',
           }} />
         </div>
-        <div style={{ width: '1px', height: '30px', backgroundColor: `${C.textoSuave}55` }} />
+        <div style={{ width: '1px', height: '34px', backgroundColor: `${C.textoSuave}55` }} />
         <img src="/images/logoprocopio_preto.png" alt="Procópio" style={{ height: '44px', objectFit: 'contain' }} />
       </div>
       <div style={{ display: 'flex', height: '4px', borderRadius: '2px', overflow: 'hidden' }}>
@@ -106,6 +106,10 @@ function TelaCentralizada({ children }) {
   )
 }
 
+// Todos os cards têm a mesma estrutura (fundo/borda), lotado ou não — só a cor da bolinha e do
+// horário mudam com a disponibilidade. Antes o card inteiro ficava tingido na cor do status, e
+// como salvia (bastante vaga) é um tom claro, isso deixava o card com cara de "sem vaga"/apagado
+// mesmo tendo vaga de sobra — pedido do cliente pra tirar essa impressão.
 function CardSlot({ slot, selecionado, onSelecionar }) {
   const estado = classificarVaga(slot.confirmados, slot.capacidade)
   const cor = COR_VAGA[estado]
@@ -113,14 +117,14 @@ function CardSlot({ slot, selecionado, onSelecionar }) {
   return (
     <button onClick={() => onSelecionar(slot)} style={{
       textAlign: 'left', cursor: 'pointer', borderRadius: '12px', padding: '12px 14px',
-      backgroundColor: selecionado ? cor : `${cor}18`,
-      border: selecionado ? `2px solid ${C.tinta}` : `1px solid ${cor}66`,
-      boxShadow: selecionado ? `0 0 0 3px ${cor}55` : 'none',
+      backgroundColor: selecionado ? C.marinho : C.branco,
+      border: selecionado ? `2px solid ${C.tinta}` : `1px solid ${C.textoSuave}33`,
+      boxShadow: selecionado ? `0 0 0 3px ${C.marinho}33` : 'none',
       display: 'flex', flexDirection: 'column', gap: '4px', boxSizing: 'border-box',
       transition: 'all 0.12s',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '15px', fontWeight: '700', color: selecionado ? C.branco : C.tinta }}>{formatarHora(slot.horario)}</span>
+        <span style={{ fontSize: '15px', fontWeight: '700', color: selecionado ? C.branco : cor }}>{formatarHora(slot.horario)}</span>
         {selecionado ? (
           <span style={{ fontSize: '13px', color: C.branco }}>✓</span>
         ) : (

@@ -29,10 +29,13 @@ export const LABEL_VAGA = {
   livre: 'Vagas disponíveis',
 }
 
+// Limiares pedidos pelo clube (pra capacidade padrão de 4): 4 vagas=azul(livre), 3 e 2=verde
+// (bastante vaga), 1=amarelo (quase esgotando), 0=vermelho (lotado). Generalizado por contagem
+// de vagas restantes (não por %) pra funcionar igual em qualquer capacidade de slot.
 export function classificarVaga(confirmados, capacidade) {
   const restantes = capacidade - confirmados
-  if (confirmados === 0) return 'livre'
   if (restantes <= 0) return 'lotado'
-  if (restantes <= Math.ceil(capacidade * 0.25)) return 'quase_esgotando'
+  if (confirmados === 0) return 'livre'
+  if (restantes === 1) return 'quase_esgotando'
   return 'bastante_vaga'
 }
