@@ -7,6 +7,8 @@ function getIniciais(nome) {
   return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
 }
 
+// Dual-contexto: usado hoje só em telas escuras (Home), mas é um componente genérico —
+// --color-action-primary/--color-action-on-primary já são os mesmos hex nos dois contextos.
 export function FotoProfessor({ src, nome, size = 48 }) {
   const [erro, setErro] = useState(false)
   if (src && !erro) {
@@ -20,9 +22,9 @@ export function FotoProfessor({ src, nome, size = 48 }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: '8px', flexShrink: 0,
-      background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+      backgroundColor: 'var(--color-action-primary)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.35, fontWeight: '700', color: 'white',
+      fontSize: size * 0.35, fontWeight: '700', color: 'var(--color-action-on-primary)',
     }}>
       {getIniciais(nome)}
     </div>

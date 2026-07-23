@@ -14,13 +14,10 @@ function getIniciais(nome) {
   return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
 }
 
-function getSobrenome(nome) {
-  if (!nome) return 'Usuário'
-  const partes = nome.trim().split(' ').filter(Boolean)
-  if (partes.length === 1) return partes[0]
-  return partes[partes.length - 1]
-}
-
+// Header é "chrome" fixo do app (como a Sidebar) — sempre no tom escuro da marca,
+// independente do contexto claro/escuro da página carregada no <main>. Por isso usa os
+// tokens --color-*-dark-* diretos, não os aliases --surface/--text-primary (esses são só
+// pra componentes que aparecem DENTRO do conteúdo roteado, ex: Modal, Input).
 export function Header() {
   const { user, perfil, signOut } = useAuth()
   const { podeVerSino } = usePermissions()
@@ -40,15 +37,14 @@ export function Header() {
   }
 
   const iniciais = getIniciais(perfil?.nome)
-  const sobrenome = getSobrenome(perfil?.nome)
 
   return (
     <header style={{
       flexShrink: 0, zIndex: 40,
-      backgroundColor: 'rgba(17,15,15,0.85)',
+      backgroundColor: 'rgba(30,43,36,0.85)',
       backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)',
-      borderBottom: '0.5px solid rgba(255,255,255,0.06)',
+      borderBottom: '0.5px solid var(--color-border-dark-subtle)',
       paddingTop: 'env(safe-area-inset-top)',
     }}>
       <div className="header-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', gap: '8px', minWidth: 0 }}>
@@ -66,10 +62,10 @@ export function Header() {
               display: 'flex', alignItems: 'center', gap: '5px',
               background: 'none', border: 'none',
               cursor: 'pointer', padding: '4px',
-              color: '#555', fontSize: '12px',
+              color: 'var(--color-text-dark-secondary)', fontSize: '12px',
             }}
           >
-            <Undo2 size={15} color="#555" />
+            <Undo2 size={15} color="var(--color-text-dark-secondary)" />
           </button>
         )}
 
@@ -80,10 +76,10 @@ export function Header() {
               display: 'flex', alignItems: 'center', gap: '5px',
               background: 'none', border: 'none',
               cursor: 'pointer', padding: '4px',
-              color: '#555', fontSize: '12px',
+              color: 'var(--color-text-dark-secondary)', fontSize: '12px',
             }}
           >
-            <Undo2 size={15} color="#555" />
+            <Undo2 size={15} color="var(--color-text-dark-secondary)" />
           </button>
         )}
 
@@ -95,8 +91,8 @@ export function Header() {
               onClick={() => setEmpresaSelecionada(null)}
               title="Trocar empresa"
               style={{
-                padding: '6px', borderRadius: '8px', border: '1px solid #1e1e1e',
-                backgroundColor: '#1a1a1a', color: '#555', cursor: 'pointer',
+                padding: '6px', borderRadius: '8px', border: '1px solid var(--color-border-dark-subtle)',
+                backgroundColor: 'var(--color-surface-dark-raised)', color: 'var(--color-text-dark-secondary)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center',
               }}
             >
@@ -109,9 +105,9 @@ export function Header() {
               onClick={() => setModalidadeSelecionada(null)}
               style={{
                 padding: '4px 10px', borderRadius: '8px',
-                backgroundColor: 'rgba(252,200,37,0.1)',
-                border: '1px solid rgba(252,200,37,0.3)',
-                color: '#fcc825', fontSize: '12px', cursor: 'pointer',
+                backgroundColor: 'rgba(165,76,46,0.12)',
+                border: '1px solid rgba(165,76,46,0.35)',
+                color: 'var(--color-action-primary)', fontSize: '12px', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: '4px'
               }}
             >
@@ -125,28 +121,28 @@ export function Header() {
               style={{
                 display: 'flex', alignItems: 'center', gap: '5px',
                 padding: '5px 8px', borderRadius: '10px',
-                backgroundColor: '#1a1a1a', border: '1px solid #1e1e1e',
+                backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)',
                 cursor: 'pointer', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box',
               }}
             >
               <div style={{
                 width: '22px', height: '22px', borderRadius: '50%',
-                background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                backgroundColor: 'var(--color-action-primary)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
               }}>
-                <span style={{ fontSize: '9px', fontWeight: '700', color: 'white' }}>
+                <span style={{ fontSize: '9px', fontWeight: '700', color: 'var(--color-action-on-primary)' }}>
                   {iniciais}
                 </span>
               </div>
               <span style={{
-                fontSize: '11px', color: '#555', fontWeight: '400',
+                fontSize: '11px', color: 'var(--color-text-dark-secondary)', fontWeight: '400',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 maxWidth: '64px', minWidth: 0,
               }}>
                 {perfil?.nome?.split(' ')[0] || 'Usuário'}
               </span>
-              <ChevronDown size={12} color="#333" style={{ flexShrink: 0 }} />
+              <ChevronDown size={12} color="var(--color-text-dark-muted)" style={{ flexShrink: 0 }} />
             </button>
 
             {menuOpen && (
@@ -154,13 +150,13 @@ export function Header() {
                 <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(false)} />
                 <div style={{
                   position: 'absolute', right: 0, top: '100%', marginTop: '8px',
-                  width: '180px', backgroundColor: '#1a1a1a',
-                  border: '1px solid #1e1e1e', borderRadius: '12px',
+                  width: '180px', backgroundColor: 'var(--color-surface-dark-raised)',
+                  border: '1px solid var(--color-border-dark-subtle)', borderRadius: '12px',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 50, overflow: 'hidden'
                 }}>
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e1e1e' }}>
-                    <div style={{ fontSize: '13px', fontWeight: '500', color: '#F0F2F5' }}>{perfil?.nome || 'Usuário'}</div>
-                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'capitalize' }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-dark-subtle)' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--color-text-dark-primary)' }}>{perfil?.nome || 'Usuário'}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', textTransform: 'capitalize' }}>
                       {empresaSelecionada?.role || perfil?.role}
                       {empresaSelecionada && ` · ${empresaSelecionada.nome}`}
                     </div>
@@ -169,7 +165,7 @@ export function Header() {
                     onClick={() => { setMenuOpen(false); signOut() }}
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
-                      padding: '12px 16px', fontSize: '13px', color: '#EF4444',
+                      padding: '12px 16px', fontSize: '13px', color: 'var(--color-state-danger)',
                       backgroundColor: 'transparent', border: 'none', cursor: 'pointer'
                     }}
                   >

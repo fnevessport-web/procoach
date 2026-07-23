@@ -1,8 +1,18 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useLocation } from 'react-router-dom'
 import { X } from 'lucide-react'
+import { temaDaRota } from '../../constants/temaPorRota'
 
+// Dual-contexto: usa os aliases genéricos (var(--surface), var(--text-primary)...) definidos em
+// src/index.css (.theme-dark/.theme-light) — funciona certo tanto aberto a partir de uma página
+// clara (Cadastros) quanto de uma escura (Ranking), sem precisar de prop de tema. Como o modal
+// escapa via createPortal pro <body> (fora da árvore DOM do <main class="theme-x">), a classe
+// de tema não seria herdada por cascata normal — por isso aplica a própria classe aqui,
+// resolvida pela rota atual, direto no wrapper do portal.
 export function Modal({ open, onClose, title, children, size = 'md' }) {
+  const { pathname } = useLocation()
+
   useEffect(() => {
     if (open) document.body.style.overflow = 'hidden'
     else document.body.style.overflow = ''
@@ -17,7 +27,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }) {
   // mobile "prende" filhos position:fixed dentro dele em vez de cobrir a tela toda — por
   // isso o modal aparecia cortado, com a BottomNav visível por baixo dele.
   return createPortal((
-    <div style={{
+    <div className={temaDaRota(pathname)} style={{
       position: 'fixed', inset: 0, zIndex: 50,
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
       padding: 0,
@@ -30,8 +40,8 @@ export function Modal({ open, onClose, title, children, size = 'md' }) {
         position: 'relative',
         width: '100%',
         maxWidth: maxWidths[size],
-        backgroundColor: '#1a1a1a',
-        border: '1px solid #2a2a2a',
+        backgroundColor: 'var(--surface-raised)',
+        border: '1px solid var(--border)',
         borderRadius: '24px 24px 0 0',
         boxShadow: '0 -8px 40px rgba(0,0,0,0.6)',
         maxHeight: '90dvh',
@@ -42,16 +52,16 @@ export function Modal({ open, onClose, title, children, size = 'md' }) {
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '20px 24px', borderBottom: '1px solid #2a2a2a', flexShrink: 0,
+          padding: '20px 24px', borderBottom: '1px solid var(--border)', flexShrink: 0,
         }}>
-          <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#F0F2F5', margin: 0 }}>
+          <h2 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', margin: 0 }}>
             {title}
           </h2>
           <button
             onClick={onClose}
             style={{
               padding: '6px', borderRadius: '8px', border: 'none',
-              backgroundColor: 'rgba(255,255,255,0.05)', color: '#888',
+              backgroundColor: 'var(--border-subtle)', color: 'var(--text-secondary)',
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >

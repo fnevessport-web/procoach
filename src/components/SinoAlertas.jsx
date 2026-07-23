@@ -20,7 +20,7 @@ const ROTA_POR_TIPO = {
   avaliacao_pendente_confirmacao: '/dashboard-professor',
 }
 
-const COR_PRIORIDADE = { alta: '#e24b4a', media: '#fcc825', baixa: '#555' }
+const COR_PRIORIDADE = { alta: 'var(--color-state-danger)', media: 'var(--color-state-warning)', baixa: 'var(--color-text-dark-muted)' }
 
 export function SinoAlertas() {
   const [aberto, setAberto] = useState(false)
@@ -60,11 +60,11 @@ export function SinoAlertas() {
   return (
     <div style={{ position: 'relative' }}>
       <button onClick={() => setAberto(!aberto)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', position: 'relative' }}>
-        <Bell size={20} color="#555" />
+        <Bell size={20} color="var(--color-text-dark-secondary)" />
         {naoLidos > 0 && (
           <span style={{
             position: 'absolute', top: '-4px', right: '-4px',
-            minWidth: '16px', height: '16px', padding: '0 3px', backgroundColor: '#EF4444',
+            minWidth: '16px', height: '16px', padding: '0 3px', backgroundColor: 'var(--color-state-danger)',
             borderRadius: '8px', fontSize: '10px', color: 'white',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold'
           }}>
@@ -79,20 +79,20 @@ export function SinoAlertas() {
           <div style={{
             position: 'absolute', right: 0, top: '100%', marginTop: '8px',
             width: '280px', maxHeight: '360px', overflowY: 'auto',
-            backgroundColor: '#1a1a1a', border: '1px solid #1e1e1e', borderRadius: '14px',
+            backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)', borderRadius: '14px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 50,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid #1e1e1e' }}>
-              <span style={{ fontSize: '12px', fontWeight: '700', color: '#F0F2F5' }}>Alertas</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid var(--color-border-dark-subtle)' }}>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>Alertas</span>
               {naoLidos > 0 && (
-                <button onClick={() => marcarTodosLidos.mutate()} style={{ background: 'none', border: 'none', color: '#fcc825', fontSize: '11px', cursor: 'pointer' }}>
+                <button onClick={() => marcarTodosLidos.mutate()} style={{ background: 'none', border: 'none', color: 'var(--color-action-primary)', fontSize: '11px', cursor: 'pointer' }}>
                   Marcar tudo como lido
                 </button>
               )}
             </div>
 
             {alertas.length === 0 ? (
-              <div style={{ padding: '24px 14px', textAlign: 'center', fontSize: '12px', color: '#555' }}>
+              <div style={{ padding: '24px 14px', textAlign: 'center', fontSize: '12px', color: 'var(--color-text-dark-secondary)' }}>
                 Nenhum alerta por aqui
               </div>
             ) : (
@@ -106,22 +106,22 @@ export function SinoAlertas() {
                     onKeyDown={e => { if (e.key === 'Enter') handleClickAlerta(a) }}
                     style={{
                       display: 'flex', gap: '8px', width: '100%', padding: '10px 14px',
-                      border: 'none', borderBottom: '1px solid #1e1e1e', background: a.lido ? 'transparent' : 'rgba(252,200,37,0.04)',
+                      border: 'none', borderBottom: '1px solid var(--color-border-dark-subtle)', background: a.lido ? 'transparent' : 'rgba(165,76,46,0.08)',
                       cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box',
                     }}
                   >
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: COR_PRIORIDADE[a.prioridade] || '#555', flexShrink: 0, marginTop: '5px' }} />
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: COR_PRIORIDADE[a.prioridade] || 'var(--color-text-dark-muted)', flexShrink: 0, marginTop: '5px' }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '12px', color: a.lido ? '#888' : '#F0F2F5', lineHeight: '1.4' }}>{a.mensagem}</div>
+                      <div style={{ fontSize: '12px', color: a.lido ? 'var(--color-text-dark-secondary)' : 'var(--color-text-dark-primary)', lineHeight: '1.4' }}>{a.mensagem}</div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '4px' }}>
-                        <div style={{ fontSize: '10px', color: '#555' }}>
+                        <div style={{ fontSize: '10px', color: 'var(--color-text-dark-muted)' }}>
                           {formatDistanceToNow(new Date(a.criado_em), { locale: ptBR, addSuffix: true })}
                         </div>
                         {a.aluno_id && (
                           <button onClick={e => handleVerAluno(e, a)} style={{
                             display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0,
                             padding: '3px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                            backgroundColor: 'rgba(255,255,255,0.06)', color: '#888', fontSize: '10px', fontWeight: '600',
+                            backgroundColor: 'var(--color-surface-dark-overlay)', color: 'var(--color-text-dark-secondary)', fontSize: '10px', fontWeight: '600',
                           }}>
                             <User size={10} /> Ver aluno
                           </button>

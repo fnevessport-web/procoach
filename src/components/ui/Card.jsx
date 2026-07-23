@@ -1,11 +1,13 @@
+// Dual-contexto: aliases genéricos. O hover (borda vira --color-action-primary) está em
+// src/index.css, classe .ui-card:hover.
 export function Card({ children, className = '', onClick, ...props }) {
   return (
     <div
       onClick={onClick}
       style={{
-        backgroundColor: '#1a1a1a',
+        backgroundColor: 'var(--surface-raised)',
         borderRadius: '16px',
-        border: '1px solid rgba(255,255,255,0.06)',
+        border: '1px solid var(--border-subtle)',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'all 0.15s',
         boxSizing: 'border-box',

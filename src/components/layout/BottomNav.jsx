@@ -4,6 +4,7 @@ import useAppStore from '../../store/useAppStore'
 import { usePermissions } from '../../hooks/usePermissions'
 import { getNavItems } from '../../constants/navItems'
 
+// Chrome fixo do app (mesmo raciocínio do Header.jsx) — sempre escuro, tokens diretos.
 export function BottomNav() {
   const { navRecolhida, setNavRecolhida } = useAppStore()
   const { role } = usePermissions()
@@ -19,12 +20,12 @@ export function BottomNav() {
         aria-label="Mostrar menu"
         style={{
           flexShrink: 0, zIndex: 40, width: '100%', border: 'none',
-          backgroundColor: '#110f0f', borderTop: '1px solid #1e1e1e',
+          backgroundColor: 'var(--color-surface-dark-base)', borderTop: '1px solid var(--color-border-dark-subtle)',
           padding: '6px 0 calc(6px + env(safe-area-inset-bottom))',
           display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
         }}
       >
-        <ChevronUp size={16} color="#333" />
+        <ChevronUp size={16} color="var(--color-text-dark-muted)" />
       </button>
     )
   }
@@ -32,8 +33,8 @@ export function BottomNav() {
   return (
     <nav className="bottom-nav" style={{
       flexShrink: 0, zIndex: 40,
-      backgroundColor: '#110f0f',
-      borderTop: '1px solid #1e1e1e',
+      backgroundColor: 'var(--color-surface-dark-base)',
+      borderTop: '1px solid var(--color-border-dark-subtle)',
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-around',
@@ -49,7 +50,7 @@ export function BottomNav() {
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
                 padding: '8px 12px', borderRadius: '12px', border: 'none',
                 backgroundColor: 'transparent', cursor: 'pointer', minWidth: '52px',
-                color: active ? '#fcc825' : '#333',
+                color: active ? 'var(--color-action-primary)' : 'var(--color-text-dark-muted)',
                 transition: 'all 0.2s'
               }}
             >
@@ -58,7 +59,7 @@ export function BottomNav() {
               {active && (
                 <div style={{
                   width: '20px', height: '2px', borderRadius: '1px',
-                  background: 'linear-gradient(90deg, #fcc825, #cf1b9b)'
+                  backgroundColor: 'var(--color-action-primary)',
                 }} />
               )}
             </button>

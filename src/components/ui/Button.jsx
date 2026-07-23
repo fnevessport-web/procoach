@@ -1,5 +1,8 @@
 import { Loader2 } from 'lucide-react'
 
+// Dual-contexto: variantes secondary/ghost usam os aliases genéricos; primary/danger/outline
+// usam --color-action-primary/--color-state-danger, que já são os mesmos hex nos dois contextos
+// (não precisam de alias).
 export function Button({
   children, variant = 'primary', size = 'md', loading = false,
   disabled = false, className = '', onClick, type = 'button', ...props
@@ -14,26 +17,26 @@ export function Button({
 
   const variants = {
     primary: {
-      background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-      color: 'white', fontWeight: '600',
+      backgroundColor: 'var(--color-action-primary)',
+      color: 'var(--color-action-on-primary)', fontWeight: '600',
     },
     secondary: {
-      backgroundColor: '#1a1a1a',
-      border: '1px solid #2a2a2a',
-      color: '#F0F2F5',
+      backgroundColor: 'var(--surface-raised)',
+      border: '1px solid var(--border)',
+      color: 'var(--text-primary)',
     },
     danger: {
-      backgroundColor: '#EF4444',
+      backgroundColor: 'var(--color-state-danger)',
       color: 'white', fontWeight: '600',
     },
     ghost: {
       backgroundColor: 'transparent',
-      color: '#888',
+      color: 'var(--text-secondary)',
     },
     outline: {
       backgroundColor: 'transparent',
-      border: '1px solid #fcc825',
-      color: '#fcc825',
+      border: '1px solid var(--color-action-primary)',
+      color: 'var(--color-action-primary)',
     },
   }
 

@@ -21,9 +21,12 @@ import { Input, Select } from '../../components/ui/Input'
 import { Loading } from '../../components/ui/Loading'
 import toast from 'react-hot-toast'
 
+// Contexto escuro (Ranking é um dos exemplos explícitos do redesign) — tokens
+// --color-*-dark-* diretos. corNivel()/NIVEIS_ASSIDUIDADE (lib/pontuacaoBeyond.js) não são
+// tocados aqui — são compartilhados com o PDF de evolução técnica, fora do escopo deste redesign.
 const toastStyle = {
-  background: '#1a1a1a', color: '#F0F2F5',
-  border: '1px solid rgba(252,200,37,0.3)',
+  background: 'var(--color-surface-dark-raised)', color: 'var(--color-text-dark-primary)',
+  border: '1px solid rgba(165,76,46,0.35)',
   borderRadius: '10px', fontSize: '13px',
 }
 
@@ -39,9 +42,9 @@ function Pill({ ativo, onClick, children }) {
       onClick={onClick}
       style={{
         padding: '7px 14px', borderRadius: '9px', border: 'none', cursor: 'pointer',
-        background: ativo ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
-        outline: ativo ? 'none' : '1px solid #2a2a2a',
-        color: ativo ? 'white' : '#888',
+        backgroundColor: ativo ? 'var(--color-action-primary)' : 'var(--color-surface-dark-raised)',
+        outline: ativo ? 'none' : '1px solid var(--color-border-dark)',
+        color: ativo ? 'var(--color-action-on-primary)' : 'var(--color-text-dark-secondary)',
         fontSize: '12px', fontWeight: ativo ? '700' : '500', whiteSpace: 'nowrap',
       }}
     >
@@ -73,7 +76,7 @@ function SeletorAlunosLado({ label, quantidade, selecionados, onMudar, excluirId
 
   return (
     <div>
-      <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>
+      <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '6px' }}>
         {label} ({selecionados.length}/{quantidade})
       </div>
       {selecionados.length > 0 && (
@@ -81,11 +84,11 @@ function SeletorAlunosLado({ label, quantidade, selecionados, onMudar, excluirId
           {selecionados.map(s => (
             <span key={s.id} style={{
               display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 8px 5px 10px',
-              borderRadius: '7px', backgroundColor: 'rgba(252,200,37,0.12)', color: '#fcc825',
+              borderRadius: '7px', backgroundColor: 'rgba(165,76,46,0.15)', color: 'var(--color-action-primary)',
               fontSize: '12px', fontWeight: '600',
             }}>
               {s.nome}
-              <button onClick={() => remover(s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fcc825', display: 'flex' }}>
+              <button onClick={() => remover(s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-action-primary)', display: 'flex' }}>
                 <X size={11} />
               </button>
             </span>
@@ -98,12 +101,12 @@ function SeletorAlunosLado({ label, quantidade, selecionados, onMudar, excluirId
           {sugestoes.length > 0 && (
             <div style={{
               position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', zIndex: 5,
-              backgroundColor: '#111', border: '1px solid #2a2a2a', borderRadius: '10px', overflow: 'hidden',
+              backgroundColor: 'var(--color-surface-dark-overlay)', border: '1px solid var(--color-border-dark)', borderRadius: '10px', overflow: 'hidden',
             }}>
               {sugestoes.map(a => (
                 <button key={a.id} onClick={() => adicionar(a)} style={{
                   display: 'block', width: '100%', padding: '9px 12px', border: 'none', textAlign: 'left',
-                  backgroundColor: 'transparent', color: '#F0F2F5', fontSize: '13px', cursor: 'pointer',
+                  backgroundColor: 'transparent', color: 'var(--color-text-dark-primary)', fontSize: '13px', cursor: 'pointer',
                 }}>
                   {a.nome}
                 </button>
@@ -156,14 +159,14 @@ function ModalCriarJogo({ modalidadeId, onClose }) {
         </div>
 
         <div>
-          <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Origem</div>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '6px' }}>Origem</div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <Pill ativo={origem === 'avulso'} onClick={() => { setOrigem('avulso'); setTorneioId('') }}>Avulso</Pill>
             <Pill ativo={origem === 'torneio'} onClick={() => setOrigem('torneio')}>Torneio (pontos em dobro)</Pill>
           </div>
           {origem === 'torneio' && (
             !torneiosAbertos.length ? (
-              <div style={{ fontSize: '11px', color: '#f97316', marginTop: '8px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--color-state-warning)', marginTop: '8px' }}>
                 Nenhum torneio aberto nessa modalidade ainda — crie um na seção "Torneios internos".
               </div>
             ) : (
@@ -192,7 +195,7 @@ function ModalCriarJogo({ modalidadeId, onClose }) {
           disabled={!pronto || criarJogo.isPending}
           style={{
             padding: '12px', borderRadius: '10px', border: 'none', cursor: pronto ? 'pointer' : 'default',
-            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white',
+            backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)',
             fontSize: '14px', fontWeight: '700', opacity: pronto ? 1 : 0.5,
           }}
         >
@@ -235,7 +238,7 @@ function ModalCriarTorneio({ modalidadeId, categorias, onClose }) {
           disabled={!nome || !dataInicio || criarTorneio.isPending}
           style={{
             padding: '12px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white',
+            backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)',
             fontSize: '14px', fontWeight: '700', opacity: (!nome || !dataInicio) ? 0.5 : 1,
           }}
         >
@@ -247,10 +250,10 @@ function ModalCriarTorneio({ modalidadeId, categorias, onClose }) {
 }
 
 const LABEL_STATUS_TORNEIO = {
-  planejado: { texto: 'Planejado', cor: '#888' },
-  em_andamento: { texto: 'Em andamento', cor: '#22c55e' },
-  encerrado: { texto: 'Encerrado', cor: '#555' },
-  cancelado: { texto: 'Cancelado', cor: '#EF4444' },
+  planejado: { texto: 'Planejado', cor: 'var(--color-text-dark-secondary)' },
+  em_andamento: { texto: 'Em andamento', cor: 'var(--color-state-success)' },
+  encerrado: { texto: 'Encerrado', cor: 'var(--color-text-dark-secondary)' },
+  cancelado: { texto: 'Cancelado', cor: 'var(--color-state-danger)' },
 }
 
 function CardTorneio({ torneio }) {
@@ -266,11 +269,11 @@ function CardTorneio({ torneio }) {
   }
 
   return (
-    <div style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+    <div style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
         <div>
-          <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>{torneio.nome}</div>
-          <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--color-text-dark-primary)', fontWeight: '600' }}>{torneio.nome}</div>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>
             {torneio.ranking_categorias?.nome || 'Todas as categorias'} ·{' '}
             {format(new Date(torneio.data_inicio + 'T12:00'), 'dd/MM/yyyy', { locale: ptBR })}
             {torneio.data_fim ? ` a ${format(new Date(torneio.data_fim + 'T12:00'), 'dd/MM/yyyy', { locale: ptBR })}` : ''}
@@ -285,7 +288,7 @@ function CardTorneio({ torneio }) {
           {torneio.status === 'planejado' && (
             <button onClick={() => mudarStatus('em_andamento')} disabled={atualizarStatus.isPending} style={{
               flex: 1, padding: '7px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-              backgroundColor: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: '11px', fontWeight: '700',
+              backgroundColor: 'rgba(75,139,106,0.15)', color: 'var(--color-state-success)', fontSize: '11px', fontWeight: '700',
             }}>
               Iniciar
             </button>
@@ -293,13 +296,13 @@ function CardTorneio({ torneio }) {
           {torneio.status === 'em_andamento' && (
             <button onClick={() => mudarStatus('encerrado')} disabled={atualizarStatus.isPending} style={{
               flex: 1, padding: '7px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-              backgroundColor: 'rgba(255,255,255,0.06)', color: '#888', fontSize: '11px', fontWeight: '700',
+              backgroundColor: 'var(--color-border-dark-subtle)', color: 'var(--color-text-dark-secondary)', fontSize: '11px', fontWeight: '700',
             }}>
               Encerrar
             </button>
           )}
           <button onClick={() => mudarStatus('cancelado')} disabled={atualizarStatus.isPending} style={{
-            padding: '7px 12px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer',
+            padding: '7px 12px', borderRadius: '8px', border: '1px solid var(--color-border-dark)', background: 'none', color: 'var(--color-text-dark-secondary)', fontSize: '11px', cursor: 'pointer',
           }}>
             Cancelar
           </button>
@@ -328,23 +331,23 @@ function FormularioPlacar({ jogo, onFechar }) {
   const nomesLado = lado => jogo.ranking_jogo_participantes.filter(p => p.lado === lado).map(p => p.alunos?.nome).join(' / ')
 
   return (
-    <div style={{ marginTop: '10px', padding: '12px', borderRadius: '10px', backgroundColor: '#111', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div style={{ marginTop: '10px', padding: '12px', borderRadius: '10px', backgroundColor: 'var(--color-surface-dark-overlay)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <Input placeholder="Placar (ex: 6-3, 6-4)" value={placar} onChange={e => setPlacar(e.target.value)} disabled={wo} />
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <Pill ativo={ladoVencedor === 1} onClick={() => setLadoVencedor(1)}>Venceu: {nomesLado(1)}</Pill>
         <Pill ativo={ladoVencedor === 2} onClick={() => setLadoVencedor(2)}>Venceu: {nomesLado(2)}</Pill>
       </div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#888', cursor: 'pointer' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-text-dark-secondary)', cursor: 'pointer' }}>
         <input type="checkbox" checked={wo} onChange={e => setWo(e.target.checked)} /> Foi W.O.
       </label>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button onClick={onFechar} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#888', fontSize: '12px', cursor: 'pointer' }}>
+        <button onClick={onFechar} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid var(--color-border-dark)', background: 'none', color: 'var(--color-text-dark-secondary)', fontSize: '12px', cursor: 'pointer' }}>
           Cancelar
         </button>
         <button
           onClick={handleLancar}
           disabled={lancarPlacar.isPending || (!wo && !placar)}
-          style={{ flex: 2, padding: '9px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+          style={{ flex: 2, padding: '9px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
         >
           {lancarPlacar.isPending ? 'Salvando...' : 'Salvar placar'}
         </button>
@@ -390,19 +393,19 @@ function CardJogoEmAberto({ jogo }) {
   }
 
   return (
-    <div style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+    <div style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
         <div>
-          <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>{nomesLado(1)} <span style={{ color: '#555' }}>vs</span> {nomesLado(2)}</div>
-          <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--color-text-dark-primary)', fontWeight: '600' }}>{nomesLado(1)} <span style={{ color: 'var(--color-text-dark-secondary)' }}>vs</span> {nomesLado(2)}</div>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>
             {format(new Date(jogo.data_jogo + 'T12:00'), 'dd/MM/yyyy', { locale: ptBR })}
             {jogo.placar ? ` · ${jogo.placar}` : ''}
           </div>
         </div>
         <span style={{
           fontSize: '10px', padding: '4px 8px', borderRadius: '6px', fontWeight: '700', flexShrink: 0,
-          backgroundColor: jogo.status === 'contestado' ? 'rgba(239,68,68,0.15)' : 'rgba(252,200,37,0.15)',
-          color: jogo.status === 'contestado' ? '#EF4444' : '#fcc825',
+          backgroundColor: jogo.status === 'contestado' ? 'rgba(180,71,47,0.18)' : 'rgba(165,76,46,0.15)',
+          color: jogo.status === 'contestado' ? 'var(--color-state-danger)' : 'var(--color-action-primary)',
         }}>
           {jogo.status === 'contestado' ? 'Contestado' : precisaPlacar ? 'Sem placar' : 'Aguardando confirmação'}
         </span>
@@ -415,11 +418,11 @@ function CardJogoEmAberto({ jogo }) {
           <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
             <button onClick={() => setLancando(true)} style={{
               flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-              background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '12px', fontWeight: '700',
+              backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontSize: '12px', fontWeight: '700',
             }}>
               {jogo.status === 'contestado' ? 'Lançar placar de novo' : 'Lançar placar'}
             </button>
-            <button onClick={handleCancelar} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer' }}>
+            <button onClick={handleCancelar} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border-dark)', background: 'none', color: 'var(--color-text-dark-secondary)', fontSize: '12px', cursor: 'pointer' }}>
               Cancelar jogo
             </button>
           </div>
@@ -434,7 +437,7 @@ function CardJogoEmAberto({ jogo }) {
               title={`Confirmar em nome de ${p.alunos?.nome}`}
               style={{
                 display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 10px', borderRadius: '8px',
-                border: 'none', cursor: 'pointer', backgroundColor: 'rgba(34,197,94,0.12)', color: '#22c55e',
+                border: 'none', cursor: 'pointer', backgroundColor: 'rgba(75,139,106,0.15)', color: 'var(--color-state-success)',
                 fontSize: '11px', fontWeight: '600',
               }}
             >
@@ -443,7 +446,7 @@ function CardJogoEmAberto({ jogo }) {
           ))}
           <button onClick={handleContestar} disabled={contestarPlacar.isPending} style={{
             display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 10px', borderRadius: '8px',
-            border: 'none', cursor: 'pointer', backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', fontSize: '11px', fontWeight: '600',
+            border: 'none', cursor: 'pointer', backgroundColor: 'rgba(180,71,47,0.12)', color: 'var(--color-state-danger)', fontSize: '11px', fontWeight: '600',
           }}>
             <AlertTriangle size={12} /> Contestar
           </button>
@@ -470,43 +473,43 @@ function LinhaClassificacao({ posicao, tipoRanking, expandido, onToggle }) {
     <div>
       <button onClick={onToggle} style={{
         display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '10px 12px',
-        borderRadius: '10px', border: 'none', backgroundColor: '#1a1a1a', cursor: 'pointer', textAlign: 'left',
+        borderRadius: '10px', border: 'none', backgroundColor: 'var(--color-surface-dark-raised)', cursor: 'pointer', textAlign: 'left',
       }}>
-        <span style={{ width: '26px', textAlign: 'center', fontSize: MEDALHAS[posicao.posicao] ? '16px' : '13px', fontWeight: '700', color: '#888', flexShrink: 0 }}>
+        <span style={{ width: '26px', textAlign: 'center', fontSize: MEDALHAS[posicao.posicao] ? '16px' : '13px', fontWeight: '700', color: 'var(--color-text-dark-secondary)', flexShrink: 0 }}>
           {MEDALHAS[posicao.posicao] || posicao.posicao}
         </span>
         {posicao.alunos?.foto_url ? (
           <img src={posicao.alunos.foto_url} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
         ) : (
           <div style={{
-            width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#430c3a', color: '#fcc825',
+            width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0,
           }}>
             {posicao.alunos?.nome?.split(' ').map(p => p[0]).slice(0, 2).join('')}
           </div>
         )}
-        <span style={{ flex: 1, fontSize: '13px', color: '#F0F2F5', fontWeight: '600', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ flex: 1, fontSize: '13px', color: 'var(--color-text-dark-primary)', fontWeight: '600', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {posicao.alunos?.nome}
         </span>
-        <span style={{ fontSize: '10px', color: '#555', flexShrink: 0 }}>{posicao.num_jogos}j</span>
+        <span style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', flexShrink: 0 }}>{posicao.num_jogos}j</span>
         <span style={{
           fontSize: '9px', padding: '3px 7px', borderRadius: '6px', fontWeight: '700', flexShrink: 0,
           backgroundColor: `${cor}22`, color: cor,
         }}>
           {posicao.nivel}
         </span>
-        <span style={{ fontSize: '15px', fontWeight: '800', color: '#fcc825', flexShrink: 0, minWidth: '44px', textAlign: 'right' }}>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '700', color: 'var(--color-action-primary)', flexShrink: 0, minWidth: '44px', textAlign: 'right' }}>
           {posicao.pontuacao_beyond}
         </span>
-        {expandido ? <ChevronUp size={14} color="#555" /> : <ChevronDown size={14} color="#555" />}
+        {expandido ? <ChevronUp size={14} color="var(--color-text-dark-secondary)" /> : <ChevronDown size={14} color="var(--color-text-dark-secondary)" />}
       </button>
       {expandido && (
-        <div style={{ padding: '8px 12px 8px 48px', fontSize: '11px', color: '#888' }}>
-          Média: <strong style={{ color: '#ccc' }}>{posicao.media}</strong> pontos/jogo · Multiplicador de nível:{' '}
-          <strong style={{ color: '#ccc' }}>×{multiplicadorAssiduidade}</strong>
+        <div style={{ padding: '8px 12px 8px 48px', fontSize: '11px', color: 'var(--color-text-dark-secondary)' }}>
+          Média: <strong style={{ color: 'var(--color-text-dark-primary)' }}>{posicao.media}</strong> pontos/jogo · Multiplicador de nível:{' '}
+          <strong style={{ color: 'var(--color-text-dark-primary)' }}>×{multiplicadorAssiduidade}</strong>
           {pesoCategoria != null && pesoCategoria !== 1 && (
             <>
-              {' '}· Peso de categoria: <strong style={{ color: '#fcc825' }}>×{pesoCategoria}</strong>
+              {' '}· Peso de categoria: <strong style={{ color: 'var(--color-action-primary)' }}>×{pesoCategoria}</strong>
             </>
           )}
         </div>
@@ -578,18 +581,18 @@ export function RankingPage() {
     <div className="fade-in" style={{ paddingBottom: '20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '16px 0 4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Trophy size={20} color="#fcc825" />
-          <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>Ranking</h1>
+          <Trophy size={20} color="var(--color-action-primary)" />
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--color-text-dark-primary)', margin: 0 }}>Ranking</h1>
         </div>
         <button
           onClick={() => navigate('/regras-ranking')}
           title="Regras do Ranking"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', color: '#444' }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', color: 'var(--color-text-dark-muted)' }}
         >
           <HelpCircle size={18} />
         </button>
       </div>
-      <p style={{ fontSize: '12px', color: '#555', margin: '0 0 16px' }}>Pontuação Beyond · Ciclo {ciclo}</p>
+      <p style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', margin: '0 0 16px' }}>Pontuação Beyond · Ciclo {ciclo}</p>
 
       {modalidades?.length > 1 && (
         <div style={{ marginBottom: '10px' }}>
@@ -602,7 +605,7 @@ export function RankingPage() {
       <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
         <Pill ativo={tipoRanking === 'geral'} onClick={() => setTipoRanking('geral')}>Geral</Pill>
         <Pill ativo={tipoRanking === 'categoria'} onClick={() => setTipoRanking('categoria')}>Categoria</Pill>
-        <div style={{ width: '1px', backgroundColor: '#2a2a2a', margin: '2px 4px' }} />
+        <div style={{ width: '1px', backgroundColor: 'var(--color-border-dark)', margin: '2px 4px' }} />
         <Pill ativo={genero === 'masculino'} onClick={() => setGenero('masculino')}>Masculino</Pill>
         <Pill ativo={genero === 'feminino'} onClick={() => setGenero('feminino')}>Feminino</Pill>
       </div>
@@ -620,7 +623,7 @@ export function RankingPage() {
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', width: '100%',
           padding: '11px', borderRadius: '10px', border: 'none', cursor: 'pointer', marginBottom: '18px',
-          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '700',
+          backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontSize: '13px', fontWeight: '700',
         }}
       >
         <Plus size={15} /> Criar jogo
@@ -632,8 +635,8 @@ export function RankingPage() {
           disabled={exportando || isLoading}
           style={{
             display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '7px 12px', borderRadius: '8px', border: '1px solid #2a2a2a', cursor: exportando ? 'default' : 'pointer',
-            backgroundColor: '#1a1a1a', color: '#888', fontSize: '11px', fontWeight: '600',
+            padding: '7px 12px', borderRadius: '8px', border: '1px solid var(--color-border-dark)', cursor: exportando ? 'default' : 'pointer',
+            backgroundColor: 'var(--color-surface-dark-raised)', color: 'var(--color-text-dark-secondary)', fontSize: '11px', fontWeight: '600',
           }}
         >
           <Download size={12} />
@@ -642,7 +645,7 @@ export function RankingPage() {
       </div>
 
       {isLoading ? <Loading /> : !posicoes?.length ? (
-        <div style={{ padding: '30px 0', textAlign: 'center', fontSize: '12px', color: '#555' }}>
+        <div style={{ padding: '30px 0', textAlign: 'center', fontSize: '12px', color: 'var(--color-text-dark-secondary)' }}>
           Ninguém classificado ainda nesse recorte — precisa de pelo menos 5 jogos aprovados na janela de 90 dias.
         </div>
       ) : (
@@ -663,17 +666,17 @@ export function RankingPage() {
         onClick={() => setJogosAbertosVisivel(v => !v)}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-          padding: '12px 14px', borderRadius: '10px', border: '1px solid #2a2a2a', backgroundColor: '#1a1a1a',
-          color: '#F0F2F5', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+          padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--color-border-dark)', backgroundColor: 'var(--color-surface-dark-raised)',
+          color: 'var(--color-text-dark-primary)', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
         }}
       >
         <span>Jogos em aberto {jogosAbertos?.length ? `(${jogosAbertos.length})` : ''}</span>
-        {jogosAbertosVisivel ? <ChevronUp size={16} color="#555" /> : <ChevronDown size={16} color="#555" />}
+        {jogosAbertosVisivel ? <ChevronUp size={16} color="var(--color-text-dark-secondary)" /> : <ChevronDown size={16} color="var(--color-text-dark-secondary)" />}
       </button>
       {jogosAbertosVisivel && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
           {!jogosAbertos?.length ? (
-            <div style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '#555' }}>Nenhum jogo em aberto.</div>
+            <div style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: 'var(--color-text-dark-secondary)' }}>Nenhum jogo em aberto.</div>
           ) : (
             jogosAbertos.map(jogo => <CardJogoEmAberto key={jogo.id} jogo={jogo} />)
           )}
@@ -685,14 +688,14 @@ export function RankingPage() {
           onClick={() => setTorneiosVisivel(v => !v)}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-            padding: '12px 14px', borderRadius: '10px', border: '1px solid #2a2a2a', backgroundColor: '#1a1a1a',
-            color: '#F0F2F5', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+            padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--color-border-dark)', backgroundColor: 'var(--color-surface-dark-raised)',
+            color: 'var(--color-text-dark-primary)', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
           }}
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Award size={14} color="#fcc825" /> Torneios internos {torneios?.length ? `(${torneios.length})` : ''}
+            <Award size={14} color="var(--color-action-primary)" /> Torneios internos {torneios?.length ? `(${torneios.length})` : ''}
           </span>
-          {torneiosVisivel ? <ChevronUp size={16} color="#555" /> : <ChevronDown size={16} color="#555" />}
+          {torneiosVisivel ? <ChevronUp size={16} color="var(--color-text-dark-secondary)" /> : <ChevronDown size={16} color="var(--color-text-dark-secondary)" />}
         </button>
         {torneiosVisivel && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
@@ -700,14 +703,14 @@ export function RankingPage() {
               onClick={() => setCriandoTorneio(true)}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', width: '100%',
-                padding: '10px', borderRadius: '10px', border: '1px solid #2a2a2a', cursor: 'pointer',
-                backgroundColor: '#111', color: '#F0F2F5', fontSize: '12px', fontWeight: '600',
+                padding: '10px', borderRadius: '10px', border: '1px solid var(--color-border-dark)', cursor: 'pointer',
+                backgroundColor: 'var(--color-surface-dark-overlay)', color: 'var(--color-text-dark-primary)', fontSize: '12px', fontWeight: '600',
               }}
             >
               <Plus size={14} /> Criar torneio
             </button>
             {!torneios?.length ? (
-              <div style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '#555' }}>Nenhum torneio cadastrado ainda.</div>
+              <div style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: 'var(--color-text-dark-secondary)' }}>Nenhum torneio cadastrado ainda.</div>
             ) : (
               torneios.map(t => <CardTorneio key={t.id} torneio={t} />)
             )}
