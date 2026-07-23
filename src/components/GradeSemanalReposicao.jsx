@@ -9,11 +9,11 @@ import { Loading } from './ui/Loading'
 
 // vermelho = lotada · amarelo = 1 vaga · verde = 2-3 vagas · azul = vazia (sem ninguém)
 function corPorOcupacao(ocupacao, capacidade) {
-  if (ocupacao <= 0) return '#3b82f6'
+  if (ocupacao <= 0) return 'var(--color-state-info)'
   const vagas = capacidade - ocupacao
-  if (vagas <= 0) return '#ef4444'
-  if (vagas === 1) return '#f59e0b'
-  return '#22c55e'
+  if (vagas <= 0) return 'var(--color-state-danger)'
+  if (vagas === 1) return 'var(--color-state-warning)'
+  return 'var(--color-state-success)'
 }
 
 function LegendaItem({ cor, label }) {
@@ -96,13 +96,13 @@ export function GradeSemanalReposicao({ aluno, modalidadeId, proximaFalta, onVol
         {/* Info da falta + botão voltar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button onClick={onVoltar} style={{
-            flexShrink: 0, padding: '7px 12px', borderRadius: '8px', border: '1px solid #2a2a2a',
-            background: 'none', color: '#888', cursor: 'pointer', fontSize: '13px',
+            flexShrink: 0, padding: '7px 12px', borderRadius: '8px', border: '1px solid var(--color-border-light)',
+            background: 'none', color: 'var(--color-text-light-secondary)', cursor: 'pointer', fontSize: '13px',
           }}>← Voltar</button>
           {proximaFalta && (
-            <div style={{ flex: 1, padding: '8px 12px', backgroundColor: 'rgba(59,130,246,0.08)', borderRadius: '8px', border: '1px solid rgba(59,130,246,0.2)' }}>
-              <div style={{ fontSize: '10px', color: '#3b82f6', fontWeight: '600', textTransform: 'uppercase' }}>Vai baixar a falta mais antiga</div>
-              <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600', marginTop: '1px' }}>
+            <div style={{ flex: 1, padding: '8px 12px', backgroundColor: 'rgba(61,107,122,0.08)', borderRadius: '8px', border: '1px solid rgba(61,107,122,0.2)' }}>
+              <div style={{ fontSize: '10px', color: 'var(--color-state-info)', fontWeight: '600', textTransform: 'uppercase' }}>Vai baixar a falta mais antiga</div>
+              <div style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', fontWeight: '600', marginTop: '1px' }}>
                 {proximaFalta.dataAula ? format(new Date(proximaFalta.dataAula + 'T12:00'), "dd/MM · EEEE", { locale: ptBR }) : ''}
                 {proximaFalta.turmaNome ? ` · ${proximaFalta.turmaNome}` : ''}
               </div>
@@ -118,9 +118,9 @@ export function GradeSemanalReposicao({ aluno, modalidadeId, proximaFalta, onVol
               return (
                 <button key={nome} onClick={() => toggleNivel(nome)} style={{
                   padding: '6px 12px', borderRadius: '8px', border: 'none',
-                  background: ativo ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
-                  outline: ativo ? 'none' : '1px solid #2a2a2a',
-                  color: ativo ? 'white' : '#888', fontSize: '12px', fontWeight: ativo ? '600' : '400',
+                  background: ativo ? 'var(--color-action-primary)' : 'var(--color-surface-light-raised)',
+                  outline: ativo ? 'none' : '1px solid var(--color-border-light)',
+                  color: ativo ? 'white' : 'var(--color-text-light-secondary)', fontSize: '12px', fontWeight: ativo ? '600' : '400',
                   cursor: 'pointer',
                 }}>{nome}</button>
               )
@@ -128,7 +128,7 @@ export function GradeSemanalReposicao({ aluno, modalidadeId, proximaFalta, onVol
             {niveisFiltro.length > 0 && (
               <button onClick={() => setNiveisFiltro([])} style={{
                 padding: '6px 12px', borderRadius: '8px', border: 'none',
-                background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontSize: '12px', cursor: 'pointer',
+                background: 'rgba(180,71,47,0.1)', color: 'var(--color-state-danger)', fontSize: '12px', cursor: 'pointer',
               }}>Limpar</button>
             )}
           </div>
@@ -137,30 +137,30 @@ export function GradeSemanalReposicao({ aluno, modalidadeId, proximaFalta, onVol
         {/* Navegação de semana */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button onClick={() => setSemanaOffset(s => Math.max(0, s - 1))} disabled={semanaOffset === 0} style={{
-            padding: '6px 10px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
-            color: semanaOffset === 0 ? '#333' : '#888', cursor: semanaOffset === 0 ? 'default' : 'pointer',
+            padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border-light)', background: 'none',
+            color: semanaOffset === 0 ? 'var(--color-text-light-muted)' : 'var(--color-text-light-secondary)', cursor: semanaOffset === 0 ? 'default' : 'pointer',
           }}><ChevronLeft size={14} /></button>
-          <div style={{ fontSize: '12px', color: '#888', fontWeight: '600' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', fontWeight: '600' }}>
             {format(new Date(inicioSemana + 'T12:00'), 'dd/MM')} — {format(new Date(fimSemana + 'T12:00'), 'dd/MM')}
             {semanaOffset === 0 && ' · essa semana'}
           </div>
           <button onClick={() => setSemanaOffset(s => s + 1)} style={{
-            padding: '6px 10px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none',
-            color: '#888', cursor: 'pointer',
+            padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border-light)', background: 'none',
+            color: 'var(--color-text-light-secondary)', cursor: 'pointer',
           }}><ChevronRight size={14} /></button>
         </div>
 
         {/* Legenda */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '10px', color: '#888' }}>
-          <LegendaItem cor="#ef4444" label="Lotada" />
-          <LegendaItem cor="#f59e0b" label="1 vaga" />
-          <LegendaItem cor="#22c55e" label="2-3 vagas" />
-          <LegendaItem cor="#3b82f6" label="Vazia" />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '10px', color: 'var(--color-text-light-secondary)' }}>
+          <LegendaItem cor="var(--color-state-danger)" label="Lotada" />
+          <LegendaItem cor="var(--color-state-warning)" label="1 vaga" />
+          <LegendaItem cor="var(--color-state-success)" label="2-3 vagas" />
+          <LegendaItem cor="var(--color-state-info)" label="Vazia" />
         </div>
 
         {/* Grade */}
         {loadingSemana ? <Loading /> : horariosComAula.length === 0 ? (
-          <div style={{ padding: '24px', textAlign: 'center', fontSize: '13px', color: '#444', borderRadius: '12px', border: '1px solid #1a1a1a' }}>
+          <div style={{ padding: '24px', textAlign: 'center', fontSize: '13px', color: 'var(--color-text-light-muted)', borderRadius: '12px', border: '1px solid var(--color-surface-light-raised)' }}>
             Nenhuma aula de turma nessa semana{niveisFiltro.length > 0 ? ' com esse nível' : ''}
           </div>
         ) : (
@@ -170,10 +170,10 @@ export function GradeSemanalReposicao({ aluno, modalidadeId, proximaFalta, onVol
                 {diasSemana.map(d => (
                   <div key={d} style={{
                     width: `${CELL_W}px`, flexShrink: 0, textAlign: 'center',
-                    fontSize: '10px', color: '#555', fontWeight: '700', padding: '6px 0',
+                    fontSize: '10px', color: 'var(--color-text-light-secondary)', fontWeight: '700', padding: '6px 0',
                   }}>
                     <div style={{ letterSpacing: '1px' }}>{format(new Date(d + 'T12:00'), 'EEE', { locale: ptBR }).toUpperCase()}</div>
-                    <div style={{ fontSize: '11px', color: '#888', marginTop: '1px' }}>{format(new Date(d + 'T12:00'), 'dd/MM')}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '1px' }}>{format(new Date(d + 'T12:00'), 'dd/MM')}</div>
                   </div>
                 ))}
               </div>
@@ -181,7 +181,7 @@ export function GradeSemanalReposicao({ aluno, modalidadeId, proximaFalta, onVol
               {horariosComAula.map(horario => (
                 <div key={horario} style={{ display: 'flex', gap: '2px', marginBottom: '2px', alignItems: 'flex-start' }}>
                   <div style={{
-                    width: '38px', flexShrink: 0, fontSize: '9px', color: '#555',
+                    width: '38px', flexShrink: 0, fontSize: '9px', color: 'var(--color-text-light-secondary)',
                     textAlign: 'right', paddingRight: '6px', paddingTop: '9px', fontWeight: '500',
                   }}>{horario}</div>
 
@@ -190,14 +190,14 @@ export function GradeSemanalReposicao({ aluno, modalidadeId, proximaFalta, onVol
                     return (
                       <div key={dia} style={{
                         width: `${CELL_W}px`, flexShrink: 0, minHeight: '34px',
-                        backgroundColor: entradas.length ? '#131313' : '#0d0d0d',
-                        borderRadius: '6px', border: '1px solid #161616',
+                        backgroundColor: entradas.length ? 'var(--color-surface-light-raised)' : 'var(--color-surface-light-overlay)',
+                        borderRadius: '6px', border: '1px solid var(--color-border-light-subtle)',
                         padding: entradas.length ? '4px' : '0',
                         display: 'flex', flexDirection: 'column', gap: '2px',
                       }}>
                         {entradas.map(a => {
                           const disponivel = !a.jaEsta && a.ocupacao < a.capacidade
-                          const cor = a.jaEsta ? '#555' : corPorOcupacao(a.ocupacao, a.capacidade)
+                          const cor = a.jaEsta ? 'var(--color-text-light-secondary)' : corPorOcupacao(a.ocupacao, a.capacidade)
                           return (
                             <button key={a.id} onClick={() => handleEscolherSlot(a)} disabled={!disponivel} style={{
                               padding: '3px 7px', borderRadius: '4px', border: 'none', textAlign: 'left',
@@ -208,7 +208,7 @@ export function GradeSemanalReposicao({ aluno, modalidadeId, proximaFalta, onVol
                                 fontSize: '10px', fontWeight: '600', color: cor,
                                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                               }}>{a.turmas?.niveis?.nome || a.turmas?.nome}</div>
-                              <div style={{ fontSize: '9px', color: '#888' }}>
+                              <div style={{ fontSize: '9px', color: 'var(--color-text-light-secondary)' }}>
                                 {a.jaEsta ? 'já inscrito' : `${a.ocupacao}/${a.capacidade}`}
                               </div>
                             </button>

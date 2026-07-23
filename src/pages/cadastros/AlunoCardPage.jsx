@@ -11,11 +11,11 @@ export function AlunoCardPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0 22px' }}>
         <button onClick={() => navigate(-1)} style={{
           background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
-          color: '#fcc825', display: 'flex', alignItems: 'center', flexShrink: 0,
+          color: 'var(--color-action-primary)', display: 'flex', alignItems: 'center', flexShrink: 0,
         }}>
           <ChevronLeft size={24} />
         </button>
-        <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
+        <h1 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: 0 }}>
           Perfil do aluno
         </h1>
       </div>

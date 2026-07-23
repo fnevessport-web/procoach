@@ -143,12 +143,12 @@ export function TurmasPage({ onIrParaProfessores }) {
               onChange={e => setBusca(e.target.value)}
               style={{
                 width: '100%', padding: '10px 12px 10px 36px',
-                borderRadius: '10px', backgroundColor: '#110f0f',
-                border: '1px solid #2a2a2a', color: '#F0F2F5',
+                borderRadius: '10px', backgroundColor: 'var(--color-surface-light-overlay)',
+                border: '1px solid var(--color-border-light)', color: 'var(--color-text-light-primary)',
                 fontSize: '13px', outline: 'none', boxSizing: 'border-box',
               }}
             />
-            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#555' }}>🔍</span>
+            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light-secondary)' }}>🔍</span>
           </div>
         </div>
         <Button onClick={abrirCriar} size="sm">
@@ -168,12 +168,12 @@ export function TurmasPage({ onIrParaProfessores }) {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-[#F0F2F5]">{turma.nome}</span>
+                        <span className="font-semibold text-[var(--color-text-light-primary)]">{turma.nome}</span>
                       </div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#8B8FA8]">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--color-text-light-secondary)]">
                         {turma.professores?.nome
                           ? <span>👨‍🏫 {turma.professores.nome}</span>
-                          : <span style={{ color: '#e0a856' }}>⚠️ sem professor</span>
+                          : <span style={{ color: 'var(--color-state-warning)' }}>⚠️ sem professor</span>
                         }
                         {turma.horario_dia_semana && (
                           <span className="flex items-center gap-1">
@@ -192,7 +192,7 @@ export function TurmasPage({ onIrParaProfessores }) {
                     </div>
                     <button
                       onClick={() => abrirEditar(turma)}
-                      className="p-1.5 rounded-lg text-[#8B8FA8] hover:text-[#F0F2F5] hover:bg-[#2A2D3E]"
+                      className="p-1.5 rounded-lg text-[var(--color-text-light-secondary)] hover:text-[var(--color-text-light-primary)] hover:bg-[var(--color-surface-light-overlay)]"
                     >
                       <Edit2 size={14} />
                     </button>
@@ -243,12 +243,12 @@ export function TurmasPage({ onIrParaProfessores }) {
               {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
             </Select>
             {!professores?.length && form.modalidade_id && (
-              <p style={{ fontSize: '12px', color: '#8B8FA8', margin: 0 }}>
+              <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', margin: 0 }}>
                 Nenhum professor cadastrado.{' '}
                 <button
                   type="button"
                   onClick={() => { setModal(false); onIrParaProfessores?.() }}
-                  style={{ color: '#fcc825', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}
+                  style={{ color: 'var(--color-action-primary)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}
                 >
                   Cadastrar professor
                 </button>
@@ -258,7 +258,7 @@ export function TurmasPage({ onIrParaProfessores }) {
 
           {/* Alunos com busca */}
           <div>
-            <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5', marginBottom: '8px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '8px' }}>
               Alunos ({alunosSelecionados.length} selecionados)
             </div>
 
@@ -269,12 +269,12 @@ export function TurmasPage({ onIrParaProfessores }) {
               onChange={e => setBuscaAluno(e.target.value)}
               style={{
                 width: '100%', padding: '10px 12px', borderRadius: '10px',
-                backgroundColor: '#110f0f', border: '1px solid #2a2a2a',
-                color: '#F0F2F5', fontSize: '13px', outline: 'none',
+                backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
+                color: 'var(--color-text-light-primary)', fontSize: '13px', outline: 'none',
                 boxSizing: 'border-box', marginBottom: '8px',
               }}
-              onFocus={e => e.target.style.borderColor = '#fcc825'}
-              onBlur={e => e.target.style.borderColor = '#2a2a2a'}
+              onFocus={e => e.target.style.borderColor = 'var(--color-action-primary)'}
+              onBlur={e => e.target.style.borderColor = 'var(--color-border-light)'}
             />
 
             {/* Lista filtrada */}
@@ -286,9 +286,9 @@ export function TurmasPage({ onIrParaProfessores }) {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '10px 12px', borderRadius: '10px', border: 'none',
-                    background: alunosSelecionados.includes(aluno.id) ? 'rgba(252,200,37,0.1)' : '#110f0f',
-                    outline: alunosSelecionados.includes(aluno.id) ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-                    color: alunosSelecionados.includes(aluno.id) ? '#fcc825' : '#888',
+                    background: alunosSelecionados.includes(aluno.id) ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-overlay)',
+                    outline: alunosSelecionados.includes(aluno.id) ? '1px solid rgba(165,76,46,0.4)' : '1px solid var(--color-border-light)',
+                    color: alunosSelecionados.includes(aluno.id) ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)',
                     cursor: 'pointer', textAlign: 'left', width: '100%', boxSizing: 'border-box',
                   }}
                 >
@@ -297,7 +297,7 @@ export function TurmasPage({ onIrParaProfessores }) {
                 </button>
               ))}
               {buscaAluno && alunosBusca?.length === 0 && (
-                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', padding: '8px 0', margin: 0 }}>
+                <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', textAlign: 'center', padding: '8px 0', margin: 0 }}>
                   Nenhum aluno encontrado
                 </p>
               )}

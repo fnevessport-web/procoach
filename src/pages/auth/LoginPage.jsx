@@ -53,11 +53,10 @@ export function LoginPage() {
   return (
     <div style={{
       height: '100vh', width: '100%', position: 'relative',
-      // login-bg.jpg ainda não existe (asset novo, o cliente fornece depois) — backgroundColor
-      // fica como fallback: se a imagem faltar, mostra só o verde-court sólido, sem ícone de
-      // imagem quebrada (diferente de <img>, background-image ausente só não desenha nada).
+      // backgroundColor fica como fallback: se a imagem faltar, mostra só o verde-court sólido,
+      // sem ícone de imagem quebrada (diferente de <img>, background-image ausente só não desenha nada).
       backgroundColor: 'var(--color-surface-dark-base)',
-      backgroundImage: "url('/images/login-bg.jpg')",
+      backgroundImage: "url('/images/login-bg.png')",
       backgroundSize: 'cover', backgroundPosition: 'center',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', padding: '24px 16px', boxSizing: 'border-box',

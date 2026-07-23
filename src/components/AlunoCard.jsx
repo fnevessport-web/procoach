@@ -30,8 +30,8 @@ import { SeletorFaixaEtariaManual } from './SeletorFaixaEtariaManual'
 import toast from 'react-hot-toast'
 
 const toastStyle = {
-  background: '#1a1a1a', color: '#F0F2F5',
-  border: '1px solid rgba(252,200,37,0.3)',
+  background: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
+  border: '1px solid rgba(165,76,46,0.3)',
   borderRadius: '10px', fontSize: '13px',
 }
 
@@ -42,9 +42,9 @@ const TIPO_VINCULO_LABEL = {
 }
 
 const STATUS_PRESENCA_LABEL = {
-  presente: { label: 'Presente', cor: '#22c55e' },
-  falta: { label: 'Falta', cor: '#EF4444' },
-  falta_justificada: { label: 'Falta Just.', cor: '#f97316' },
+  presente: { label: 'Presente', cor: 'var(--color-state-success)' },
+  falta: { label: 'Falta', cor: 'var(--color-state-danger)' },
+  falta_justificada: { label: 'Falta Just.', cor: 'var(--color-state-warning)' },
 }
 
 const DIA_SEMANA_LABEL = { domingo: 'DOM', segunda: 'SEG', terca: 'TER', quarta: 'QUA', quinta: 'QUI', sexta: 'SEX', sabado: 'SAB' }
@@ -79,7 +79,7 @@ function agruparPresencasPorMes(presencas) {
 // usado no card do professor, só que com um ícone de pessoa no lugar das iniciais.
 function SilhuetaAluno({ size = 26 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="#0d0d0d">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="var(--color-surface-light-overlay)">
       <circle cx="12" cy="8" r="4.2" />
       <path d="M12 13.5c-5.2 0-8.8 2.9-8.8 6.4V21h17.6v-1.1c0-3.5-3.6-6.4-8.8-6.4z" />
     </svg>
@@ -137,8 +137,8 @@ export function AlunoCard({ alunoId }) {
         <div style={{ flexShrink: 0 }}>
           <div style={{ position: 'relative', width: 84, height: 84 }}>
             <input ref={fotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadFoto} />
-            <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', padding: '2px', boxSizing: 'border-box' }}>
-              <div style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: '#1a1a1a', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'var(--color-action-primary)', padding: '2px', boxSizing: 'border-box' }}>
+              <div style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: 'var(--color-surface-light-raised)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {aluno.foto_url
                   ? <img src={aluno.foto_url} alt={aluno.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <SilhuetaAluno size={40} />
@@ -147,10 +147,10 @@ export function AlunoCard({ alunoId }) {
             </div>
             <button onClick={() => fotoInputRef.current?.click()} style={{
               position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: '50%',
-              border: 'none', backgroundColor: '#fcc825', cursor: 'pointer',
+              border: 'none', backgroundColor: 'var(--color-action-primary)', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              {uploadandoFoto ? '...' : <Camera size={13} color="#110f0f" />}
+              {uploadandoFoto ? '...' : <Camera size={13} color="var(--color-surface-light-overlay)" />}
             </button>
           </div>
 
@@ -160,33 +160,33 @@ export function AlunoCard({ alunoId }) {
           <div style={{ display: 'flex', gap: '4px', marginTop: '10px' }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{
-                width: 40, height: 40, borderRadius: '10px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '800', color: '#F0F2F5',
+                width: 40, height: 40, borderRadius: '10px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '800', color: 'var(--color-text-light-primary)',
               }}>
                 -
               </div>
-              <div style={{ fontSize: '8px', color: '#555', marginTop: '3px' }}>Categoria</div>
+              <div style={{ fontSize: '8px', color: 'var(--color-text-light-secondary)', marginTop: '3px' }}>Categoria</div>
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{
-                width: 40, height: 40, borderRadius: '10px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '800', color: '#F0F2F5',
+                width: 40, height: 40, borderRadius: '10px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '800', color: 'var(--color-text-light-primary)',
               }}>
                 -
               </div>
-              <div style={{ fontSize: '8px', color: '#555', marginTop: '3px' }}>Geral</div>
+              <div style={{ fontSize: '8px', color: 'var(--color-text-light-secondary)', marginTop: '3px' }}>Geral</div>
             </div>
           </div>
         </div>
 
         {/* Coluna direita: nome, conquistas e metas */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '18px', fontWeight: '800', color: '#F0F2F5', lineHeight: 1.25 }}>
+          <div style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text-light-primary)', lineHeight: 1.25 }}>
             {aluno.nome}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '4px' }}>
             {aluno.menor_idade && (
-              <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '5px', backgroundColor: 'rgba(252,200,37,0.15)', color: '#fcc825', fontWeight: '600' }}>
+              <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '5px', backgroundColor: 'rgba(165,76,46,0.15)', color: 'var(--color-action-primary)', fontWeight: '600' }}>
                 menor de idade
               </span>
             )}
@@ -212,8 +212,8 @@ export function AlunoCard({ alunoId }) {
       </div>
 
       {/* Dados pessoais */}
-      <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', border: '1px solid #2a2a2a', padding: '14px 16px', marginBottom: '20px' }}>
-        <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', fontWeight: '700' }}>
+      <div style={{ backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '14px', border: '1px solid var(--color-border-light)', padding: '14px 16px', marginBottom: '20px' }}>
+        <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', fontWeight: '700' }}>
           Dados pessoais
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -224,8 +224,8 @@ export function AlunoCard({ alunoId }) {
         </div>
 
         {!aluno.data_nascimento && (
-          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #2a2a2a' }}>
-            <div style={{ fontSize: '10px', color: '#555', marginBottom: '8px' }}>
+          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--color-border-light)' }}>
+            <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '8px' }}>
               Faixa etária (pra avaliação técnica, enquanto não tem data de nascimento) — só
               professor/gestor veem isso
             </div>
@@ -236,11 +236,11 @@ export function AlunoCard({ alunoId }) {
 
       {/* Família */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', fontWeight: '700' }}>
+        <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', fontWeight: '700' }}>
           Família
         </div>
         {aluno.familia.length === 0 ? (
-          <div style={{ fontSize: '12px', color: '#444' }}>Nenhum vínculo cadastrado</div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-light-muted)' }}>Nenhum vínculo cadastrado</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {aluno.familia.map(v => {
@@ -248,16 +248,16 @@ export function AlunoCard({ alunoId }) {
               const conteudo = (
                 <>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>{v.nome_vinculo}</span>
-                    <span style={{ fontSize: '11px', color: '#555', marginLeft: '8px' }}>{TIPO_VINCULO_LABEL[v.tipo_vinculo] || v.tipo_vinculo}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', fontWeight: '600' }}>{v.nome_vinculo}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginLeft: '8px' }}>{TIPO_VINCULO_LABEL[v.tipo_vinculo] || v.tipo_vinculo}</span>
                   </div>
-                  {clicavel && <ChevronRight size={16} color="#555" />}
+                  {clicavel && <ChevronRight size={16} color="var(--color-text-light-secondary)" />}
                 </>
               )
               return clicavel ? (
                 <button key={v.id} onClick={() => navigate(`/cadastros/alunos/${v.vinculo_aluno_id}`)} style={{
                   display: 'flex', alignItems: 'center', gap: '8px',
-                  backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '10px',
+                  backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)', borderRadius: '10px',
                   padding: '10px 12px', cursor: 'pointer', textAlign: 'left', width: '100%',
                 }}>
                   {conteudo}
@@ -278,7 +278,7 @@ export function AlunoCard({ alunoId }) {
       {/* Modalidades */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>
+          <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>
             Modalidades
           </div>
           <button
@@ -286,23 +286,23 @@ export function AlunoCard({ alunoId }) {
             title="Adicionar modalidade"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22,
-              borderRadius: '7px', border: 'none', backgroundColor: 'rgba(252,200,37,0.12)', color: '#fcc825', cursor: 'pointer',
+              borderRadius: '7px', border: 'none', backgroundColor: 'rgba(165,76,46,0.12)', color: 'var(--color-action-primary)', cursor: 'pointer',
             }}
           >
             <Plus size={14} strokeWidth={2.5} />
           </button>
         </div>
         {aluno.modalidadesDetalhe.length === 0 ? (
-          <div style={{ fontSize: '12px', color: '#444' }}>Nenhuma modalidade matriculada</div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-light-muted)' }}>Nenhuma modalidade matriculada</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {aluno.modalidadesDetalhe.map(m => {
-              const cor = m.cor_hex || '#fcc825'
+              const cor = m.cor_hex || 'var(--color-action-primary)'
               const icone = ICONES_MODALIDADES[m.nome]
               return (
                 <button key={m.id} onClick={() => setModalidadeSel(m)} style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
-                  backgroundColor: '#1a1a1a', border: `1px solid ${cor}33`, borderRadius: '12px',
+                  backgroundColor: 'var(--color-surface-light-raised)', border: `1px solid ${cor}33`, borderRadius: '12px',
                   padding: '12px 14px', cursor: 'pointer', textAlign: 'left', width: '100%',
                 }}>
                   <div style={{
@@ -318,11 +318,11 @@ export function AlunoCard({ alunoId }) {
                     <div style={{ fontSize: '11px', fontWeight: '700', color: cor, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                       {m.nome}
                     </div>
-                    <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600', marginTop: '2px' }}>
+                    <div style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', fontWeight: '600', marginTop: '2px' }}>
                       {m.nivelAtual || 'Nível não definido'}
                     </div>
                   </div>
-                  <ChevronRight size={16} color="#555" />
+                  <ChevronRight size={16} color="var(--color-text-light-secondary)" />
                 </button>
               )
             })}
@@ -340,7 +340,7 @@ export function AlunoCard({ alunoId }) {
 
       {/* Minhas Reposições */}
       <div style={{ marginTop: '20px' }}>
-        <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', fontWeight: '700' }}>
+        <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', fontWeight: '700' }}>
           Minhas Reposições
         </div>
         <PainelReposicoesAluno alunoId={alunoId} alunoNome={aluno.nome} />
@@ -361,8 +361,8 @@ function DadoLinha({ label, valor, placeholder = 'Não informado', mostrarSempre
   const temValor = mostrarSempre || (valor && valor !== '—')
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px' }}>
-      <span style={{ fontSize: '12px', color: '#555', flexShrink: 0 }}>{label}</span>
-      <span style={{ fontSize: '13px', color: temValor ? '#F0F2F5' : '#444', textAlign: 'right' }}>
+      <span style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: '13px', color: temValor ? 'var(--color-text-light-primary)' : 'var(--color-text-light-muted)', textAlign: 'right' }}>
         {temValor ? valor : placeholder}
       </span>
     </div>
@@ -406,13 +406,13 @@ function ModalAdicionarModalidade({ alunoId, modalidadesJaVinculadas, onClose })
       {isLoading ? (
         <Loading />
       ) : disponiveis.length === 0 ? (
-        <div style={{ fontSize: '12px', color: '#444', textAlign: 'center', padding: '12px' }}>
+        <div style={{ fontSize: '12px', color: 'var(--color-text-light-muted)', textAlign: 'center', padding: '12px' }}>
           O aluno já está matriculado em todas as modalidades do clube.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {disponiveis.map(m => {
-            const cor = m.cor_hex || '#fcc825'
+            const cor = m.cor_hex || 'var(--color-action-primary)'
             const icone = ICONES_MODALIDADES[m.nome]
             return (
               <button
@@ -421,7 +421,7 @@ function ModalAdicionarModalidade({ alunoId, modalidadesJaVinculadas, onClose })
                 disabled={!!adicionando}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
-                  backgroundColor: '#111', border: `1px solid ${cor}33`, borderRadius: '12px',
+                  backgroundColor: 'var(--color-surface-light-overlay)', border: `1px solid ${cor}33`, borderRadius: '12px',
                   padding: '12px 14px', cursor: adicionando ? 'default' : 'pointer', textAlign: 'left', width: '100%',
                   opacity: adicionando && adicionando !== m.id ? 0.5 : 1,
                 }}
@@ -435,7 +435,7 @@ function ModalAdicionarModalidade({ alunoId, modalidadesJaVinculadas, onClose })
                     : <Trophy size={15} color={cor} />
                   }
                 </div>
-                <span style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>
+                <span style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', fontWeight: '600' }}>
                   {adicionando === m.id ? 'Adicionando...' : m.nome}
                 </span>
               </button>
@@ -449,7 +449,7 @@ function ModalAdicionarModalidade({ alunoId, modalidadesJaVinculadas, onClose })
 
 function SecaoTitulo({ children }) {
   return (
-    <div style={{ fontSize: '11px', fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+    <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
       {children}
     </div>
   )
@@ -457,7 +457,7 @@ function SecaoTitulo({ children }) {
 
 function CardVazio({ texto }) {
   return (
-    <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: '#111', border: '1px dashed #2a2a2a', textAlign: 'center', fontSize: '12px', color: '#555' }}>
+    <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px dashed var(--color-border-light)', textAlign: 'center', fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
       {texto}
     </div>
   )
@@ -494,9 +494,9 @@ function SecaoProfessoresModalidade({ aluno, modalidadeId, onClose }) {
           return (
             <div key={p.professorId} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '9px 12px', borderRadius: '9px', backgroundColor: '#111', border: '1px solid #2a2a2a',
+              padding: '9px 12px', borderRadius: '9px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
             }}>
-              <span style={{ fontSize: '13px', color: '#F0F2F5' }}>{p.nome}{souEu ? ' (você)' : ''}</span>
+              <span style={{ fontSize: '13px', color: 'var(--color-text-light-primary)' }}>{p.nome}{souEu ? ' (você)' : ''}</span>
               {!souEu && p.userId && (
                 <button
                   onClick={() => handleMensagem(p.userId)}
@@ -505,7 +505,7 @@ function SecaoProfessoresModalidade({ aluno, modalidadeId, onClose }) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '5px',
                     padding: '5px 9px', borderRadius: '7px', border: 'none', cursor: 'pointer',
-                    backgroundColor: 'rgba(255,255,255,0.06)', color: '#888', fontSize: '11px', fontWeight: '600',
+                    backgroundColor: 'rgba(30,43,36,0.06)', color: 'var(--color-text-light-secondary)', fontSize: '11px', fontWeight: '600',
                   }}
                 >
                   <MessageCircle size={12} /> Mensagem
@@ -521,7 +521,7 @@ function SecaoProfessoresModalidade({ aluno, modalidadeId, onClose }) {
 
 function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
   const navigate = useNavigate()
-  const cor = modalidade.cor_hex || '#fcc825'
+  const cor = modalidade.cor_hex || 'var(--color-action-primary)'
 
   const { data: historicoNivel, isLoading: loadingNivel } = useHistoricoNivel(aluno.id, modalidade.id)
   const { data: dimensoes } = useDimensoesModalidade(modalidade.id)
@@ -576,11 +576,11 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
           <div style={{ fontSize: '10px', color: cor, textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700', marginBottom: '6px' }}>
             Nível atual
           </div>
-          <div style={{ fontSize: '22px', fontWeight: '800', color: '#F0F2F5' }}>
+          <div style={{ fontSize: '22px', fontWeight: '800', color: 'var(--color-text-light-primary)' }}>
             {modalidade.nivelAtual || 'Não definido'}
           </div>
           {!modalidade.nivelRegistrado && modalidade.nivelAtual && (
-            <div style={{ fontSize: '11px', color: '#888', marginTop: '6px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '6px' }}>
               (estimado a partir do nível geral do aluno — ainda sem histórico próprio desta modalidade)
             </div>
           )}
@@ -595,7 +595,7 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
             padding: '11px', borderRadius: '10px', border: 'none',
-            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white',
+            background: 'var(--color-action-primary)', color: 'white',
             fontSize: '13px', fontWeight: '600', cursor: 'pointer',
           }}
         >
@@ -619,9 +619,9 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
               {loadingAvaliacoes ? <Loading /> : !ultimaAvaliacao ? (
                 <CardVazio texto="Nenhuma avaliação técnica ainda nesta modalidade" />
               ) : (
-                <div style={{ backgroundColor: '#111', borderRadius: '12px', border: '1px solid #2a2a2a', padding: '10px' }}>
+                <div style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '12px', border: '1px solid var(--color-border-light)', padding: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 10px' }}>
-                    <span style={{ fontSize: '11px', color: '#555' }}>{fmtData(ultimaAvaliacao.data_avaliacao)}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>{fmtData(ultimaAvaliacao.data_avaliacao)}</span>
                     <span style={{ fontSize: '20px', fontWeight: '800', color: cor }}>
                       {ultimaAvaliacao.nota_geral != null ? Number(ultimaAvaliacao.nota_geral).toFixed(1) : '—'}
                     </span>
@@ -629,16 +629,16 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
                   <div style={{ width: '100%', height: 220 }}>
                     <ResponsiveContainer>
                       <RadarChart data={radarData} outerRadius="70%">
-                        <PolarGrid stroke="#2a2a2a" />
-                        <PolarAngleAxis dataKey="dimensao" tick={{ fill: '#888', fontSize: 11 }} />
-                        <PolarRadiusAxis domain={[0, 5]} tick={{ fill: '#444', fontSize: 9 }} axisLine={false} />
+                        <PolarGrid stroke="var(--color-border-light)" />
+                        <PolarAngleAxis dataKey="dimensao" tick={{ fill: 'var(--color-text-light-secondary)', fontSize: 11 }} />
+                        <PolarRadiusAxis domain={[0, 5]} tick={{ fill: 'var(--color-text-light-muted)', fontSize: 9 }} axisLine={false} />
                         <Radar dataKey="valor" stroke={cor} fill={cor} fillOpacity={0.35} strokeWidth={2} />
-                        <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#F0F2F5' }} />
+                        <Tooltip contentStyle={{ backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'var(--color-text-light-primary)' }} />
                       </RadarChart>
                     </ResponsiveContainer>
                   </div>
                   {ultimaAvaliacao.comentario && (
-                    <div style={{ marginTop: '4px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#1a1a1a', fontSize: '12px', color: '#888', fontStyle: 'italic' }}>
+                    <div style={{ marginTop: '4px', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'var(--color-surface-light-raised)', fontSize: '12px', color: 'var(--color-text-light-secondary)', fontStyle: 'italic' }}>
                       "{ultimaAvaliacao.comentario}"
                     </div>
                   )}
@@ -649,13 +649,13 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
             {evolucaoData.length > 1 && (
               <div>
                 <SecaoTitulo>Evolução da nota geral</SecaoTitulo>
-                <div style={{ backgroundColor: '#111', borderRadius: '12px', border: '1px solid #2a2a2a', padding: '10px', width: '100%', height: 160 }}>
+                <div style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '12px', border: '1px solid var(--color-border-light)', padding: '10px', width: '100%', height: 160 }}>
                   <ResponsiveContainer>
                     <LineChart data={evolucaoData} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
-                      <CartesianGrid stroke="#2a2a2a" strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="data" tick={{ fill: '#555', fontSize: 10 }} axisLine={{ stroke: '#2a2a2a' }} tickLine={false} />
-                      <YAxis domain={[0, 5]} tick={{ fill: '#555', fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#F0F2F5' }} />
+                      <CartesianGrid stroke="var(--color-border-light)" strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="data" tick={{ fill: 'var(--color-text-light-secondary)', fontSize: 10 }} axisLine={{ stroke: 'var(--color-border-light)' }} tickLine={false} />
+                      <YAxis domain={[0, 5]} tick={{ fill: 'var(--color-text-light-secondary)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'var(--color-text-light-primary)' }} />
                       <Line type="monotone" dataKey="nota" stroke={cor} strokeWidth={2} dot={{ r: 4, fill: cor }} />
                     </LineChart>
                   </ResponsiveContainer>
@@ -676,10 +676,10 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
                 <div key={h.id} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '10px 12px', borderRadius: '10px',
-                  backgroundColor: '#111', border: i === 0 && h.ativo ? `1px solid ${cor}44` : '1px solid #2a2a2a',
+                  backgroundColor: 'var(--color-surface-light-overlay)', border: i === 0 && h.ativo ? `1px solid ${cor}44` : '1px solid var(--color-border-light)',
                 }}>
-                  <span style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>{h.nivel}</span>
-                  <span style={{ fontSize: '11px', color: '#555' }}>desde {fmtData(h.data_inicio)}</span>
+                  <span style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', fontWeight: '600' }}>{h.nivel}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>desde {fmtData(h.data_inicio)}</span>
                 </div>
               ))}
             </div>
@@ -702,13 +702,13 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
                     onClick={() => setMesSelecionado(grupo.chave)}
                     style={{
                       flexShrink: 0, width: 64, padding: '10px 6px', borderRadius: '10px',
-                      backgroundColor: '#111', border: '1px solid #2a2a2a', cursor: 'pointer', textAlign: 'center',
+                      backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)', cursor: 'pointer', textAlign: 'center',
                     }}
                   >
-                    <div style={{ fontSize: '10px', fontWeight: '700', color: '#888', letterSpacing: '0.4px' }}>{grupo.label}</div>
+                    <div style={{ fontSize: '10px', fontWeight: '700', color: 'var(--color-text-light-secondary)', letterSpacing: '0.4px' }}>{grupo.label}</div>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '6px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '800', color: '#22c55e' }}>{presentes}</span>
-                      <span style={{ fontSize: '13px', fontWeight: '800', color: '#EF4444' }}>{faltas}</span>
+                      <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-state-success)' }}>{presentes}</span>
+                      <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-state-danger)' }}>{faltas}</span>
                     </div>
                   </button>
                 )
@@ -726,12 +726,12 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {reposicoesModalidade.map(r => {
                 const status = calcStatusPorPrazo(r.data_limite)
-                const corStatus = r.status === 'expirada' ? '#555' : r.status === 'agendada' ? '#22c55e' : status.cor
+                const corStatus = r.status === 'expirada' ? 'var(--color-text-light-secondary)' : r.status === 'agendada' ? 'var(--color-state-success)' : status.cor
                 const temDestino = r.status !== 'pendente' && r.aula_reposicao?.data_aula
                 const clicavel = temDestino ? r.aula_reposicao_id : r.aula_origem_id
                 const dataClicavel = temDestino ? r.aula_reposicao.data_aula : r.aula_origem?.data_aula
                 return (
-                  <div key={r.id} style={{ borderRadius: '10px', backgroundColor: '#111', border: '1px solid #2a2a2a', overflow: 'hidden' }}>
+                  <div key={r.id} style={{ borderRadius: '10px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
                     <button
                       onClick={() => abrirAula(dataClicavel, clicavel)}
                       style={{
@@ -746,15 +746,15 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Faltou</div>
-                          <div style={{ color: '#F0F2F5', fontWeight: '600', marginTop: '2px' }}>{fmtData(r.aula_origem?.data_aula)}</div>
+                          <div style={{ fontSize: '9px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Faltou</div>
+                          <div style={{ color: 'var(--color-text-light-primary)', fontWeight: '600', marginTop: '2px' }}>{fmtData(r.aula_origem?.data_aula)}</div>
                         </div>
-                        <span style={{ color: temDestino ? '#22c55e' : '#3b82f6', fontSize: '16px', flexShrink: 0 }}>→</span>
+                        <span style={{ color: temDestino ? 'var(--color-state-success)' : 'var(--color-state-info)', fontSize: '16px', flexShrink: 0 }}>→</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '9px', color: temDestino ? '#22c55e' : '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                          <div style={{ fontSize: '9px', color: temDestino ? 'var(--color-state-success)' : 'var(--color-state-info)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                             {r.status === 'pendente' ? 'Ainda por repor' : 'Repôs em'}
                           </div>
-                          <div style={{ color: '#F0F2F5', fontWeight: '600', marginTop: '2px' }}>
+                          <div style={{ color: 'var(--color-text-light-primary)', fontWeight: '600', marginTop: '2px' }}>
                             {temDestino ? fmtData(r.aula_reposicao.data_aula) : '—'}
                           </div>
                         </div>
@@ -764,8 +764,8 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
                       <button
                         onClick={iniciarAgendamentoReposicao}
                         style={{
-                          width: '100%', padding: '8px', border: 'none', borderTop: '1px solid #2a2a2a',
-                          background: 'rgba(252,200,37,0.08)', color: '#fcc825', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+                          width: '100%', padding: '8px', border: 'none', borderTop: '1px solid var(--color-border-light)',
+                          background: 'rgba(165,76,46,0.08)', color: 'var(--color-action-primary)', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
                         }}
                       >
                         Agendar reposição
@@ -803,24 +803,24 @@ function ModalDetalheMes({ grupo, cor, onClose, onAbrirAula }) {
     <Modal open onClose={onClose} title={grupo.label} size="sm">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {grupo.itens.map(p => {
-          const info = STATUS_PRESENCA_LABEL[p.status_presenca] || { label: p.status_presenca || '—', cor: '#555' }
+          const info = STATUS_PRESENCA_LABEL[p.status_presenca] || { label: p.status_presenca || '—', cor: 'var(--color-text-light-secondary)' }
           return (
             <button
               key={p.id}
               onClick={() => onAbrirAula(p.aulas?.data_aula, p.aulas?.id)}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '9px 10px', borderRadius: '8px', backgroundColor: '#111', border: '1px solid #2a2a2a',
+                padding: '9px 10px', borderRadius: '8px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
                 cursor: 'pointer', textAlign: 'left', width: '100%',
               }}
             >
               <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '9px', fontWeight: '700', color: cor || '#555', width: '22px', flexShrink: 0 }}>
+                <span style={{ fontSize: '9px', fontWeight: '700', color: cor || 'var(--color-text-light-secondary)', width: '22px', flexShrink: 0 }}>
                   {diaSemanaLabel(p.aulas.data_aula)}
                 </span>
-                <span style={{ fontSize: '12px', color: '#888' }}>{p.aulas?.data_aula ? format(new Date(p.aulas.data_aula + 'T12:00'), 'dd/MM/yyyy', { locale: ptBR }) : '—'}</span>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>{p.aulas?.data_aula ? format(new Date(p.aulas.data_aula + 'T12:00'), 'dd/MM/yyyy', { locale: ptBR }) : '—'}</span>
                 {p.tipo_participacao === 'reposicao' && (
-                  <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(59,130,246,0.15)', color: '#3b82f6', fontWeight: '600' }}>
+                  <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(61,107,122,0.15)', color: 'var(--color-state-info)', fontWeight: '600' }}>
                     reposição
                   </span>
                 )}

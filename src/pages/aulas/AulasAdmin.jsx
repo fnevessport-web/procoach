@@ -21,10 +21,10 @@ import toast from 'react-hot-toast'
 import { calcReposicaoStatus } from '../../constants/reposicao'
 
 const TIPOS_PARTICIPACAO = [
-  { value: 'mensalista', label: 'Mensalista', color: '#22c55e' },
-  { value: 'avulso', label: 'Avulso', color: '#fcc825' },
-  { value: 'cortesia', label: 'Cortesia', color: '#cf1b9b' },
-  { value: 'reposicao', label: 'Reposição', color: '#3b82f6' },
+  { value: 'mensalista', label: 'Mensalista', color: 'var(--color-state-success)' },
+  { value: 'avulso', label: 'Avulso', color: 'var(--color-action-primary)' },
+  { value: 'cortesia', label: 'Cortesia', color: 'var(--color-state-warning)' },
+  { value: 'reposicao', label: 'Reposição', color: 'var(--color-state-info)' },
 ]
 
 const NIVEIS_ALUNO = [
@@ -36,13 +36,13 @@ const NIVEIS_ALUNO = [
 
 const inputInline = {
   width: '100%', padding: '8px 12px', borderRadius: '8px',
-  backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
-  color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+  backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)',
+  color: 'var(--color-text-light-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
 }
 
 const toastStyle = {
-  background: '#1a1a1a', color: '#F0F2F5',
-  border: '1px solid rgba(252,200,37,0.3)',
+  background: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
+  border: '1px solid rgba(165,76,46,0.3)',
   borderRadius: '10px', fontSize: '13px',
 }
 
@@ -78,13 +78,13 @@ export function AulasAdmin() {
   return (
     <div className="fade-in">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
+        <h1 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: 0 }}>
           Gestão de Aulas
         </h1>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={() => setModalGerar('copiar')} title="Copiar Grade" style={{
             padding: '8px', borderRadius: '10px', border: 'none',
-            background: 'none', color: '#333', cursor: 'pointer',
+            background: 'none', color: 'var(--color-text-light-muted)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <Copy size={18} />
@@ -92,7 +92,7 @@ export function AulasAdmin() {
           <button onClick={() => setModalGerar('menu')} style={{
             display: 'flex', alignItems: 'center', gap: '6px',
             padding: '8px 14px', borderRadius: '10px', border: 'none',
-            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+            background: 'var(--color-action-primary)',
             color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
           }}>
             <Calendar size={14} /> Gerar Aulas
@@ -102,8 +102,8 @@ export function AulasAdmin() {
 
       <div style={{
         display: 'flex', gap: '3px', marginBottom: '20px',
-        padding: '4px', backgroundColor: '#1a1a1a',
-        border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px',
+        padding: '4px', backgroundColor: 'var(--color-surface-light-raised)',
+        border: '1px solid rgba(30,43,36,0.06)', borderRadius: '12px',
       }}>
         {[
           { key: 'hoje', label: 'Por Dia' },
@@ -112,16 +112,16 @@ export function AulasAdmin() {
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             flex: 1, padding: '7px 4px', borderRadius: '8px', border: 'none',
             fontSize: '12px', fontWeight: '500', cursor: 'pointer',
-            background: tab === t.key ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : 'transparent',
-            color: tab === t.key ? 'white' : '#555', transition: 'all 0.2s',
+            background: tab === t.key ? 'var(--color-action-primary)' : 'transparent',
+            color: tab === t.key ? 'white' : 'var(--color-text-light-secondary)', transition: 'all 0.2s',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
           }}>
             {t.label}
             {t.count > 0 && (
               <span style={{
                 minWidth: '16px', height: '16px', borderRadius: '8px', fontSize: '10px', fontWeight: '700',
-                backgroundColor: tab === t.key ? 'rgba(255,255,255,0.3)' : 'rgba(59,130,246,0.25)',
-                color: tab === t.key ? 'white' : '#3b82f6',
+                backgroundColor: tab === t.key ? 'rgba(30,43,36,0.3)' : 'rgba(61,107,122,0.25)',
+                color: tab === t.key ? 'white' : 'var(--color-state-info)',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px',
               }}>{t.count}</span>
             )}
@@ -140,38 +140,38 @@ export function AulasAdmin() {
           <button onClick={() => setModalGerar('avulsa')} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '16px', borderRadius: '12px', border: 'none',
-            backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
+            backgroundColor: 'var(--color-surface-light-overlay)', outline: '1px solid var(--color-border-light)',
             cursor: 'pointer', textAlign: 'left', width: '100%',
           }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>⚡ Aula Avulsa</div>
-              <div style={{ fontSize: '12px', color: '#555' }}>Uma única aula — sem data de término</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}>⚡ Aula Avulsa</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Uma única aula — sem data de término</div>
             </div>
-            <ChevronRight size={16} color="#555" />
+            <ChevronRight size={16} color="var(--color-text-light-secondary)" />
           </button>
           <button onClick={() => setModalGerar('mensal')} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '16px', borderRadius: '12px', border: 'none',
-            backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
+            backgroundColor: 'var(--color-surface-light-overlay)', outline: '1px solid var(--color-border-light)',
             cursor: 'pointer', textAlign: 'left', width: '100%',
           }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>📅 Aula Mensal / Recorrente</div>
-              <div style={{ fontSize: '12px', color: '#555' }}>Gera aulas de uma turma por período</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}>📅 Aula Mensal / Recorrente</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Gera aulas de uma turma por período</div>
             </div>
-            <ChevronRight size={16} color="#555" />
+            <ChevronRight size={16} color="var(--color-text-light-secondary)" />
           </button>
         </div>
       </Modal>
 
       {/* Menu atalho */}
       <Modal open={modalGerar === 'menu_atalho'} onClose={fecharTudo} title="Nova Aula" size="sm">
-        <div style={{ marginBottom: '14px', padding: '10px 12px', backgroundColor: '#111', borderRadius: '10px', border: '1px solid rgba(252,200,37,0.2)' }}>
-          <div style={{ fontSize: '11px', color: '#fcc825', marginBottom: '4px' }}>⚡ Atalho selecionado</div>
-          <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>
+        <div style={{ marginBottom: '14px', padding: '10px 12px', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', border: '1px solid rgba(165,76,46,0.2)' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-action-primary)', marginBottom: '4px' }}>⚡ Atalho selecionado</div>
+          <div style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', fontWeight: '600' }}>
             {atalho?.quadraNome} · {atalho?.horario}
           </div>
-          <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '2px' }}>
             {atalho?.data && format(new Date(atalho.data + 'T12:00'), "dd/MM/yyyy", { locale: ptBR })}
           </div>
         </div>
@@ -179,26 +179,26 @@ export function AulasAdmin() {
           <button onClick={() => setModalGerar('avulsa_atalho')} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '16px', borderRadius: '12px', border: 'none',
-            backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
+            backgroundColor: 'var(--color-surface-light-overlay)', outline: '1px solid var(--color-border-light)',
             cursor: 'pointer', textAlign: 'left', width: '100%',
           }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>⚡ Aula Avulsa</div>
-              <div style={{ fontSize: '12px', color: '#555' }}>Quadra e horário já preenchidos</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}>⚡ Aula Avulsa</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Quadra e horário já preenchidos</div>
             </div>
-            <ChevronRight size={16} color="#555" />
+            <ChevronRight size={16} color="var(--color-text-light-secondary)" />
           </button>
           <button onClick={() => setModalGerar('mensal')} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '16px', borderRadius: '12px', border: 'none',
-            backgroundColor: '#110f0f', outline: '1px solid #2a2a2a',
+            backgroundColor: 'var(--color-surface-light-overlay)', outline: '1px solid var(--color-border-light)',
             cursor: 'pointer', textAlign: 'left', width: '100%',
           }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', marginBottom: '4px' }}>📅 Aula Mensal / Recorrente</div>
-              <div style={{ fontSize: '12px', color: '#555' }}>Gera aulas de uma turma por período</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}>📅 Aula Mensal / Recorrente</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Gera aulas de uma turma por período</div>
             </div>
-            <ChevronRight size={16} color="#555" />
+            <ChevronRight size={16} color="var(--color-text-light-secondary)" />
           </button>
         </div>
       </Modal>
@@ -334,52 +334,52 @@ function ModalCopiarGrade({ open, onClose }) {
         {resultado !== null ? (
           <div style={{ textAlign: 'center', padding: '16px 0' }}>
             <div style={{ fontSize: '40px', marginBottom: '8px' }}>✅</div>
-            <div style={{ fontWeight: '600', color: '#F0F2F5', marginBottom: '6px' }}>{resultado} aulas copiadas!</div>
-            <div style={{ fontSize: '12px', color: '#555' }}>
+            <div style={{ fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '6px' }}>{resultado} aulas copiadas!</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
               Grade de {format(new Date(dataOrigem + 'T12:00'), "dd/MM", { locale: ptBR })} → {format(new Date(dataDestino + 'T12:00'), "dd/MM", { locale: ptBR })}
             </div>
-            <div style={{ fontSize: '11px', color: '#888', marginTop: '8px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '8px' }}>
               As aulas foram criadas sem presenças. Adicione os alunos clicando em cada aula.
             </div>
             <button onClick={() => { resetar(); onClose() }} style={{
               marginTop: '16px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
-              background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+              background: 'var(--color-action-primary)',
               color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
             }}>Fechar</button>
           </div>
         ) : (
           <>
-            <div style={{ padding: '12px', backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', fontSize: '12px', color: '#555' }}>
+            <div style={{ padding: '12px', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', border: '1px solid var(--color-border-light)', fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
               💡 Copia a estrutura das aulas avulsas (quadra, horário, professor, nível) sem as presenças.
             </div>
 
             <div>
-              <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>Dia de origem (copiar DE)</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '6px' }}>Dia de origem (copiar DE)</div>
               <input type="date" value={dataOrigem} onChange={e => setDataOrigem(e.target.value)} style={{
                 width: '100%', padding: '10px 12px', borderRadius: '10px',
-                backgroundColor: '#111', border: '1px solid #2a2a2a',
-                color: '#F0F2F5', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+                backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
+                color: 'var(--color-text-light-primary)', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
               }} />
               {dataOrigem && (
-                <div style={{ fontSize: '11px', color: '#fcc825', marginTop: '4px', textTransform: 'capitalize' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-action-primary)', marginTop: '4px', textTransform: 'capitalize' }}>
                   {format(new Date(dataOrigem + 'T12:00'), "EEEE, d 'de' MMMM", { locale: ptBR })}
                 </div>
               )}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: '20px', color: '#333' }}>↓</span>
+              <span style={{ fontSize: '20px', color: 'var(--color-text-light-muted)' }}>↓</span>
             </div>
 
             <div>
-              <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>Dia de destino (colar EM)</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '6px' }}>Dia de destino (colar EM)</div>
               <input type="date" value={dataDestino} onChange={e => setDataDestino(e.target.value)} style={{
                 width: '100%', padding: '10px 12px', borderRadius: '10px',
-                backgroundColor: '#111', border: '1px solid rgba(252,200,37,0.3)',
-                color: '#F0F2F5', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+                backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid rgba(165,76,46,0.3)',
+                color: 'var(--color-text-light-primary)', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
               }} />
               {dataDestino && (
-                <div style={{ fontSize: '11px', color: '#fcc825', marginTop: '4px', textTransform: 'capitalize' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-action-primary)', marginTop: '4px', textTransform: 'capitalize' }}>
                   {format(new Date(dataDestino + 'T12:00'), "EEEE, d 'de' MMMM", { locale: ptBR })}
                 </div>
               )}
@@ -387,12 +387,12 @@ function ModalCopiarGrade({ open, onClose }) {
 
             <button onClick={handleCopiar} disabled={copiando || !dataDestino} style={{
               width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
-              background: !dataDestino ? '#1a1a1a' : 'linear-gradient(135deg, #fcc825, #cf1b9b)',
-              color: !dataDestino ? '#555' : 'white',
+              background: !dataDestino ? 'var(--color-surface-light-raised)' : 'var(--color-action-primary)',
+              color: !dataDestino ? 'var(--color-text-light-secondary)' : 'white',
               fontSize: '14px', fontWeight: '600',
               cursor: !dataDestino || copiando ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              outline: !dataDestino ? '1px solid #2a2a2a' : 'none',
+              outline: !dataDestino ? '1px solid var(--color-border-light)' : 'none',
             }}>
               <Copy size={16} />
               {copiando ? 'Copiando...' : 'Copiar Grade'}
@@ -440,9 +440,9 @@ function FiltroDropdown({ label, valor, opcoes, onChange, aberto, onToggle, perm
       <button onClick={onToggle} style={{
         display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap',
         padding: '8px 12px', borderRadius: '8px', border: 'none',
-        backgroundColor: valor ? 'rgba(252,200,37,0.08)' : '#1a1a1a',
-        outline: `1px solid ${valor ? 'rgba(252,200,37,0.3)' : '#2a2a2a'}`,
-        color: valor ? '#fcc825' : '#666', cursor: 'pointer', fontSize: '12px', fontWeight: '500',
+        backgroundColor: valor ? 'rgba(165,76,46,0.08)' : 'var(--color-surface-light-raised)',
+        outline: `1px solid ${valor ? 'rgba(165,76,46,0.3)' : 'var(--color-border-light)'}`,
+        color: valor ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)', cursor: 'pointer', fontSize: '12px', fontWeight: '500',
       }}>
         <span>{labelAtual}</span>
         <span style={{ fontSize: '8px', opacity: 0.6 }}>▾</span>
@@ -452,7 +452,7 @@ function FiltroDropdown({ label, valor, opcoes, onChange, aberto, onToggle, perm
           <div onClick={onToggle} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
           <div style={{
             position: 'absolute', left: 0, top: 'calc(100% + 4px)', zIndex: 20,
-            backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: '10px',
+            backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)', borderRadius: '10px',
             padding: '6px', minWidth: '160px', maxHeight: '260px', overflowY: 'auto',
             boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
           }}>
@@ -461,8 +461,8 @@ function FiltroDropdown({ label, valor, opcoes, onChange, aberto, onToggle, perm
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
                 cursor: 'pointer', fontSize: '13px', textAlign: 'left',
-                backgroundColor: !valor ? 'rgba(252,200,37,0.08)' : 'transparent',
-                color: !valor ? '#fcc825' : '#888',
+                backgroundColor: !valor ? 'rgba(165,76,46,0.08)' : 'transparent',
+                color: !valor ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)',
               }}>
                 Todas {!valor && '✓'}
               </button>
@@ -472,8 +472,8 @@ function FiltroDropdown({ label, valor, opcoes, onChange, aberto, onToggle, perm
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 width: '100%', padding: '8px 10px', border: 'none', borderRadius: '6px',
                 cursor: 'pointer', fontSize: '13px', textAlign: 'left',
-                backgroundColor: valor === op.value ? 'rgba(252,200,37,0.08)' : 'transparent',
-                color: valor === op.value ? '#fcc825' : '#888',
+                backgroundColor: valor === op.value ? 'rgba(165,76,46,0.08)' : 'transparent',
+                color: valor === op.value ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)',
               }}>
                 {op.label} {valor === op.value && '✓'}
               </button>
@@ -536,21 +536,21 @@ function AulasReposicoes() {
     <div>
       {/* Resumo geral */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
-        <div style={{ backgroundColor: '#151515', border: '1px solid #2a2a2a', borderRadius: '12px', padding: '12px 14px' }}>
-          <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Aulas p/ repor</div>
-          <div style={{ fontSize: '22px', fontWeight: '700', color: '#3b82f6' }}>{totalAPor}</div>
+        <div style={{ backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)', borderRadius: '12px', padding: '12px 14px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginBottom: '4px' }}>Aulas p/ repor</div>
+          <div style={{ fontSize: '22px', fontWeight: '700', color: 'var(--color-state-info)' }}>{totalAPor}</div>
         </div>
-        <div style={{ backgroundColor: '#151515', border: '1px solid #2a2a2a', borderRadius: '12px', padding: '12px 14px' }}>
-          <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px' }}>Alunos repostos</div>
-          <div style={{ fontSize: '22px', fontWeight: '700', color: '#22c55e' }}>{totalAlunosRepostos}</div>
+        <div style={{ backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)', borderRadius: '12px', padding: '12px 14px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginBottom: '4px' }}>Alunos repostos</div>
+          <div style={{ fontSize: '22px', fontWeight: '700', color: 'var(--color-state-success)' }}>{totalAlunosRepostos}</div>
         </div>
       </div>
 
       {/* Sub-tabs: Pendentes / Repostas */}
       <div style={{
         display: 'flex', gap: '3px', marginBottom: '12px',
-        padding: '4px', backgroundColor: '#1a1a1a',
-        border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px',
+        padding: '4px', backgroundColor: 'var(--color-surface-light-raised)',
+        border: '1px solid rgba(30,43,36,0.06)', borderRadius: '10px',
       }}>
         {[
           { key: 'pendentes', label: 'Pendentes' },
@@ -559,8 +559,8 @@ function AulasReposicoes() {
           <button key={t.key} onClick={() => setViewTab(t.key)} style={{
             flex: 1, padding: '7px 4px', borderRadius: '7px', border: 'none',
             fontSize: '12px', fontWeight: '500', cursor: 'pointer',
-            background: viewTab === t.key ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : 'transparent',
-            color: viewTab === t.key ? 'white' : '#555', transition: 'all 0.2s',
+            background: viewTab === t.key ? 'var(--color-action-primary)' : 'transparent',
+            color: viewTab === t.key ? 'white' : 'var(--color-text-light-secondary)', transition: 'all 0.2s',
           }}>
             {t.label}
           </button>
@@ -576,8 +576,8 @@ function AulasReposicoes() {
           onChange={e => setBusca(e.target.value)}
           style={{
             width: '100%', padding: '9px 14px', borderRadius: '8px', border: 'none',
-            outline: '1px solid #2a2a2a', backgroundColor: '#1a1a1a',
-            color: '#F0F2F5', fontSize: '13px', boxSizing: 'border-box',
+            outline: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)',
+            color: 'var(--color-text-light-primary)', fontSize: '13px', boxSizing: 'border-box',
           }}
         />
       </div>
@@ -606,7 +606,7 @@ function AulasReposicoes() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {lista.map(aluno => {
-            const cor = aluno.modalidade?.cor_hex || '#555'
+            const cor = aluno.modalidade?.cor_hex || 'var(--color-text-light-secondary)'
             const statusUrgente = aluno.pendentes.length > 0
               ? calcReposicaoStatus(aluno.pendentes.reduce((w, f) => {
                   const sw = calcReposicaoStatus(w.dataAula), sf = calcReposicaoStatus(f.dataAula)
@@ -616,7 +616,7 @@ function AulasReposicoes() {
             return (
               <button key={aluno.id} onClick={() => setAlunoSel(aluno)} style={{
                 display: 'flex', flexDirection: 'column',
-                backgroundColor: '#151515', border: '1px solid #2a2a2a', borderRadius: '12px',
+                backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)', borderRadius: '12px',
                 padding: '12px 14px', cursor: 'pointer', textAlign: 'left', width: '100%',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -634,32 +634,32 @@ function AulasReposicoes() {
                   {/* Badge contagem */}
                   <div style={{
                     minWidth: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-                    backgroundColor: viewTab === 'repostas' ? 'rgba(34,197,94,0.15)' : aluno.pendentes.length > 0 ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.1)',
-                    border: `1px solid ${viewTab === 'repostas' ? 'rgba(34,197,94,0.35)' : aluno.pendentes.length > 0 ? 'rgba(59,130,246,0.35)' : 'rgba(34,197,94,0.3)'}`,
+                    backgroundColor: viewTab === 'repostas' ? 'rgba(75,139,106,0.15)' : aluno.pendentes.length > 0 ? 'rgba(61,107,122,0.15)' : 'rgba(75,139,106,0.1)',
+                    border: `1px solid ${viewTab === 'repostas' ? 'rgba(75,139,106,0.35)' : aluno.pendentes.length > 0 ? 'rgba(61,107,122,0.35)' : 'rgba(75,139,106,0.3)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '12px', fontWeight: '700', color: viewTab === 'repostas' ? '#22c55e' : aluno.pendentes.length > 0 ? '#3b82f6' : '#22c55e',
+                    fontSize: '12px', fontWeight: '700', color: viewTab === 'repostas' ? 'var(--color-state-success)' : aluno.pendentes.length > 0 ? 'var(--color-state-info)' : 'var(--color-state-success)',
                   }}>
                     {viewTab === 'repostas' ? aluno.repostas.length : (aluno.pendentes.length > 0 ? aluno.pendentes.length : '✓')}
                   </div>
                   {/* Nome + nível */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5' }}>{aluno.nome}</div>
-                    <div style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>{aluno.nome}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-light-muted)', marginTop: '2px' }}>
                       {aluno.nivel || '-'}
-                      {viewTab === 'pendentes' && aluno.agendadas.length > 0 && <span style={{ color: '#22c55e', marginLeft: '8px' }}>✓ {aluno.agendadas.length} agendada{aluno.agendadas.length !== 1 ? 's' : ''}</span>}
-                      {viewTab === 'repostas' && aluno.pendentes.length > 0 && <span style={{ color: '#3b82f6', marginLeft: '8px' }}>{aluno.pendentes.length} ainda pendente{aluno.pendentes.length !== 1 ? 's' : ''}</span>}
+                      {viewTab === 'pendentes' && aluno.agendadas.length > 0 && <span style={{ color: 'var(--color-state-success)', marginLeft: '8px' }}>✓ {aluno.agendadas.length} agendada{aluno.agendadas.length !== 1 ? 's' : ''}</span>}
+                      {viewTab === 'repostas' && aluno.pendentes.length > 0 && <span style={{ color: 'var(--color-state-info)', marginLeft: '8px' }}>{aluno.pendentes.length} ainda pendente{aluno.pendentes.length !== 1 ? 's' : ''}</span>}
                     </div>
                   </div>
                 </div>
 
                 {/* Barra de prazo mais urgente */}
                 {viewTab === 'pendentes' && statusUrgente && aluno.pendentes.length > 0 && (
-                  <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #1e1e1e' }}>
+                  <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--color-border-light-subtle)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '4px' }}>
-                      <span style={{ color: '#444' }}>Prazo mais urgente</span>
+                      <span style={{ color: 'var(--color-text-light-muted)' }}>Prazo mais urgente</span>
                       <span style={{ color: statusUrgente.cor, fontWeight: '600' }}>{statusUrgente.label}</span>
                     </div>
-                    <div style={{ height: '3px', backgroundColor: '#0e0e0e', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ height: '3px', backgroundColor: 'var(--color-border-light-subtle)', borderRadius: '2px', overflow: 'hidden' }}>
                       <div style={{ width: `${statusUrgente.progresso}%`, height: '100%', backgroundColor: statusUrgente.cor, borderRadius: '2px' }} />
                     </div>
                   </div>
@@ -669,8 +669,8 @@ function AulasReposicoes() {
           })}
           {capativa && (
             <button onClick={() => setVerTodos(true)} style={{
-              padding: '10px', borderRadius: '10px', border: '1px dashed #2a2a2a', background: 'none',
-              color: '#888', fontSize: '12px', cursor: 'pointer',
+              padding: '10px', borderRadius: '10px', border: '1px dashed var(--color-border-light)', background: 'none',
+              color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer',
             }}>
               + {filtrada.length - LIMITE_LISTA} aluno{filtrada.length - LIMITE_LISTA !== 1 ? 's' : ''} — buscar pelo nome ou ver todos
             </button>
@@ -692,26 +692,26 @@ function CardFaltaPendente({ item, destaque, onClick }) {
   return (
     <Tag onClick={onClick} style={{
       padding: '12px 14px', borderRadius: '12px', width: '100%', textAlign: 'left',
-      backgroundColor: '#111', outline: destaque ? `1px solid ${status.cor}66` : '1px solid #2a2a2a',
+      backgroundColor: 'var(--color-surface-light-overlay)', outline: destaque ? `1px solid ${status.cor}66` : '1px solid var(--color-border-light)',
       border: 'none', cursor: onClick ? 'pointer' : 'default', display: 'block',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>
+        <div style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', fontWeight: '600' }}>
           {item.dataAula ? format(new Date(item.dataAula + 'T12:00'), "dd/MM/yyyy · EEEE", { locale: ptBR }) : 'Data desconhecida'}
         </div>
         {destaque && (
-          <span style={{ fontSize: '9px', fontWeight: '700', color: '#fcc825', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+          <span style={{ fontSize: '9px', fontWeight: '700', color: 'var(--color-action-primary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
             próxima a baixar {onClick && '· toque pra agendar'}
           </span>
         )}
       </div>
-      <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{item.turmaNome || 'Individual'}</div>
+      <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '2px' }}>{item.turmaNome || 'Individual'}</div>
       <div style={{ marginTop: '8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '4px' }}>
-          <span style={{ color: '#444' }}>Prazo: {item.dataAula ? format(new Date(new Date(item.dataAula + 'T12:00').getTime() + 60 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy', { locale: ptBR }) : '-'}</span>
+          <span style={{ color: 'var(--color-text-light-muted)' }}>Prazo: {item.dataAula ? format(new Date(new Date(item.dataAula + 'T12:00').getTime() + 60 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy', { locale: ptBR }) : '-'}</span>
           <span style={{ color: status.cor, fontWeight: '600' }}>{status.label}</span>
         </div>
-        <div style={{ height: '3px', backgroundColor: '#1a1a1a', borderRadius: '2px', overflow: 'hidden' }}>
+        <div style={{ height: '3px', backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '2px', overflow: 'hidden' }}>
           <div style={{ width: `${status.progresso}%`, height: '100%', backgroundColor: status.cor, borderRadius: '2px' }} />
         </div>
       </div>
@@ -723,20 +723,20 @@ function CardFaltaPendente({ item, destaque, onClick }) {
 function CardReposicaoPar({ item, concluida }) {
   const destino = item.reposicao?.aula_reposicao
   return (
-    <div style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: '#111', outline: '1px solid #2a2a2a' }}>
+    <div style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: 'var(--color-surface-light-overlay)', outline: '1px solid var(--color-border-light)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Faltou</div>
-          <div style={{ color: '#F0F2F5', fontWeight: '600', marginTop: '2px' }}>{fmtData(item.dataAula)}</div>
-          <div style={{ color: '#555', fontSize: '11px', marginTop: '1px' }}>{item.turmaNome || 'Individual'}</div>
+          <div style={{ fontSize: '9px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Faltou</div>
+          <div style={{ color: 'var(--color-text-light-primary)', fontWeight: '600', marginTop: '2px' }}>{fmtData(item.dataAula)}</div>
+          <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '11px', marginTop: '1px' }}>{item.turmaNome || 'Individual'}</div>
         </div>
-        <span style={{ color: concluida ? '#22c55e' : '#3b82f6', fontSize: '16px', flexShrink: 0 }}>→</span>
+        <span style={{ color: concluida ? 'var(--color-state-success)' : 'var(--color-state-info)', fontSize: '16px', flexShrink: 0 }}>→</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '9px', color: concluida ? '#22c55e' : '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+          <div style={{ fontSize: '9px', color: concluida ? 'var(--color-state-success)' : 'var(--color-state-info)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
             {concluida ? 'Repôs em' : 'Vai repor em'}
           </div>
-          <div style={{ color: '#F0F2F5', fontWeight: '600', marginTop: '2px' }}>{fmtData(destino?.data_aula)}</div>
-          <div style={{ color: '#555', fontSize: '11px', marginTop: '1px' }}>{destino?.turmas?.nome || destino?.turmas?.quadras?.nome || '—'}</div>
+          <div style={{ color: 'var(--color-text-light-primary)', fontWeight: '600', marginTop: '2px' }}>{fmtData(destino?.data_aula)}</div>
+          <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '11px', marginTop: '1px' }}>{destino?.turmas?.nome || destino?.turmas?.quadras?.nome || '—'}</div>
         </div>
       </div>
     </div>
@@ -765,7 +765,7 @@ function ModalReposicao({ aluno, onClose }) {
   return (
     <Modal open onClose={onClose} title={aluno.nome} size="md">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <div style={{ fontSize: '12px', color: '#888' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
             {aluno.pendentes.length} p/ repor · {aluno.agendadas.length} agendada{aluno.agendadas.length !== 1 ? 's' : ''} · {aluno.repostas.length} reposta{aluno.repostas.length !== 1 ? 's' : ''}
             {aluno.modalidade ? ` · ${aluno.modalidade.nome}` : ''}
           </div>
@@ -776,7 +776,7 @@ function ModalReposicao({ aluno, onClose }) {
 
           {aluno.pendentes.length > 0 && (
             <div>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-state-info)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
                 Pendentes
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -790,7 +790,7 @@ function ModalReposicao({ aluno, onClose }) {
 
           {aluno.agendadas.length > 0 && (
             <div>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-state-info)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
                 Agendadas
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -801,7 +801,7 @@ function ModalReposicao({ aluno, onClose }) {
 
           {aluno.repostas.length > 0 && (
             <div>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-state-success)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
                 Repostas
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -813,7 +813,7 @@ function ModalReposicao({ aluno, onClose }) {
           {aluno.pendentes.length > 0 && (
             <button onClick={() => setMostrarGrade(true)} style={{
               width: '100%', padding: '13px', borderRadius: '12px', border: 'none',
-              background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+              background: 'var(--color-action-primary)',
               color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
             }}>
               + Agendar reposição — baixa {fmtData(proximaFalta?.dataAula)}
@@ -857,10 +857,10 @@ function ModalGerarAulas({ open, onClose }) {
         {resultado !== null ? (
           <div style={{ textAlign: 'center', padding: '16px 0' }}>
             <div style={{ fontSize: '40px', marginBottom: '8px' }}>✅</div>
-            <div style={{ fontWeight: '600', color: '#F0F2F5' }}>{resultado} aulas geradas!</div>
+            <div style={{ fontWeight: '600', color: 'var(--color-text-light-primary)' }}>{resultado} aulas geradas!</div>
             <button onClick={() => { onClose(); setResultado(null) }} style={{
               marginTop: '16px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
-              background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+              background: 'var(--color-action-primary)',
               color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
             }}>Fechar</button>
           </div>
@@ -881,7 +881,7 @@ function ModalGerarAulas({ open, onClose }) {
               onChange={e => setForm(f => ({ ...f, data_fim: e.target.value }))} />
             <button onClick={handleGerar} disabled={gerar.isPending || !form.turma_id} style={{
               width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
-              background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+              background: 'var(--color-action-primary)',
               color: 'white', fontSize: '14px', fontWeight: '600',
               cursor: !form.turma_id ? 'not-allowed' : 'pointer',
               opacity: !form.turma_id ? 0.6 : 1,
@@ -1173,29 +1173,29 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
           })
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ padding: '10px 14px', backgroundColor: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: '10px', fontSize: '12px', color: '#22c55e' }}>
+              <div style={{ padding: '10px 14px', backgroundColor: 'rgba(75,139,106,0.08)', border: '1px solid rgba(75,139,106,0.25)', borderRadius: '10px', fontSize: '12px', color: 'var(--color-state-success)' }}>
                 <div style={{ fontWeight: '600', marginBottom: '4px' }}>✓ Aula criada em {format(new Date(aulaOrigem.dataOrigem + 'T12:00:00'), "dd/MM", { locale: ptBR })}</div>
-                <div style={{ color: '#888' }}>{aulaOrigem.quadraNome} · {aulaOrigem.horario}{aulaOrigem.nivelNome ? ' · ' + aulaOrigem.nivelNome : ''} · {aulaOrigem.alunos.length} aluno(s)</div>
+                <div style={{ color: 'var(--color-text-light-secondary)' }}>{aulaOrigem.quadraNome} · {aulaOrigem.horario}{aulaOrigem.nivelNome ? ' · ' + aulaOrigem.nivelNome : ''} · {aulaOrigem.alunos.length} aluno(s)</div>
               </div>
 
-              <div style={{ fontSize: '13px', color: '#ccc', fontWeight: '500' }}>Selecione os dias para replicar:</div>
+              <div style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)', fontWeight: '500' }}>Selecione os dias para replicar:</div>
 
               {/* Calendário */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <button onClick={() => setMesCalendario(m => addMonths(m, -1))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px' }}>
+                  <button onClick={() => setMesCalendario(m => addMonths(m, -1))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light-secondary)', padding: '4px' }}>
                     <ChevronLeft size={16} />
                   </button>
-                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#ccc', textTransform: 'capitalize' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text-light-secondary)', textTransform: 'capitalize' }}>
                     {format(mesCalendario, 'MMMM yyyy', { locale: ptBR })}
                   </span>
-                  <button onClick={() => setMesCalendario(m => addMonths(m, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px' }}>
+                  <button onClick={() => setMesCalendario(m => addMonths(m, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light-secondary)', padding: '4px' }}>
                     <ChevronRight size={16} />
                   </button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px', textAlign: 'center' }}>
                   {['D','S','T','Q','Q','S','S'].map((d, i) => (
-                    <div key={i} style={{ fontSize: '10px', color: '#444', paddingBottom: '4px', fontWeight: '600' }}>{d}</div>
+                    <div key={i} style={{ fontSize: '10px', color: 'var(--color-text-light-muted)', paddingBottom: '4px', fontWeight: '600' }}>{d}</div>
                   ))}
                   {cells.map((ds, i) => {
                     if (!ds) return <div key={i} />
@@ -1211,11 +1211,11 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
                           aspectRatio: '1', borderRadius: '8px', border: 'none',
                           fontSize: '11px', fontWeight: isSel || isOrigem ? '700' : '400',
                           cursor: isOrigem ? 'default' : 'pointer',
-                          background: isOrigem ? 'rgba(252,200,37,0.15)'
-                            : isSel ? 'linear-gradient(135deg,#fcc825,#cf1b9b)'
+                          background: isOrigem ? 'rgba(165,76,46,0.15)'
+                            : isSel ? 'var(--color-action-primary)'
                             : 'transparent',
-                          color: isOrigem ? '#fcc825' : isSel ? 'white' : isHoje ? '#fcc825' : '#888',
-                          outline: isHoje && !isSel && !isOrigem ? '1px solid rgba(252,200,37,0.3)' : 'none',
+                          color: isOrigem ? 'var(--color-action-primary)' : isSel ? 'white' : isHoje ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)',
+                          outline: isHoje && !isSel && !isOrigem ? '1px solid rgba(165,76,46,0.3)' : 'none',
                         }}
                       >
                         {parseInt(ds.split('-')[2])}
@@ -1226,7 +1226,7 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
               </div>
 
               {datasSelecionadas.size > 0 && (
-                <div style={{ fontSize: '11px', color: '#888', textAlign: 'center' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', textAlign: 'center' }}>
                   {datasSelecionadas.size} dia(s) selecionado(s)
                 </div>
               )}
@@ -1236,8 +1236,8 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
                 disabled={datasSelecionadas.size === 0 || replicando}
                 style={{
                   width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
-                  background: datasSelecionadas.size > 0 ? 'linear-gradient(135deg,#fcc825,#cf1b9b)' : '#222',
-                  color: datasSelecionadas.size > 0 ? 'white' : '#444',
+                  background: datasSelecionadas.size > 0 ? 'var(--color-action-primary)' : 'var(--color-surface-light-raised)',
+                  color: datasSelecionadas.size > 0 ? 'white' : 'var(--color-text-light-muted)',
                   fontSize: '14px', fontWeight: '600',
                   cursor: datasSelecionadas.size > 0 ? 'pointer' : 'not-allowed',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
@@ -1247,7 +1247,7 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
                 {replicando ? 'Replicando...' : `Replicar em ${datasSelecionadas.size || '—'} dia(s)`}
               </button>
 
-              <button onClick={() => { resetTudo(); onClose() }} style={{ background: 'none', border: 'none', color: '#555', fontSize: '12px', cursor: 'pointer', textAlign: 'center' }}>
+              <button onClick={() => { resetTudo(); onClose() }} style={{ background: 'none', border: 'none', color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer', textAlign: 'center' }}>
                 Não, finalizar sem replicar
               </button>
             </div>
@@ -1258,7 +1258,7 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
         {step === 'form' && <>
 
         {atalho && (
-          <div style={{ padding: '8px 12px', backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.2)', borderRadius: '8px', fontSize: '12px', color: '#fcc825' }}>
+          <div style={{ padding: '8px 12px', backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.2)', borderRadius: '8px', fontSize: '12px', color: 'var(--color-action-primary)' }}>
             ⚡ Atalho: <strong>{atalho.quadraNome}</strong> · <strong>{atalho.horario}</strong>
           </div>
         )}
@@ -1285,30 +1285,30 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
         </Select>
 
         <div>
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Nível da Aula (opcional)</div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '8px' }}>Nível da Aula (opcional)</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {niveis?.map(n => (
               <button key={n.id} onClick={() => setForm(f => ({ ...f, nivel_id: f.nivel_id === n.id ? '' : n.id }))} style={{
                 padding: '6px 12px', borderRadius: '8px', border: 'none', fontSize: '12px',
-                background: form.nivel_id === n.id ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#110f0f',
-                outline: form.nivel_id === n.id ? 'none' : '1px solid #2a2a2a',
-                color: form.nivel_id === n.id ? 'white' : '#888', cursor: 'pointer',
+                background: form.nivel_id === n.id ? 'var(--color-action-primary)' : 'var(--color-surface-light-overlay)',
+                outline: form.nivel_id === n.id ? 'none' : '1px solid var(--color-border-light)',
+                color: form.nivel_id === n.id ? 'white' : 'var(--color-text-light-secondary)', cursor: 'pointer',
               }}>{n.nome}</button>
             ))}
           </div>
         </div>
 
         <div>
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Alunos ({alunos.length})</div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '8px' }}>Alunos ({alunos.length})</div>
           {alunos.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
               {alunos.map(al => (
-                <div key={al.aluno_id} style={{ backgroundColor: '#110f0f', borderRadius: '10px', padding: '10px 12px', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', color: '#F0F2F5', flex: 1 }}>{al.nome}</span>
-                  <select value={al.tipo} onChange={e => updateTipoAluno(al.aluno_id, e.target.value)} style={{ fontSize: '11px', padding: '3px 6px', borderRadius: '6px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', color: TIPOS_PARTICIPACAO.find(t => t.value === al.tipo)?.color || '#888', cursor: 'pointer', outline: 'none' }}>
+                <div key={al.aluno_id} style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', padding: '10px 12px', border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', flex: 1 }}>{al.nome}</span>
+                  <select value={al.tipo} onChange={e => updateTipoAluno(al.aluno_id, e.target.value)} style={{ fontSize: '11px', padding: '3px 6px', borderRadius: '6px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)', color: TIPOS_PARTICIPACAO.find(t => t.value === al.tipo)?.color || 'var(--color-text-light-secondary)', cursor: 'pointer', outline: 'none' }}>
                     {TIPOS_PARTICIPACAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
-                  <button onClick={() => removerAluno(al.aluno_id)} style={{ padding: '4px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer' }}><X size={12} /></button>
+                  <button onClick={() => removerAluno(al.aluno_id)} style={{ padding: '4px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(180,71,47,0.1)', color: 'var(--color-state-danger)', cursor: 'pointer' }}><X size={12} /></button>
                 </div>
               ))}
             </div>
@@ -1316,14 +1316,14 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
 
           <div style={{ position: 'relative', marginBottom: '8px' }}>
             <input placeholder="Buscar aluno para adicionar..." value={buscaAluno} onChange={e => setBuscaAluno(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#110f0f', border: '1px solid #2a2a2a', color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
-              onFocus={e => e.target.style.borderColor = '#fcc825'}
-              onBlur={e => e.target.style.borderColor = '#2a2a2a'} />
+              style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)', color: 'var(--color-text-light-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+              onFocus={e => e.target.style.borderColor = 'var(--color-action-primary)'}
+              onBlur={e => e.target.style.borderColor = 'var(--color-border-light)'} />
             {alunosFiltrados.length > 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '10px', marginTop: '4px', maxHeight: '160px', overflowY: 'auto' }}>
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)', borderRadius: '10px', marginTop: '4px', maxHeight: '160px', overflowY: 'auto' }}>
                 {alunosFiltrados.map(a => (
-                  <button key={a.id} onClick={() => adicionarAluno(a)} style={{ width: '100%', padding: '10px 12px', border: 'none', background: 'none', color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer', borderBottom: '1px solid #2a2a2a' }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2a2a2a'}
+                  <button key={a.id} onClick={() => adicionarAluno(a)} style={{ width: '100%', padding: '10px 12px', border: 'none', background: 'none', color: 'var(--color-text-light-primary)', fontSize: '13px', textAlign: 'left', cursor: 'pointer', borderBottom: '1px solid var(--color-border-light)' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-border-light)'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                   >{a.nome}</button>
                 ))}
@@ -1332,23 +1332,23 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
           </div>
 
           {!novoAluno.show ? (
-            <button onClick={() => setNovoAluno(n => ({ ...n, show: true }))} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px dashed #2a2a2a', background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            <button onClick={() => setNovoAluno(n => ({ ...n, show: true }))} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px dashed var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
               <UserPlus size={13} /> Cadastrar novo aluno
             </button>
           ) : (
-            <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#110f0f', border: '1px solid rgba(252,200,37,0.2)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#fcc825' }}>👤 Novo Aluno</div>
+            <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid rgba(165,76,46,0.2)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-action-primary)' }}>👤 Novo Aluno</div>
               <div style={{ position: 'relative' }}>
                 <input placeholder="Nome completo *" value={novoAluno.nome} onChange={e => setNovoAluno(n => ({ ...n, nome: e.target.value }))} style={inputInline} />
                 {sugestoesNome.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, backgroundColor: '#1a1a1a', border: '1px solid rgba(252,200,37,0.4)', borderRadius: '10px', marginTop: '4px', maxHeight: '150px', overflowY: 'auto' }}>
-                    <div style={{ fontSize: '10px', color: '#fcc825', padding: '6px 12px 4px', borderBottom: '1px solid #2a2a2a' }}>⚠️ Já cadastrado — clique para adicionar direto</div>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid rgba(165,76,46,0.4)', borderRadius: '10px', marginTop: '4px', maxHeight: '150px', overflowY: 'auto' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--color-action-primary)', padding: '6px 12px 4px', borderBottom: '1px solid var(--color-border-light)' }}>⚠️ Já cadastrado — clique para adicionar direto</div>
                     {sugestoesNome.map(a => (
-                      <button key={a.id} onClick={() => { adicionarAluno(a, 'avulso'); resetNovoAluno() }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2a2a2a'}
+                      <button key={a.id} onClick={() => { adicionarAluno(a, 'avulso'); resetNovoAluno() }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', color: 'var(--color-text-light-primary)', fontSize: '13px', textAlign: 'left', cursor: 'pointer', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-border-light)'}
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                         <span>{a.nome}</span>
-                        {a.nivel && <span style={{ fontSize: '10px', color: '#cf1b9b' }}>{a.nivel}</span>}
+                        {a.nivel && <span style={{ fontSize: '10px', color: 'var(--color-state-info)' }}>{a.nivel}</span>}
                       </button>
                     ))}
                   </div>
@@ -1356,24 +1356,24 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
               </div>
               <input placeholder="Telefone (WhatsApp)" value={novoAluno.telefone} onChange={e => setNovoAluno(n => ({ ...n, telefone: e.target.value }))} style={inputInline} />
               <div>
-                <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Nível do Aluno (opcional)</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginBottom: '6px' }}>Nível do Aluno (opcional)</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                   {NIVEIS_ALUNO.map(n => (
-                    <button key={n} onClick={() => setNovoAluno(na => ({ ...na, nivel: na.nivel === n ? '' : n }))} style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', fontSize: '11px', background: novoAluno.nivel === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a', outline: novoAluno.nivel === n ? 'none' : '1px solid #2a2a2a', color: novoAluno.nivel === n ? 'white' : '#888', cursor: 'pointer' }}>{n}</button>
+                    <button key={n} onClick={() => setNovoAluno(na => ({ ...na, nivel: na.nivel === n ? '' : n }))} style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', fontSize: '11px', background: novoAluno.nivel === n ? 'var(--color-action-primary)' : 'var(--color-surface-light-raised)', outline: novoAluno.nivel === n ? 'none' : '1px solid var(--color-border-light)', color: novoAluno.nivel === n ? 'white' : 'var(--color-text-light-secondary)', cursor: 'pointer' }}>{n}</button>
                   ))}
                 </div>
               </div>
-              <button onClick={() => setNovoAluno(n => ({ ...n, menor_idade: !n.menor_idade }))} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '8px', border: 'none', background: novoAluno.menor_idade ? 'rgba(252,200,37,0.1)' : '#1a1a1a', outline: novoAluno.menor_idade ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a', color: novoAluno.menor_idade ? '#fcc825' : '#888', cursor: 'pointer', width: '100%', textAlign: 'left', fontSize: '12px' }}>
+              <button onClick={() => setNovoAluno(n => ({ ...n, menor_idade: !n.menor_idade }))} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '8px', border: 'none', background: novoAluno.menor_idade ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-raised)', outline: novoAluno.menor_idade ? '1px solid rgba(165,76,46,0.4)' : '1px solid var(--color-border-light)', color: novoAluno.menor_idade ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)', cursor: 'pointer', width: '100%', textAlign: 'left', fontSize: '12px' }}>
                 <span>{novoAluno.menor_idade ? '✓' : '○'}</span><span>Menor de idade</span>
               </button>
               {novoAluno.menor_idade && (
                 <input placeholder="Nome do responsável *" value={novoAluno.nome_responsavel} onChange={e => setNovoAluno(n => ({ ...n, nome_responsavel: e.target.value }))} style={inputInline} />
               )}
               <div>
-                <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>Modalidades</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginBottom: '6px' }}>Modalidades</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                   {modalidades?.map(m => (
-                    <button key={m.id} onClick={() => toggleModalidadeNovoAluno(m.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', borderRadius: '8px', border: 'none', background: novoAluno.modalidades_ids.includes(m.id) ? 'rgba(252,200,37,0.1)' : '#1a1a1a', outline: novoAluno.modalidades_ids.includes(m.id) ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a', color: novoAluno.modalidades_ids.includes(m.id) ? '#fcc825' : '#888', cursor: 'pointer', fontSize: '12px', width: '100%' }}>
+                    <button key={m.id} onClick={() => toggleModalidadeNovoAluno(m.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', borderRadius: '8px', border: 'none', background: novoAluno.modalidades_ids.includes(m.id) ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-raised)', outline: novoAluno.modalidades_ids.includes(m.id) ? '1px solid rgba(165,76,46,0.4)' : '1px solid var(--color-border-light)', color: novoAluno.modalidades_ids.includes(m.id) ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)', cursor: 'pointer', fontSize: '12px', width: '100%' }}>
                       <span>{m.nome}</span>
                       <span>{novoAluno.modalidades_ids.includes(m.id) ? '✓' : '+'}</span>
                     </button>
@@ -1381,8 +1381,8 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={resetNovoAluno} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#888', fontSize: '12px', cursor: 'pointer' }}>Cancelar</button>
-                <button onClick={handleCadastrarAluno} disabled={salvarAluno.isPending} style={{ flex: 2, padding: '8px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
+                <button onClick={resetNovoAluno} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={handleCadastrarAluno} disabled={salvarAluno.isPending} style={{ flex: 2, padding: '8px', borderRadius: '8px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
                   {salvarAluno.isPending ? 'Salvando...' : '✓ Cadastrar e Adicionar'}
                 </button>
               </div>
@@ -1390,7 +1390,7 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
           )}
         </div>
 
-        <button onClick={handleSalvar} disabled={salvando} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '14px', fontWeight: '600', cursor: salvando ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+        <button onClick={handleSalvar} disabled={salvando} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '14px', fontWeight: '600', cursor: salvando ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
           <Plus size={16} />
           {salvando ? 'Salvando...' : 'Criar Aula Avulsa'}
         </button>

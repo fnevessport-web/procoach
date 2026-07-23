@@ -12,11 +12,11 @@ const HORARIOS = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(
 
 // vermelho = lotada · amarelo = 1 vaga · verde = 2-3 vagas · azul = vazia (sem ninguém)
 function corPorOcupacao(ocupacao, capacidade) {
-  if (ocupacao <= 0) return '#3b82f6'
+  if (ocupacao <= 0) return 'var(--color-state-info)'
   const vagas = capacidade - ocupacao
-  if (vagas <= 0) return '#ef4444'
-  if (vagas === 1) return '#f59e0b'
-  return '#22c55e'
+  if (vagas <= 0) return 'var(--color-state-danger)'
+  if (vagas === 1) return 'var(--color-state-warning)'
+  return 'var(--color-state-success)'
 }
 
 export function DisponibilidadeTurmasPage() {
@@ -26,10 +26,10 @@ export function DisponibilidadeTurmasPage() {
   if (!modalidadeSel) {
     return (
       <div className="fade-in">
-        <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: '0 0 4px' }}>
+        <h1 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: '0 0 4px' }}>
           Disponibilidade
         </h1>
-        <p style={{ fontSize: '12px', color: '#555', margin: '0 0 16px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', margin: '0 0 16px' }}>
           Escolha uma modalidade pra ver a ocupação das turmas por dia e horário.
         </p>
 
@@ -42,15 +42,15 @@ export function DisponibilidadeTurmasPage() {
                   key={mod.id}
                   onClick={() => setModalidadeSel(mod)}
                   className="modalidade-card"
-                  style={{ border: '1px solid rgba(255,255,255,0.06)', background: '#1a1a1a' }}
+                  style={{ border: '1px solid rgba(30,43,36,0.06)', background: 'var(--color-surface-light-raised)' }}
                 >
                   <div className="modalidade-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {icone
                       ? <img src={icone} alt={mod.nome} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                      : <span style={{ fontSize: '10px', color: '#555' }}>{mod.nome}</span>
+                      : <span style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)' }}>{mod.nome}</span>
                     }
                   </div>
-                  <span className="modalidade-label" style={{ color: '#888' }}>
+                  <span className="modalidade-label" style={{ color: 'var(--color-text-light-secondary)' }}>
                     {mod.nome}
                   </span>
                 </button>
@@ -104,18 +104,18 @@ function GradeModalidade({ modalidade, onVoltar }) {
     <div className="fade-in">
       <button onClick={onVoltar} style={{
         display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none',
-        color: '#666', fontSize: '13px', cursor: 'pointer', padding: 0, marginBottom: '14px',
+        color: 'var(--color-text-light-secondary)', fontSize: '13px', cursor: 'pointer', padding: 0, marginBottom: '14px',
       }}>
         <ChevronLeft size={16} /> Modalidades
       </button>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
         {icone && <img src={icone} alt={modalidade.nome} style={{ width: '28px', height: '28px', objectFit: 'contain' }} />}
-        <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
+        <h1 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: 0 }}>
           Disponibilidade — {modalidade.nome}
         </h1>
       </div>
-      <p style={{ fontSize: '12px', color: '#555', margin: '0 0 16px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', margin: '0 0 16px' }}>
         Ocupação das turmas por dia e horário — clique numa turma pra ver quem já está matriculado.
       </p>
 
@@ -124,7 +124,7 @@ function GradeModalidade({ modalidade, onVoltar }) {
           {/* Filtro de nível */}
           {niveisDisponiveis.length > 0 && (
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Filtrar por nível
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -133,9 +133,9 @@ function GradeModalidade({ modalidade, onVoltar }) {
                   return (
                     <button key={nome} onClick={() => toggleNivel(nome)} style={{
                       padding: '6px 12px', borderRadius: '8px', border: 'none',
-                      background: ativo ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
-                      outline: ativo ? 'none' : '1px solid #2a2a2a',
-                      color: ativo ? 'white' : '#888', fontSize: '12px', fontWeight: ativo ? '600' : '400',
+                      background: ativo ? 'var(--color-action-primary)' : 'var(--color-surface-light-raised)',
+                      outline: ativo ? 'none' : '1px solid var(--color-border-light)',
+                      color: ativo ? 'white' : 'var(--color-text-light-secondary)', fontSize: '12px', fontWeight: ativo ? '600' : '400',
                       cursor: 'pointer',
                     }}>{nome}</button>
                   )
@@ -143,7 +143,7 @@ function GradeModalidade({ modalidade, onVoltar }) {
                 {niveisFiltro.length > 0 && (
                   <button onClick={() => setNiveisFiltro([])} style={{
                     padding: '6px 12px', borderRadius: '8px', border: 'none',
-                    background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontSize: '12px', cursor: 'pointer',
+                    background: 'rgba(180,71,47,0.1)', color: 'var(--color-state-danger)', fontSize: '12px', cursor: 'pointer',
                   }}>Limpar</button>
                 )}
               </div>
@@ -151,11 +151,11 @@ function GradeModalidade({ modalidade, onVoltar }) {
           )}
 
           {/* Legenda */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', marginBottom: '16px', fontSize: '10px', color: '#888' }}>
-            <LegendaItem cor="#ef4444" label="Lotada" />
-            <LegendaItem cor="#f59e0b" label="1 vaga" />
-            <LegendaItem cor="#22c55e" label="2-3 vagas" />
-            <LegendaItem cor="#3b82f6" label="Vazia" />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', marginBottom: '16px', fontSize: '10px', color: 'var(--color-text-light-secondary)' }}>
+            <LegendaItem cor="var(--color-state-danger)" label="Lotada" />
+            <LegendaItem cor="var(--color-state-warning)" label="1 vaga" />
+            <LegendaItem cor="var(--color-state-success)" label="2-3 vagas" />
+            <LegendaItem cor="var(--color-state-info)" label="Vazia" />
           </div>
 
           {/* Grade */}
@@ -165,7 +165,7 @@ function GradeModalidade({ modalidade, onVoltar }) {
                 {DIAS_LABEL.map(d => (
                   <div key={d} style={{
                     width: `${CELL_W}px`, flexShrink: 0, textAlign: 'center',
-                    fontSize: '10px', color: '#555', fontWeight: '700', letterSpacing: '1px', padding: '6px 0',
+                    fontSize: '10px', color: 'var(--color-text-light-secondary)', fontWeight: '700', letterSpacing: '1px', padding: '6px 0',
                   }}>{d}</div>
                 ))}
               </div>
@@ -178,7 +178,7 @@ function GradeModalidade({ modalidade, onVoltar }) {
                     opacity: hasAny ? 1 : 0.3,
                   }}>
                     <div style={{
-                      width: '38px', flexShrink: 0, fontSize: '9px', color: '#555',
+                      width: '38px', flexShrink: 0, fontSize: '9px', color: 'var(--color-text-light-secondary)',
                       textAlign: 'right', paddingRight: '6px', paddingTop: '9px', fontWeight: '500',
                     }}>{horario}</div>
 
@@ -187,8 +187,8 @@ function GradeModalidade({ modalidade, onVoltar }) {
                       return (
                         <div key={dia} style={{
                           width: `${CELL_W}px`, flexShrink: 0, minHeight: '34px',
-                          backgroundColor: entradas.length ? '#131313' : '#0d0d0d',
-                          borderRadius: '6px', border: '1px solid #161616',
+                          backgroundColor: entradas.length ? 'var(--color-surface-light-raised)' : 'var(--color-surface-light-overlay)',
+                          borderRadius: '6px', border: '1px solid var(--color-border-light-subtle)',
                           padding: entradas.length ? '4px' : '0',
                           display: 'flex', flexDirection: 'column', gap: '2px',
                         }}>
@@ -203,7 +203,7 @@ function GradeModalidade({ modalidade, onVoltar }) {
                                   fontSize: '10px', fontWeight: '600', color: cor,
                                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                                 }}>{t.niveis?.nome || t.nome}</div>
-                                <div style={{ fontSize: '9px', color: '#888' }}>{t.ocupacao}/{t.capacidade}</div>
+                                <div style={{ fontSize: '9px', color: 'var(--color-text-light-secondary)' }}>{t.ocupacao}/{t.capacidade}</div>
                               </button>
                             )
                           })}
@@ -221,20 +221,20 @@ function GradeModalidade({ modalidade, onVoltar }) {
       {turmaSel && (
         <Modal open onClose={() => setTurmaSel(null)} title={turmaSel.nome} size="sm">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ fontSize: '12px', color: '#888' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
               {turmaSel.horario_inicio?.slice(0, 5)} · {turmaSel.quadras?.nome} · {turmaSel.niveis?.nome}
               {' · '}{turmaSel.ocupacao}/{turmaSel.capacidade} vagas ocupadas
             </div>
             {turmaSel.turmas_alunos?.filter(ta => ta.ativo).length === 0 ? (
-              <div style={{ fontSize: '12px', color: '#555', padding: '12px 0', textAlign: 'center' }}>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', padding: '12px 0', textAlign: 'center' }}>
                 Nenhum aluno matriculado ainda
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {turmaSel.turmas_alunos?.filter(ta => ta.ativo).map(ta => (
                   <div key={ta.aluno_id} style={{
-                    padding: '9px 12px', borderRadius: '8px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
-                    fontSize: '13px', color: '#F0F2F5',
+                    padding: '9px 12px', borderRadius: '8px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)',
+                    fontSize: '13px', color: 'var(--color-text-light-primary)',
                   }}>
                     {ta.alunos?.nome}
                   </div>

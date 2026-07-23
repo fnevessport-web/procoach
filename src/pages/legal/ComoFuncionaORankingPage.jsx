@@ -7,8 +7,8 @@ import { exportarRegrasRankingPDF } from '../../lib/relatorioPdf'
 import toast from 'react-hot-toast'
 
 const toastStyle = {
-  background: '#1a1a1a', color: '#F0F2F5',
-  border: '1px solid rgba(252,200,37,0.3)',
+  background: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
+  border: '1px solid rgba(165,76,46,0.3)',
   borderRadius: '10px', fontSize: '13px',
 }
 
@@ -22,13 +22,13 @@ const COR_DERROTA_TORNEIO = '#6B1B27'
 
 const secaoStyle = { marginBottom: '30px' }
 const tituloWrapStyle = { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }
-const paragrafoStyle = { fontSize: '13px', color: '#aaa', lineHeight: '1.7', margin: '0 0 10px' }
+const paragrafoStyle = { fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.7', margin: '0 0 10px' }
 
 function NumeroSecao({ n }) {
   return (
     <span style={{
       width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
-      background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white',
+      background: 'var(--color-action-primary)', color: 'white',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: '12px', fontWeight: '800',
     }}>
@@ -42,7 +42,7 @@ function Secao({ n, titulo, children }) {
     <div style={secaoStyle}>
       <div style={tituloWrapStyle}>
         <NumeroSecao n={n} />
-        <h2 style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>{titulo}</h2>
+        <h2 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: 0 }}>{titulo}</h2>
       </div>
       {children}
     </div>
@@ -83,7 +83,7 @@ const EXEMPLO_CICLO = [
 ]
 
 function corNivel(nivel) {
-  return NIVEIS_ASSIDUIDADE.find(n => n.chave === nivel)?.cor || '#555'
+  return NIVEIS_ASSIDUIDADE.find(n => n.chave === nivel)?.cor || 'var(--color-text-light-secondary)'
 }
 
 // Ordem de exibição do peso de categoria — do mais fácil pro mais difícil, mesma leitura das
@@ -113,7 +113,7 @@ export function ComoFuncionaORankingPage() {
 
   return (
     <div style={{
-      height: '100vh', width: '100%', backgroundColor: '#110f0f',
+      height: '100vh', width: '100%', backgroundColor: 'var(--color-surface-light-base)',
       display: 'flex', justifyContent: 'center', padding: '24px 16px',
       boxSizing: 'border-box',
       overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
@@ -121,17 +121,17 @@ export function ComoFuncionaORankingPage() {
       <div style={{ width: '100%', maxWidth: '640px' }}>
         <button onClick={() => navigate(-1)} style={{
           display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none',
-          color: '#666', fontSize: '13px', cursor: 'pointer', padding: 0, marginBottom: '20px',
+          color: 'var(--color-text-light-secondary)', fontSize: '13px', cursor: 'pointer', padding: 0, marginBottom: '20px',
         }}>
           <ChevronLeft size={16} /> Voltar
         </button>
 
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <img src="/images/logoprocoach.png" alt="ProCoach" style={{ height: '40px', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }} />
-          <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: '0 0 4px' }}>
+          <img src="/images/logo-pc-green.png" alt="ProCoach" style={{ height: '40px', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }} />
+          <h1 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: '0 0 4px' }}>
             Pontuação Beyond — Como Funciona o Ranking
           </h1>
-          <p style={{ fontSize: '12px', color: '#555', margin: 0 }}>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', margin: 0 }}>
             Regras oficiais para associados · Ranking Interno de Tênis{nomeUnidade ? ` · ${nomeUnidade} Arena` : ''}
           </p>
         </div>
@@ -162,17 +162,17 @@ export function ComoFuncionaORankingPage() {
                 flex: '1 1 auto', minWidth: '110px', padding: '12px 10px', borderRadius: '10px', textAlign: 'center',
                 backgroundColor: `${n.cor}18`, border: `1px solid ${n.cor}44`,
               }}>
-                <div style={{ fontSize: '13px', fontWeight: '800', color: '#F0F2F5' }}>{n.chave.toUpperCase()}</div>
-                <div style={{ fontSize: '10px', color: '#888', margin: '2px 0 4px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-text-light-primary)' }}>{n.chave.toUpperCase()}</div>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', margin: '2px 0 4px' }}>
                   {n.max === Infinity ? `${n.min}+ jogos` : `${n.min} a ${n.max} jogos`}
                 </div>
                 <div style={{ fontSize: '16px', fontWeight: '800', color: n.cor }}>×{n.multiplicador}</div>
               </div>
             ))}
           </div>
-          <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.25)' }}>
-            <p style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.7', margin: 0 }}>
-              <b style={{ color: '#fcc825' }}>Por que o nível de assiduidade?</b> Para valorizar
+          <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.25)' }}>
+            <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', lineHeight: '1.7', margin: 0 }}>
+              <b style={{ color: 'var(--color-action-primary)' }}>Por que o nível de assiduidade?</b> Para valorizar
               quem frequenta e joga com constância. Dois atletas com a mesma média: quem joga
               mais tem nível maior e sobe no ranking. <b>Aparecer e jogar compensa!</b>
             </p>
@@ -180,47 +180,47 @@ export function ComoFuncionaORankingPage() {
         </Secao>
 
         <Secao n={3} titulo="Exemplo real — como o líder pontuou">
-          <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#000', border: '1px solid #2a2a2a' }}>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: '#fcc825', letterSpacing: '0.5px', marginBottom: '10px' }}>
+          <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)' }}>
+            <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--color-action-primary)', letterSpacing: '0.5px', marginBottom: '10px' }}>
               {LIDER_NOME.toUpperCase()} — {LIDER_JOGOS} JOGOS (NÍVEL {LIDER_NIVEL.chave.toUpperCase()})
             </div>
-            <div style={{ fontSize: '12px', color: '#aaa', lineHeight: '1.9' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', lineHeight: '1.9' }}>
               Média dos {LIDER_JOGOS} jogos = {LIDER_MEDIA} pontos<br />
               Nível {LIDER_NIVEL.chave} ({LIDER_NIVEL.min}+ jogos) = ×{LIDER_NIVEL.multiplicador}<br />
-              Pontuação Beyond = {LIDER_MEDIA} × {LIDER_NIVEL.multiplicador} = <b style={{ color: '#fcc825' }}>{LIDER_PONTUACAO}</b>
+              Pontuação Beyond = {LIDER_MEDIA} × {LIDER_NIVEL.multiplicador} = <b style={{ color: 'var(--color-action-primary)' }}>{LIDER_PONTUACAO}</b>
             </div>
           </div>
         </Secao>
 
         <Secao n={4} titulo="Tabela do ciclo — exemplo com 10 atletas">
-          <div style={{ borderRadius: '10px', overflow: 'hidden', border: '1px solid #2a2a2a', marginBottom: '10px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '28px 1.6fr 1fr 1fr 1.2fr', gap: '4px', padding: '9px 10px', backgroundColor: '#000' }}>
+          <div style={{ borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-border-light)', marginBottom: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '28px 1.6fr 1fr 1fr 1.2fr', gap: '4px', padding: '9px 10px', backgroundColor: 'var(--color-surface-light-overlay)' }}>
               <span />
-              <span style={{ fontSize: '10px', color: '#888', fontWeight: '700' }}>ATLETA</span>
-              <span style={{ fontSize: '10px', color: '#888', fontWeight: '700', textAlign: 'right' }}>JOGOS</span>
-              <span style={{ fontSize: '10px', color: '#888', fontWeight: '700', textAlign: 'right' }}>NÍVEL</span>
-              <span style={{ fontSize: '10px', color: '#888', fontWeight: '700', textAlign: 'right' }}>BEYOND</span>
+              <span style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', fontWeight: '700' }}>ATLETA</span>
+              <span style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', fontWeight: '700', textAlign: 'right' }}>JOGOS</span>
+              <span style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', fontWeight: '700', textAlign: 'right' }}>NÍVEL</span>
+              <span style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', fontWeight: '700', textAlign: 'right' }}>BEYOND</span>
             </div>
             {EXEMPLO_CICLO.map((a, i) => (
               <div key={a.pos} style={{
                 display: 'grid', gridTemplateColumns: '28px 1.6fr 1fr 1fr 1.2fr', gap: '4px', alignItems: 'center',
-                padding: '9px 10px', backgroundColor: i % 2 === 1 ? '#161616' : 'transparent',
+                padding: '9px 10px', backgroundColor: i % 2 === 1 ? 'var(--color-surface-light-raised)' : 'transparent',
               }}>
                 <span style={{
                   width: '18px', height: '18px', borderRadius: '50%', fontSize: '9px', fontWeight: '800',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: a.pos <= 2 ? '#fcc82533' : a.pos >= 9 ? '#EF444433' : '#2a2a2a',
-                  color: a.pos <= 2 ? '#fcc825' : a.pos >= 9 ? '#EF4444' : '#888',
+                  backgroundColor: a.pos <= 2 ? 'rgba(165,76,46,0.2)' : a.pos >= 9 ? 'rgba(180,71,47,0.2)' : 'var(--color-border-light)',
+                  color: a.pos <= 2 ? 'var(--color-action-primary)' : a.pos >= 9 ? 'var(--color-state-danger)' : 'var(--color-text-light-secondary)',
                 }}>
                   {a.pos}
                 </span>
-                <span style={{ fontSize: '12px', color: '#F0F2F5', fontWeight: '600' }}>{a.nome}</span>
-                <span style={{ fontSize: '11px', color: '#888', textAlign: 'right' }}>{a.jogos}</span>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-light-primary)', fontWeight: '600' }}>{a.nome}</span>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', textAlign: 'right' }}>{a.jogos}</span>
                 <span style={{ fontSize: '9px', fontWeight: '700', textAlign: 'right', color: corNivel(a.nivel) }}>{a.nivel}</span>
                 <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: '4px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#cf1b9b' }}>{a.pontuacao}</span>
-                  {a.movimento === 'sobe' && <span style={{ fontSize: '9px', color: '#22c55e' }}>↑</span>}
-                  {a.movimento === 'desce' && <span style={{ fontSize: '9px', color: '#EF4444' }}>↓</span>}
+                  <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-state-info)' }}>{a.pontuacao}</span>
+                  {a.movimento === 'sobe' && <span style={{ fontSize: '9px', color: 'var(--color-state-success)' }}>↑</span>}
+                  {a.movimento === 'desce' && <span style={{ fontSize: '9px', color: 'var(--color-state-danger)' }}>↓</span>}
                 </span>
               </div>
             ))}
@@ -244,28 +244,28 @@ export function ComoFuncionaORankingPage() {
             {ORDEM_PESO_CATEGORIA.map(nome => (
               <div key={nome} style={{
                 flex: '1 1 auto', minWidth: '110px', padding: '12px 10px', borderRadius: '10px', textAlign: 'center',
-                backgroundColor: 'rgba(207,27,155,0.08)', border: '1px solid rgba(207,27,155,0.25)',
+                backgroundColor: 'rgba(61,107,122,0.08)', border: '1px solid rgba(61,107,122,0.25)',
               }}>
-                <div style={{ fontSize: '13px', fontWeight: '800', color: '#F0F2F5' }}>{nome.toUpperCase()}</div>
-                <div style={{ fontSize: '16px', fontWeight: '800', color: '#cf1b9b', marginTop: '4px' }}>×{PESO_CATEGORIA[nome]}</div>
+                <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-text-light-primary)' }}>{nome.toUpperCase()}</div>
+                <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--color-state-info)', marginTop: '4px' }}>×{PESO_CATEGORIA[nome]}</div>
               </div>
             ))}
           </div>
-          <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#000', border: '1px solid #2a2a2a', marginBottom: '10px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: '#fcc825', letterSpacing: '0.5px', marginBottom: '10px' }}>
+          <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)', marginBottom: '10px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--color-action-primary)', letterSpacing: '0.5px', marginBottom: '10px' }}>
               {LIDER_NOME.toUpperCase()} NA CATEGORIA {LIDER_CATEGORIA_EXEMPLO.toUpperCase()}
             </div>
-            <div style={{ fontSize: '12px', color: '#aaa', lineHeight: '1.9' }}>
-              Pontuação Beyond (Categoria) = <b style={{ color: '#F0F2F5' }}>{LIDER_PONTUACAO}</b><br />
+            <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', lineHeight: '1.9' }}>
+              Pontuação Beyond (Categoria) = <b style={{ color: 'var(--color-text-light-primary)' }}>{LIDER_PONTUACAO}</b><br />
               Peso da categoria {LIDER_CATEGORIA_EXEMPLO} = ×{PESO_CATEGORIA[LIDER_CATEGORIA_EXEMPLO]}<br />
-              Pontuação Beyond (Geral) = {LIDER_PONTUACAO} × {PESO_CATEGORIA[LIDER_CATEGORIA_EXEMPLO]} = <b style={{ color: '#cf1b9b' }}>{LIDER_PONTUACAO_GERAL}</b>
+              Pontuação Beyond (Geral) = {LIDER_PONTUACAO} × {PESO_CATEGORIA[LIDER_CATEGORIA_EXEMPLO]} = <b style={{ color: 'var(--color-state-info)' }}>{LIDER_PONTUACAO_GERAL}</b>
             </div>
           </div>
-          <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.25)' }}>
-            <p style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.7', margin: 0 }}>
+          <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.25)' }}>
+            <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', lineHeight: '1.7', margin: 0 }}>
               Isso garante que um atleta Avançado fique corretamente à frente no Geral, mas sem
               travar a mobilidade: um Iniciante excepcional ainda pode superar um Avançado de
-              baixo desempenho. <b style={{ color: '#fcc825' }}>Na sua Categoria, esse peso não
+              baixo desempenho. <b style={{ color: 'var(--color-action-primary)' }}>Na sua Categoria, esse peso não
               entra</b> — lá todo mundo já está competindo no mesmo nível.
             </p>
           </div>
@@ -281,9 +281,9 @@ export function ComoFuncionaORankingPage() {
             ].map((regra, i) => {
               const [titulo, ...resto] = regra.split('. ')
               return (
-                <div key={i} style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(252,200,37,0.06)', border: '1px solid rgba(252,200,37,0.2)' }}>
-                  <span style={{ fontSize: '13px', color: '#F0F2F5' }}>
-                    <b>{i + 1}. {titulo}.</b> <span style={{ color: '#aaa' }}>{resto.join('. ')}</span>
+                <div key={i} style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(165,76,46,0.06)', border: '1px solid rgba(165,76,46,0.2)' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--color-text-light-primary)' }}>
+                    <b>{i + 1}. {titulo}.</b> <span style={{ color: 'var(--color-text-light-secondary)' }}>{resto.join('. ')}</span>
                   </span>
                 </div>
               )
@@ -297,23 +297,23 @@ export function ComoFuncionaORankingPage() {
             coisas distintas:
           </p>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-            <div style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825' }}>Pontuação Beyond</div>
-              <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
+            <div style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)' }}>Pontuação Beyond</div>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '4px' }}>
                 Seu desempenho nas partidas do ranking. <b>Quanto maior, melhor</b> — você sobe
                 jogando e vencendo.
               </div>
             </div>
-            <div style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#cf1b9b' }}>PC Score (técnico)</div>
-              <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
+            <div style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-state-info)' }}>PC Score (técnico)</div>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '4px' }}>
                 Sua evolução técnica, avaliada pelo professor a cada 3 meses. <b>Quanto menor,
                 melhor</b> — como o ranking mundial profissional.
               </div>
             </div>
           </div>
-          <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(207,27,155,0.08)', border: '1px solid rgba(207,27,155,0.25)' }}>
-            <p style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.7', margin: 0 }}>
+          <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(61,107,122,0.08)', border: '1px solid rgba(61,107,122,0.25)' }}>
+            <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', lineHeight: '1.7', margin: 0 }}>
               Os dois se completam: quanto melhor sua técnica (PC Score baixo), mais partidas
               você tende a vencer (Pontuação Beyond alta).
             </p>
@@ -329,7 +329,7 @@ export function ComoFuncionaORankingPage() {
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%',
             padding: '13px', borderRadius: '10px', border: 'none', cursor: exportando ? 'default' : 'pointer',
-            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white',
+            background: 'var(--color-action-primary)', color: 'white',
             fontSize: '13px', fontWeight: '700', opacity: exportando ? 0.6 : 1, marginBottom: '10px',
           }}
         >
@@ -337,7 +337,7 @@ export function ComoFuncionaORankingPage() {
           {exportando ? 'Gerando PDF...' : 'Exportar Regras em PDF'}
         </button>
 
-        <p style={{ textAlign: 'center', fontSize: '10px', color: '#222', marginTop: '24px', letterSpacing: '2px' }}>
+        <p style={{ textAlign: 'center', fontSize: '10px', color: 'var(--color-text-light-muted)', marginTop: '24px', letterSpacing: '2px' }}>
           POWERED BY FNEVESSPORT
         </p>
       </div>

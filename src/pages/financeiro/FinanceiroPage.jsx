@@ -37,31 +37,31 @@ const EMPRESAS = {
   procopio: {
     id: 'procopio',
     nome: 'Procopio',
-    cor: '#fcc825',
-    corBg: 'rgba(252,200,37,0.08)',
-    corBorda: 'rgba(252,200,37,0.25)',
+    cor: 'var(--color-action-primary)',
+    corBg: 'rgba(165,76,46,0.08)',
+    corBorda: 'rgba(165,76,46,0.25)',
     logo: '/images/logoprocopio.png',
   },
   beach_arena: {
     id: 'beach_arena',
     nome: 'Beach Arena',
-    cor: '#cf1b9b',
-    corBg: 'rgba(207,27,155,0.08)',
-    corBorda: 'rgba(207,27,155,0.25)',
+    cor: 'var(--color-state-info)',
+    corBg: 'rgba(61,107,122,0.08)',
+    corBorda: 'rgba(61,107,122,0.25)',
     logo: '/images/logobeacharena.png',
   },
 }
 
 const toastStyle = {
-  background: '#1a1a1a', color: '#F0F2F5',
-  border: '1px solid rgba(252,200,37,0.3)',
+  background: 'var(--color-surface-dark-raised)', color: 'var(--color-text-dark-primary)',
+  border: '1px solid rgba(165,76,46,0.3)',
   borderRadius: '10px', fontSize: '13px',
 }
 
 const inputStyle = {
   width: '100%', padding: '10px 14px', borderRadius: '10px',
-  backgroundColor: '#111', border: '1px solid #2a2a2a',
-  color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+  backgroundColor: 'var(--color-surface-dark-overlay)', border: '1px solid var(--color-border-dark)',
+  color: 'var(--color-text-dark-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ function extraPertenceAEmpresa(extraEmpresa, prof, empresaAlvo) {
 function Avatar({ src, nome, size = 44, borderColor }) {
   const [imgError, setImgError] = useState(false)
   const iniciais = (nome || '?').split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
-  const border = borderColor ? `2.5px solid ${borderColor}` : '2px solid #2a2a2a'
+  const border = borderColor ? `2.5px solid ${borderColor}` : '2px solid var(--color-border-dark)'
   if (src && !imgError) {
     return (
       <img
@@ -114,7 +114,7 @@ function Avatar({ src, nome, size = 44, borderColor }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+      background: 'var(--color-action-primary)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.33, fontWeight: '700', color: 'white', border,
     }}>
@@ -134,12 +134,12 @@ function PixButton({ chave }) {
     <button onClick={copiar} style={{
       display: 'flex', alignItems: 'center', gap: '8px',
       padding: '10px 14px', borderRadius: '10px',
-      border: '1px solid rgba(252,200,37,0.3)',
-      backgroundColor: 'rgba(252,200,37,0.06)',
+      border: '1px solid rgba(165,76,46,0.3)',
+      backgroundColor: 'rgba(165,76,46,0.06)',
       cursor: 'pointer', width: '100%', boxSizing: 'border-box',
     }}>
-      {copiado ? <Check size={14} color="#22c55e" /> : <Copy size={14} color="#fcc825" />}
-      <span style={{ flex: 1, textAlign: 'left', fontSize: '12px', color: copiado ? '#22c55e' : '#fcc825', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      {copiado ? <Check size={14} color="var(--color-state-success)" /> : <Copy size={14} color="var(--color-action-primary)" />}
+      <span style={{ flex: 1, textAlign: 'left', fontSize: '12px', color: copiado ? 'var(--color-state-success)' : 'var(--color-action-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {copiado ? 'Copiado!' : chave}
       </span>
     </button>
@@ -151,7 +151,7 @@ function PixButton({ chave }) {
 function CampoNF({ titulo, boleto, onUpload }) {
   return (
     <div>
-      <div style={{ fontSize: '10px', color: '#fcc825', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
+      <div style={{ fontSize: '10px', color: 'var(--color-action-primary)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
         {titulo}
       </div>
       {boleto?.nf_url ? (
@@ -159,15 +159,15 @@ function CampoNF({ titulo, boleto, onUpload }) {
           <a href={boleto.nf_url} target="_blank" rel="noreferrer" style={{
             flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
             padding: '10px 14px', borderRadius: '10px',
-            border: '1px solid rgba(252,200,37,0.3)', backgroundColor: 'rgba(252,200,37,0.06)',
-            color: '#fcc825', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
+            border: '1px solid rgba(165,76,46,0.3)', backgroundColor: 'rgba(165,76,46,0.06)',
+            color: 'var(--color-action-primary)', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
           }}>
             <FileText size={14} /> Ver Nota Fiscal
             <ExternalLink size={12} style={{ marginLeft: 'auto' }} />
           </a>
           <label style={{
             flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '10px', borderRadius: '10px', border: '1px solid #2a2a2a', cursor: 'pointer', color: '#555',
+            padding: '10px', borderRadius: '10px', border: '1px solid var(--color-border-dark)', cursor: 'pointer', color: 'var(--color-text-dark-secondary)',
           }}>
             <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={onUpload} />
             <Upload size={14} />
@@ -177,8 +177,8 @@ function CampoNF({ titulo, boleto, onUpload }) {
         <label style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
           padding: '10px', borderRadius: '10px',
-          border: '1px dashed rgba(252,200,37,0.15)',
-          color: '#888', fontSize: '12px', cursor: 'pointer',
+          border: '1px dashed rgba(165,76,46,0.15)',
+          color: 'var(--color-text-dark-secondary)', fontSize: '12px', cursor: 'pointer',
         }}>
           <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={onUpload} />
           <Upload size={13} /> Anexar NF
@@ -279,15 +279,15 @@ function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado })
       onClick={onClose}
     >
       <div
-        style={{ backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0', padding: '20px 28px 44px', width: '100%', maxWidth: '400px' }}
+        style={{ backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '20px 20px 0 0', padding: '20px 28px 44px', width: '100%', maxWidth: '400px' }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: '#333', margin: '0 auto 20px' }} />
+        <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: 'var(--color-text-dark-muted)', margin: '0 auto 20px' }} />
 
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <Hash size={22} color="#fcc825" style={{ marginBottom: '10px', display: 'block', margin: '0 auto 10px' }} />
-          <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>{LABELS[mode]}</div>
-          {erro && <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '8px' }}>{erro}</div>}
+          <Hash size={22} color="var(--color-action-primary)" style={{ marginBottom: '10px', display: 'block', margin: '0 auto 10px' }} />
+          <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>{LABELS[mode]}</div>
+          {erro && <div style={{ fontSize: '12px', color: 'var(--color-state-danger)', marginTop: '8px' }}>{erro}</div>}
         </div>
 
         {/* Dots */}
@@ -295,7 +295,7 @@ function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado })
           {[0, 1, 2, 3].map(i => (
             <div key={i} style={{
               width: '14px', height: '14px', borderRadius: '50%',
-              backgroundColor: digits.length > i ? '#fcc825' : '#333',
+              backgroundColor: digits.length > i ? 'var(--color-action-primary)' : 'var(--color-text-dark-muted)',
               transition: 'background-color 0.12s',
             }} />
           ))}
@@ -313,8 +313,8 @@ function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado })
                 disabled={liberar.isPending}
                 style={{
                   padding: '18px', borderRadius: '14px', border: 'none', cursor: 'pointer',
-                  backgroundColor: isDel ? 'transparent' : '#252525',
-                  color: isDel ? '#777' : '#F0F2F5',
+                  backgroundColor: isDel ? 'transparent' : 'var(--color-surface-dark-overlay)',
+                  color: isDel ? 'var(--color-text-dark-muted)' : 'var(--color-text-dark-primary)',
                   fontSize: isDel ? '18px' : '22px', fontWeight: '500',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
@@ -394,22 +394,22 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
 
   return createPortal((
     <div style={{ position: 'fixed', inset: 0, zIndex: 900, backgroundColor: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
-      <div style={{ backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxWidth: '480px', maxHeight: '78dvh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-        <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: '#333', margin: '0 auto 16px' }} />
+      <div style={{ backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxWidth: '480px', maxHeight: '78dvh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: 'var(--color-text-dark-muted)', margin: '0 auto 16px' }} />
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
           <div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5', textTransform: 'capitalize' }}>{dataFmt}</div>
-            <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{contagem} aula{contagem !== 1 ? 's' : ''}</div>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text-dark-primary)', textTransform: 'capitalize' }}>{dataFmt}</div>
+            <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>{contagem} aula{contagem !== 1 ? 's' : ''}</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-            <X size={16} color="#EF4444" />
+            <X size={16} color="var(--color-state-danger)" />
           </button>
         </div>
 
         <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {isLoading ? (
-            <div style={{ textAlign: 'center', padding: '24px', color: '#555', fontSize: '13px' }}>Carregando...</div>
+            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-dark-secondary)', fontSize: '13px' }}>Carregando...</div>
           ) : aulas.map((a, i) => {
             const info = getInfo(a)
             const presencas = a.presencas || []
@@ -419,22 +419,22 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
               <div
                 key={a.id || i}
                 onClick={() => navigate('/aulas', { state: { data: dataStr, horario: info.horario, from: '/financeiro', financeiroState } })}
-                style={{ backgroundColor: '#111', borderRadius: '10px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
+                style={{ backgroundColor: 'var(--color-surface-dark-overlay)', borderRadius: '10px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: presencas.length > 0 ? '8px' : 0 }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0, backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '700', color: '#fcc825', textAlign: 'center', lineHeight: 1.2 }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0, backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '700', color: 'var(--color-action-primary)', textAlign: 'center', lineHeight: 1.2 }}>
                     {info.horario || '—'}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>{info.nome}</div>
-                    {info.quadra && <div style={{ fontSize: '11px', color: '#555', marginTop: '1px' }}>{info.quadra}</div>}
+                    <div style={{ fontSize: '13px', color: 'var(--color-text-dark-primary)', fontWeight: '600' }}>{info.nome}</div>
+                    {info.quadra && <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '1px' }}>{info.quadra}</div>}
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825' }}>{fmtBRL(valorUnitario)}</div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{fmtBRL(valorUnitario)}</div>
                     {presencas.length > 0 && (
                       <div style={{ fontSize: '10px', marginTop: '2px' }}>
-                        <span style={{ color: '#22c55e' }}>✓{presentes}</span>{' '}
-                        {ausentes > 0 && <span style={{ color: '#EF4444' }}>✗{ausentes}</span>}
+                        <span style={{ color: 'var(--color-state-success)' }}>✓{presentes}</span>{' '}
+                        {ausentes > 0 && <span style={{ color: 'var(--color-state-danger)' }}>✗{ausentes}</span>}
                       </div>
                     )}
                   </div>
@@ -442,13 +442,13 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
                 {presencas.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '4px' }}>
                     {presencas.map((p, j) => (
-                      <div key={j} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '3px 0', borderTop: '1px solid #1a1a1a' }}>
+                      <div key={j} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '3px 0', borderTop: '1px solid var(--color-surface-dark-raised)' }}>
                         {p.status_presenca === 'presente'
-                          ? <span style={{ color: '#22c55e', fontSize: '13px', fontWeight: '700', lineHeight: 1, flexShrink: 0 }}>✓</span>
-                          : <span style={{ color: '#EF4444', fontSize: '13px', fontWeight: '700', lineHeight: 1, flexShrink: 0 }}>✗</span>
+                          ? <span style={{ color: 'var(--color-state-success)', fontSize: '13px', fontWeight: '700', lineHeight: 1, flexShrink: 0 }}>✓</span>
+                          : <span style={{ color: 'var(--color-state-danger)', fontSize: '13px', fontWeight: '700', lineHeight: 1, flexShrink: 0 }}>✗</span>
                         }
-                        <span style={{ fontSize: '12px', color: p.status_presenca === 'presente' ? '#ccc' : '#555' }}>{p.nomeAluno || '—'}</span>
-                        {p.status_presenca === 'falta_justificada' && <span style={{ fontSize: '9px', color: '#f97316', marginLeft: 'auto' }}>just.</span>}
+                        <span style={{ fontSize: '12px', color: p.status_presenca === 'presente' ? 'var(--color-text-dark-secondary)' : 'var(--color-text-dark-secondary)' }}>{p.nomeAluno || '—'}</span>
+                        {p.status_presenca === 'falta_justificada' && <span style={{ fontSize: '9px', color: 'var(--color-state-warning)', marginLeft: 'auto' }}>just.</span>}
                       </div>
                     ))}
                   </div>
@@ -458,9 +458,9 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
           })}
         </div>
 
-        <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #2a2a2a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '12px', color: '#555' }}>Total do dia</span>
-          <span style={{ fontSize: '16px', fontWeight: '700', color: '#fcc825' }}>{fmtBRL(contagem * valorUnitario)}</span>
+        <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--color-border-dark)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)' }}>Total do dia</span>
+          <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{fmtBRL(contagem * valorUnitario)}</span>
         </div>
       </div>
     </div>
@@ -667,7 +667,7 @@ export function FinanceiroPage() {
     if (!professorSel) return
     if (!pagamentoAutorizado) {
       toast.error('Aguarde a liberação da Coordenação para prosseguir com o pagamento.', {
-        style: { ...toastStyle, border: '1px solid rgba(239,68,68,0.4)' },
+        style: { ...toastStyle, border: '1px solid rgba(180,71,47,0.4)' },
         duration: 4000,
       })
       return
@@ -860,19 +860,19 @@ export function FinanceiroPage() {
               <button key={m} onClick={() => selecionarMes(idx)} style={{
                 flexShrink: 0, padding: '6px 10px', borderRadius: '8px', border: 'none',
                 fontSize: '11px', fontWeight: '700', cursor: 'pointer',
-                background: ativo ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
-                color: ativo ? 'white' : '#555',
-                outline: ativo ? 'none' : '1px solid #2a2a2a',
+                background: ativo ? 'var(--color-action-primary)' : 'var(--color-surface-dark-raised)',
+                color: ativo ? 'white' : 'var(--color-text-dark-secondary)',
+                outline: ativo ? 'none' : '1px solid var(--color-border-dark)',
               }}>{m}</button>
             )
           })}
         </div>
         <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
-          <span style={{ fontSize: '10px', color: '#555', flexShrink: 0 }}>De</span>
+          <span style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', flexShrink: 0 }}>De</span>
           <input type="date" value={dataInicio}
             onChange={e => setDataInicio(e.target.value)}
             style={{ ...inputStyle, padding: '6px 10px', fontSize: '12px', flex: 1 }} />
-          <span style={{ fontSize: '10px', color: '#555', flexShrink: 0 }}>Até</span>
+          <span style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', flexShrink: 0 }}>Até</span>
           <input type="date" value={dataFim}
             onChange={e => setDataFim(e.target.value)}
             style={{ ...inputStyle, padding: '6px 10px', fontSize: '12px', flex: 1 }} />
@@ -889,7 +889,7 @@ export function FinanceiroPage() {
     return (
       <div className="fade-in">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
+          <h1 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-dark-primary)', margin: 0 }}>
             Financeiro
           </h1>
           <button
@@ -897,9 +897,9 @@ export function FinanceiroPage() {
             style={{
               display: 'flex', alignItems: 'center', gap: '5px',
               padding: '7px 12px', borderRadius: '9px',
-              border: temPin ? '1px solid rgba(252,200,37,0.3)' : '1px solid #2a2a2a',
-              background: temPin ? 'rgba(252,200,37,0.06)' : '#1a1a1a',
-              color: temPin ? '#fcc825' : '#555',
+              border: temPin ? '1px solid rgba(165,76,46,0.3)' : '1px solid var(--color-border-dark)',
+              background: temPin ? 'rgba(165,76,46,0.06)' : 'var(--color-surface-dark-raised)',
+              color: temPin ? 'var(--color-action-primary)' : 'var(--color-text-dark-secondary)',
               fontSize: '11px', fontWeight: '600', cursor: 'pointer',
             }}
           >
@@ -924,7 +924,7 @@ export function FinanceiroPage() {
             <button key={emp.id} onClick={() => navegarEmpresa(emp.id)} style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               gap: '12px', padding: '24px 16px',
-              backgroundColor: '#1a1a1a',
+              backgroundColor: 'var(--color-surface-dark-raised)',
               border: `1px solid ${emp.corBorda}`,
               borderRadius: '16px', cursor: 'pointer',
               background: emp.corBg,
@@ -970,34 +970,34 @@ export function FinanceiroPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <button onClick={voltarEmpresa} style={{
             display: 'flex', alignItems: 'center', gap: '6px',
-            background: 'none', border: 'none', cursor: 'pointer', color: '#555', fontSize: '13px', padding: 0,
+            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-dark-secondary)', fontSize: '13px', padding: 0,
           }}>
             <ChevronLeft size={16} /> {empresa?.nome}
           </button>
           <button onClick={voltarEmpresa} style={{
             width: '32px', height: '32px', borderRadius: '8px',
-            border: '1px solid #2a2a2a', background: '#1a1a1a',
+            border: '1px solid var(--color-border-dark)', background: 'var(--color-surface-dark-raised)',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <X size={16} color="#555" />
+            <X size={16} color="var(--color-text-dark-secondary)" />
           </button>
         </div>
 
         {/* Header professor */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: '14px',
-          backgroundColor: '#1a1a1a', borderRadius: '14px',
-          border: pagamentoConfirmado ? '1px solid rgba(34,197,94,0.4)' : '1px solid rgba(255,255,255,0.06)',
+          backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '14px',
+          border: pagamentoConfirmado ? '1px solid rgba(75,139,106,0.4)' : '1px solid rgba(255,255,255,0.06)',
           padding: '16px', marginBottom: '14px',
         }}>
           <div style={{ position: 'relative' }}>
             <Avatar src={professorSel.foto_url} nome={professorSel.nome} size={56}
-              borderColor={pagamentoConfirmado ? '#22c55e' : undefined} />
+              borderColor={pagamentoConfirmado ? 'var(--color-state-success)' : undefined} />
             {pagamentoConfirmado && (
               <div style={{
                 position: 'absolute', bottom: 0, right: 0,
                 width: '18px', height: '18px', borderRadius: '50%',
-                backgroundColor: '#22c55e', border: '2px solid #1a1a1a',
+                backgroundColor: 'var(--color-state-success)', border: '2px solid var(--color-surface-dark-raised)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 <Check size={10} color="white" />
@@ -1005,29 +1005,29 @@ export function FinanceiroPage() {
             )}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '16px', fontWeight: '700', color: '#F0F2F5' }}>
+            <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>
               {professorSel.nome}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
               {professorSel.banco && (
-                <span style={{ fontSize: '11px', color: '#555' }}>{professorSel.banco}</span>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)' }}>{professorSel.banco}</span>
               )}
               {temBoleto && (
-                <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(96,165,250,0.15)', color: '#60a5fa', fontSize: '10px', fontWeight: '600' }}>Boleto</span>
+                <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(61,107,122,0.15)', color: 'var(--color-state-info)', fontSize: '10px', fontWeight: '600' }}>Boleto</span>
               )}
               {pagamentoAutorizado
-                ? <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: '10px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                ? <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(75,139,106,0.12)', color: 'var(--color-state-success)', fontSize: '10px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '3px' }}>
                     <LockOpen size={9} /> Autorizado
                   </span>
                 : <span
                     onClick={e => handleAbrirPin(professorSel.id, e)}
-                    style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.05)', color: '#555', fontSize: '10px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                    style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--color-text-dark-secondary)', fontSize: '10px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
                   >
                     <Lock size={9} /> Aguardando coord.
                   </span>
               }
               {pagamentoConfirmado && (
-                <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(34,197,94,0.15)', color: '#22c55e', fontSize: '10px', fontWeight: '600' }}>✓ Pago</span>
+                <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(75,139,106,0.15)', color: 'var(--color-state-success)', fontSize: '10px', fontWeight: '600' }}>✓ Pago</span>
               )}
             </div>
           </div>
@@ -1035,20 +1035,20 @@ export function FinanceiroPage() {
 
         {/* Total */}
         <div style={{
-          backgroundColor: '#1a1a1a', borderRadius: '14px',
-          border: '1px solid rgba(252,200,37,0.2)', padding: '16px',
+          backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '14px',
+          border: '1px solid rgba(165,76,46,0.2)', padding: '16px',
           marginBottom: '14px', textAlign: 'center',
         }}>
-          <div style={{ fontSize: '11px', color: '#555', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             Total a pagar — {MESES_ABREV[mesSel]}/{anoSel}
           </div>
-          <div style={{ fontSize: '32px', fontWeight: '700', color: '#fcc825' }}>
+          <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--color-action-primary)' }}>
             {fmtBRL(totalPagarProf)}
           </div>
-          <div style={{ fontSize: '12px', color: '#555', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', marginTop: '4px' }}>
             {totalAulasProf} aulas × {fmtBRL(valorUnitarioProf)}
             {totalExtrasProf > 0 && (
-              <span style={{ color: '#cf1b9b', marginLeft: '6px' }}>
+              <span style={{ color: 'var(--color-state-info)', marginLeft: '6px' }}>
                 + {fmtBRL(totalExtrasProf)} extra{extrasProfDaEmpresa.length > 1 ? 's' : ''}
               </span>
             )}
@@ -1058,11 +1058,11 @@ export function FinanceiroPage() {
         {/* PIX ITAÚ */}
         {temPix && professorSel.chave_pix && (
           <div style={{
-            backgroundColor: '#1a1a1a', borderRadius: '12px',
-            border: '1px solid rgba(249,115,22,0.25)', padding: '14px',
+            backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px',
+            border: '1px solid rgba(201,138,60,0.25)', padding: '14px',
             marginBottom: '14px',
           }}>
-            <div style={{ fontSize: '10px', color: '#f97316', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
+            <div style={{ fontSize: '10px', color: 'var(--color-state-warning)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
               PIX ITAÚ
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -1075,24 +1075,24 @@ export function FinanceiroPage() {
                 style={{
                   flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
                   padding: '10px 14px', borderRadius: '10px',
-                  border: pagamentoAutorizado ? '1px solid rgba(249,115,22,0.3)' : '1px solid #2a2a2a',
-                  backgroundColor: pagamentoAutorizado ? 'rgba(249,115,22,0.06)' : '#111',
+                  border: pagamentoAutorizado ? '1px solid rgba(201,138,60,0.3)' : '1px solid var(--color-border-dark)',
+                  backgroundColor: pagamentoAutorizado ? 'rgba(201,138,60,0.06)' : 'var(--color-surface-dark-overlay)',
                   cursor: pagamentoAutorizado ? 'pointer' : 'default',
                 }}
               >
                 {pagamentoAutorizado
-                  ? <Copy size={14} color="#f97316" />
-                  : <Lock size={14} color="#444" />
+                  ? <Copy size={14} color="var(--color-state-warning)" />
+                  : <Lock size={14} color="var(--color-text-dark-muted)" />
                 }
-                <span style={{ flex: 1, textAlign: 'left', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: pagamentoAutorizado ? 'normal' : '3px', color: pagamentoAutorizado ? '#f97316' : '#333' }}>
+                <span style={{ flex: 1, textAlign: 'left', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: pagamentoAutorizado ? 'normal' : '3px', color: pagamentoAutorizado ? 'var(--color-state-warning)' : 'var(--color-text-dark-muted)' }}>
                   {pagamentoAutorizado ? professorSel.chave_pix : '●●●●●●●●●●●●'}
                 </span>
               </button>
               {!pagamentoConfirmado ? (
                 <button onClick={handleConfirmarPagamento} disabled={confirmarPagamento.isPending} style={{
                   flexShrink: 0, padding: '10px 14px', borderRadius: '10px', border: 'none',
-                  backgroundColor: pagamentoAutorizado ? '#22c55e' : '#2a2a2a',
-                  color: pagamentoAutorizado ? 'white' : '#555',
+                  backgroundColor: pagamentoAutorizado ? 'var(--color-state-success)' : 'var(--color-border-dark)',
+                  color: pagamentoAutorizado ? 'white' : 'var(--color-text-dark-secondary)',
                   fontSize: '12px', fontWeight: '700', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '5px',
                 }}>
@@ -1102,8 +1102,8 @@ export function FinanceiroPage() {
               ) : (
                 <button onClick={handleDesfazerPagamento} disabled={desfazerPagamento.isPending} style={{
                   flexShrink: 0, padding: '10px 14px', borderRadius: '10px',
-                  backgroundColor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.4)',
-                  fontSize: '12px', fontWeight: '700', color: '#22c55e', cursor: 'pointer',
+                  backgroundColor: 'rgba(75,139,106,0.1)', border: '1px solid rgba(75,139,106,0.4)',
+                  fontSize: '12px', fontWeight: '700', color: 'var(--color-state-success)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '5px',
                 }}>
                   <Check size={14} /> Confirmado
@@ -1112,9 +1112,9 @@ export function FinanceiroPage() {
             </div>
             {/* Titular da conta */}
             {(professorSel.nome_titular || professorSel.cpf_titular) && (
-              <div style={{ marginTop: '8px', fontSize: '11px', color: '#444', paddingLeft: '2px' }}>
+              <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--color-text-dark-muted)', paddingLeft: '2px' }}>
                 {professorSel.nome_titular && <span>{professorSel.nome_titular}</span>}
-                {professorSel.nome_titular && professorSel.cpf_titular && <span style={{ color: '#333', margin: '0 5px' }}>·</span>}
+                {professorSel.nome_titular && professorSel.cpf_titular && <span style={{ color: 'var(--color-text-dark-muted)', margin: '0 5px' }}>·</span>}
                 {professorSel.cpf_titular && <span>CPF {professorSel.cpf_titular}</span>}
               </div>
             )}
@@ -1124,11 +1124,11 @@ export function FinanceiroPage() {
         {/* Dados bancários para transferência (sem chave PIX cadastrada) */}
         {temDadosConta && (
           <div style={{
-            backgroundColor: '#1a1a1a', borderRadius: '12px',
-            border: '1px solid rgba(249,115,22,0.25)', padding: '14px',
+            backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px',
+            border: '1px solid rgba(201,138,60,0.25)', padding: '14px',
             marginBottom: '14px',
           }}>
-            <div style={{ fontSize: '10px', color: '#f97316', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
+            <div style={{ fontSize: '10px', color: 'var(--color-state-warning)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
               {professorSel.banco === 'Itaú' ? 'Transferência Itaú' : 'Dados Bancários'}
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -1141,24 +1141,24 @@ export function FinanceiroPage() {
                 style={{
                   flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
                   padding: '10px 14px', borderRadius: '10px',
-                  border: pagamentoAutorizado ? '1px solid rgba(249,115,22,0.3)' : '1px solid #2a2a2a',
-                  backgroundColor: pagamentoAutorizado ? 'rgba(249,115,22,0.06)' : '#111',
+                  border: pagamentoAutorizado ? '1px solid rgba(201,138,60,0.3)' : '1px solid var(--color-border-dark)',
+                  backgroundColor: pagamentoAutorizado ? 'rgba(201,138,60,0.06)' : 'var(--color-surface-dark-overlay)',
                   cursor: pagamentoAutorizado ? 'pointer' : 'default',
                 }}
               >
                 {pagamentoAutorizado
-                  ? <Copy size={14} color="#f97316" />
-                  : <Lock size={14} color="#444" />
+                  ? <Copy size={14} color="var(--color-state-warning)" />
+                  : <Lock size={14} color="var(--color-text-dark-muted)" />
                 }
-                <span style={{ flex: 1, textAlign: 'left', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: pagamentoAutorizado ? 'normal' : '3px', color: pagamentoAutorizado ? '#f97316' : '#333' }}>
+                <span style={{ flex: 1, textAlign: 'left', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: pagamentoAutorizado ? 'normal' : '3px', color: pagamentoAutorizado ? 'var(--color-state-warning)' : 'var(--color-text-dark-muted)' }}>
                   {pagamentoAutorizado ? contaFormatada : '●●●●●●●●●●●●'}
                 </span>
               </button>
               {!pagamentoConfirmado ? (
                 <button onClick={handleConfirmarPagamento} disabled={confirmarPagamento.isPending} style={{
                   flexShrink: 0, padding: '10px 14px', borderRadius: '10px', border: 'none',
-                  backgroundColor: pagamentoAutorizado ? '#22c55e' : '#2a2a2a',
-                  color: pagamentoAutorizado ? 'white' : '#555',
+                  backgroundColor: pagamentoAutorizado ? 'var(--color-state-success)' : 'var(--color-border-dark)',
+                  color: pagamentoAutorizado ? 'white' : 'var(--color-text-dark-secondary)',
                   fontSize: '12px', fontWeight: '700', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '5px',
                 }}>
@@ -1168,8 +1168,8 @@ export function FinanceiroPage() {
               ) : (
                 <button onClick={handleDesfazerPagamento} disabled={desfazerPagamento.isPending} style={{
                   flexShrink: 0, padding: '10px 14px', borderRadius: '10px',
-                  backgroundColor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.4)',
-                  fontSize: '12px', fontWeight: '700', color: '#22c55e', cursor: 'pointer',
+                  backgroundColor: 'rgba(75,139,106,0.1)', border: '1px solid rgba(75,139,106,0.4)',
+                  fontSize: '12px', fontWeight: '700', color: 'var(--color-state-success)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '5px',
                 }}>
                   <Check size={14} /> Confirmado
@@ -1178,9 +1178,9 @@ export function FinanceiroPage() {
             </div>
             {/* Titular da conta */}
             {(professorSel.nome_titular || professorSel.cpf_titular) && (
-              <div style={{ marginTop: '8px', fontSize: '11px', color: '#444', paddingLeft: '2px' }}>
+              <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--color-text-dark-muted)', paddingLeft: '2px' }}>
                 {professorSel.nome_titular && <span>{professorSel.nome_titular}</span>}
-                {professorSel.nome_titular && professorSel.cpf_titular && <span style={{ color: '#333', margin: '0 5px' }}>·</span>}
+                {professorSel.nome_titular && professorSel.cpf_titular && <span style={{ color: 'var(--color-text-dark-muted)', margin: '0 5px' }}>·</span>}
                 {professorSel.cpf_titular && <span>CPF {professorSel.cpf_titular}</span>}
               </div>
             )}
@@ -1190,11 +1190,11 @@ export function FinanceiroPage() {
         {/* Boleto (apenas para quem paga via boleto) */}
         {temBoleto && (
           <div style={{
-            backgroundColor: '#1a1a1a', borderRadius: '12px',
-            border: '1px solid rgba(96,165,250,0.2)', padding: '14px',
+            backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px',
+            border: '1px solid rgba(61,107,122,0.2)', padding: '14px',
             marginBottom: '14px',
           }}>
-            <div style={{ fontSize: '10px', color: '#60a5fa', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '10px' }}>
+            <div style={{ fontSize: '10px', color: 'var(--color-state-info)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '10px' }}>
               Boleto — {MESES_ABREV[mesSel]}/{anoSel}
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -1203,14 +1203,14 @@ export function FinanceiroPage() {
                   <a href={boletoMes.boleto_url} target="_blank" rel="noreferrer" style={{
                     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                     padding: '10px', borderRadius: '10px',
-                    border: '1px solid rgba(96,165,250,0.3)', backgroundColor: 'rgba(96,165,250,0.06)',
-                    color: '#60a5fa', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
+                    border: '1px solid rgba(61,107,122,0.3)', backgroundColor: 'rgba(61,107,122,0.06)',
+                    color: 'var(--color-state-info)', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
                   }}>
                     <FileText size={14} /> Ver boleto
                   </a>
                   <label style={{
                     flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: '10px', borderRadius: '10px', border: '1px solid #2a2a2a', cursor: 'pointer', color: '#555',
+                    padding: '10px', borderRadius: '10px', border: '1px solid var(--color-border-dark)', cursor: 'pointer', color: 'var(--color-text-dark-secondary)',
                   }}>
                     <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadBoleto} />
                     <Upload size={14} />
@@ -1219,8 +1219,8 @@ export function FinanceiroPage() {
               ) : (
                 <label style={{
                   flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                  padding: '10px', borderRadius: '10px', border: '1px dashed #2a2a2a',
-                  color: '#888', fontSize: '12px', cursor: 'pointer',
+                  padding: '10px', borderRadius: '10px', border: '1px dashed var(--color-border-dark)',
+                  color: 'var(--color-text-dark-secondary)', fontSize: '12px', cursor: 'pointer',
                 }}>
                   <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadBoleto} />
                   <Upload size={13} /> Anexar boleto
@@ -1229,8 +1229,8 @@ export function FinanceiroPage() {
               {!pagamentoConfirmado ? (
                 <button onClick={handleConfirmarPagamento} disabled={confirmarPagamento.isPending} style={{
                   flexShrink: 0, padding: '10px 14px', borderRadius: '10px', border: 'none',
-                  backgroundColor: pagamentoAutorizado ? '#22c55e' : '#2a2a2a',
-                  color: pagamentoAutorizado ? 'white' : '#555',
+                  backgroundColor: pagamentoAutorizado ? 'var(--color-state-success)' : 'var(--color-border-dark)',
+                  color: pagamentoAutorizado ? 'white' : 'var(--color-text-dark-secondary)',
                   fontSize: '12px', fontWeight: '700', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '5px',
                 }}>
@@ -1240,8 +1240,8 @@ export function FinanceiroPage() {
               ) : (
                 <button onClick={handleDesfazerPagamento} disabled={desfazerPagamento.isPending} style={{
                   flexShrink: 0, padding: '10px 14px', borderRadius: '10px',
-                  backgroundColor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.4)',
-                  fontSize: '12px', fontWeight: '700', color: '#22c55e', cursor: 'pointer',
+                  backgroundColor: 'rgba(75,139,106,0.1)', border: '1px solid rgba(75,139,106,0.4)',
+                  fontSize: '12px', fontWeight: '700', color: 'var(--color-state-success)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '5px',
                 }}>
                   <Check size={14} /> Confirmado
@@ -1257,8 +1257,8 @@ export function FinanceiroPage() {
             o que é dela. Pra ver a NF da outra empresa, troca de contexto pela navegação
             normal (ex: menu Beach Arena → Procópio), não pelas duas juntas nessa tela. */}
         <div style={{
-          backgroundColor: '#1a1a1a', borderRadius: '12px',
-          border: '1px solid rgba(252,200,37,0.15)', padding: '14px',
+          backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px',
+          border: '1px solid rgba(165,76,46,0.15)', padding: '14px',
           marginBottom: '14px',
         }}>
           <CampoNF
@@ -1269,7 +1269,7 @@ export function FinanceiroPage() {
         </div>
 
         {/* Resumo por dia */}
-        <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           Aulas no período
         </div>
 
@@ -1298,7 +1298,7 @@ export function FinanceiroPage() {
         )}
 
         {loadingAulasProf ? <Loading /> : diasOrdenados.length === 0 ? (
-          <div style={{ fontSize: '13px', color: '#555', textAlign: 'center', padding: '24px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)', textAlign: 'center', padding: '24px' }}>
             Nenhuma aula encontrada
           </div>
         ) : (
@@ -1314,26 +1314,26 @@ export function FinanceiroPage() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
                     padding: '10px 12px', borderRadius: '10px',
-                    backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.04)',
+                    backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid rgba(255,255,255,0.04)',
                     width: '100%', textAlign: 'left', cursor: 'pointer',
                   }}
                 >
                   <div style={{ minWidth: '90px' }}>
-                    <div style={{ fontSize: '12px', color: '#F0F2F5', fontWeight: '600', textTransform: 'capitalize' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-dark-primary)', fontWeight: '600', textTransform: 'capitalize' }}>
                       {dataFmt}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                      <div style={{ flex: 1, height: '3px', borderRadius: '2px', backgroundColor: '#222', overflow: 'hidden', width: '60px' }}>
-                        <div style={{ width: `${pct}%`, height: '100%', borderRadius: '2px', background: 'linear-gradient(90deg, #fcc825, #cf1b9b)' }} />
+                      <div style={{ flex: 1, height: '3px', borderRadius: '2px', backgroundColor: 'var(--color-border-dark)', overflow: 'hidden', width: '60px' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', borderRadius: '2px', background: 'var(--color-action-primary)' }} />
                       </div>
                     </div>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: '11px', color: '#555' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)' }}>
                       {aulasNoDia.length} {aulasNoDia.length === 1 ? 'aula' : 'aulas'}
                     </span>
                   </div>
-                  <span style={{ fontSize: '13px', color: '#fcc825', fontWeight: '700' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--color-action-primary)', fontWeight: '700' }}>
                     {fmtBRL(totalDia)}
                   </span>
                 </button>
@@ -1353,7 +1353,7 @@ export function FinanceiroPage() {
       {/* Breadcrumb */}
       <button onClick={voltarEmpresas} style={{
         display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px',
-        background: 'none', border: 'none', cursor: 'pointer', color: '#555', fontSize: '13px', padding: 0,
+        background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-dark-secondary)', fontSize: '13px', padding: 0,
       }}>
         <ChevronLeft size={16} /> Financeiro
       </button>
@@ -1374,16 +1374,16 @@ export function FinanceiroPage() {
 
       {/* ── RECEITA ───────────────────────────────────────────────── */}
       <div style={{
-        backgroundColor: '#1a1a1a', borderRadius: '14px',
-        border: '1px solid rgba(34,197,94,0.15)', padding: '16px',
+        backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '14px',
+        border: '1px solid rgba(75,139,106,0.15)', padding: '16px',
         marginBottom: '14px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <div style={{ fontSize: '11px', color: '#22c55e', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-state-success)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
             ↑ Receita
           </div>
           {receitaRecord && (
-            <div style={{ fontSize: '18px', fontWeight: '700', color: '#22c55e' }}>
+            <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-state-success)' }}>
               {fmtBRL(receitaRecord.valor)}
             </div>
           )}
@@ -1397,15 +1397,15 @@ export function FinanceiroPage() {
         <button onClick={() => receitaFileRef.current?.click()} disabled={uploadingReceita} style={{
           display: 'flex', alignItems: 'center', gap: '8px',
           width: '100%', padding: '10px 14px', borderRadius: '10px',
-          border: '1px dashed #2a2a2a', background: 'none', cursor: 'pointer',
-          color: '#555', fontSize: '12px', marginBottom: '10px', boxSizing: 'border-box',
+          border: '1px dashed var(--color-border-dark)', background: 'none', cursor: 'pointer',
+          color: 'var(--color-text-dark-secondary)', fontSize: '12px', marginBottom: '10px', boxSizing: 'border-box',
         }}>
           <Upload size={14} />
           {uploadingReceita ? 'Enviando...' : receitaRecord?.arquivo_nome ? `📄 ${receitaRecord.arquivo_nome}` : 'Anexar relatório do clube'}
           {receitaRecord?.arquivo_url && (
             <a href={receitaRecord.arquivo_url} target="_blank" rel="noreferrer"
               onClick={e => e.stopPropagation()}
-              style={{ marginLeft: 'auto', color: '#555' }}>
+              style={{ marginLeft: 'auto', color: 'var(--color-text-dark-secondary)' }}>
               <ExternalLink size={13} />
             </a>
           )}
@@ -1416,7 +1416,7 @@ export function FinanceiroPage() {
           <div style={{ position: 'relative', flex: 1 }}>
             <span style={{
               position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)',
-              fontSize: '12px', color: '#555', pointerEvents: 'none',
+              fontSize: '12px', color: 'var(--color-text-dark-secondary)', pointerEvents: 'none',
             }}>R$</span>
             <input
               type="text"
@@ -1428,7 +1428,7 @@ export function FinanceiroPage() {
           </div>
           <button onClick={handleSalvarReceita} disabled={salvarLancamento.isPending} style={{
             padding: '10px 18px', borderRadius: '10px', border: 'none',
-            background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+            background: 'var(--color-state-success)',
             color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', flexShrink: 0,
           }}>
             Salvar
@@ -1450,15 +1450,15 @@ export function FinanceiroPage() {
 
       {/* ── CUSTOS PROFESSORES ────────────────────────────────────── */}
       <div style={{
-        backgroundColor: '#1a1a1a', borderRadius: '14px',
-        border: '1px solid rgba(239,68,68,0.15)', padding: '16px',
+        backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '14px',
+        border: '1px solid rgba(180,71,47,0.15)', padding: '16px',
         marginBottom: '14px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-          <div style={{ fontSize: '11px', color: '#EF4444', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-state-danger)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
             ↓ Custo Professores
           </div>
-          <div style={{ fontSize: '18px', fontWeight: '700', color: '#EF4444' }}>
+          <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-state-danger)' }}>
             {fmtBRL(totalProfessores)}
           </div>
         </div>
@@ -1472,22 +1472,22 @@ export function FinanceiroPage() {
             onChange={e => setBuscaProf(e.target.value)}
             style={{
               width: '100%', boxSizing: 'border-box',
-              backgroundColor: '#111', border: '1px solid #2a2a2a',
+              backgroundColor: 'var(--color-surface-dark-overlay)', border: '1px solid var(--color-border-dark)',
               borderRadius: '10px', padding: '9px 12px 9px 34px',
-              color: '#F0F2F5', fontSize: '13px', outline: 'none',
+              color: 'var(--color-text-dark-primary)', fontSize: '13px', outline: 'none',
             }}
           />
-          <span style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: '#555', fontSize: '13px', pointerEvents: 'none' }}>🔍</span>
+          <span style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-dark-secondary)', fontSize: '13px', pointerEvents: 'none' }}>🔍</span>
           {buscaProf && (
             <button onClick={() => setBuscaProf('')} style={{
               position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
-              background: 'none', border: 'none', cursor: 'pointer', color: '#555', fontSize: '14px', lineHeight: 1,
+              background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-dark-secondary)', fontSize: '14px', lineHeight: 1,
             }}>✕</button>
           )}
         </div>
 
         {loadingCustos ? <Loading /> : allProfs.length === 0 ? (
-          <div style={{ fontSize: '12px', color: '#555', textAlign: 'center', padding: '16px 0' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', textAlign: 'center', padding: '16px 0' }}>
             Nenhuma aula confirmada no período
           </div>
         ) : (
@@ -1506,12 +1506,12 @@ export function FinanceiroPage() {
                 }}>
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     <Avatar src={prof.foto_url} nome={prof.nome} size={40}
-                      borderColor={pago ? '#22c55e' : undefined} />
+                      borderColor={pago ? 'var(--color-state-success)' : undefined} />
                     {pago && (
                       <div style={{
                         position: 'absolute', bottom: -1, right: -1,
                         width: '14px', height: '14px', borderRadius: '50%',
-                        backgroundColor: '#22c55e', border: '2px solid #1a1a1a',
+                        backgroundColor: 'var(--color-state-success)', border: '2px solid var(--color-surface-dark-raised)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
                         <Check size={8} color="white" />
@@ -1520,23 +1520,23 @@ export function FinanceiroPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '600', color: pago ? '#22c55e' : '#F0F2F5' }}>{prof.nome}</span>
+                      <span style={{ fontSize: '13px', fontWeight: '600', color: pago ? 'var(--color-state-success)' : 'var(--color-text-dark-primary)' }}>{prof.nome}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, marginLeft: '8px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: '700', color: pago ? '#22c55e' : '#EF4444' }}>
+                        <span style={{ fontSize: '13px', fontWeight: '700', color: pago ? 'var(--color-state-success)' : 'var(--color-state-danger)' }}>
                           {fmtBRL(totalComExtras)}
                         </span>
-                        {extras > 0 && <span style={{ fontSize: '9px', color: '#cf1b9b', fontWeight: '600' }}>+E</span>}
+                        {extras > 0 && <span style={{ fontSize: '9px', color: 'var(--color-state-info)', fontWeight: '600' }}>+E</span>}
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div style={{ flex: 1, height: '4px', borderRadius: '2px', backgroundColor: '#222', overflow: 'hidden' }}>
+                      <div style={{ flex: 1, height: '4px', borderRadius: '2px', backgroundColor: 'var(--color-border-dark)', overflow: 'hidden' }}>
                         <div style={{
                           width: `${pct}%`, height: '100%', borderRadius: '2px',
-                          background: pago ? 'linear-gradient(90deg, #22c55e, #16a34a)' : 'linear-gradient(90deg, #ef4444, #dc2626)',
+                          background: pago ? 'var(--color-state-success)' : 'var(--color-state-danger)',
                           transition: 'width 0.4s ease',
                         }} />
                       </div>
-                      <span style={{ fontSize: '10px', color: '#555', minWidth: '28px', textAlign: 'right' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', minWidth: '28px', textAlign: 'right' }}>
                         {prof.totalAulas}×
                       </span>
                     </div>
@@ -1550,8 +1550,8 @@ export function FinanceiroPage() {
                     style={{ flexShrink: 0, padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                   >
                     {autorizado
-                      ? <LockOpen size={16} color="#22c55e" />
-                      : <Lock size={16} color="#3a3a3a" />
+                      ? <LockOpen size={16} color="var(--color-state-success)" />
+                      : <Lock size={16} color="var(--color-text-dark-muted)" />
                     }
                   </div>
                 </button>
@@ -1563,16 +1563,16 @@ export function FinanceiroPage() {
 
       {/* ── OUTROS CUSTOS ─────────────────────────────────────────── */}
       <div style={{
-        backgroundColor: '#1a1a1a', borderRadius: '14px',
+        backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '14px',
         border: '1px solid rgba(255,255,255,0.06)', padding: '16px',
         marginBottom: '14px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <div style={{ fontSize: '11px', color: '#888', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
             ↓ Outros Custos
           </div>
           {outrosCustos.length > 0 && (
-            <div style={{ fontSize: '16px', fontWeight: '700', color: '#888' }}>
+            <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-text-dark-secondary)' }}>
               {fmtBRL(totalOutros)}
             </div>
           )}
@@ -1584,24 +1584,24 @@ export function FinanceiroPage() {
               <div key={c.id} style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
                 padding: '10px 12px', borderRadius: '10px',
-                backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.04)',
+                backgroundColor: 'var(--color-surface-dark-overlay)', border: '1px solid rgba(255,255,255,0.04)',
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', color: '#F0F2F5', marginBottom: '1px' }}>{c.descricao}</div>
-                  <div style={{ fontSize: '12px', color: '#888', fontWeight: '600' }}>{fmtBRL(c.valor)}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--color-text-dark-primary)', marginBottom: '1px' }}>{c.descricao}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', fontWeight: '600' }}>{fmtBRL(c.valor)}</div>
                 </div>
                 {c.arquivo_url && (
                   <a href={c.arquivo_url} target="_blank" rel="noreferrer" style={{
                     padding: '6px', borderRadius: '8px',
-                    backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.2)',
-                    color: '#fcc825', display: 'flex',
+                    backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.2)',
+                    color: 'var(--color-action-primary)', display: 'flex',
                   }}>
                     <FileText size={13} />
                   </a>
                 )}
                 <button onClick={() => handleRemoverCusto(c.id)} style={{
                   padding: '6px', borderRadius: '8px', border: 'none',
-                  backgroundColor: 'rgba(239,68,68,0.08)', color: '#EF4444', cursor: 'pointer', display: 'flex',
+                  backgroundColor: 'rgba(180,71,47,0.08)', color: 'var(--color-state-danger)', cursor: 'pointer', display: 'flex',
                 }}>
                   <Trash2 size={13} />
                 </button>
@@ -1614,7 +1614,7 @@ export function FinanceiroPage() {
         {showFormCusto ? (
           <div style={{
             padding: '12px', borderRadius: '12px',
-            backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)',
+            backgroundColor: 'var(--color-surface-dark-overlay)', border: '1px solid rgba(255,255,255,0.08)',
             display: 'flex', flexDirection: 'column', gap: '10px',
           }}>
             <input
@@ -1626,7 +1626,7 @@ export function FinanceiroPage() {
             <div style={{ position: 'relative' }}>
               <span style={{
                 position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)',
-                fontSize: '12px', color: '#555', pointerEvents: 'none',
+                fontSize: '12px', color: 'var(--color-text-dark-secondary)', pointerEvents: 'none',
               }}>R$</span>
               <input
                 type="text"
@@ -1644,8 +1644,8 @@ export function FinanceiroPage() {
             <button onClick={() => custoFileRef.current?.click()} disabled={uploadingCusto} style={{
               display: 'flex', alignItems: 'center', gap: '8px',
               padding: '8px 12px', borderRadius: '8px',
-              border: '1px dashed #2a2a2a', background: 'none', cursor: 'pointer',
-              color: custoArqPendente ? '#fcc825' : '#555', fontSize: '12px',
+              border: '1px dashed var(--color-border-dark)', background: 'none', cursor: 'pointer',
+              color: custoArqPendente ? 'var(--color-action-primary)' : 'var(--color-text-dark-secondary)', fontSize: '12px',
             }}>
               <Upload size={13} />
               {uploadingCusto ? 'Enviando...' : custoArqPendente ? `📄 ${custoArqPendente.nome}` : 'Anexar NF (opcional)'}
@@ -1653,12 +1653,12 @@ export function FinanceiroPage() {
 
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => { setShowFormCusto(false); setFormCusto({ descricao: '', valor: '' }); setCustoArqPendente(null) }}
-                style={{ flex: 1, padding: '9px', borderRadius: '9px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer' }}>
+                style={{ flex: 1, padding: '9px', borderRadius: '9px', border: '1px solid var(--color-border-dark)', background: 'none', color: 'var(--color-text-dark-secondary)', fontSize: '12px', cursor: 'pointer' }}>
                 Cancelar
               </button>
               <button onClick={handleSalvarCusto} disabled={salvarLancamento.isPending} style={{
                 flex: 2, padding: '9px', borderRadius: '9px', border: 'none',
-                background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                background: 'var(--color-action-primary)',
                 color: 'white', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
               }}>
                 {salvarLancamento.isPending ? 'Salvando...' : '+ Adicionar'}
@@ -1669,8 +1669,8 @@ export function FinanceiroPage() {
           <button onClick={() => setShowFormCusto(true)} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
             width: '100%', padding: '10px', borderRadius: '10px',
-            border: '1px dashed #2a2a2a', background: 'none',
-            color: '#555', fontSize: '12px', cursor: 'pointer', boxSizing: 'border-box',
+            border: '1px dashed var(--color-border-dark)', background: 'none',
+            color: 'var(--color-text-dark-secondary)', fontSize: '12px', cursor: 'pointer', boxSizing: 'border-box',
           }}>
             <Plus size={14} /> Adicionar custo
           </button>
@@ -1680,41 +1680,41 @@ export function FinanceiroPage() {
       {/* ── RESUMO TOTAL ──────────────────────────────────────────── */}
       {(receitaRecord || totalCustos > 0) && (
         <div style={{
-          backgroundColor: '#151515', borderRadius: '14px',
+          backgroundColor: 'var(--color-surface-dark-overlay)', borderRadius: '14px',
           border: '1px solid rgba(255,255,255,0.06)', padding: '16px',
           marginBottom: '14px',
         }}>
-          <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>
             Resumo — {MESES_ABREV[mesSel]}/{anoSel}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {receitaRecord && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#888' }}>Receita (repasse)</span>
-                <span style={{ fontSize: '14px', fontWeight: '700', color: '#22c55e' }}>{fmtBRL(receitaRecord.valor)}</span>
+                <span style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)' }}>Receita (repasse)</span>
+                <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-state-success)' }}>{fmtBRL(receitaRecord.valor)}</span>
               </div>
             )}
             {totalProfessores > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#888' }}>Custo professores</span>
-                <span style={{ fontSize: '14px', fontWeight: '700', color: '#EF4444' }}>- {fmtBRL(totalProfessores)}</span>
+                <span style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)' }}>Custo professores</span>
+                <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-state-danger)' }}>- {fmtBRL(totalProfessores)}</span>
               </div>
             )}
             {totalOutros > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#888' }}>Outros custos</span>
-                <span style={{ fontSize: '14px', fontWeight: '700', color: '#EF4444' }}>- {fmtBRL(totalOutros)}</span>
+                <span style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)' }}>Outros custos</span>
+                <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-state-danger)' }}>- {fmtBRL(totalOutros)}</span>
               </div>
             )}
             {receitaRecord && totalCustos > 0 && (
               <>
-                <div style={{ height: '1px', backgroundColor: '#2a2a2a', margin: '4px 0' }} />
+                <div style={{ height: '1px', backgroundColor: 'var(--color-border-dark)', margin: '4px 0' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '13px', color: '#888', fontWeight: '600' }}>Resultado</span>
+                  <span style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)', fontWeight: '600' }}>Resultado</span>
                   {(() => {
                     const resultado = Number(receitaRecord.valor) - totalCustos
                     return (
-                      <span style={{ fontSize: '16px', fontWeight: '700', color: resultado >= 0 ? '#22c55e' : '#EF4444' }}>
+                      <span style={{ fontSize: '16px', fontWeight: '700', color: resultado >= 0 ? 'var(--color-state-success)' : 'var(--color-state-danger)' }}>
                         {resultado >= 0 ? '+' : ''}{fmtBRL(resultado)}
                       </span>
                     )

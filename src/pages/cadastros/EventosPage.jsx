@@ -5,14 +5,14 @@ import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
 
 const toastStyle = {
-  background: '#1a1a1a', color: '#F0F2F5',
-  border: '1px solid rgba(252,200,37,0.3)',
+  background: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
+  border: '1px solid rgba(165,76,46,0.3)',
   borderRadius: '10px', fontSize: '13px',
 }
 
 const inputStyle = {
   width: '100%', padding: '8px 10px', borderRadius: '8px',
-  backgroundColor: '#0f0f0f', border: '1px solid #2a2a2a', color: '#F0F2F5',
+  backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)', color: 'var(--color-text-light-primary)',
   fontSize: '12px', outline: 'none', boxSizing: 'border-box',
 }
 
@@ -113,8 +113,8 @@ function LinkCopiavel({ link }) {
   return (
     <button onClick={copiar} style={{
       display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '8px',
-      border: '1px solid rgba(252,200,37,0.3)', background: 'rgba(252,200,37,0.08)',
-      color: '#fcc825', fontSize: '12px', cursor: 'pointer', flexShrink: 0,
+      border: '1px solid rgba(165,76,46,0.3)', background: 'rgba(165,76,46,0.08)',
+      color: 'var(--color-action-primary)', fontSize: '12px', cursor: 'pointer', flexShrink: 0,
     }}>
       {copiado ? <Check size={13} /> : <Copy size={13} />}
       {copiado ? 'Copiado!' : 'Copiar link'}
@@ -135,45 +135,45 @@ function LinhaInscricao({ inscricao, dataEvento, onExcluir, excluindo }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
-      padding: '10px 12px', borderRadius: '8px', backgroundColor: '#111',
-      border: `1px solid ${espera ? 'rgba(252,200,37,0.25)' : '#2a2a2a'}`,
+      padding: '10px 12px', borderRadius: '8px', backgroundColor: 'var(--color-surface-light-overlay)',
+      border: `1px solid ${espera ? 'rgba(165,76,46,0.25)' : 'var(--color-border-light)'}`,
     }}>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600' }}>
-          {inscricao.nome_crianca} <span style={{ color: '#555', fontWeight: '400' }}>· {idade} anos</span>
+        <div style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', fontWeight: '600' }}>
+          {inscricao.nome_crianca} <span style={{ color: 'var(--color-text-light-secondary)', fontWeight: '400' }}>· {idade} anos</span>
         </div>
-        <div style={{ fontSize: '11px', color: '#888' }}>
+        <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>
           Responsável: {inscricao.nome_responsavel}
           {inscricao.evento_slots && ` · ${inscricao.evento_slots.horario?.slice(0, 5)} ${inscricao.evento_slots.quadra}`}
         </div>
         {inscricao.disponibilidade_turmas?.length > 0 && (
-          <div style={{ fontSize: '10px', color: '#666', marginTop: '2px' }}>
+          <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', marginTop: '2px' }}>
             Disponibilidade: {inscricao.disponibilidade_turmas.map(v => LABEL_DISPONIBILIDADE[v] || v).join(', ')}
           </div>
         )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
         {espera && (
-          <span style={{ fontSize: '10px', color: '#fcc825', background: 'rgba(252,200,37,0.1)', padding: '3px 8px', borderRadius: '6px', fontWeight: '600' }}>
+          <span style={{ fontSize: '10px', color: 'var(--color-action-primary)', background: 'rgba(165,76,46,0.1)', padding: '3px 8px', borderRadius: '6px', fontWeight: '600' }}>
             LISTA DE ESPERA
           </span>
         )}
         <a href={whatsappLink(inscricao.whatsapp_responsavel)} target="_blank" rel="noreferrer" style={{
-          fontSize: '11px', color: '#22c55e', textDecoration: 'none', fontWeight: '600',
-          border: '1px solid rgba(34,197,94,0.3)', padding: '5px 10px', borderRadius: '6px',
+          fontSize: '11px', color: 'var(--color-state-success)', textDecoration: 'none', fontWeight: '600',
+          border: '1px solid rgba(75,139,106,0.3)', padding: '5px 10px', borderRadius: '6px',
         }}>
           WhatsApp
         </a>
         {confirmando ? (
           <>
             <button onClick={() => { onExcluir(inscricao.id); setConfirmando(false) }} disabled={excluindo} style={{
-              fontSize: '11px', color: 'white', background: '#EF4444', border: 'none',
+              fontSize: '11px', color: 'white', background: 'var(--color-state-danger)', border: 'none',
               padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600',
             }}>
               Confirmar
             </button>
             <button onClick={() => setConfirmando(false)} style={{
-              fontSize: '11px', color: '#888', background: 'none', border: '1px solid #2a2a2a',
+              fontSize: '11px', color: 'var(--color-text-light-secondary)', background: 'none', border: '1px solid var(--color-border-light)',
               padding: '5px 10px', borderRadius: '6px', cursor: 'pointer',
             }}>
               Cancelar
@@ -182,8 +182,8 @@ function LinhaInscricao({ inscricao, dataEvento, onExcluir, excluindo }) {
         ) : (
           <button onClick={() => setConfirmando(true)} title="Excluir inscrição" style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: '28px', height: '28px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)',
-            background: 'none', color: '#EF4444', cursor: 'pointer',
+            width: '28px', height: '28px', borderRadius: '6px', border: '1px solid rgba(180,71,47,0.3)',
+            background: 'none', color: 'var(--color-state-danger)', cursor: 'pointer',
           }}>
             <Trash2 size={13} />
           </button>
@@ -229,7 +229,7 @@ function FormIncluirInscricao({ eventoId, inscricoes, onFechar }) {
   }
 
   return (
-    <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: '#111', border: '1px solid rgba(252,200,37,0.2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid rgba(165,76,46,0.2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <select value={form.slot_id} onChange={e => setForm(f => ({ ...f, slot_id: e.target.value }))} style={inputStyle}>
         <option value="">Sem horário (lista de espera geral)</option>
         {slots?.map(s => (
@@ -249,8 +249,8 @@ function FormIncluirInscricao({ eventoId, inscricoes, onFechar }) {
         <option value="lista_espera">Lista de espera</option>
       </select>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button onClick={onFechar} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer' }}>Cancelar</button>
-        <button onClick={handleSalvar} disabled={incluir.isPending} style={{ flex: 2, padding: '8px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
+        <button onClick={onFechar} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '11px', cursor: 'pointer' }}>Cancelar</button>
+        <button onClick={handleSalvar} disabled={incluir.isPending} style={{ flex: 2, padding: '8px', borderRadius: '8px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
           {incluir.isPending ? 'Salvando...' : '✓ Incluir'}
         </button>
       </div>
@@ -281,24 +281,24 @@ function CardEvento({ evento }) {
   }
 
   return (
-    <div style={{ borderRadius: '14px', backgroundColor: '#161616', border: '1px solid #2a2a2a', overflow: 'hidden' }}>
+    <div style={{ borderRadius: '14px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
       <div style={{ padding: '16px', cursor: 'pointer' }} onClick={() => setAberto(a => !a)}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>🏆 {evento.nome}</div>
-            <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>🏆 {evento.nome}</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginTop: '2px' }}>
               {formatarData(evento.data_evento)} · {evento.hora_inicio?.slice(0, 5)}–{evento.hora_fim?.slice(0, 5)}
               {evento.idade_min != null && ` · ${evento.idade_min}-${evento.idade_max} anos`}
             </div>
           </div>
-          {aberto ? <ChevronUp size={16} color="#555" /> : <ChevronDown size={16} color="#555" />}
+          {aberto ? <ChevronUp size={16} color="var(--color-text-light-secondary)" /> : <ChevronDown size={16} color="var(--color-text-light-secondary)" />}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
-          <div style={{ fontSize: '12px', color: '#fcc825', fontWeight: '600' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-action-primary)', fontWeight: '600' }}>
             {aberto ? confirmados.length : '...'} / {aberto ? (totalVagas ?? '...') : evento.capacidade_maxima} vagas
           </div>
           {aberto && espera.length > 0 && (
-            <div style={{ fontSize: '12px', color: '#888' }}>· {espera.length} na lista de espera</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>· {espera.length} na lista de espera</div>
           )}
           <div onClick={e => e.stopPropagation()}><LinkCopiavel link={link} /></div>
         </div>
@@ -307,11 +307,11 @@ function CardEvento({ evento }) {
       {aberto && (
         <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {!inscricoes ? (
-            <div style={{ fontSize: '12px', color: '#555', padding: '8px 0' }}>Carregando inscrições...</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', padding: '8px 0' }}>Carregando inscrições...</div>
           ) : (
             <>
               {inscricoes.length === 0 && (
-                <div style={{ fontSize: '12px', color: '#555', padding: '8px 0' }}>Nenhuma inscrição ainda.</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', padding: '8px 0' }}>Nenhuma inscrição ainda.</div>
               )}
               {confirmados.map(i => (
                 <LinhaInscricao key={i.id} inscricao={i} dataEvento={evento.data_evento} onExcluir={handleExcluir} excluindo={excluir.isPending} />
@@ -326,8 +326,8 @@ function CardEvento({ evento }) {
             <FormIncluirInscricao eventoId={evento.id} inscricoes={inscricoes} onFechar={() => setIncluindoNovo(false)} />
           ) : (
             <button onClick={() => setIncluindoNovo(true)} style={{
-              marginTop: '4px', padding: '8px', borderRadius: '8px', border: '1px dashed #2a2a2a',
-              background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer',
+              marginTop: '4px', padding: '8px', borderRadius: '8px', border: '1px dashed var(--color-border-light)',
+              background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
             }}>
               <UserPlus size={13} /> Incluir inscrição manualmente
@@ -342,15 +342,15 @@ function CardEvento({ evento }) {
 export function EventosPage() {
   const { data: eventos, isLoading } = useEventos()
 
-  if (isLoading) return <div style={{ color: '#555', fontSize: '13px' }}>Carregando...</div>
+  if (isLoading) return <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '13px' }}>Carregando...</div>
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>
+      <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '4px' }}>
         Eventos com inscrição pública (seletivas, experimentais). Compartilhe o link com os pais — as inscrições e a lista de espera aparecem aqui em tempo real.
       </div>
       {eventos?.length === 0 && (
-        <div style={{ fontSize: '13px', color: '#555' }}>Nenhum evento cadastrado ainda.</div>
+        <div style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)' }}>Nenhum evento cadastrado ainda.</div>
       )}
       {eventos?.map(evento => <CardEvento key={evento.id} evento={evento} />)}
     </div>

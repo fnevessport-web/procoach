@@ -18,8 +18,8 @@ import useAppStore from '../../store/useAppStore'
 import toast from 'react-hot-toast'
 
 const toastStyle = {
-  background: '#1a1a1a', color: '#F0F2F5',
-  border: '1px solid rgba(252,200,37,0.3)',
+  background: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
+  border: '1px solid rgba(165,76,46,0.3)',
   borderRadius: '10px', fontSize: '13px',
 }
 
@@ -98,11 +98,11 @@ export function AvaliarAluno() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0 22px' }}>
         <button onClick={() => navigate(-1)} style={{
           background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
-          color: '#fcc825', display: 'flex', alignItems: 'center', flexShrink: 0,
+          color: 'var(--color-action-primary)', display: 'flex', alignItems: 'center', flexShrink: 0,
         }}>
           <ChevronLeft size={24} />
         </button>
-        <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
+        <h1 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: 0 }}>
           {avaliacaoParaEditar ? 'Editar avaliação' : 'Avaliar aluno'}
         </h1>
       </div>
@@ -116,8 +116,8 @@ export function AvaliarAluno() {
             onChange={e => setBusca(e.target.value)}
             style={{
               width: '100%', padding: '12px 14px', borderRadius: '10px', border: 'none',
-              outline: '1px solid #2a2a2a', backgroundColor: '#1a1a1a',
-              color: '#F0F2F5', fontSize: '14px', boxSizing: 'border-box', marginBottom: '10px',
+              outline: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)',
+              color: 'var(--color-text-light-primary)', fontSize: '14px', boxSizing: 'border-box', marginBottom: '10px',
             }}
           />
           {alunosFiltrados.length > 0 && (
@@ -125,8 +125,8 @@ export function AvaliarAluno() {
               {alunosFiltrados.map(a => (
                 <button key={a.id} onClick={() => selecionarAluno(a)} style={{
                   display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
-                  borderRadius: '10px', border: 'none', backgroundColor: '#1a1a1a',
-                  color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer',
+                  borderRadius: '10px', border: 'none', backgroundColor: 'var(--color-surface-light-raised)',
+                  color: 'var(--color-text-light-primary)', fontSize: '13px', textAlign: 'left', cursor: 'pointer',
                 }}>
                   {a.nome}
                 </button>
@@ -138,18 +138,18 @@ export function AvaliarAluno() {
         <>
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '10px 14px', borderRadius: '10px', backgroundColor: 'rgba(252,200,37,0.08)',
-            border: '1px solid rgba(252,200,37,0.25)', marginBottom: '16px',
+            padding: '10px 14px', borderRadius: '10px', backgroundColor: 'rgba(165,76,46,0.08)',
+            border: '1px solid rgba(165,76,46,0.25)', marginBottom: '16px',
           }}>
-            <span style={{ fontSize: '14px', color: '#F0F2F5', fontWeight: '600' }}>{alunoNome}</span>
+            <span style={{ fontSize: '14px', color: 'var(--color-text-light-primary)', fontWeight: '600' }}>{alunoNome}</span>
             <button onClick={() => { setAlunoId(null); setAlunoNome(''); setModalidadeId(null) }} style={{
-              background: 'none', border: 'none', color: '#fcc825', fontSize: '12px', cursor: 'pointer',
+              background: 'none', border: 'none', color: 'var(--color-action-primary)', fontSize: '12px', cursor: 'pointer',
             }}>trocar aluno</button>
           </div>
 
           {!professorIdProprio && !avaliacaoParaEditar && (
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '8px' }}>
                 Avaliação em nome de qual professor?
               </div>
               <select
@@ -157,8 +157,8 @@ export function AvaliarAluno() {
                 onChange={e => setProfessorSelecionadoId(e.target.value)}
                 style={{
                   width: '100%', padding: '12px 14px', borderRadius: '10px', border: 'none',
-                  outline: '1px solid #2a2a2a', backgroundColor: '#1a1a1a',
-                  color: '#F0F2F5', fontSize: '13px', boxSizing: 'border-box',
+                  outline: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)',
+                  color: 'var(--color-text-light-primary)', fontSize: '13px', boxSizing: 'border-box',
                 }}
               >
                 <option value="">Selecione o professor...</option>
@@ -171,15 +171,15 @@ export function AvaliarAluno() {
 
           {!modalidadeId ? (
             <div>
-              <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Modalidade</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '8px' }}>Modalidade</div>
               {modalidadesAluno.length === 0 ? (
-                <div style={{ fontSize: '12px', color: '#444' }}>Esse aluno não está matriculado em nenhuma modalidade</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-light-muted)' }}>Esse aluno não está matriculado em nenhuma modalidade</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {modalidadesAluno.map(m => (
                     <button key={m.id} onClick={() => setModalidadeId(m.id)} style={{
                       padding: '12px 14px', borderRadius: '10px', border: 'none', textAlign: 'left', cursor: 'pointer',
-                      backgroundColor: '#1a1a1a', color: '#F0F2F5', fontSize: '13px', fontWeight: '600',
+                      backgroundColor: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)', fontSize: '13px', fontWeight: '600',
                     }}>
                       {m.nome}
                     </button>
@@ -345,36 +345,36 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
         <button onClick={() => setEtapa('preenchimento')} style={{
-          alignSelf: 'flex-start', background: 'none', border: 'none', color: '#888', fontSize: '12px', cursor: 'pointer',
+          alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer',
         }}>← Voltar e editar</button>
 
         <div>
-          <div style={{ fontSize: '11px', fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+          <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
             {avaliacaoParaEditar ? 'Confira a edição' : 'Confira sua avaliação'}
           </div>
-          <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', marginBottom: '10px' }}>
-            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>{alunoNome}</div>
-            <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
+          <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)', marginBottom: '10px' }}>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>{alunoNome}</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginTop: '2px' }}>
               {modalidadeNome} · {format(new Date(dataAvaliacao + 'T12:00'), 'dd/MM/yyyy')}
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
             {unidades.map(u => (
-              <div key={u.nome} style={{ borderRadius: '9px', backgroundColor: '#111', border: '1px solid #2a2a2a', overflow: 'hidden' }}>
+              <div key={u.nome} style={{ borderRadius: '9px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '9px 12px', backgroundColor: u.subitens.length > 1 ? 'rgba(252,200,37,0.06)' : 'transparent',
+                  padding: '9px 12px', backgroundColor: u.subitens.length > 1 ? 'rgba(165,76,46,0.06)' : 'transparent',
                 }}>
-                  <span style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: u.subitens.length > 1 ? '700' : '400' }}>{u.nome}</span>
-                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825' }}>{formataNota(u.media)}{u.subitens.length === 1 ? `/${u.subitens[0].escalaMax}` : ''}</span>
+                  <span style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', fontWeight: u.subitens.length > 1 ? '700' : '400' }}>{u.nome}</span>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{formataNota(u.media)}{u.subitens.length === 1 ? `/${u.subitens[0].escalaMax}` : ''}</span>
                 </div>
                 {u.subitens.length > 1 && (
                   <div style={{ padding: '0 12px 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {u.subitens.map(s => (
                       <div key={s.chave} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '11px', color: '#888' }}>{s.nome}</span>
-                        <span style={{ fontSize: '11px', color: '#aaa' }}>{s.nota}/{s.escalaMax}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>{s.nome}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>{s.nota}/{s.escalaMax}</span>
                       </div>
                     ))}
                   </div>
@@ -386,8 +386,8 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
           {ehTenis && (
             <div style={{
               padding: '14px', borderRadius: '12px', marginBottom: '10px',
-              backgroundColor: nivelPcScore ? `${nivelPcScore.cor}12` : 'rgba(249,115,22,0.08)',
-              border: `1px solid ${nivelPcScore ? nivelPcScore.cor + '33' : 'rgba(249,115,22,0.25)'}`,
+              backgroundColor: nivelPcScore ? `${nivelPcScore.cor}12` : 'rgba(201,138,60,0.08)',
+              border: `1px solid ${nivelPcScore ? nivelPcScore.cor + '33' : 'rgba(201,138,60,0.25)'}`,
             }}>
               {resultadoPcScore?.pcScore != null ? (
                 <>
@@ -401,7 +401,7 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
                 </>
               ) : (
                 <div>
-                  <div style={{ fontSize: '12px', color: '#f97316', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-state-warning)', marginBottom: '10px' }}>
                     Falta a faixa etária do aluno pra calcular o PC Score — escolha uma pra continuar:
                   </div>
                   <SeletorFaixaEtariaManual alunoId={alunoId} valorAtual={aluno?.faixa_etaria_manual} compacto />
@@ -411,7 +411,7 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
           )}
 
           {comentario && (
-            <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: '#111', fontSize: '12px', color: '#888', fontStyle: 'italic', marginBottom: '10px' }}>
+            <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: 'var(--color-surface-light-overlay)', fontSize: '12px', color: 'var(--color-text-light-secondary)', fontStyle: 'italic', marginBottom: '10px' }}>
               "{comentario}"
             </div>
           )}
@@ -423,7 +423,7 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
           style={{
             width: '100%', padding: '13px', borderRadius: '12px', border: 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+            background: 'var(--color-action-primary)',
             color: 'white', fontSize: '14px', fontWeight: '600',
             cursor: (salvando || faltaFaixaEtaria || !professorId) ? 'not-allowed' : 'pointer',
             opacity: (faltaFaixaEtaria || !professorId) ? 0.5 : 1,
@@ -438,7 +438,7 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
       <button onClick={onVoltar} style={{
-        alignSelf: 'flex-start', background: 'none', border: 'none', color: '#888', fontSize: '12px', cursor: 'pointer',
+        alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer',
       }}>← trocar modalidade</button>
 
       {/* Data da avaliação */}
@@ -454,11 +454,11 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
           return (
             <div key={nomeDominio}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <div style={{ fontSize: '12px', fontWeight: '700', color: '#fcc825', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-action-primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   {nomeDominio}
                 </div>
                 {mediaDominio && (
-                  <div style={{ fontSize: '11px', color: '#888' }}>média {formataNota(mediaDominio.media)}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>média {formataNota(mediaDominio.media)}</div>
                 )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -484,24 +484,24 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
       </div>
 
       {/* Nota geral */}
-      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#888' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
             Nota geral
             <button onClick={() => setAjudaNotaAberta(true)} title="Como essa nota é calculada?" style={{
-              background: 'none', border: 'none', cursor: 'pointer', color: '#555',
+              background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light-secondary)',
               padding: '2px', display: 'flex', alignItems: 'center',
             }}>
               <Info size={13} />
             </button>
           </span>
-          <span style={{ fontSize: '22px', fontWeight: '800', color: '#fcc825' }}>
+          <span style={{ fontSize: '22px', fontWeight: '800', color: 'var(--color-action-primary)' }}>
             {notaGeral != null ? formataNota(notaGeral) : '—'}
           </span>
         </div>
         {notaManual == null ? (
           <button onClick={() => setNotaManual(notaCalculada || escalaMax / 2)} style={{
-            fontSize: '11px', color: '#888', background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: '11px', color: 'var(--color-text-light-secondary)', background: 'none', border: 'none', cursor: 'pointer',
           }}>calculada automaticamente — sobrescrever manualmente</button>
         ) : (
           <div>
@@ -512,7 +512,7 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
               style={{ width: '100%' }}
             />
             <button onClick={() => setNotaManual(null)} style={{
-              fontSize: '11px', color: '#888', background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: '11px', color: 'var(--color-text-light-secondary)', background: 'none', border: 'none', cursor: 'pointer',
             }}>voltar pro cálculo automático</button>
           </div>
         )}
@@ -528,16 +528,16 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
 
       {/* Nível */}
       <div>
-        <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
+        <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '8px' }}>
           Nível atual: {nivelAtual || 'não definido'} — atualizar? (opcional)
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           {NIVEIS_ALUNO.map(n => (
             <button key={n} onClick={() => setNovoNivel(novoNivel === n ? '' : n)} style={{
               padding: '6px 12px', borderRadius: '8px', border: 'none',
-              background: novoNivel === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
-              outline: novoNivel === n ? 'none' : '1px solid #2a2a2a',
-              color: novoNivel === n ? 'white' : '#888',
+              background: novoNivel === n ? 'var(--color-action-primary)' : 'var(--color-surface-light-raised)',
+              outline: novoNivel === n ? 'none' : '1px solid var(--color-border-light)',
+              color: novoNivel === n ? 'white' : 'var(--color-text-light-secondary)',
               fontSize: '12px', cursor: 'pointer', fontWeight: novoNivel === n ? '600' : '400',
             }}>{n}</button>
           ))}
@@ -546,7 +546,7 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
 
       <button onClick={handleAvancar} style={{
         width: '100%', padding: '13px', borderRadius: '12px', border: 'none',
-        background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+        background: 'var(--color-action-primary)',
         color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
       }}>
         Continuar — revisar antes de salvar
@@ -558,17 +558,17 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
 
       <Modal open={ajudaNotaAberta} onClose={() => setAjudaNotaAberta(false)} title="Nota geral" size="sm">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <p style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.5', margin: 0 }}>
+          <p style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.5', margin: 0 }}>
             É a média simples das notas de cada {gruposDominio.grupos.length > 0 ? 'domínio' : 'dimensão'} preenchidas
             acima, na escala 1 a {escalaMax}.
           </p>
           {ehTenis && (
-            <p style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.5', margin: 0 }}>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.5', margin: 0 }}>
               Pra Tênis, essas mesmas notas por domínio também alimentam o PC Score — o índice de 1 a 100
               (quanto menor, melhor o nível) que aparece no card do aluno, calculado com pesos por faixa etária.
             </p>
           )}
-          <p style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.5', margin: 0 }}>
+          <p style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.5', margin: 0 }}>
             Você pode sobrescrever esse valor manualmente pelo controle logo abaixo dele, se achar que a média
             automática não reflete bem o nível do aluno.
           </p>
@@ -594,10 +594,10 @@ function CampoSubitem({ d, valor, onEscolher, onAbrirAjuda }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-        <span style={{ fontSize: '12px', color: '#888' }}>{d.nome_dimensao}</span>
+        <span style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>{d.nome_dimensao}</span>
         {temAjuda && (
           <button onClick={onAbrirAjuda} title="O que estamos avaliando aqui?" style={{
-            background: 'none', border: 'none', cursor: 'pointer', color: '#555',
+            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light-secondary)',
             padding: '2px', display: 'flex', alignItems: 'center',
           }}>
             <Info size={13} />
@@ -611,9 +611,9 @@ function CampoSubitem({ d, valor, onEscolher, onAbrirAjuda }) {
               <button key={n} onClick={() => onEscolher(n)} style={{
                 flex: 1, padding: '10px 0', borderRadius: '8px', border: 'none', cursor: 'pointer',
                 fontSize: '14px', fontWeight: '700',
-                background: valor === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
-                color: valor === n ? 'white' : '#555',
-                outline: valor === n ? 'none' : '1px solid #2a2a2a',
+                background: valor === n ? 'var(--color-action-primary)' : 'var(--color-surface-light-raised)',
+                color: valor === n ? 'white' : 'var(--color-text-light-secondary)',
+                outline: valor === n ? 'none' : '1px solid var(--color-border-light)',
               }}>{n}</button>
             ))}
           </div>
@@ -630,21 +630,21 @@ function AjudaSubitem({ d }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {d.dominio && (
-        <div style={{ fontSize: '10px', color: '#fcc825', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>
+        <div style={{ fontSize: '10px', color: 'var(--color-action-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>
           {d.dominio}
         </div>
       )}
       {descricao && (
-        <p style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.5', margin: 0 }}>{descricao}</p>
+        <p style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.5', margin: 0 }}>{descricao}</p>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {FAIXAS_REFERENCIA_1_10.map(f => (
-          <div key={f.chave} style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#111', border: '1px solid #2a2a2a' }}>
+          <div key={f.chave} style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span style={{ fontSize: '12px', fontWeight: '700', color: '#fcc825' }}>{f.faixa}</span>
-              <span style={{ fontSize: '12px', fontWeight: '700', color: '#F0F2F5' }}>{f.label}</span>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{f.faixa}</span>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>{f.label}</span>
             </div>
-            <div style={{ fontSize: '12px', color: '#888' }}>{f.descricao}</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>{f.descricao}</div>
           </div>
         ))}
       </div>

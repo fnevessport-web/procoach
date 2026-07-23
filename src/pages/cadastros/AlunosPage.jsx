@@ -16,8 +16,8 @@ import toast from 'react-hot-toast'
 
 const inputStyle = {
   width: '100%', padding: '10px 14px', borderRadius: '10px',
-  backgroundColor: '#110f0f', border: '1px solid #2a2a2a',
-  color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+  backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
+  color: 'var(--color-text-light-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
 }
 
 const NIVEIS_ALUNO = [
@@ -182,11 +182,11 @@ export function AlunosPage() {
             value={busca}
             onChange={e => setBusca(e.target.value)}
           />
-          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#555', fontSize: '14px' }}>🔍</span>
+          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light-secondary)', fontSize: '14px' }}>🔍</span>
         </div>
         <button onClick={abrirCriar} style={{
           padding: '10px 16px', borderRadius: '10px', border: 'none',
-          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+          background: 'var(--color-action-primary)',
           color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap',
         }}>+ Novo</button>
       </div>
@@ -194,10 +194,10 @@ export function AlunosPage() {
       {isLoading ? <Loading /> : !filtrados?.length ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <div style={{ fontSize: '40px', marginBottom: '8px' }}>👥</div>
-          <p style={{ color: '#555', fontSize: '14px', marginBottom: '16px' }}>Nenhum aluno cadastrado</p>
+          <p style={{ color: 'var(--color-text-light-secondary)', fontSize: '14px', marginBottom: '16px' }}>Nenhum aluno cadastrado</p>
           <button onClick={abrirCriar} style={{
             padding: '10px 20px', borderRadius: '10px', border: 'none',
-            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+            background: 'var(--color-action-primary)',
             color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
           }}>+ Adicionar</button>
         </div>
@@ -205,32 +205,32 @@ export function AlunosPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {filtrados.map(aluno => (
             <div key={aluno.id} style={{
-              backgroundColor: '#1a1a1a', borderRadius: '12px',
-              border: '1px solid rgba(255,255,255,0.06)', padding: '14px 16px',
+              backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '12px',
+              border: '1px solid rgba(30,43,36,0.06)', padding: '14px 16px',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <div onClick={() => navigate(`/cadastros/alunos/${aluno.id}`)} style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                 <div style={{
                   width: 34, height: 34, borderRadius: '8px', flexShrink: 0, overflow: 'hidden',
-                  backgroundColor: '#110f0f', border: '1px solid #2a2a2a',
+                  backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   {aluno.foto_url
                     ? <img src={aluno.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <span style={{ fontSize: '13px', fontWeight: '700', color: '#555' }}>{aluno.nome?.[0]?.toUpperCase()}</span>
+                    : <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-light-secondary)' }}>{aluno.nome?.[0]?.toUpperCase()}</span>
                   }
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '14px' }}>{aluno.nome}</span>
+                    <span style={{ fontWeight: '600', color: 'var(--color-text-light-primary)', fontSize: '14px' }}>{aluno.nome}</span>
                     {aluno.menor_idade && (
-                      <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(252,200,37,0.15)', color: '#fcc825' }}>menor</span>
+                      <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(165,76,46,0.15)', color: 'var(--color-action-primary)' }}>menor</span>
                     )}
                     {aluno.nivel && (
-                      <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(207,27,155,0.15)', color: '#cf1b9b' }}>{aluno.nivel}</span>
+                      <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(61,107,122,0.15)', color: 'var(--color-state-info)' }}>{aluno.nivel}</span>
                     )}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginTop: '2px' }}>
                     {aluno.modalidades?.nome || '—'}
                     {aluno.menor_idade && aluno.nome_responsavel && (
                       <span style={{ marginLeft: '6px' }}>👤 {aluno.nome_responsavel}</span>
@@ -249,13 +249,13 @@ export function AlunosPage() {
                 )}
                 <button onClick={() => abrirEditar(aluno)} style={{
                   padding: '6px', borderRadius: '8px', border: 'none',
-                  backgroundColor: 'rgba(252,200,37,0.12)', color: '#fcc825', cursor: 'pointer',
+                  backgroundColor: 'rgba(165,76,46,0.12)', color: 'var(--color-action-primary)', cursor: 'pointer',
                 }}>
                   <Pencil size={14} />
                 </button>
                 <button onClick={() => handleExcluir(aluno.id)} style={{
                   padding: '6px', borderRadius: '8px', border: 'none',
-                  backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer',
+                  backgroundColor: 'rgba(180,71,47,0.1)', color: 'var(--color-state-danger)', cursor: 'pointer',
                 }}>
                   <Trash2 size={14} />
                 </button>
@@ -272,8 +272,8 @@ export function AlunosPage() {
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
               <div style={{ position: 'relative', width: 76, height: 76 }}>
                 <input ref={fotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadFoto} />
-                <div style={{ width: 76, height: 76, borderRadius: '50%', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', padding: '2px', boxSizing: 'border-box' }}>
-                  <div style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: '#110f0f', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 76, height: 76, borderRadius: '50%', background: 'var(--color-action-primary)', padding: '2px', boxSizing: 'border-box' }}>
+                  <div style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: 'var(--color-surface-light-overlay)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {form.foto_url
                       ? <img src={form.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       : <SilhuetaAlunoPequena />
@@ -282,10 +282,10 @@ export function AlunosPage() {
                 </div>
                 <button onClick={() => fotoInputRef.current?.click()} style={{
                   position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: '50%',
-                  border: 'none', backgroundColor: '#fcc825', cursor: 'pointer',
+                  border: 'none', backgroundColor: 'var(--color-action-primary)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  {uploadandoFoto ? '...' : <Camera size={12} color="#110f0f" />}
+                  {uploadandoFoto ? '...' : <Camera size={12} color="var(--color-surface-light-overlay)" />}
                 </button>
               </div>
             </div>
@@ -315,14 +315,14 @@ export function AlunosPage() {
             value={form.multiclubes_id} onChange={e => update('multiclubes_id', e.target.value)} />
 
           <div>
-            <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Nível (opcional)</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '8px' }}>Nível (opcional)</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {NIVEIS_ALUNO.map(n => (
                 <button key={n} onClick={() => update('nivel', form.nivel === n ? '' : n)} style={{
                   padding: '6px 12px', borderRadius: '8px', border: 'none',
-                  background: form.nivel === n ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#110f0f',
-                  outline: form.nivel === n ? 'none' : '1px solid #2a2a2a',
-                  color: form.nivel === n ? 'white' : '#888',
+                  background: form.nivel === n ? 'var(--color-action-primary)' : 'var(--color-surface-light-overlay)',
+                  outline: form.nivel === n ? 'none' : '1px solid var(--color-border-light)',
+                  color: form.nivel === n ? 'white' : 'var(--color-text-light-secondary)',
                   fontSize: '12px', cursor: 'pointer', fontWeight: form.nivel === n ? '600' : '400',
                 }}>{n}</button>
               ))}
@@ -332,9 +332,9 @@ export function AlunosPage() {
           <button onClick={() => update('menor_idade', !form.menor_idade)} style={{
             display: 'flex', alignItems: 'center', gap: '10px',
             padding: '10px 12px', borderRadius: '10px', border: 'none',
-            background: form.menor_idade ? 'rgba(252,200,37,0.1)' : '#110f0f',
-            outline: form.menor_idade ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-            color: form.menor_idade ? '#fcc825' : '#888',
+            background: form.menor_idade ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-overlay)',
+            outline: form.menor_idade ? '1px solid rgba(165,76,46,0.4)' : '1px solid var(--color-border-light)',
+            color: form.menor_idade ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)',
             cursor: 'pointer', width: '100%', boxSizing: 'border-box', textAlign: 'left',
           }}>
             <span style={{ fontSize: '16px' }}>{form.menor_idade ? '✓' : '○'}</span>
@@ -347,7 +347,7 @@ export function AlunosPage() {
           )}
 
           <div>
-            <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '8px' }}>
               Modalidades ({modalidadesSelecionadas.length} selecionadas)
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -355,9 +355,9 @@ export function AlunosPage() {
                 <button key={m.id} onClick={() => toggleModalidade(m.id)} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '10px 12px', borderRadius: '10px', border: 'none',
-                  background: modalidadesSelecionadas.includes(m.id) ? 'rgba(252,200,37,0.1)' : '#110f0f',
-                  outline: modalidadesSelecionadas.includes(m.id) ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-                  color: modalidadesSelecionadas.includes(m.id) ? '#fcc825' : '#888',
+                  background: modalidadesSelecionadas.includes(m.id) ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-overlay)',
+                  outline: modalidadesSelecionadas.includes(m.id) ? '1px solid rgba(165,76,46,0.4)' : '1px solid var(--color-border-light)',
+                  color: modalidadesSelecionadas.includes(m.id) ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)',
                   cursor: 'pointer', textAlign: 'left', width: '100%', boxSizing: 'border-box',
                 }}>
                   <span style={{ fontSize: '13px' }}>{m.nome}</span>
@@ -372,12 +372,12 @@ export function AlunosPage() {
           <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
             <button onClick={() => setModal(false)} style={{
               flex: 1, padding: '12px', borderRadius: '10px',
-              border: '1px solid #2a2a2a', backgroundColor: 'transparent',
-              color: '#888', fontSize: '13px', cursor: 'pointer',
+              border: '1px solid var(--color-border-light)', backgroundColor: 'transparent',
+              color: 'var(--color-text-light-secondary)', fontSize: '13px', cursor: 'pointer',
             }}>Cancelar</button>
             <button onClick={handleSalvar} disabled={salvar.isPending || salvandoMods} style={{
               flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
-              background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+              background: 'var(--color-action-primary)',
               color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
             }}>{salvar.isPending || salvandoMods ? 'Salvando...' : editando ? 'Salvar' : 'Cadastrar'}</button>
           </div>
@@ -389,7 +389,7 @@ export function AlunosPage() {
 
 function SilhuetaAlunoPequena() {
   return (
-    <svg width={30} height={30} viewBox="0 0 24 24" fill="#333">
+    <svg width={30} height={30} viewBox="0 0 24 24" fill="var(--color-text-light-muted)">
       <circle cx="12" cy="8" r="4.2" />
       <path d="M12 13.5c-5.2 0-8.8 2.9-8.8 6.4V21h17.6v-1.1c0-3.5-3.6-6.4-8.8-6.4z" />
     </svg>
@@ -448,24 +448,24 @@ function SecaoFamilia({ alunoId, alunos }) {
 
   return (
     <div>
-      <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Família</div>
+      <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '8px' }}>Família</div>
 
       {isLoading ? <Loading /> : vinculos?.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
           {vinculos.map(v => (
             <div key={v.id} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '8px 10px', borderRadius: '8px', backgroundColor: '#110f0f', border: '1px solid #2a2a2a',
+              padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
             }}>
-              <div style={{ fontSize: '13px', color: '#F0F2F5' }}>
+              <div style={{ fontSize: '13px', color: 'var(--color-text-light-primary)' }}>
                 {v.nome_vinculo}
-                <span style={{ fontSize: '11px', color: '#555', marginLeft: '8px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginLeft: '8px' }}>
                   {TIPOS_VINCULO.find(t => t.value === v.tipo_vinculo)?.label || v.tipo_vinculo}
                   {v.vinculo_aluno_id && ' · vinculado a aluno'}
                 </span>
               </div>
               <button onClick={() => handleRemover(v.id)} style={{
-                padding: '4px', borderRadius: '6px', border: 'none', background: 'none', color: '#EF4444', cursor: 'pointer',
+                padding: '4px', borderRadius: '6px', border: 'none', background: 'none', color: 'var(--color-state-danger)', cursor: 'pointer',
               }}>
                 <X size={14} />
               </button>
@@ -474,7 +474,7 @@ function SecaoFamilia({ alunoId, alunos }) {
         </div>
       )}
 
-      <div style={{ padding: '10px', borderRadius: '10px', border: '1px dashed #2a2a2a', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ padding: '10px', borderRadius: '10px', border: '1px dashed var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <Input placeholder="Nome" value={nomeVinculo} onChange={e => setNomeVinculo(e.target.value)} />
 
         <Select value={tipoVinculo} onChange={e => setTipoVinculo(e.target.value)}>
@@ -490,13 +490,13 @@ function SecaoFamilia({ alunoId, alunos }) {
           {sugestoes.length > 0 && !alunoVinculado && (
             <div style={{
               position: 'absolute', left: 0, right: 0, top: '100%', marginTop: '4px', zIndex: 10,
-              backgroundColor: '#141414', border: '1px solid #2a2a2a', borderRadius: '10px',
+              backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)', borderRadius: '10px',
               maxHeight: '160px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
             }}>
               {sugestoes.map(a => (
                 <button key={a.id} onClick={() => selecionarAlunoVinculado(a)} style={{
                   display: 'block', width: '100%', padding: '8px 10px', border: 'none',
-                  background: 'none', color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer',
+                  background: 'none', color: 'var(--color-text-light-primary)', fontSize: '13px', textAlign: 'left', cursor: 'pointer',
                 }}>
                   {a.nome}
                 </button>
@@ -504,7 +504,7 @@ function SecaoFamilia({ alunoId, alunos }) {
             </div>
           )}
           {alunoVinculado && (
-            <div style={{ fontSize: '11px', color: '#22c55e', marginTop: '4px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--color-state-success)', marginTop: '4px' }}>
               ✓ Vinculado a {alunoVinculado.nome} — vai aparecer clicável no card
             </div>
           )}
@@ -512,7 +512,7 @@ function SecaoFamilia({ alunoId, alunos }) {
 
         <button onClick={handleAdicionar} disabled={salvarVinculo.isPending} style={{
           padding: '9px', borderRadius: '8px', border: 'none',
-          background: 'rgba(252,200,37,0.12)', color: '#fcc825', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+          background: 'rgba(165,76,46,0.12)', color: 'var(--color-action-primary)', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
         }}>
           {salvarVinculo.isPending ? 'Adicionando...' : '+ Adicionar vínculo'}
         </button>

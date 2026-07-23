@@ -18,8 +18,8 @@ import { ModalDetalhesDia } from '../cadastros/ProfessoresPage'
 import toast from 'react-hot-toast'
 
 const toastStyle = {
-  background: '#1a1a1a', color: '#F0F2F5',
-  border: '1px solid rgba(252,200,37,0.3)',
+  background: 'var(--color-surface-dark-raised)', color: 'var(--color-text-dark-primary)',
+  border: '1px solid rgba(165,76,46,0.3)',
   borderRadius: '10px', fontSize: '13px',
 }
 
@@ -267,10 +267,10 @@ export function DashboardProfessor({ professorIdProp } = {}) {
     const removida = turmaRecorrente?.ativo === false
 
     let corBorda
-    if (removida) corBorda = 'rgba(239,68,68,0.5)'
-    else if (ehOverride) corBorda = 'rgba(59,130,246,0.6)'
-    else if (presencasRegulares.length > 0 || presencasReposicao.length > 0) corBorda = 'rgba(34,197,94,0.5)'
-    else corBorda = 'rgba(252,200,37,0.5)'
+    if (removida) corBorda = 'rgba(180,71,47,0.5)'
+    else if (ehOverride) corBorda = 'rgba(61,107,122,0.6)'
+    else if (presencasRegulares.length > 0 || presencasReposicao.length > 0) corBorda = 'rgba(75,139,106,0.5)'
+    else corBorda = 'rgba(165,76,46,0.5)'
 
     const nomeRecorrente = turmaRecorrente?.niveis?.nome || turmaRecorrente?.nome || ''
     const nomeEfetivo = aulaSemana?.turmas?.niveis?.nome || aulaSemana?.turmas?.nome || ''
@@ -285,11 +285,11 @@ export function DashboardProfessor({ professorIdProp } = {}) {
 
   // Individual lota com 1 aluno; turma em grupo tem 4 vagas — quanto mais perto de lotar, mais quente a cor
   function corContagem(qtd, individual) {
-    if (individual) return qtd >= 1 ? '#EF4444' : '#22c55e'
-    if (qtd >= 4) return '#EF4444'
-    if (qtd >= 2) return '#fcc825'
-    if (qtd === 1) return '#22c55e'
-    return '#444'
+    if (individual) return qtd >= 1 ? 'var(--color-state-danger)' : 'var(--color-state-success)'
+    if (qtd >= 4) return 'var(--color-state-danger)'
+    if (qtd >= 2) return 'var(--color-action-primary)'
+    if (qtd === 1) return 'var(--color-state-success)'
+    return 'var(--color-text-dark-muted)'
   }
 
   if (loadingProf || !professor) return <Loading text="Carregando painel..." />
@@ -307,11 +307,11 @@ export function DashboardProfessor({ professorIdProp } = {}) {
           title={professor.foto_url ? 'Abrir foto em tamanho real' : undefined}
           style={{ position: 'relative', width: 120, height: 120, flexShrink: 0, cursor: professor.foto_url ? 'pointer' : 'default' }}
         >
-          <div style={{ width: 120, height: 120, borderRadius: '50%', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', padding: '3px', boxSizing: 'border-box' }}>
-            <div style={{ width: '100%', height: '100%', borderRadius: '50%', border: '2px solid #110f0f', boxSizing: 'border-box', overflow: 'hidden', backgroundColor: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 120, height: 120, borderRadius: '50%', background: 'var(--color-action-primary)', padding: '3px', boxSizing: 'border-box' }}>
+            <div style={{ width: '100%', height: '100%', borderRadius: '50%', border: '2px solid var(--color-surface-dark-base)', boxSizing: 'border-box', overflow: 'hidden', backgroundColor: 'var(--color-surface-dark-raised)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {professor.foto_url
                 ? <img src={professor.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <span style={{ fontSize: '38px', fontWeight: '700', color: '#fcc825' }}>
+                : <span style={{ fontSize: '38px', fontWeight: '700', color: 'var(--color-action-primary)' }}>
                     {professor.nome?.split(' ').map(p => p[0]).slice(0, 2).join('')}
                   </span>
               }
@@ -320,22 +320,22 @@ export function DashboardProfessor({ professorIdProp } = {}) {
           {aoVivoAgora.length > 0 && (
             <span className="pulse-badge" style={{
               position: 'absolute', bottom: '6px', right: '6px', width: '18px', height: '18px',
-              borderRadius: '50%', backgroundColor: '#22c55e', border: '3px solid #110f0f',
+              borderRadius: '50%', backgroundColor: 'var(--color-state-success)', border: '3px solid var(--color-surface-dark-base)',
             }} />
           )}
         </a>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '22px', fontWeight: '600', color: '#F0F2F5', lineHeight: 1.2 }}>
+          <div style={{ fontSize: '22px', fontWeight: '600', color: 'var(--color-text-dark-primary)', lineHeight: 1.2 }}>
             {professor.apelido || professor.nome}
           </div>
           {professor.apelido && (
-            <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>{professor.nome}</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>{professor.nome}</div>
           )}
-          <div style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>{modalidadeLabel}</div>
+          <div style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)', marginTop: '4px' }}>{modalidadeLabel}</div>
           {aoVivoAgora.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
-              <span className="pulse-badge" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e' }} />
-              <span style={{ fontSize: '12px', color: '#22c55e', fontWeight: '600' }}>Dando aula agora</span>
+              <span className="pulse-badge" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-state-success)' }} />
+              <span style={{ fontSize: '12px', color: 'var(--color-state-success)', fontWeight: '600' }}>Dando aula agora</span>
             </div>
           )}
         </div>
@@ -345,7 +345,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
       {pendencias.length > 0 && (
         <div style={{ marginBottom: '16px' }}>
           <h3 style={{
-            fontSize: '13px', fontWeight: '700', color: '#fcc825', textTransform: 'uppercase',
+            fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)', textTransform: 'uppercase',
             letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px',
           }}>
             <AlertTriangle size={13} /> Confirmações pendentes ({pendencias.length})
@@ -368,7 +368,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
       {meusAlertasFaltas.length > 0 && (
         <div style={{ marginBottom: '16px' }}>
           <h3 style={{
-            fontSize: '13px', fontWeight: '700', color: '#fcc825', textTransform: 'uppercase',
+            fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)', textTransform: 'uppercase',
             letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px',
           }}>
             👀 De olho ({meusAlertasFaltas.length})
@@ -382,8 +382,8 @@ export function DashboardProfessor({ professorIdProp } = {}) {
                   onClick={() => proxima && abrirAulaDoAlerta(proxima.aulaId)}
                   style={{
                     padding: '10px 12px', borderRadius: '10px', cursor: proxima ? 'pointer' : 'default',
-                    backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.25)',
-                    fontSize: '12px', color: '#F0F2F5',
+                    backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.25)',
+                    fontSize: '12px', color: 'var(--color-text-dark-primary)',
                   }}>
                   <b>{a.alunoNome}</b> · {a.faltasConsecutivas} faltas seguidas · {a.modalidadeNome}
                   {proxima && <> · aula {ehHoje ? 'hoje' : 'amanhã'} {proxima.horario}</>}
@@ -397,26 +397,26 @@ export function DashboardProfessor({ professorIdProp } = {}) {
       {/* 3 cards do dia */}
       {loadingAulas ? <Loading /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
-          <CardResumoDia titulo="Aulas Hoje" valor={aulasHojeTodas.length} cor="#fcc825" onClick={() => navigate('/aulas')} />
-          <CardResumoDia titulo="Ao Vivo Agora" valor={aoVivoAgora.length} cor="#22c55e" pulsando={aoVivoAgora.length > 0} onClick={() => navigate('/aulas')} />
-          <CardResumoDia titulo="Amanhã" valor={aulasAmanha.length} cor="#3b82f6" onClick={() => navigate('/aulas', { state: { data: amanha } })} />
+          <CardResumoDia titulo="Aulas Hoje" valor={aulasHojeTodas.length} cor="var(--color-action-primary)" onClick={() => navigate('/aulas')} />
+          <CardResumoDia titulo="Ao Vivo Agora" valor={aoVivoAgora.length} cor="var(--color-state-success)" pulsando={aoVivoAgora.length > 0} onClick={() => navigate('/aulas')} />
+          <CardResumoDia titulo="Amanhã" valor={aulasAmanha.length} cor="var(--color-state-info)" onClick={() => navigate('/aulas', { state: { data: amanha } })} />
         </div>
       )}
 
       {/* Financeiro */}
-      <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '16px', border: '1px solid rgba(252,200,37,0.15)', marginBottom: '16px' }}>
+      <div style={{ backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '14px', padding: '16px', border: '1px solid rgba(165,76,46,0.15)', marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+            <div style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
               {MESES[mesAtual - 1]} {anoAtual} · {ganhosMesAtual.qtd} aulas
             </div>
-            <div style={{ fontSize: '26px', fontWeight: '800', color: '#fcc825' }}>
+            <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--color-action-primary)' }}>
               R$ {ganhosMesAtual.valor.toFixed(2).replace('.', ',')}
             </div>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '28px', fontWeight: '900', color: '#F0F2F5', lineHeight: 1 }}>{totalAulas}</div>
-            <div style={{ fontSize: '8px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Total de<br/>Aulas</div>
+            <div style={{ fontSize: '28px', fontWeight: '900', color: 'var(--color-text-dark-primary)', lineHeight: 1 }}>{totalAulas}</div>
+            <div style={{ fontSize: '8px', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Total de<br/>Aulas</div>
           </div>
         </div>
       </div>
@@ -426,18 +426,18 @@ export function DashboardProfessor({ professorIdProp } = {}) {
         onClick={() => navigate('/aulas', { state: { from: '/dashboard-professor', modoGradeCompleta: true } })}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 16px', borderRadius: '12px', border: '1px solid #2a2a2a',
-          backgroundColor: '#1a1a1a', color: '#F0F2F5', fontSize: '13px', fontWeight: '600',
+          padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--color-border-dark)',
+          backgroundColor: 'var(--color-surface-dark-raised)', color: 'var(--color-text-dark-primary)', fontSize: '13px', fontWeight: '600',
           cursor: 'pointer', marginBottom: '20px',
         }}
       >
         Ver grade completa
-        <ChevronRight size={16} color="#555" />
+        <ChevronRight size={16} color="var(--color-text-dark-secondary)" />
       </button>
 
       {/* Histórico 6 meses */}
       <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '13px', fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
           Histórico
         </h3>
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
@@ -449,16 +449,16 @@ export function DashboardProfessor({ professorIdProp } = {}) {
                 onClick={() => setMesExpandido(v => (v?.mes === m.mes && v?.ano === m.ano) ? null : { mes: m.mes, ano: m.ano })}
                 style={{
                   flexShrink: 0, minWidth: '96px', padding: '12px', borderRadius: '12px', cursor: 'pointer',
-                  backgroundColor: atual ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
-                  border: atual ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
+                  backgroundColor: atual ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-dark-raised)',
+                  border: atual ? '1px solid rgba(165,76,46,0.4)' : '1px solid var(--color-border-dark)',
                   textAlign: 'left',
                 }}
               >
-                <div style={{ fontSize: '10px', color: atual ? '#fcc825' : '#555', textTransform: 'uppercase', fontWeight: '700', marginBottom: '6px' }}>
+                <div style={{ fontSize: '10px', color: atual ? 'var(--color-action-primary)' : 'var(--color-text-dark-secondary)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '6px' }}>
                   {m.label}
                 </div>
-                <div style={{ fontSize: '16px', fontWeight: '800', color: '#F0F2F5' }}>{m.qtd}</div>
-                <div style={{ fontSize: '9px', color: '#555' }}>aulas</div>
+                <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--color-text-dark-primary)' }}>{m.qtd}</div>
+                <div style={{ fontSize: '9px', color: 'var(--color-text-dark-secondary)' }}>aulas</div>
               </button>
             )
           })}
@@ -489,18 +489,18 @@ export function DashboardProfessor({ professorIdProp } = {}) {
 
       {/* Grade semanal */}
       <div>
-        <h3 style={{ fontSize: '13px', fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
           Minha grade semanal
         </h3>
         <div style={{ overflowX: 'auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: `56px repeat(7, 1fr)`, gap: '4px', minWidth: '560px' }}>
             <div />
             {DIAS_LABEL.map(d => (
-              <div key={d} style={{ textAlign: 'center', fontSize: '10px', color: '#555', fontWeight: '700', padding: '4px 0' }}>{d}</div>
+              <div key={d} style={{ textAlign: 'center', fontSize: '10px', color: 'var(--color-text-dark-secondary)', fontWeight: '700', padding: '4px 0' }}>{d}</div>
             ))}
             {HORARIOS_GRADE.map(horario => (
               <Fragment key={horario}>
-                <div style={{ fontSize: '10px', color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '4px' }}>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '4px' }}>
                   {horario}
                 </div>
                 {DIAS_SEMANA.map(dia => {
@@ -512,7 +512,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
                       disabled={!info}
                       style={{
                         minHeight: '46px', borderRadius: '6px', cursor: info ? 'pointer' : 'default',
-                        backgroundColor: info ? '#1a1a1a' : 'rgba(255,255,255,0.02)',
+                        backgroundColor: info ? 'var(--color-surface-dark-raised)' : 'rgba(255,255,255,0.02)',
                         border: `1px solid ${info ? info.corBorda : 'transparent'}`,
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                         gap: '2px', padding: '3px', overflow: 'hidden', boxSizing: 'border-box',
@@ -522,27 +522,27 @@ export function DashboardProfessor({ professorIdProp } = {}) {
                         <>
                           {info.ehOverride ? (
                             <>
-                              <span style={{ fontSize: '8px', color: '#777', textDecoration: 'line-through', lineHeight: 1.2, textAlign: 'center', wordBreak: 'break-word', maxWidth: '100%' }}>
+                              <span style={{ fontSize: '8px', color: 'var(--color-text-dark-muted)', textDecoration: 'line-through', lineHeight: 1.2, textAlign: 'center', wordBreak: 'break-word', maxWidth: '100%' }}>
                                 {info.nomeRecorrente}
                               </span>
-                              <span style={{ fontSize: '7px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                              <span style={{ fontSize: '7px', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                                 {info.nomeEfetivo}
                               </span>
                             </>
                           ) : (
-                            <span style={{ fontSize: '8px', color: '#ccc', lineHeight: 1.2, textAlign: 'center', wordBreak: 'break-word', maxWidth: '100%' }}>
+                            <span style={{ fontSize: '8px', color: 'var(--color-text-dark-secondary)', lineHeight: 1.2, textAlign: 'center', wordBreak: 'break-word', maxWidth: '100%' }}>
                               {info.nomeRecorrente || info.nomeEfetivo}
                             </span>
                           )}
                           {(info.presencasRegulares.length > 0 || info.presencasReposicao.length > 0) && (
                             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '1px' }}>
                               {info.presencasRegulares.length > 0 && (
-                                <span style={{ fontSize: '10px', fontWeight: '700', color: '#ddd', borderBottom: `2px solid ${corContagem(info.presencasRegulares.length, info.individual)}`, paddingBottom: '1px' }}>
+                                <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--color-text-dark-secondary)', borderBottom: `2px solid ${corContagem(info.presencasRegulares.length, info.individual)}`, paddingBottom: '1px' }}>
                                   {info.presencasRegulares.length}
                                 </span>
                               )}
                               {info.presencasReposicao.length > 0 && (
-                                <span style={{ fontSize: '10px', fontWeight: '700', color: '#ddd', borderBottom: '2px solid #3b82f6', paddingBottom: '1px' }}>
+                                <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--color-text-dark-secondary)', borderBottom: '2px solid var(--color-state-info)', paddingBottom: '1px' }}>
                                   {info.presencasReposicao.length}
                                 </span>
                               )}
@@ -558,16 +558,16 @@ export function DashboardProfessor({ professorIdProp } = {}) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '14px', marginTop: '10px', flexWrap: 'wrap' }}>
-          <Legenda tipo="borda" cor="#22c55e" label="Borda: tem aluno" />
-          <Legenda tipo="borda" cor="#fcc825" label="Borda: sua turma, vazia" />
-          <Legenda tipo="borda" cor="#3b82f6" label="Borda: virou outra aula hoje" />
-          <Legenda tipo="borda" cor="#EF4444" label="Borda: removida" />
+          <Legenda tipo="borda" cor="var(--color-state-success)" label="Borda: tem aluno" />
+          <Legenda tipo="borda" cor="var(--color-action-primary)" label="Borda: sua turma, vazia" />
+          <Legenda tipo="borda" cor="var(--color-state-info)" label="Borda: virou outra aula hoje" />
+          <Legenda tipo="borda" cor="var(--color-state-danger)" label="Borda: removida" />
         </div>
         <div style={{ display: 'flex', gap: '14px', marginTop: '6px', flexWrap: 'wrap' }}>
-          <Legenda tipo="sublinhado" cor="#22c55e" label="Nº: ainda tem vaga" />
-          <Legenda tipo="sublinhado" cor="#fcc825" label="Nº: poucas vagas" />
-          <Legenda tipo="sublinhado" cor="#EF4444" label="Nº: lotada" />
-          <Legenda tipo="sublinhado" cor="#3b82f6" label="Nº: reposição" />
+          <Legenda tipo="sublinhado" cor="var(--color-state-success)" label="Nº: ainda tem vaga" />
+          <Legenda tipo="sublinhado" cor="var(--color-action-primary)" label="Nº: poucas vagas" />
+          <Legenda tipo="sublinhado" cor="var(--color-state-danger)" label="Nº: lotada" />
+          <Legenda tipo="sublinhado" cor="var(--color-state-info)" label="Nº: reposição" />
         </div>
       </div>
 
@@ -583,11 +583,11 @@ function CardConfirmacaoPendente({ pendencia, confirmando, onConfirmar, onDiscut
   const dimensoes = Object.entries(pendencia.dimensoes || {})
 
   return (
-    <div style={{ backgroundColor: '#1a1a1a', borderRadius: '12px', border: '1px solid rgba(252,200,37,0.25)', padding: '14px' }}>
+    <div style={{ backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px', border: '1px solid rgba(165,76,46,0.25)', padding: '14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', gap: '10px' }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: '14px', fontWeight: '700', color: '#F0F2F5' }}>{pendencia.alunos?.nome}</div>
-          <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+          <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>{pendencia.alunos?.nome}</div>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>
             {pendencia.modalidades?.nome} · avaliado por {pendencia.professores?.nome} em{' '}
             {format(new Date(pendencia.data_avaliacao + 'T12:00'), 'dd/MM/yyyy', { locale: ptBR })}
           </div>
@@ -603,29 +603,29 @@ function CardConfirmacaoPendente({ pendencia, confirmando, onConfirmar, onDiscut
       {dimensoes.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
           {dimensoes.map(([nome, valor]) => (
-            <span key={nome} style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '6px', backgroundColor: '#111', color: '#ccc' }}>
-              {nome}: <strong style={{ color: '#fcc825' }}>{valor}/5</strong>
+            <span key={nome} style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '6px', backgroundColor: 'var(--color-surface-dark-overlay)', color: 'var(--color-text-dark-secondary)' }}>
+              {nome}: <strong style={{ color: 'var(--color-action-primary)' }}>{valor}/5</strong>
             </span>
           ))}
         </div>
       )}
 
       {pendencia.comentario && (
-        <div style={{ fontSize: '12px', color: '#888', fontStyle: 'italic', marginBottom: '10px' }}>"{pendencia.comentario}"</div>
+        <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', fontStyle: 'italic', marginBottom: '10px' }}>"{pendencia.comentario}"</div>
       )}
 
       <div style={{ display: 'flex', gap: '8px' }}>
         <button onClick={onDiscutir} style={{
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-          padding: '9px', borderRadius: '9px', border: '1px solid #2a2a2a', cursor: 'pointer',
-          backgroundColor: '#111', color: '#888', fontSize: '12px', fontWeight: '600',
+          padding: '9px', borderRadius: '9px', border: '1px solid var(--color-border-dark)', cursor: 'pointer',
+          backgroundColor: 'var(--color-surface-dark-overlay)', color: 'var(--color-text-dark-secondary)', fontSize: '12px', fontWeight: '600',
         }}>
           <MessageCircle size={13} /> Discutir
         </button>
         <button onClick={onConfirmar} disabled={confirmando} style={{
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
           padding: '9px', borderRadius: '9px', border: 'none', cursor: confirmando ? 'default' : 'pointer',
-          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '12px', fontWeight: '700',
+          background: 'var(--color-action-primary)', color: 'white', fontSize: '12px', fontWeight: '700',
           opacity: confirmando ? 0.6 : 1,
         }}>
           <Check size={13} /> Confirmar
@@ -637,11 +637,11 @@ function CardConfirmacaoPendente({ pendencia, confirmando, onConfirmar, onDiscut
 
 function CardResumoDia({ titulo, valor, cor, pulsando, onClick }) {
   return (
-    <button onClick={onClick} style={{ backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '14px 10px', border: '1px solid #2a2a2a', textAlign: 'center', cursor: 'pointer' }}>
+    <button onClick={onClick} style={{ backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px', padding: '14px 10px', border: '1px solid var(--color-border-dark)', textAlign: 'center', cursor: 'pointer' }}>
       <div style={{ fontSize: '24px', fontWeight: '800', color: cor, lineHeight: 1 }} className={pulsando ? 'pulse-badge' : ''}>
         {valor}
       </div>
-      <div style={{ fontSize: '9px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '6px' }}>{titulo}</div>
+      <div style={{ fontSize: '9px', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '6px' }}>{titulo}</div>
     </button>
   )
 }
@@ -652,11 +652,11 @@ function Legenda({ cor, label, tipo }) {
       {tipo === 'borda' ? (
         <span style={{ width: '9px', height: '9px', borderRadius: '3px', border: `1.5px solid ${cor}` }} />
       ) : tipo === 'sublinhado' ? (
-        <span style={{ fontSize: '10px', fontWeight: '700', color: '#ddd', borderBottom: `2px solid ${cor}`, paddingBottom: '1px' }}>2</span>
+        <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--color-text-dark-secondary)', borderBottom: `2px solid ${cor}`, paddingBottom: '1px' }}>2</span>
       ) : (
         <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: cor }} />
       )}
-      <span style={{ fontSize: '11px', color: '#888' }}>{label}</span>
+      <span style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)' }}>{label}</span>
     </div>
   )
 }
@@ -667,13 +667,13 @@ function MesExpandidoDetalhe({ mes, ano, aulas, valorAula, onClose, onSelecionar
   const dias = Object.keys(porDia).sort((a, b) => b.localeCompare(a))
 
   return (
-    <div style={{ backgroundColor: '#1a1a1a', borderRadius: '12px', border: '1px solid #2a2a2a', padding: '14px', marginTop: '10px' }}>
+    <div style={{ backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px', border: '1px solid var(--color-border-dark)', padding: '14px', marginTop: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-        <span style={{ fontSize: '12px', fontWeight: '700', color: '#F0F2F5' }}>{MESES[mes - 1]} {ano} · {aulas.length} aulas</span>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}><X size={16} /></button>
+        <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>{MESES[mes - 1]} {ano} · {aulas.length} aulas</span>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--color-text-dark-secondary)', cursor: 'pointer' }}><X size={16} /></button>
       </div>
       {dias.length === 0 ? (
-        <p style={{ fontSize: '12px', color: '#555' }}>Nenhuma aula dada nesse mês.</p>
+        <p style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)' }}>Nenhuma aula dada nesse mês.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
           {dias.map(dataStr => {
@@ -681,14 +681,14 @@ function MesExpandidoDetalhe({ mes, ano, aulas, valorAula, onClose, onSelecionar
             return (
               <button key={dataStr} onClick={() => onSelecionarDia(dataStr)} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                fontSize: '12px', color: '#F0F2F5', padding: '10px 12px', borderRadius: '8px',
-                backgroundColor: '#111', border: '1px solid #222', cursor: 'pointer', textAlign: 'left',
+                fontSize: '12px', color: 'var(--color-text-dark-primary)', padding: '10px 12px', borderRadius: '8px',
+                backgroundColor: 'var(--color-surface-dark-overlay)', border: '1px solid var(--color-border-dark)', cursor: 'pointer', textAlign: 'left',
               }}>
                 <span style={{ textTransform: 'capitalize' }}>{format(new Date(dataStr + 'T12:00'), "dd 'de' MMM", { locale: ptBR })}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ color: '#888' }}>{doDia.length} aula{doDia.length !== 1 ? 's' : ''}</span>
-                  <span style={{ color: '#fcc825', fontWeight: '600' }}>R$ {(doDia.length * valorAula).toFixed(2).replace('.', ',')}</span>
-                  <ChevronRight size={14} color="#555" />
+                  <span style={{ color: 'var(--color-text-dark-secondary)' }}>{doDia.length} aula{doDia.length !== 1 ? 's' : ''}</span>
+                  <span style={{ color: 'var(--color-action-primary)', fontWeight: '600' }}>R$ {(doDia.length * valorAula).toFixed(2).replace('.', ',')}</span>
+                  <ChevronRight size={14} color="var(--color-text-dark-secondary)" />
                 </span>
               </button>
             )
@@ -707,34 +707,34 @@ function ModalCelula({ celulaAtiva, onClose }) {
   // .app-main (overflow-y + scroll-touch) e o modal fica cortado, sem cobrir a tela toda.
   return createPortal((
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#1a1a1a', borderRadius: '16px', border: '1px solid #2a2a2a', padding: '20px', width: '100%', maxWidth: '340px' }}>
+      <div onClick={e => e.stopPropagation()} style={{ backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '16px', border: '1px solid var(--color-border-dark)', padding: '20px', width: '100%', maxWidth: '340px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>{nomeExibir}</div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>{nomeExibir}</div>
             {info.ehOverride && (
-              <div style={{ fontSize: '11px', color: '#3b82f6', marginTop: '2px' }}>Substituindo {info.nomeRecorrente} nessa semana</div>
+              <div style={{ fontSize: '11px', color: 'var(--color-state-info)', marginTop: '2px' }}>Substituindo {info.nomeRecorrente} nessa semana</div>
             )}
-            <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{info.quadraNome}</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>{info.quadraNome}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}><X size={18} /></button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--color-text-dark-secondary)', cursor: 'pointer' }}><X size={18} /></button>
         </div>
-        <div style={{ fontSize: '13px', color: '#F0F2F5', marginBottom: '10px' }}>{horario} — {totalAlunos} aluno(s)</div>
+        <div style={{ fontSize: '13px', color: 'var(--color-text-dark-primary)', marginBottom: '10px' }}>{horario} — {totalAlunos} aluno(s)</div>
         {(info.presencasRegulares.length > 0 || info.presencasReposicao.length > 0) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '4px' }}>
             {info.presencasRegulares.map(p => (
-              <div key={p.id} style={{ fontSize: '13px', color: '#ccc', padding: '8px 10px', borderRadius: '8px', backgroundColor: '#111' }}>
+              <div key={p.id} style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)', padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--color-surface-dark-overlay)' }}>
                 {p.alunos.nome}
               </div>
             ))}
             {info.presencasReposicao.map(p => (
-              <div key={p.id} style={{ fontSize: '13px', color: '#ccc', padding: '8px 10px', borderRadius: '8px', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div key={p.id} style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)', padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--color-surface-dark-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 {p.alunos.nome}
-                <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(59,130,246,0.15)', color: '#3b82f6', fontWeight: '600' }}>reposição</span>
+                <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(61,107,122,0.15)', color: 'var(--color-state-info)', fontWeight: '600' }}>reposição</span>
               </div>
             ))}
           </div>
         )}
-        {info.removida && <div style={{ fontSize: '12px', color: '#EF4444', marginTop: '6px' }}>Turma removida</div>}
+        {info.removida && <div style={{ fontSize: '12px', color: 'var(--color-state-danger)', marginTop: '6px' }}>Turma removida</div>}
         {info.turmaRecorrente?.id && <ResumoTecnicoTurma turmaId={info.turmaRecorrente.id} />}
       </div>
     </div>
@@ -777,31 +777,31 @@ function ResumoTecnicoTurma({ turmaId }) {
   }
 
   return (
-    <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #2a2a2a' }}>
-      <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700', marginBottom: '8px' }}>
+    <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--color-border-dark)' }}>
+      <div style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700', marginBottom: '8px' }}>
         Resumo técnico da turma
       </div>
-      <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px' }}>
+      <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '8px' }}>
         {resumo.alunosAvaliados} de {resumo.totalAlunos} avaliados nos últimos {REAVALIACAO_PRAZO_DIAS} dias
       </div>
       {resumo.mediaPorDimensao.length > 0 ? (
         <>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '8px' }}>
             {resumo.mediaPorDimensao.map(d => (
-              <div key={d.dimensao} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#ccc' }}>
+              <div key={d.dimensao} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-text-dark-secondary)' }}>
                 <span>{d.dimensao}</span>
-                <strong style={{ color: d.dimensao === resumo.gargaloColetivo?.dimensao ? '#cf1b9b' : '#fcc825' }}>{d.media}/5</strong>
+                <strong style={{ color: d.dimensao === resumo.gargaloColetivo?.dimensao ? 'var(--color-state-warning)' : 'var(--color-action-primary)' }}>{d.media}/5</strong>
               </div>
             ))}
           </div>
           {resumo.gargaloColetivo && (
-            <div style={{ fontSize: '11px', color: '#cf1b9b', marginBottom: '10px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--color-state-warning)', marginBottom: '10px' }}>
               Gargalo coletivo: {resumo.gargaloColetivo.dimensao} ({resumo.gargaloColetivo.media}/5)
             </div>
           )}
 
           {plano ? (
-            <div style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.5', backgroundColor: '#111', borderRadius: '8px', padding: '10px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', lineHeight: '1.5', backgroundColor: 'var(--color-surface-dark-overlay)', borderRadius: '8px', padding: '10px' }}>
               {plano}
             </div>
           ) : (
@@ -813,8 +813,8 @@ function ResumoTecnicoTurma({ turmaId }) {
                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                 padding: '9px', borderRadius: '9px', border: 'none',
                 cursor: (!coberturaSuficiente || gerandoPlano) ? 'default' : 'pointer',
-                background: coberturaSuficiente ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#111',
-                color: coberturaSuficiente ? 'white' : '#555',
+                background: coberturaSuficiente ? 'var(--color-action-primary)' : 'var(--color-surface-dark-overlay)',
+                color: coberturaSuficiente ? 'white' : 'var(--color-text-dark-secondary)',
                 fontSize: '12px', fontWeight: '700', opacity: gerandoPlano ? 0.6 : 1,
               }}
             >
@@ -824,7 +824,7 @@ function ResumoTecnicoTurma({ turmaId }) {
           )}
         </>
       ) : (
-        <div style={{ fontSize: '11px', color: '#555' }}>Sem avaliações recentes o suficiente pra calcular a média da turma.</div>
+        <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)' }}>Sem avaliações recentes o suficiente pra calcular a média da turma.</div>
       )}
     </div>
   )

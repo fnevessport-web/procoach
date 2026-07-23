@@ -111,41 +111,68 @@ arquivo. `NIVEIS_ASSIDUIDADE`/`corNivel()` (`src/lib/pontuacaoBeyond.js`) també
 
 ### Logos
 
-- `logoprocoach.png` (`public/images/`) — logo genérico do app, usado hoje em Header/Sidebar/
-  splash/telas de auth/legal. **Ainda não foi substituído** pelos novos selos (assets do
-  redesign, ver abaixo) — os `<img src="/images/logoprocoach.png">` não foram tocados na Fase 1
-  pra não quebrar a imagem visualmente enquanto o arquivo novo não chega.
-- Assets novos do redesign (Passo 4 do prompt original, **ainda não existem em `public/`** — o
-  cliente fornece os arquivos, o código já está preparado esperando esses nomes exatos):
-  - `public/images/logo-pc-cream.png` — selo creme, pra contexto escuro (Header/Sidebar quando
-    forem migrados, splash PWA, Login).
-  - `public/images/logo-pc-green.png` — selo verde, pra contexto claro (headers de página clara,
-    PDFs/documentos que não sejam o relatório Beyond/Procópio).
-  - `public/images/logo-pc-saibro.png` — uso pontual (selos, marca d'água, badges).
-  - `public/images/login-bg.jpg` — foto da rede na quadra de saibro, fundo do Login.
-  - `public/icons/icon-192.png`, `public/icons/icon-512.png` — ícones PWA (já referenciados em
-    `public/manifest.json`).
-  - `public/favicon.ico` — favicon (já referenciado em `index.html`).
+- `public/images/logo-pc-cream.png` — selo creme, contexto escuro. Usado em `Header.jsx`,
+  `Sidebar.jsx`, `PageLoading` (`components/ui/Loading.jsx`) — chrome/splash, sempre escuro — e
+  no PDF de "Grade de Aulas" gerado inline em `AulasCoordenador.jsx` (fundo do PDF é escuro,
+  `COR_FUNDO`/`COR_TEXTO` locais àquela função).
+- `public/images/logo-pc-green.png` — selo verde, contexto claro. Usado nas telas de
+  auth/legal que ficam fora do `AppLayout` (`EsqueciSenha`, `TrocarSenha`,
+  `SelecionarEmpresaPage`, `PoliticaPrivacidadePage`, `ComoFuncionaAPontuacaoPage`,
+  `ComoFuncionaORankingPage`) — todas full-page standalone, sem wrapper `.theme-x` herdado, por
+  isso usam os tokens `-light-*` diretos (mesma lógica de "páginas normais").
+- `public/images/logo-pc-saibro.png` — ainda sem uso definido no código (uso pontual futuro:
+  selos, marca d'água, badges).
+- `public/images/login-bg.png` — fundo do Login (nota: extensão real é `.png`, não `.jpg` como o
+  prompt original previa — `LoginPage.jsx` aponta pro nome real).
+- `public/images/icon-192.png`, `public/images/icon-512.png` — ícones PWA, referenciados em
+  `public/manifest.json` (ficaram em `public/images/`, não `public/icons/` como o plano original
+  prévia — path ajustado pro que o cliente entregou).
+- `public/images/favicon.png` — favicon, referenciado em `index.html` como
+  `<link rel="icon" type="image/png">` (não é mais `.ico` — arquivo entregue é PNG).
+- `logoprocoach.png` (`public/images/`) — logo antiga, **não é mais referenciada em lugar
+  nenhum** do app (substituída pelos selos acima); o arquivo físico não foi apagado (pode ficar
+  ou ser removido, sem impacto).
 - Logos de unidade (`logoprocopio.png`, `logobeacharena.png`, `logobeyond.png` + versões
   `_preto.png` pra fundo claro) continuam como estão — usados em `SelecionarEmpresaPage`,
   `FinanceiroPage`, PDFs, `EventoInscricaoPage` — não fazem parte deste redesign.
 
-### O que já foi feito (Fase 1) vs. o que falta (Fase 2)
+### Status: Fase 1 + Fase 2 completas
 
-**Feito**: tokens + camada de tema em `src/index.css`, `temaPorRota.js` + `AppLayout.jsx`,
-componentes compartilhados (Header, Sidebar via CSS, BottomNav, Modal, Input/Textarea/Select,
-Loading/PageLoading/Skeleton/EmptyState, Button, Card, FotoProfessor, InstallBanner,
-ModalTurmaAtivada, SinoAlertas), `LoginPage.jsx` redesenhada, `manifest.json`/`index.html`,
-`HomePage.jsx` e `RankingPage.jsx` (prova de conceito do contexto escuro), `AulasCoordenador.jsx`
-(prova de conceito do contexto claro, maior arquivo do app).
+Toda a varredura de hex→token das ~60 páginas/componentes foi concluída (`grep -roE
+"#[0-9a-fA-F]{3,8}" src --include="*.jsx"` só retorna as exceções abaixo, todas intencionais):
 
-**Falta** (varredura ainda não feita, mesmo padrão de tokens acima se aplica): `DashboardProfessor.jsx`,
-`ModalidadePage.jsx`, `FinanceiroPage.jsx`, `MensagensPage.jsx`, `HomeLeitura.jsx` (escuro
-restante); `AulasAdmin.jsx`, `AgendaAluno.jsx`, tudo em `cadastros/`, `professor/`,
-`disponibilidade/`, `auth/` (exceto Login, já feito), `legal/` (claro restante); sub-componentes
-do `AlunoCard.jsx` (incluindo aplicar as 2 ilhas escuras em `BlocoPontuacaoBeyond`/
-`ConquistasCard`). Rodar `grep -roE "#[0-9a-fA-F]{3,8}" src --include="*.jsx"` pra ver quanto
-ainda falta a qualquer momento.
+- `src/pages/kpis/**` e `src/lib/relatorioPdf.js` — intocados por regra explícita (identidade
+  Beyond/Procópio do relatório mensal).
+- `src/constants/coresClube.js`, `src/lib/pontuacaoBeyond.js` (`NIVEIS_ASSIDUIDADE`),
+  `src/lib/pcScore.js` (`NIVEIS_PC_SCORE`) — paletas compartilhadas com o PDF ou documentadas
+  como à parte; qualquer tela que só **referencia** essas constantes (`n.cor`, `corNivel()`)
+  também fica intocada nesse ponto específico, mesmo já estando no contexto novo.
+- `src/pages/legal/ComoFuncionaORankingPage.jsx` — `COR_VITORIA`/`COR_DERROTA`/
+  `COR_VITORIA_TORNEIO`/`COR_DERROTA_TORNEIO` ficam de propósito iguais às cores do PDF de
+  regras (comentário no próprio arquivo explica o motivo).
+- `src/pages/cadastros/GradeDisponibilidade.jsx` — `PALETA` (16 tons) é uma escala categórica
+  pra diferenciar N professores, papel diferente dos tokens semânticos `--color-state-*`.
+- Verde do WhatsApp (`#25D166`/`rgba(37,211,102,...)`) — cor de marca de terceiro, não do
+  ProCoach.
+- `src/components/ui/Badge.jsx`, `src/components/ui/SearchBar.jsx` — confirmados sem nenhum
+  import em uso no app (componentes mortos); não retematizados por não fazerem parte de nenhuma
+  tela real.
+
+Ilhas escuras (`BlocoPontuacaoBeyond.jsx`, `ConquistasCard.jsx`) recebem `className="theme-dark"`
+no próprio wrapper e usam tokens `-dark-*` diretos. Os dois sub-componentes realmente
+dual-contexto que moram dentro de `ConquistasCard.jsx` (`IconeConquista`, `FileiraConquistas` —
+usados também direto em `EvolucaoTecnicaTenis.jsx`, que é Claro) usam os **aliases genéricos**
+(`var(--surface)`, `var(--text-secondary)`), não tokens diretos, senão ficam ilegíveis fora da
+ilha. Os modais de `ConquistasCard.jsx` (`ModalDetalheConquista`, `ModalCatalogo`) precisaram de
+um ajuste na própria `Modal.jsx`: ela normalmente resolve tema pela rota atual
+(`temaDaRota(pathname)`), o que quebraria ao abrir um modal sempre-escuro a partir de uma página
+Clara (a ficha do aluno) — por isso `Modal.jsx` agora aceita uma prop opcional `theme` que, se
+passada, sobrepõe a resolução por rota; `ConquistasCard.jsx` passa `theme="theme-dark"` nos dois
+modais. Todo outro uso de `Modal` (20+ call sites) continua sem essa prop e se comporta como
+antes.
+
+`ModalDetalhesDia` (definido em `ProfessoresPage.jsx`, usado só por `DashboardProfessor.jsx`) usa
+tokens `-dark-*` diretos com um comentário explicando o porquê, como planejado.
 
 ### Pegadinha do Tailwind v4 a evitar
 

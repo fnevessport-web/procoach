@@ -2,9 +2,9 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 
 const secaoStyle = { marginBottom: '28px' }
-const tituloStyle = { fontSize: '15px', fontWeight: '700', color: '#F0F2F5', margin: '0 0 10px' }
-const paragrafoStyle = { fontSize: '13px', color: '#aaa', lineHeight: '1.7', margin: '0 0 8px' }
-const listaStyle = { fontSize: '13px', color: '#aaa', lineHeight: '1.7', margin: '0 0 8px', paddingLeft: '20px' }
+const tituloStyle = { fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: '0 0 10px' }
+const paragrafoStyle = { fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.7', margin: '0 0 8px' }
+const listaStyle = { fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.7', margin: '0 0 8px', paddingLeft: '20px' }
 
 function Secao({ titulo, children }) {
   return (
@@ -20,7 +20,7 @@ export function PoliticaPrivacidadePage() {
 
   return (
     <div style={{
-      height: '100vh', width: '100%', backgroundColor: '#110f0f',
+      height: '100vh', width: '100%', backgroundColor: 'var(--color-surface-light-base)',
       display: 'flex', justifyContent: 'center', padding: '24px 16px',
       boxSizing: 'border-box',
       overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
@@ -28,24 +28,24 @@ export function PoliticaPrivacidadePage() {
       <div style={{ width: '100%', maxWidth: '640px' }}>
         <button onClick={() => navigate(-1)} style={{
           display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none',
-          color: '#666', fontSize: '13px', cursor: 'pointer', padding: 0, marginBottom: '20px',
+          color: 'var(--color-text-light-secondary)', fontSize: '13px', cursor: 'pointer', padding: 0, marginBottom: '20px',
         }}>
           <ChevronLeft size={16} /> Voltar
         </button>
 
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <img src="/images/logoprocoach.png" alt="ProCoach" style={{ height: '40px', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }} />
-          <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: '0 0 4px' }}>
+          <img src="/images/logo-pc-green.png" alt="ProCoach" style={{ height: '40px', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }} />
+          <h1 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: '0 0 4px' }}>
             Política de Privacidade
           </h1>
-          <p style={{ fontSize: '12px', color: '#555', margin: 0 }}>Última atualização: 10 de julho de 2026</p>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', margin: 0 }}>Última atualização: 10 de julho de 2026</p>
         </div>
 
         <div style={{
           padding: '14px 16px', borderRadius: '12px', marginBottom: '28px',
-          backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.25)',
+          backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.25)',
         }}>
-          <p style={{ fontSize: '12px', color: '#fcc825', margin: 0, lineHeight: '1.6' }}>
+          <p style={{ fontSize: '12px', color: 'var(--color-action-primary)', margin: 0, lineHeight: '1.6' }}>
             ⚠️ Este documento descreve tecnicamente quais dados o sistema ProCoach coleta e como
             trata cada um deles. Recomendamos que um advogado revise o texto antes de tratá-lo
             como o documento jurídico oficial do negócio (base legal, cláusulas contratuais e
@@ -168,7 +168,7 @@ export function PoliticaPrivacidadePage() {
           </p>
         </Secao>
 
-        <p style={{ textAlign: 'center', fontSize: '10px', color: '#222', marginTop: '24px', letterSpacing: '2px' }}>
+        <p style={{ textAlign: 'center', fontSize: '10px', color: 'var(--color-text-light-muted)', marginTop: '24px', letterSpacing: '2px' }}>
           POWERED BY FNEVESSPORT
         </p>
       </div>

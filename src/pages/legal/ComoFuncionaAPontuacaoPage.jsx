@@ -3,8 +3,8 @@ import { ChevronLeft } from 'lucide-react'
 import { NIVEIS_PC_SCORE, FAIXAS_ETARIAS, REAVALIACAO_PRAZO_DIAS } from '../../lib/pcScore'
 
 const secaoStyle = { marginBottom: '30px' }
-const tituloStyle = { fontSize: '15px', fontWeight: '700', color: '#F0F2F5', margin: '0 0 12px' }
-const paragrafoStyle = { fontSize: '13px', color: '#aaa', lineHeight: '1.7', margin: '0 0 10px' }
+const tituloStyle = { fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: '0 0 12px' }
+const paragrafoStyle = { fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.7', margin: '0 0 10px' }
 
 const DIMENSOES_TENIS = [
   { nome: 'Saque', descricao: 'A qualidade e a consistência do saque — o fundamento que abre cada ponto.' },
@@ -29,7 +29,7 @@ export function ComoFuncionaAPontuacaoPage() {
 
   return (
     <div style={{
-      height: '100vh', width: '100%', backgroundColor: '#110f0f',
+      height: '100vh', width: '100%', backgroundColor: 'var(--color-surface-light-base)',
       display: 'flex', justifyContent: 'center', padding: '24px 16px',
       boxSizing: 'border-box',
       overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
@@ -37,17 +37,17 @@ export function ComoFuncionaAPontuacaoPage() {
       <div style={{ width: '100%', maxWidth: '640px' }}>
         <button onClick={() => navigate(-1)} style={{
           display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none',
-          color: '#666', fontSize: '13px', cursor: 'pointer', padding: 0, marginBottom: '20px',
+          color: 'var(--color-text-light-secondary)', fontSize: '13px', cursor: 'pointer', padding: 0, marginBottom: '20px',
         }}>
           <ChevronLeft size={16} /> Voltar
         </button>
 
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <img src="/images/logoprocoach.png" alt="ProCoach" style={{ height: '40px', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }} />
-          <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: '0 0 4px' }}>
+          <img src="/images/logo-pc-green.png" alt="ProCoach" style={{ height: '40px', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }} />
+          <h1 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: '0 0 4px' }}>
             Como funciona o PC Score
           </h1>
-          <p style={{ fontSize: '12px', color: '#555', margin: 0 }}>Evolução técnica — Tênis</p>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', margin: 0 }}>Evolução técnica — Tênis</p>
         </div>
 
         <Secao titulo="1. O que é o PC Score">
@@ -75,7 +75,7 @@ export function ComoFuncionaAPontuacaoPage() {
               }}>
                 <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: n.cor, flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#F0F2F5' }}>{n.label}</span>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>{n.label}</span>
                 </div>
                 <span style={{ fontSize: '12px', fontWeight: '700', color: n.cor }}>
                   {n.min}–{n.max}
@@ -101,12 +101,12 @@ export function ComoFuncionaAPontuacaoPage() {
             {FAIXAS_ETARIAS.map(f => (
               <div key={f.chave} style={{
                 padding: '12px 14px', borderRadius: '10px',
-                backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+                backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)',
               }}>
-                <div style={{ fontSize: '13px', fontWeight: '700', color: '#F0F2F5' }}>
-                  {f.label} <span style={{ color: '#555', fontWeight: '400' }}>· {f.faixaIdade}</span>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>
+                  {f.label} <span style={{ color: 'var(--color-text-light-secondary)', fontWeight: '400' }}>· {f.faixaIdade}</span>
                 </div>
-                <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginTop: '4px' }}>
                   {f.chave === 'kids' && 'Condicionamento e Posicionamento pesam mais no cálculo.'}
                   {f.chave === 'infantil' && 'Todas as dimensões pesam igual.'}
                   {f.chave === 'adulto' && 'Saque e Voleio pesam mais no cálculo.'}
@@ -125,8 +125,8 @@ export function ComoFuncionaAPontuacaoPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {DIMENSOES_TENIS.map(d => (
               <div key={d.nome}>
-                <div style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825' }}>{d.nome}</div>
-                <div style={{ fontSize: '12px', color: '#888', marginTop: '2px', lineHeight: '1.6' }}>{d.descricao}</div>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{d.nome}</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginTop: '2px', lineHeight: '1.6' }}>{d.descricao}</div>
               </div>
             ))}
           </div>
@@ -141,7 +141,7 @@ export function ComoFuncionaAPontuacaoPage() {
           </p>
         </Secao>
 
-        <p style={{ textAlign: 'center', fontSize: '10px', color: '#222', marginTop: '24px', letterSpacing: '2px' }}>
+        <p style={{ textAlign: 'center', fontSize: '10px', color: 'var(--color-text-light-muted)', marginTop: '24px', letterSpacing: '2px' }}>
           POWERED BY FNEVESSPORT
         </p>
       </div>

@@ -50,7 +50,7 @@ export function Header() {
       <div className="header-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', gap: '8px', minWidth: 0 }}>
 
         <img
-          src="/images/logoprocoach.png"
+          src="/images/logo-pc-cream.png"
           alt="ProCoach"
           style={{ height: '28px', objectFit: 'contain' }}
         />

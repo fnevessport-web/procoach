@@ -14,16 +14,16 @@ const DIAS = [
 const HORARIOS = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
 
 const STATUS = {
-  disponivel: { cor: '#22c55e', bg: 'rgba(34,197,94,0.15)', borda: 'rgba(34,197,94,0.4)', label: '✅ Disponível' },
-  talvez: { cor: '#fcc825', bg: 'rgba(252,200,37,0.15)', borda: 'rgba(252,200,37,0.4)', label: '🤔 Talvez' },
-  indisponivel: { cor: '#EF4444', bg: 'rgba(239,68,68,0.15)', borda: 'rgba(239,68,68,0.4)', label: '❌ Indisponível' },
+  disponivel: { cor: 'var(--color-state-success)', bg: 'rgba(75,139,106,0.15)', borda: 'rgba(75,139,106,0.4)', label: '✅ Disponível' },
+  talvez: { cor: 'var(--color-state-warning)', bg: 'rgba(201,138,60,0.15)', borda: 'rgba(201,138,60,0.4)', label: '🤔 Talvez' },
+  indisponivel: { cor: 'var(--color-state-danger)', bg: 'rgba(180,71,47,0.15)', borda: 'rgba(180,71,47,0.4)', label: '❌ Indisponível' },
 }
 
 const CICLO = ['disponivel', 'talvez', 'indisponivel']
 
 const toastStyle = {
-  background: '#1a1a1a', color: '#F0F2F5',
-  border: '1px solid rgba(252,200,37,0.3)',
+  background: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
+  border: '1px solid rgba(165,76,46,0.3)',
   borderRadius: '10px', fontSize: '13px',
 }
 
@@ -89,50 +89,50 @@ export function DisponibilidadePage() {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#555', fontSize: '14px' }}>Carregando...</div>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '14px' }}>Carregando...</div>
     </div>
   )
 
   if (!professor) return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '40px', marginBottom: '16px' }}>❌</div>
-        <div style={{ color: '#F0F2F5', fontSize: '16px', fontWeight: '600' }}>Link inválido</div>
-        <div style={{ color: '#555', fontSize: '13px', marginTop: '8px' }}>Este link de disponibilidade não existe ou expirou.</div>
+        <div style={{ color: 'var(--color-text-light-primary)', fontSize: '16px', fontWeight: '600' }}>Link inválido</div>
+        <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '13px', marginTop: '8px' }}>Este link de disponibilidade não existe ou expirou.</div>
       </div>
     </div>
   )
 
   if (enviado) return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
-        <div style={{ color: '#F0F2F5', fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Disponibilidade enviada!</div>
-        <div style={{ color: '#555', fontSize: '13px' }}>Obrigado, {professor.nome}! Suas informações foram salvas com sucesso.</div>
+        <div style={{ color: 'var(--color-text-light-primary)', fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Disponibilidade enviada!</div>
+        <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '13px' }}>Obrigado, {professor.nome}! Suas informações foram salvas com sucesso.</div>
       </div>
     </div>
   )
 
   return (
     <div style={{
-      height: '100vh', backgroundColor: '#0f0f0f', padding: '20px 16px', boxSizing: 'border-box',
+      height: '100vh', backgroundColor: 'var(--color-surface-light-base)', padding: '20px 16px', boxSizing: 'border-box',
       overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
     }}>
 
       {/* Header */}
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
-          <div style={{ fontSize: '22px', fontWeight: '800', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <div style={{ fontSize: '22px', fontWeight: '800', color: 'var(--color-action-primary)' }}>
             ▶ PRO COACH
           </div>
         </div>
 
         <div style={{ marginBottom: '24px' }}>
-          <div style={{ fontSize: '18px', fontWeight: '700', color: '#F0F2F5', marginBottom: '4px' }}>
+          <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}>
             Olá, {professor.nome}! 👋
           </div>
-          <div style={{ fontSize: '13px', color: '#555', lineHeight: '1.5' }}>
+          <div style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.5' }}>
             Preencha sua disponibilidade semanal. Toque em cada horário para alternar entre as opções.
           </div>
         </div>
@@ -142,7 +142,7 @@ export function DisponibilidadePage() {
           {Object.entries(STATUS).map(([key, s]) => (
             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: s.bg, border: `1px solid ${s.borda}` }} />
-              <span style={{ fontSize: '11px', color: '#888' }}>{s.label}</span>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>{s.label}</span>
             </div>
           ))}
         </div>
@@ -150,7 +150,7 @@ export function DisponibilidadePage() {
         {/* Grade por dia */}
         {DIAS.map(({ key: dia, label }) => (
           <div key={dia} style={{ marginBottom: '20px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               {label}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
@@ -165,9 +165,9 @@ export function DisponibilidadePage() {
                     style={{
                       padding: '8px 4px',
                       borderRadius: '8px',
-                      border: s ? `1px solid ${s.borda}` : '1px solid #2a2a2a',
-                      backgroundColor: s ? s.bg : '#111',
-                      color: s ? s.cor : '#444',
+                      border: s ? `1px solid ${s.borda}` : '1px solid var(--color-border-light)',
+                      backgroundColor: s ? s.bg : 'var(--color-surface-light-overlay)',
+                      color: s ? s.cor : 'var(--color-text-light-muted)',
                       fontSize: '12px',
                       fontWeight: '600',
                       cursor: 'pointer',
@@ -189,7 +189,7 @@ export function DisponibilidadePage() {
           disabled={salvando}
           style={{
             width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
-            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+            background: 'var(--color-action-primary)',
             color: 'white', fontSize: '15px', fontWeight: '700',
             cursor: salvando ? 'not-allowed' : 'pointer',
             marginTop: '8px', marginBottom: '32px',

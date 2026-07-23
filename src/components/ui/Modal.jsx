@@ -9,8 +9,10 @@ import { temaDaRota } from '../../constants/temaPorRota'
 // clara (Cadastros) quanto de uma escura (Ranking), sem precisar de prop de tema. Como o modal
 // escapa via createPortal pro <body> (fora da árvore DOM do <main class="theme-x">), a classe
 // de tema não seria herdada por cascata normal — por isso aplica a própria classe aqui,
-// resolvida pela rota atual, direto no wrapper do portal.
-export function Modal({ open, onClose, title, children, size = 'md' }) {
+// resolvida pela rota atual, direto no wrapper do portal. `theme` (opcional) força um contexto
+// específico independente da rota — usado por ilhas escuras como ConquistasCard, cujos modais
+// precisam ficar sempre escuros mesmo quando abertos de dentro de uma página Clara (ficha do aluno).
+export function Modal({ open, onClose, title, children, size = 'md', theme }) {
   const { pathname } = useLocation()
 
   useEffect(() => {
@@ -27,7 +29,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }) {
   // mobile "prende" filhos position:fixed dentro dele em vez de cobrir a tela toda — por
   // isso o modal aparecia cortado, com a BottomNav visível por baixo dele.
   return createPortal((
-    <div className={temaDaRota(pathname)} style={{
+    <div className={theme || temaDaRota(pathname)} style={{
       position: 'fixed', inset: 0, zIndex: 50,
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
       padding: 0,

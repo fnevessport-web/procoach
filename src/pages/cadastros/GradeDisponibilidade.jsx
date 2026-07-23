@@ -6,6 +6,8 @@ const DIAS_SEMANA = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 
 const DIAS_LABEL  = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM']
 const HORARIOS    = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
 
+// Paleta categórica à parte (precisa de tons mutuamente distinguíveis pra n professores
+// arbitrário — os tokens semânticos --color-state-* não servem pra isso, só 6 cores).
 const PALETA = [
   '#f59e0b', '#10b981', '#3b82f6', '#f472b6', '#a78bfa',
   '#22d3ee', '#fb923c', '#84cc16', '#f87171', '#e879f9',
@@ -75,14 +77,14 @@ export function GradeDisponibilidade() {
       <div style={{
         display: 'flex', flexWrap: 'wrap', gap: '8px 14px',
         marginBottom: '16px', padding: '12px 14px',
-        backgroundColor: '#111', borderRadius: '10px', border: '1px solid #1e1e1e',
+        backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '10px', border: '1px solid var(--color-border-light-subtle)',
       }}>
         {professores.map((p, i) => {
           const cor = PALETA[i % PALETA.length]
           return (
             <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: cor, flexShrink: 0 }} />
-              <span style={{ fontSize: '11px', color: '#aaa' }}>{p.nome.split(' ').slice(0, 2).join(' ')}</span>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>{p.nome.split(' ').slice(0, 2).join(' ')}</span>
             </div>
           )
         })}
@@ -96,7 +98,7 @@ export function GradeDisponibilidade() {
             {DIAS_LABEL.map(d => (
               <div key={d} style={{
                 width: `${CELL_W}px`, flexShrink: 0, textAlign: 'center',
-                fontSize: '10px', color: '#555', fontWeight: '700', letterSpacing: '1px', padding: '6px 0',
+                fontSize: '10px', color: 'var(--color-text-light-secondary)', fontWeight: '700', letterSpacing: '1px', padding: '6px 0',
               }}>{d}</div>
             ))}
           </div>
@@ -111,7 +113,7 @@ export function GradeDisponibilidade() {
               }}>
                 {/* Label horário */}
                 <div style={{
-                  width: '38px', flexShrink: 0, fontSize: '9px', color: '#555',
+                  width: '38px', flexShrink: 0, fontSize: '9px', color: 'var(--color-text-light-secondary)',
                   textAlign: 'right', paddingRight: '6px', paddingTop: '9px', fontWeight: '500',
                 }}>{horario}</div>
 
@@ -122,9 +124,9 @@ export function GradeDisponibilidade() {
                     <div key={dia} style={{
                       width: `${CELL_W}px`, flexShrink: 0,
                       minHeight: '34px',
-                      backgroundColor: entries.length ? '#131313' : '#0d0d0d',
+                      backgroundColor: entries.length ? 'var(--color-surface-light-raised)' : 'var(--color-surface-light-overlay)',
                       borderRadius: '6px',
-                      border: '1px solid #161616',
+                      border: '1px solid var(--color-border-light-subtle)',
                       padding: entries.length ? '4px' : '0',
                       display: 'flex', flexDirection: 'column', gap: '2px',
                     }}>
@@ -153,12 +155,12 @@ export function GradeDisponibilidade() {
       {/* Legenda status */}
       <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginTop: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ width: '20px', height: '9px', borderRadius: '3px', backgroundColor: '#aaa20', border: '1px solid #aaa38' }} />
-          <span style={{ fontSize: '10px', color: '#555' }}>Disponível</span>
+          <div style={{ width: '20px', height: '9px', borderRadius: '3px', backgroundColor: 'rgba(30,43,36,0.13)', border: '1px solid rgba(30,43,36,0.22)' }} />
+          <span style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)' }}>Disponível</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ width: '20px', height: '9px', borderRadius: '3px', backgroundColor: '#aaa20', border: '1px solid #aaa38', opacity: 0.45 }} />
-          <span style={{ fontSize: '10px', color: '#555' }}>Talvez</span>
+          <div style={{ width: '20px', height: '9px', borderRadius: '3px', backgroundColor: 'rgba(30,43,36,0.13)', border: '1px solid rgba(30,43,36,0.22)', opacity: 0.45 }} />
+          <span style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)' }}>Talvez</span>
         </div>
       </div>
     </div>

@@ -10,8 +10,8 @@ import toast from 'react-hot-toast'
 
 const inputStyle = {
   width: '100%', padding: '10px 14px', borderRadius: '10px',
-  backgroundColor: '#110f0f', border: '1px solid #2a2a2a',
-  color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+  backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
+  color: 'var(--color-text-light-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
 }
 
 export function QuadrasPage() {
@@ -70,11 +70,11 @@ export function QuadrasPage() {
             value={busca}
             onChange={e => setBusca(e.target.value)}
           />
-          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#555', fontSize: '14px' }}>🔍</span>
+          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light-secondary)', fontSize: '14px' }}>🔍</span>
         </div>
         <button onClick={abrirCriar} style={{
           padding: '10px 16px', borderRadius: '10px', border: 'none',
-          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+          background: 'var(--color-action-primary)',
           color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap',
         }}>
           + Nova
@@ -82,14 +82,14 @@ export function QuadrasPage() {
       </div>
 
       {isLoading ? (
-        <p style={{ color: '#555', fontSize: '14px' }}>Carregando...</p>
+        <p style={{ color: 'var(--color-text-light-secondary)', fontSize: '14px' }}>Carregando...</p>
       ) : !filtradas?.length ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <div style={{ fontSize: '40px', marginBottom: '8px' }}>🟩</div>
-          <p style={{ color: '#555', fontSize: '14px', marginBottom: '16px' }}>Nenhuma quadra cadastrada</p>
+          <p style={{ color: 'var(--color-text-light-secondary)', fontSize: '14px', marginBottom: '16px' }}>Nenhuma quadra cadastrada</p>
           <button onClick={abrirCriar} style={{
             padding: '10px 20px', borderRadius: '10px', border: 'none',
-            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+            background: 'var(--color-action-primary)',
             color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
           }}>+ Adicionar</button>
         </div>
@@ -97,14 +97,14 @@ export function QuadrasPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {filtradas.map(quadra => (
             <div key={quadra.id} style={{
-              backgroundColor: '#1a1a1a', borderRadius: '12px',
-              border: '1px solid rgba(255,255,255,0.06)', padding: '14px 16px',
+              backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '12px',
+              border: '1px solid rgba(30,43,36,0.06)', padding: '14px 16px',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <div>
-                <div style={{ fontWeight: '600', color: '#F0F2F5', fontSize: '14px' }}>{quadra.nome}</div>
+                <div style={{ fontWeight: '600', color: 'var(--color-text-light-primary)', fontSize: '14px' }}>{quadra.nome}</div>
                 {quadra.modalidades && (
-                  <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginTop: '2px' }}>
                     {quadra.modalidades.nome}
                   </div>
                 )}
@@ -112,13 +112,13 @@ export function QuadrasPage() {
               <div style={{ display: 'flex', gap: '6px' }}>
                 <button onClick={() => abrirEditar(quadra)} style={{
                   padding: '6px', borderRadius: '8px', border: 'none',
-                  backgroundColor: 'rgba(255,255,255,0.05)', color: '#888', cursor: 'pointer',
+                  backgroundColor: 'rgba(30,43,36,0.05)', color: 'var(--color-text-light-secondary)', cursor: 'pointer',
                 }}>
                   <Edit2 size={14} />
                 </button>
                 <button onClick={() => handleExcluir(quadra.id)} style={{
                   padding: '6px', borderRadius: '8px', border: 'none',
-                  backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer',
+                  backgroundColor: 'rgba(180,71,47,0.1)', color: 'var(--color-state-danger)', cursor: 'pointer',
                 }}>
                   <Trash2 size={14} />
                 </button>
@@ -138,12 +138,12 @@ export function QuadrasPage() {
           <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
             <button onClick={() => setModal(false)} style={{
               flex: 1, padding: '12px', borderRadius: '10px',
-              border: '1px solid #2a2a2a', backgroundColor: 'transparent',
-              color: '#888', fontSize: '13px', cursor: 'pointer',
+              border: '1px solid var(--color-border-light)', backgroundColor: 'transparent',
+              color: 'var(--color-text-light-secondary)', fontSize: '13px', cursor: 'pointer',
             }}>Cancelar</button>
             <button onClick={handleSalvar} disabled={salvando} style={{
               flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
-              background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+              background: 'var(--color-action-primary)',
               color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
             }}>{salvando ? 'Salvando...' : editando ? 'Salvar' : 'Cadastrar'}</button>
           </div>

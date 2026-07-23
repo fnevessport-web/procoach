@@ -171,14 +171,14 @@ export default function App() {
           position="top-center"
           toastOptions={{
             style: {
-              background: '#1a1a1a',
-              color: '#F0F2F5',
-              border: '1px solid rgba(252,200,37,0.3)',
+              background: 'var(--color-surface-dark-raised)',
+              color: 'var(--color-text-dark-primary)',
+              border: '1px solid rgba(165,76,46,0.3)',
               borderRadius: '10px',
               fontSize: '13px',
             },
-            success: { iconTheme: { primary: '#22c55e', secondary: '#1a1a1a' } },
-            error: { iconTheme: { primary: '#EF4444', secondary: '#1a1a1a' } },
+            success: { iconTheme: { primary: 'var(--color-state-success)', secondary: 'var(--color-surface-dark-raised)' } },
+            error: { iconTheme: { primary: 'var(--color-state-danger)', secondary: 'var(--color-surface-dark-raised)' } },
           }}
         />
       </BrowserRouter>

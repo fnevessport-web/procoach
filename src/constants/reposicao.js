@@ -5,13 +5,13 @@ import { format, addDays } from 'date-fns'
 // os dias passam; cheia = prazo estourado. Azul normalmente, amarelo com 15 dias ou menos
 // restantes, vermelho com 5 dias ou menos (persiste vermelho até o prazo vencer).
 export function calcStatusPorPrazo(dataLimite) {
-  if (!dataLimite) return { diasRestantes: null, cor: '#3b82f6', progresso: 0, label: '' }
+  if (!dataLimite) return { diasRestantes: null, cor: 'var(--color-state-info)', progresso: 0, label: '' }
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
   const limite = new Date(dataLimite + 'T12:00')
   const diasRestantes = Math.round((limite - hoje) / (1000 * 60 * 60 * 24))
-  let cor = '#3b82f6'
-  if (diasRestantes <= 5) cor = '#ef4444'
-  else if (diasRestantes <= 15) cor = '#f59e0b'
+  let cor = 'var(--color-state-info)'
+  if (diasRestantes <= 5) cor = 'var(--color-state-danger)'
+  else if (diasRestantes <= 15) cor = 'var(--color-state-warning)'
   const progresso = Math.min(100, Math.max(0, ((60 - diasRestantes) / 60) * 100))
   const label = diasRestantes <= 0
     ? `+${Math.abs(diasRestantes)}d em atraso`

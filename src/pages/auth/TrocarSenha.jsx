@@ -11,17 +11,17 @@ import { Loading } from '../../components/ui/Loading'
 
 const inputStyle = {
   width: '100%', padding: '10px 14px', borderRadius: '10px',
-  backgroundColor: '#111', border: '1px solid #2a2a2a',
-  color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+  backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
+  color: 'var(--color-text-light-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
 }
 
 const labelStyle = {
-  fontSize: '10px', color: '#555', textTransform: 'uppercase',
+  fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase',
   letterSpacing: '0.5px', marginBottom: '4px',
 }
 
 const sectionLabelStyle = {
-  fontSize: '10px', color: '#555', textTransform: 'uppercase',
+  fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase',
   letterSpacing: '0.5px', marginTop: '4px',
 }
 
@@ -117,21 +117,21 @@ export function TrocarSenha() {
 
   return (
     <div style={{
-      height: '100vh', width: '100%', backgroundColor: '#110f0f',
+      height: '100vh', width: '100%', backgroundColor: 'var(--color-surface-light-base)',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       padding: '24px 16px', boxSizing: 'border-box',
       overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
     }}>
       <div style={{ width: '100%', maxWidth: '400px', margin: 'auto 0' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <img src="/images/logoprocoach.png" alt="ProCoach" style={{ height: '52px', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
-          <p style={{ color: '#F0F2F5', fontSize: '15px', fontWeight: '600', margin: '0 0 4px' }}>Primeiro acesso</p>
-          <p style={{ color: '#888', fontSize: '12px', margin: 0 }}>
+          <img src="/images/logo-pc-green.png" alt="ProCoach" style={{ height: '52px', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
+          <p style={{ color: 'var(--color-text-light-primary)', fontSize: '15px', fontWeight: '600', margin: '0 0 4px' }}>Primeiro acesso</p>
+          <p style={{ color: 'var(--color-text-light-secondary)', fontSize: '12px', margin: 0 }}>
             {precisaOnboarding ? 'Cria sua senha e completa seu cadastro pra continuar' : 'Crie uma nova senha pra continuar'}
           </p>
         </div>
 
-        <div style={{ backgroundColor: '#1a1a1a', borderRadius: '20px', border: '1px solid #222', padding: '24px' }}>
+        <div style={{ backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '20px', border: '1px solid var(--color-border-light)', padding: '24px' }}>
           {aguardandoDadosProfessor ? (
             <Loading text="Carregando seus dados..." />
           ) : (
@@ -140,21 +140,21 @@ export function TrocarSenha() {
                 <Input label="Nova senha" type={mostrarSenha ? 'text' : 'password'} placeholder="Mínimo 6 caracteres" value={senha} onChange={e => setSenha(e.target.value)} required />
                 <button type="button" onClick={() => setMostrarSenha(v => !v)} style={{
                   position: 'absolute', right: '10px', bottom: '10px', background: 'none', border: 'none',
-                  color: '#555', cursor: 'pointer', padding: '4px', display: 'flex',
+                  color: 'var(--color-text-light-secondary)', cursor: 'pointer', padding: '4px', display: 'flex',
                 }}>
                   {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
               <div style={{ display: 'flex', gap: '12px', marginTop: '-8px' }}>
-                <span style={{ fontSize: '11px', color: regrasSenha.tamanho ? '#22c55e' : '#555' }}>6 caracteres</span>
-                <span style={{ fontSize: '11px', color: regrasSenha.maiuscula ? '#22c55e' : '#555' }}>1 letra maiúscula</span>
-                <span style={{ fontSize: '11px', color: regrasSenha.numero ? '#22c55e' : '#555' }}>1 número</span>
+                <span style={{ fontSize: '11px', color: regrasSenha.tamanho ? 'var(--color-state-success)' : 'var(--color-text-light-secondary)' }}>6 caracteres</span>
+                <span style={{ fontSize: '11px', color: regrasSenha.maiuscula ? 'var(--color-state-success)' : 'var(--color-text-light-secondary)' }}>1 letra maiúscula</span>
+                <span style={{ fontSize: '11px', color: regrasSenha.numero ? 'var(--color-state-success)' : 'var(--color-text-light-secondary)' }}>1 número</span>
               </div>
               <Input label="Confirmar nova senha" type={mostrarSenha ? 'text' : 'password'} placeholder="Repita a senha" value={confirmacao} onChange={e => setConfirmacao(e.target.value)} required />
 
               {precisaOnboarding && form && (
                 <>
-                  <div style={{ height: '1px', backgroundColor: '#2a2a2a', margin: '4px 0' }} />
+                  <div style={{ height: '1px', backgroundColor: 'var(--color-border-light)', margin: '4px 0' }} />
                   <div style={sectionLabelStyle}>Dados obrigatórios</div>
 
                   <div><div style={labelStyle}>E-mail</div>
@@ -162,7 +162,7 @@ export function TrocarSenha() {
                   </div>
                   <div><div style={labelStyle}>Telefone (WhatsApp)</div>
                     <div style={{ display: 'flex', gap: '6px' }}>
-                      <span style={{ ...inputStyle, width: 'auto', flexShrink: 0, color: '#888', textAlign: 'center' }}>+55</span>
+                      <span style={{ ...inputStyle, width: 'auto', flexShrink: 0, color: 'var(--color-text-light-secondary)', textAlign: 'center' }}>+55</span>
                       <input style={{ ...inputStyle, flex: 1 }} inputMode="numeric" placeholder="(11) 99999-9999"
                         value={mascararTelefoneBR(form.telefone)} onChange={e => set('telefone', apenasDigitosTelefone(e.target.value))} />
                     </div>
@@ -174,14 +174,14 @@ export function TrocarSenha() {
               )}
 
               {erro && (
-                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', fontSize: '13px', color: '#EF4444' }}>
+                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'rgba(180,71,47,0.1)', border: '1px solid rgba(180,71,47,0.3)', fontSize: '13px', color: 'var(--color-state-danger)' }}>
                   {erro}
                 </div>
               )}
 
               <button type="submit" disabled={loading} style={{
                 width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
-                background: 'linear-gradient(135deg, #fcc825, #d28c3c, #cf1b9b)',
+                background: 'var(--color-action-primary)',
                 color: 'white', fontSize: '15px', fontWeight: '600',
                 cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, marginTop: '8px',
               }}>

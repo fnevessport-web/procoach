@@ -3,8 +3,8 @@ import { FAIXAS_ETARIAS } from '../lib/pcScore'
 import toast from 'react-hot-toast'
 
 const toastStyle = {
-  background: '#1a1a1a', color: '#F0F2F5',
-  border: '1px solid rgba(252,200,37,0.3)',
+  background: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
+  border: '1px solid rgba(165,76,46,0.3)',
   borderRadius: '10px', fontSize: '13px',
 }
 
@@ -27,7 +27,7 @@ export function SeletorFaixaEtariaManual({ alunoId, valorAtual, compacto, temDat
   return (
     <div>
       {temDataNascimento && (
-        <div style={{ fontSize: '10px', color: '#555', marginBottom: '6px' }}>
+        <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '6px' }}>
           Data de nascimento já cadastrada — ela sempre tem prioridade sobre essa escolha.
         </div>
       )}
@@ -43,9 +43,9 @@ export function SeletorFaixaEtariaManual({ alunoId, valorAtual, compacto, temDat
               style={{
                 padding: compacto ? '5px 10px' : '7px 12px',
                 borderRadius: '8px', border: 'none', cursor: 'pointer',
-                background: ativo ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
-                outline: ativo ? 'none' : '1px solid #2a2a2a',
-                color: ativo ? 'white' : '#888',
+                background: ativo ? 'var(--color-action-primary)' : 'var(--color-surface-light-raised)',
+                outline: ativo ? 'none' : '1px solid var(--color-border-light)',
+                color: ativo ? 'white' : 'var(--color-text-light-secondary)',
                 fontSize: compacto ? '11px' : '12px', fontWeight: ativo ? '600' : '400',
               }}
             >

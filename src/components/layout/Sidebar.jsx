@@ -15,7 +15,7 @@ export function Sidebar() {
   return (
     <nav className="sidebar-desktop">
       <div className="sidebar-logo">
-        <img src="/images/logoprocoach.png" alt="ProCoach" />
+        <img src="/images/logo-pc-cream.png" alt="ProCoach" />
       </div>
 
       <div className="sidebar-items">

@@ -12,8 +12,8 @@ import { Loading } from '../../components/ui/Loading'
 import toast from 'react-hot-toast'
 
 const toastStyle = {
-  background: '#1a1a1a', color: '#F0F2F5',
-  border: '1px solid rgba(252,200,37,0.3)',
+  background: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
+  border: '1px solid rgba(165,76,46,0.3)',
   borderRadius: '10px', fontSize: '13px',
 }
 
@@ -101,11 +101,11 @@ export function AgendaAluno() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0 22px' }}>
         <button onClick={() => navigate(-1)} style={{
           background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
-          color: '#fcc825', display: 'flex', alignItems: 'center', flexShrink: 0,
+          color: 'var(--color-action-primary)', display: 'flex', alignItems: 'center', flexShrink: 0,
         }}>
           <ChevronLeft size={24} />
         </button>
-        <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
+        <h1 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: 0 }}>
           Agendar reposição / aula avulsa
         </h1>
       </div>
@@ -120,8 +120,8 @@ export function AgendaAluno() {
             onChange={e => setBusca(e.target.value)}
             style={{
               width: '100%', padding: '12px 14px', borderRadius: '10px', border: 'none',
-              outline: '1px solid #2a2a2a', backgroundColor: '#1a1a1a',
-              color: '#F0F2F5', fontSize: '14px', boxSizing: 'border-box', marginBottom: '10px',
+              outline: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)',
+              color: 'var(--color-text-light-primary)', fontSize: '14px', boxSizing: 'border-box', marginBottom: '10px',
             }}
           />
           {alunosFiltrados.length > 0 && (
@@ -129,8 +129,8 @@ export function AgendaAluno() {
               {alunosFiltrados.map(a => (
                 <button key={a.id} onClick={() => selecionarAluno(a)} style={{
                   display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
-                  borderRadius: '10px', border: 'none', backgroundColor: '#1a1a1a',
-                  color: '#F0F2F5', fontSize: '13px', textAlign: 'left', cursor: 'pointer',
+                  borderRadius: '10px', border: 'none', backgroundColor: 'var(--color-surface-light-raised)',
+                  color: 'var(--color-text-light-primary)', fontSize: '13px', textAlign: 'left', cursor: 'pointer',
                 }}>
                   {a.nome}
                 </button>
@@ -143,12 +143,12 @@ export function AgendaAluno() {
           {/* Aluno selecionado */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '10px 14px', borderRadius: '10px', backgroundColor: 'rgba(252,200,37,0.08)',
-            border: '1px solid rgba(252,200,37,0.25)', marginBottom: '16px',
+            padding: '10px 14px', borderRadius: '10px', backgroundColor: 'rgba(165,76,46,0.08)',
+            border: '1px solid rgba(165,76,46,0.25)', marginBottom: '16px',
           }}>
-            <span style={{ fontSize: '14px', color: '#F0F2F5', fontWeight: '600' }}>{alunoNome}</span>
+            <span style={{ fontSize: '14px', color: 'var(--color-text-light-primary)', fontWeight: '600' }}>{alunoNome}</span>
             <button onClick={() => { setAlunoId(null); setAlunoNome(''); setModalidadeFiltro(null) }} style={{
-              background: 'none', border: 'none', color: '#fcc825', fontSize: '12px', cursor: 'pointer',
+              background: 'none', border: 'none', color: 'var(--color-action-primary)', fontSize: '12px', cursor: 'pointer',
             }}>trocar aluno</button>
           </div>
 
@@ -160,9 +160,9 @@ export function AgendaAluno() {
               return (
                 <button key={d} onClick={() => { setDataSel(d); setSlotSel(null) }} style={{
                   flexShrink: 0, padding: '8px 10px', borderRadius: '10px', border: 'none', cursor: 'pointer', textAlign: 'center', minWidth: '50px',
-                  background: isSel ? 'linear-gradient(135deg,#fcc825,#cf1b9b)' : '#1a1a1a',
-                  outline: isSel ? 'none' : '1px solid #2a2a2a',
-                  color: isSel ? 'white' : '#888',
+                  background: isSel ? 'var(--color-action-primary)' : 'var(--color-surface-light-raised)',
+                  outline: isSel ? 'none' : '1px solid var(--color-border-light)',
+                  color: isSel ? 'white' : 'var(--color-text-light-secondary)',
                 }}>
                   <div style={{ fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', opacity: 0.8 }}>
                     {format(dtObj, 'EEE', { locale: ptBR })}
@@ -176,7 +176,7 @@ export function AgendaAluno() {
 
           {/* Aulas do dia — sem nomes de outros alunos, só ocupação */}
           {loadingDia ? <Loading /> : aulasDoDia.length === 0 ? (
-            <div style={{ padding: '24px', textAlign: 'center', fontSize: '13px', color: '#444', borderRadius: '12px', border: '1px solid #1a1a1a' }}>
+            <div style={{ padding: '24px', textAlign: 'center', fontSize: '13px', color: 'var(--color-text-light-muted)', borderRadius: '12px', border: '1px solid var(--color-surface-light-raised)' }}>
               Nenhuma aula disponível nas modalidades desse aluno neste dia
             </div>
           ) : (
@@ -193,29 +193,29 @@ export function AgendaAluno() {
                       padding: '12px 14px', borderRadius: '12px', border: 'none', textAlign: 'left', width: '100%',
                       cursor: semVaga ? 'default' : 'pointer',
                       opacity: semVaga ? 0.4 : 1,
-                      backgroundColor: isSel ? 'rgba(59,130,246,0.12)' : '#1a1a1a',
-                      outline: isSel ? '1px solid rgba(59,130,246,0.5)' : '1px solid #2a2a2a',
+                      backgroundColor: isSel ? 'rgba(61,107,122,0.12)' : 'var(--color-surface-light-raised)',
+                      outline: isSel ? '1px solid rgba(61,107,122,0.5)' : '1px solid var(--color-border-light)',
                     }}>
                     <div style={{ minWidth: '42px', textAlign: 'center', flexShrink: 0 }}>
-                      <div style={{ fontSize: '14px', fontWeight: '700', color: semVaga ? '#333' : '#fcc825' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '700', color: semVaga ? 'var(--color-text-light-muted)' : 'var(--color-action-primary)' }}>
                         {a.turmas?.horario_inicio?.slice(0, 5)}
                       </div>
-                      <div style={{ fontSize: '10px', color: '#444' }}>{a.turmas?.horario_fim?.slice(0, 5)}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--color-text-light-muted)' }}>{a.turmas?.horario_fim?.slice(0, 5)}</div>
                     </div>
-                    <div style={{ width: '1px', height: '32px', backgroundColor: '#2a2a2a', flexShrink: 0 }} />
+                    <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--color-border-light)', flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: semVaga ? '#333' : '#F0F2F5' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: semVaga ? 'var(--color-text-light-muted)' : 'var(--color-text-light-primary)' }}>
                         {a.turmas?.nome}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-text-light-muted)', marginTop: '2px' }}>
                         {a.turmas?.quadras?.nome}
                         {a.turmas?.niveis?.nome && ` · ${a.turmas.niveis.nome}`}
                       </div>
                     </div>
                     <span style={{
                       fontSize: '11px', padding: '4px 10px', borderRadius: '20px', fontWeight: '600', flexShrink: 0,
-                      backgroundColor: semVaga ? 'rgba(255,255,255,0.05)' : 'rgba(34,197,94,0.15)',
-                      color: semVaga ? '#444' : '#22c55e',
+                      backgroundColor: semVaga ? 'rgba(30,43,36,0.05)' : 'rgba(75,139,106,0.15)',
+                      color: semVaga ? 'var(--color-text-light-muted)' : 'var(--color-state-success)',
                     }}>
                       {a.jaEsta ? 'já inscrito' : a.vagas <= 0 ? 'Sem vagas disponíveis'
                         : a.capacidade === VAGAS_INDIVIDUAL ? 'Individual — livre'
@@ -229,15 +229,15 @@ export function AgendaAluno() {
 
           {/* Confirmação */}
           {slotSel && (
-            <div style={{ marginTop: '14px', padding: '14px', borderRadius: '12px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+            <div style={{ marginTop: '14px', padding: '14px', borderRadius: '12px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)' }}>
               {slotSel.reposicaoPendente ? (
                 <>
-                  <div style={{ fontSize: '12px', color: '#3b82f6', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-state-info)', marginBottom: '10px' }}>
                     ✓ Reposição disponível — {calcStatusPorPrazo(slotSel.reposicaoPendente.data_limite).label}
                   </div>
                   <button onClick={() => handleConfirmar(true)} disabled={agendar.isPending} style={{
                     width: '100%', padding: '13px', borderRadius: '12px', border: 'none',
-                    background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                    background: 'var(--color-action-primary)',
                     color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
                   }}>
                     {agendar.isPending ? 'Agendando...' : 'Usar reposição disponível'}
@@ -245,12 +245,12 @@ export function AgendaAluno() {
                 </>
               ) : (
                 <>
-                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '10px' }}>
                     Sem reposição disponível pra essa modalidade — aula avulsa paga
                   </div>
                   <button onClick={() => handleConfirmar(false)} disabled={agendar.isPending} style={{
                     width: '100%', padding: '13px', borderRadius: '12px', border: 'none',
-                    background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                    background: 'var(--color-action-primary)',
                     color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
                   }}>
                     {agendar.isPending ? 'Agendando...' : `Agendar aula avulsa — R$ ${VALOR_AVULSA_PLACEHOLDER}`}

@@ -40,47 +40,47 @@ export function EsqueciSenha() {
 
   return (
     <div style={{
-      height: '100vh', width: '100%', backgroundColor: '#110f0f',
+      height: '100vh', width: '100%', backgroundColor: 'var(--color-surface-light-base)',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       padding: '24px 16px', boxSizing: 'border-box',
       overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
     }}>
       <div style={{ width: '100%', maxWidth: '400px', margin: 'auto 0' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <img src="/images/logoprocoach.png" alt="ProCoach" style={{ height: '52px', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
+          <img src="/images/logo-pc-green.png" alt="ProCoach" style={{ height: '52px', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
         </div>
 
-        <div style={{ backgroundColor: '#1a1a1a', borderRadius: '20px', border: '1px solid #222', padding: '24px' }}>
+        <div style={{ backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '20px', border: '1px solid var(--color-border-light)', padding: '24px' }}>
           <button onClick={() => navigate('/')} style={{
             display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none',
-            color: '#555', fontSize: '12px', cursor: 'pointer', padding: 0, marginBottom: '16px',
+            color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer', padding: 0, marginBottom: '16px',
           }}>
             <ChevronLeft size={14} /> Voltar ao login
           </button>
 
           {enviado ? (
             <div style={{ textAlign: 'center', padding: '12px 0' }}>
-              <p style={{ fontSize: '14px', color: '#F0F2F5', fontWeight: '600', margin: '0 0 8px' }}>Aviso enviado!</p>
-              <p style={{ fontSize: '13px', color: '#888', margin: 0, lineHeight: '1.5' }}>
+              <p style={{ fontSize: '14px', color: 'var(--color-text-light-primary)', fontWeight: '600', margin: '0 0 8px' }}>Aviso enviado!</p>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)', margin: 0, lineHeight: '1.5' }}>
                 Se esse CPF tiver cadastro no sistema, um gestor foi avisado e vai te ajudar a redefinir a senha em breve.
               </p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <p style={{ fontSize: '13px', color: '#888', margin: 0 }}>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)', margin: 0 }}>
                 Digite seu CPF — vamos avisar um gestor pra redefinir sua senha.
               </p>
               <Input label="CPF" type="text" placeholder="Seu CPF" value={mascararCPF(cpf)} onChange={e => setCpf(e.target.value)} required />
 
               {erro && (
-                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', fontSize: '13px', color: '#EF4444' }}>
+                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'rgba(180,71,47,0.1)', border: '1px solid rgba(180,71,47,0.3)', fontSize: '13px', color: 'var(--color-state-danger)' }}>
                   {erro}
                 </div>
               )}
 
               <button onClick={handleSubmit} disabled={loading} style={{
                 width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
-                background: 'linear-gradient(135deg, #fcc825, #d28c3c, #cf1b9b)',
+                background: 'var(--color-action-primary)',
                 color: 'white', fontSize: '15px', fontWeight: '600',
                 cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
               }}>

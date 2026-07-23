@@ -33,7 +33,7 @@ const toastStyle = {
 const MEDALHAS = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
 function corNivel(nivel) {
-  return NIVEIS_ASSIDUIDADE.find(n => n.chave === nivel)?.cor || '#555'
+  return NIVEIS_ASSIDUIDADE.find(n => n.chave === nivel)?.cor || 'var(--color-text-dark-secondary)'
 }
 
 function Pill({ ativo, onClick, children }) {

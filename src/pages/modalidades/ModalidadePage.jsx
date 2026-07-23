@@ -7,25 +7,25 @@ import { classificarPct, CORES_SEMAFORO } from '../../constants/semaforo'
 import { Loading } from '../../components/ui/Loading'
 
 const selectStyle = {
-  fontSize: '11px', color: '#F0F2F5', backgroundColor: '#111',
-  border: '1px solid #2a2a2a', borderRadius: '6px', padding: '4px 6px',
+  fontSize: '11px', color: 'var(--color-text-dark-primary)', backgroundColor: 'var(--color-surface-dark-overlay)',
+  border: '1px solid var(--color-border-dark)', borderRadius: '6px', padding: '4px 6px',
   outline: 'none', textTransform: 'capitalize', cursor: 'pointer',
 }
 
 const DIA_LABEL = { segunda: 'SEG', terca: 'TER', quarta: 'QUA', quinta: 'QUI', sexta: 'SEX', sabado: 'SAB' }
 
 const sectionLabelStyle = {
-  fontSize: '10px', color: '#555', letterSpacing: '1.5px',
+  fontSize: '10px', color: 'var(--color-text-dark-secondary)', letterSpacing: '1.5px',
   textTransform: 'uppercase', fontWeight: '700', margin: '0 0 10px',
 }
 
 const cardStyle = {
-  background: '#1a1a1a', borderRadius: '8px', border: '0.5px solid #252525',
+  background: 'var(--color-surface-dark-raised)', borderRadius: '8px', border: '0.5px solid var(--color-border-dark)',
   padding: '14px', boxSizing: 'border-box',
 }
 
 const scrollHintStyle = {
-  fontSize: '10px', color: '#333', textAlign: 'center', marginTop: '6px',
+  fontSize: '10px', color: 'var(--color-text-dark-muted)', textAlign: 'center', marginTop: '6px',
 }
 
 function Section({ label, children, style }) {
@@ -37,7 +37,7 @@ function Section({ label, children, style }) {
   )
 }
 
-function ProgressBar({ pct, color, bg = '#252525' }) {
+function ProgressBar({ pct, color, bg = 'var(--color-border-dark)' }) {
   return (
     <div style={{ width: '100%', height: '6px', borderRadius: '3px', backgroundColor: bg, overflow: 'hidden' }}>
       <div style={{ width: `${Math.min(100, Math.max(0, pct))}%`, height: '100%', backgroundColor: color, borderRadius: '3px', transition: 'width 0.3s ease' }} />
@@ -52,21 +52,21 @@ function ComparativoCard({ titulo, labelAtual, valorAtual, labelComparacao, valo
   const maior = Math.max(valorAtual || 0, valorComparacao || 0, 1)
   return (
     <div style={cardStyle}>
-      <div style={{ fontSize: '11px', color: '#555', marginBottom: '10px' }}>{titulo}</div>
+      <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '10px' }}>{titulo}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '4px' }}>
             <span style={{ textTransform: 'capitalize' }}>{labelComparacao}</span>
-            <span style={{ fontWeight: '700', color: '#F0F2F5' }}>{valorComparacao}</span>
+            <span style={{ fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>{valorComparacao}</span>
           </div>
-          <ProgressBar pct={(valorComparacao / maior) * 100} color="#555" />
+          <ProgressBar pct={(valorComparacao / maior) * 100} color="var(--color-text-dark-secondary)" />
         </div>
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '4px' }}>
             <span style={{ textTransform: 'capitalize' }}>{labelAtual}</span>
-            <span style={{ fontWeight: '700', color: '#fcc825' }}>{valorAtual}</span>
+            <span style={{ fontWeight: '700', color: 'var(--color-action-primary)' }}>{valorAtual}</span>
           </div>
-          <ProgressBar pct={(valorAtual / maior) * 100} color="#fcc825" />
+          <ProgressBar pct={(valorAtual / maior) * 100} color="var(--color-action-primary)" />
         </div>
       </div>
     </div>
@@ -74,16 +74,16 @@ function ComparativoCard({ titulo, labelAtual, valorAtual, labelComparacao, valo
 }
 
 const NIVEL_OCUPACAO = {
-  cheio: '#EF4444',
-  medio: '#fcc825',
-  baixo: '#3b82f6',
+  cheio: 'var(--color-state-danger)',
+  medio: 'var(--color-action-primary)',
+  baixo: 'var(--color-state-info)',
 }
 
 const NIVEL_CALOR = {
-  lotado: '#8a2323',
-  medio: '#c9772f',
-  vazio: '#2c4a63',
-  sem_dados: '#1f1f1f',
+  lotado: 'var(--color-state-danger)',
+  medio: 'var(--color-state-warning)',
+  vazio: 'var(--color-state-info)',
+  sem_dados: 'var(--color-border-dark-subtle)',
 }
 
 export function ModalidadePage() {
@@ -109,7 +109,7 @@ export function ModalidadePage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0 22px' }}>
         <button onClick={() => navigate('/')} style={{
           background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
-          color: '#fcc825', display: 'flex', alignItems: 'center', flexShrink: 0,
+          color: 'var(--color-action-primary)', display: 'flex', alignItems: 'center', flexShrink: 0,
         }}>
           <ChevronLeft size={24} />
         </button>
@@ -119,11 +119,11 @@ export function ModalidadePage() {
           </div>
         )}
         <div style={{ minWidth: 0 }}>
-          <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#F0F2F5', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <h1 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-text-dark-primary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {nomeModalidade}
           </h1>
           {empresaLabel && (
-            <p style={{ fontSize: '12px', color: '#888', margin: '2px 0 0' }}>{empresaLabel}</p>
+            <p style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', margin: '2px 0 0' }}>{empresaLabel}</p>
           )}
         </div>
       </div>
@@ -136,8 +136,8 @@ export function ModalidadePage() {
           {icone && (
             <img src={icone} alt="" style={{ width: '96px', height: '96px', objectFit: 'contain', opacity: 0.2, marginBottom: '20px' }} />
           )}
-          <p style={{ fontSize: '14px', color: '#888', fontWeight: '600', margin: '0 0 6px' }}>Nenhum dado disponível ainda</p>
-          <p style={{ fontSize: '12px', color: '#555', margin: 0, maxWidth: '260px', lineHeight: '1.5' }}>
+          <p style={{ fontSize: '14px', color: 'var(--color-text-dark-secondary)', fontWeight: '600', margin: '0 0 6px' }}>Nenhum dado disponível ainda</p>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', margin: 0, maxWidth: '260px', lineHeight: '1.5' }}>
             Quando houver alunos inscritos nesta modalidade, as informações aparecerão aqui.
           </p>
         </div>
@@ -147,29 +147,29 @@ export function ModalidadePage() {
           {acontecendoAgora && (
             <div style={{
               marginBottom: '22px', borderRadius: '8px', padding: '14px',
-              backgroundColor: '#1a0f0f', border: '0.5px solid #3a1515',
+              backgroundColor: 'rgba(194,212,97,0.08)', border: '0.5px solid rgba(194,212,97,0.25)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-                <span className="pulse-badge" style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#e24b4a' }} />
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#e24b4a', letterSpacing: '0.5px' }}>ACONTECENDO AGORA</span>
-                <span style={{ fontSize: '11px', color: '#888', marginLeft: 'auto' }}>{acontecendoAgora.horario}</span>
+                <span className="pulse-badge" style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: 'var(--color-accent-live)' }} />
+                <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-accent-live)', letterSpacing: '0.5px' }}>ACONTECENDO AGORA</span>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginLeft: 'auto' }}>{acontecendoAgora.horario}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <div>
-                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5' }}>{acontecendoAgora.aulas}</div>
-                  <div style={{ fontSize: '10px', color: '#888' }}>{acontecendoAgora.aulas === 1 ? 'aula rolando' : 'aulas rolando'}</div>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>{acontecendoAgora.aulas}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)' }}>{acontecendoAgora.aulas === 1 ? 'aula rolando' : 'aulas rolando'}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5' }}>{acontecendoAgora.alunosEsperados}</div>
-                  <div style={{ fontSize: '10px', color: '#888' }}>alunos esperados</div>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>{acontecendoAgora.alunosEsperados}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)' }}>alunos esperados</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#1D9E75' }}>✓ {acontecendoAgora.presentes}</div>
-                  <div style={{ fontSize: '10px', color: '#888' }}>presentes</div>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-state-success)' }}>✓ {acontecendoAgora.presentes}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)' }}>presentes</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#e24b4a' }}>✗ {acontecendoAgora.faltas}</div>
-                  <div style={{ fontSize: '10px', color: '#888' }}>faltas</div>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-state-danger)' }}>✗ {acontecendoAgora.faltas}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)' }}>faltas</div>
                 </div>
               </div>
             </div>
@@ -197,28 +197,28 @@ export function ModalidadePage() {
                 labelComparacao={mes.labelMesComparacao} valorComparacao={mes.aulasComparacao}
               />
             </div>
-            <p style={{ fontSize: '10px', color: '#555', margin: '0 0 8px', lineHeight: '1.4' }}>
+            <p style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', margin: '0 0 8px', lineHeight: '1.4' }}>
               Comparativo proporcional — primeiros {mes.diasComparados} dias de cada mês.
             </p>
             <div style={cardStyle}>
-              <div style={{ fontSize: '11px', color: '#555', marginBottom: '10px' }}>Presença acumulada</div>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '10px' }}>Presença acumulada</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '4px' }}>
                     <span style={{ textTransform: 'capitalize' }}>{mes.labelMesComparacao}</span>
-                    <span style={{ fontWeight: '700', color: '#F0F2F5' }}>{mes.pctComparacao}%</span>
+                    <span style={{ fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>{mes.pctComparacao}%</span>
                   </div>
-                  <ProgressBar pct={mes.pctComparacao} color="#555" />
+                  <ProgressBar pct={mes.pctComparacao} color="var(--color-text-dark-secondary)" />
                 </div>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '4px' }}>
                     <span style={{ textTransform: 'capitalize' }}>{mes.labelMesAtual}</span>
                     <span style={{ fontWeight: '700', color: CORES_SEMAFORO[classificarPct(mes.pctAtual)] }}>{mes.pctAtual}%</span>
                   </div>
                   <ProgressBar pct={mes.pctAtual} color={CORES_SEMAFORO[classificarPct(mes.pctAtual)]} />
                 </div>
               </div>
-              <p style={{ fontSize: '10px', color: '#555', margin: '10px 0 0', lineHeight: '1.4' }}>
+              <p style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', margin: '10px 0 0', lineHeight: '1.4' }}>
                 Comparativo proporcional — primeiros {mes.diasComparados} dias de <span style={{ textTransform: 'capitalize' }}>{mes.labelMesComparacao}</span> vs <span style={{ textTransform: 'capitalize' }}>{mes.labelMesAtual}</span>.
               </p>
             </div>
@@ -226,12 +226,12 @@ export function ModalidadePage() {
             {riscoEvasao.length > 0 && (
               <div style={{
                 marginTop: '10px', padding: '12px 14px', borderRadius: '10px',
-                backgroundColor: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+                backgroundColor: 'rgba(180,71,47,0.08)', border: '1px solid rgba(180,71,47,0.25)',
                 display: 'flex', alignItems: 'center', gap: '10px',
               }}>
                 <span style={{ fontSize: '16px' }}>⚠️</span>
-                <span style={{ fontSize: '12px', color: '#F0F2F5', lineHeight: '1.4' }}>
-                  <strong style={{ color: '#EF4444' }}>{riscoEvasao.length} aluno{riscoEvasao.length === 1 ? '' : 's'}</strong> em risco alto de evasão (3+ faltas seguidas) — veja a lista em "Alerta — risco de evasão" abaixo.
+                <span style={{ fontSize: '12px', color: 'var(--color-text-dark-primary)', lineHeight: '1.4' }}>
+                  <strong style={{ color: 'var(--color-state-danger)' }}>{riscoEvasao.length} aluno{riscoEvasao.length === 1 ? '' : 's'}</strong> em risco alto de evasão (3+ faltas seguidas) — veja a lista em "Alerta — risco de evasão" abaixo.
                 </span>
               </div>
             )}
@@ -240,18 +240,18 @@ export function ModalidadePage() {
           {/* Mapa de calor */}
           <Section label="Mapa de calor">
             <div style={cardStyle}>
-              <p style={{ fontSize: '10px', color: '#555', margin: '0 0 12px', lineHeight: '1.4' }}>
+              <p style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', margin: '0 0 12px', lineHeight: '1.4' }}>
                 Cor = % de ocupação das vagas do horário (turma em grupo cheia + individual cheia pesa igual a duas turmas em grupo cheias) — não é número bruto de gente, nem % de presença.
               </p>
               <div style={{ overflowX: 'auto' }}>
                 <div className="heatmap-grid">
                   <div />
                   {DIAS_HEATMAP.map(dia => (
-                    <div key={dia} style={{ fontSize: '8px', color: '#555', textAlign: 'center', fontWeight: '700' }}>{DIA_LABEL[dia]}</div>
+                    <div key={dia} style={{ fontSize: '8px', color: 'var(--color-text-dark-secondary)', textAlign: 'center', fontWeight: '700' }}>{DIA_LABEL[dia]}</div>
                   ))}
                   {Array.from({ length: 16 }, (_, i) => 6 + i).map(hora => (
                     <Fragment key={hora}>
-                      <div style={{ fontSize: '8px', color: '#555', display: 'flex', alignItems: 'center' }}>
+                      <div style={{ fontSize: '8px', color: 'var(--color-text-dark-secondary)', display: 'flex', alignItems: 'center' }}>
                         {String(hora).padStart(2, '0')}h
                       </div>
                       {DIAS_HEATMAP.map(dia => {
@@ -278,7 +278,7 @@ export function ModalidadePage() {
                 ].map(item => (
                   <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <span style={{ width: '9px', height: '9px', borderRadius: '2px', backgroundColor: item.cor, flexShrink: 0 }} />
-                    <span style={{ fontSize: '10px', color: '#555' }}>{item.label}</span>
+                    <span style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)' }}>{item.label}</span>
                   </div>
                 ))}
               </div>
@@ -290,11 +290,11 @@ export function ModalidadePage() {
             <div style={cardStyle}>
               <div style={{ maxHeight: '150px', overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {ocupacaoTurmas.length === 0 ? (
-                  <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', margin: 0 }}>Nenhuma turma cadastrada</p>
+                  <p style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', textAlign: 'center', margin: 0 }}>Nenhuma turma cadastrada</p>
                 ) : ocupacaoTurmas.map(t => (
                   <div key={t.id}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
-                      <span style={{ color: '#F0F2F5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '8px' }}>
+                      <span style={{ color: 'var(--color-text-dark-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '8px' }}>
                         {t.nome}
                       </span>
                       <span style={{ color: NIVEL_OCUPACAO[t.nivel], fontWeight: '700', flexShrink: 0 }}>{t.ocupacao}/{t.capacidade}</span>
@@ -312,19 +312,19 @@ export function ModalidadePage() {
             <div style={cardStyle}>
               <div style={{ maxHeight: '220px', overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {topAlunos.length === 0 ? (
-                  <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', margin: 0 }}>Nenhum registro de presença neste mês</p>
+                  <p style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', textAlign: 'center', margin: 0 }}>Nenhum registro de presença neste mês</p>
                 ) : topAlunos.map((a, i) => (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '10px', color: '#444', width: '14px', flexShrink: 0 }}>{i + 1}</span>
+                    <span style={{ fontSize: '10px', color: 'var(--color-text-dark-muted)', width: '14px', flexShrink: 0 }}>{i + 1}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '12px', color: '#F0F2F5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '4px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-dark-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '4px' }}>
                         {a.nome}
                       </div>
-                      <ProgressBar pct={a.pct} color="#1D9E75" />
+                      <ProgressBar pct={a.pct} color="var(--color-state-success)" />
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontSize: '14px', fontWeight: '700', color: '#1D9E75' }}>{a.pct}%</div>
-                      <div style={{ fontSize: '9px', color: '#555' }}>{a.aulas} aulas</div>
+                      <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-state-success)' }}>{a.pct}%</div>
+                      <div style={{ fontSize: '9px', color: 'var(--color-text-dark-secondary)' }}>{a.aulas} aulas</div>
                     </div>
                   </div>
                 ))}
@@ -338,13 +338,13 @@ export function ModalidadePage() {
             <div style={cardStyle}>
               <div style={{ maxHeight: '180px', overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {riscoEvasao.length === 0 ? (
-                  <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', margin: 0 }}>Nenhum alerta no momento</p>
+                  <p style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', textAlign: 'center', margin: 0 }}>Nenhum alerta no momento</p>
                 ) : riscoEvasao.map(a => (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#e24b4a', flexShrink: 0 }} />
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: 'var(--color-state-danger)', flexShrink: 0 }} />
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: '12px', color: '#F0F2F5' }}>{a.nome}</div>
-                      <div style={{ fontSize: '10px', color: '#888' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-dark-primary)' }}>{a.nome}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)' }}>
                         {a.faltasConsecutivas} faltas consecutivas · última aula há {a.diasDesdeUltimaAula} {a.diasDesdeUltimaAula === 1 ? 'dia' : 'dias'}
                       </div>
                     </div>
@@ -360,14 +360,14 @@ export function ModalidadePage() {
             <div style={cardStyle}>
               <div style={{ maxHeight: '200px', overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {rankingProfessores.length === 0 ? (
-                  <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', margin: 0 }}>Nenhuma aula ministrada neste mês</p>
+                  <p style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', textAlign: 'center', margin: 0 }}>Nenhuma aula ministrada neste mês</p>
                 ) : rankingProfessores.map(p => (
                   <div key={p.id}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                      <span style={{ color: '#F0F2F5' }}>{p.nome}</span>
-                      <span style={{ color: '#fcc825', fontWeight: '700' }}>{p.aulas} {p.aulas === 1 ? 'aula' : 'aulas'}</span>
+                      <span style={{ color: 'var(--color-text-dark-primary)' }}>{p.nome}</span>
+                      <span style={{ color: 'var(--color-action-primary)', fontWeight: '700' }}>{p.aulas} {p.aulas === 1 ? 'aula' : 'aulas'}</span>
                     </div>
-                    <ProgressBar pct={p.pct} color="#fcc825" />
+                    <ProgressBar pct={p.pct} color="var(--color-action-primary)" />
                   </div>
                 ))}
               </div>

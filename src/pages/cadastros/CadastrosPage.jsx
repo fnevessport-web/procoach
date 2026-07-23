@@ -24,7 +24,7 @@ export function CadastrosPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', marginBottom: '16px' }}>
+      <h1 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-light-primary)', marginBottom: '16px' }}>
         Cadastros
       </h1>
 
@@ -45,8 +45,8 @@ export function CadastrosPage() {
                 padding: '8px 14px', borderRadius: '10px', border: 'none',
                 whiteSpace: 'nowrap', cursor: 'pointer', fontSize: '13px', fontWeight: '500',
                 flexShrink: 0, transition: 'all 0.2s',
-                background: ativa ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#1a1a1a',
-                color: ativa ? 'white' : '#555',
+                background: ativa ? 'var(--color-action-primary)' : 'var(--color-surface-light-raised)',
+                color: ativa ? 'white' : 'var(--color-text-light-secondary)',
               }}
             >
               <Icon size={13} />

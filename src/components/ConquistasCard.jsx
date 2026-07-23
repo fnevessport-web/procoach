@@ -18,6 +18,8 @@ function progressoPct(minha) {
 // (A.7). `mostrarCheck` fica desligado na fileira de "figurinhas" do Card do Aluno (item A.5)
 // e da Evolução Técnica, onde só aparecem itens já desbloqueados — o selo verde de check ali
 // seria redundante (só faz sentido quando tem bloqueada do lado pra comparar, como no catálogo).
+// Componente dual-contexto (usado dentro da ilha escura de ConquistasCard E direto na página
+// Clara de Evolução Técnica) — usa os aliases genéricos, não tokens -dark-*/-light-* diretos.
 function IconeConquista({ icone, nome, tamanho, desbloqueada, mostrarCheck = true }) {
   const url = ICONE_CONQUISTA_URL[icone]
   return (
@@ -31,7 +33,7 @@ function IconeConquista({ icone, nome, tamanho, desbloqueada, mostrarCheck = tru
       {desbloqueada && mostrarCheck && (
         <span style={{
           position: 'absolute', bottom: -2, right: -2, width: 15, height: 15, borderRadius: '50%',
-          backgroundColor: '#22c55e', border: '2px solid #110f0f',
+          backgroundColor: 'var(--color-state-success)', border: '2px solid var(--surface)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <Check size={8} color="white" strokeWidth={3.5} />
@@ -43,7 +45,8 @@ function IconeConquista({ icone, nome, tamanho, desbloqueada, mostrarCheck = tru
 
 // Fileira de "figurinhas" das conquistas já desbloqueadas — ícone grande em destaque, nome
 // embaixo em cinza, sem fundo/borda/check (minimalista, pedido explícito do usuário). Usada
-// tanto no Card do Aluno (logo abaixo do nome) quanto dentro do detalhe de Evolução Técnica.
+// tanto no Card do Aluno (logo abaixo do nome) quanto dentro do detalhe de Evolução Técnica —
+// dual-contexto, mesmo motivo do IconeConquista acima.
 export function FileiraConquistas({ conquistas, onSelecionar }) {
   if (!conquistas?.length) return null
   return (
@@ -59,7 +62,7 @@ export function FileiraConquistas({ conquistas, onSelecionar }) {
           }}
         >
           <IconeConquista icone={c.icone} nome={c.nome} tamanho={40} desbloqueada mostrarCheck={false} />
-          <span style={{ fontSize: '10px', color: '#888', textAlign: 'center', lineHeight: '1.25' }}>
+          <span style={{ fontSize: '10px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: '1.25' }}>
             {c.nome}
           </span>
         </button>
@@ -72,33 +75,33 @@ function ModalDetalheConquista({ conquista, minha, onFechar }) {
   const desbloqueada = !!minha?.ativa
   const pct = progressoPct(minha)
   return (
-    <Modal open onClose={onFechar} title="Conquista" size="sm">
+    <Modal open onClose={onFechar} title="Conquista" size="sm" theme="theme-dark">
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', textAlign: 'center', paddingBottom: '4px' }}>
         <IconeConquista icone={conquista.icone} nome={conquista.nome} tamanho={88} desbloqueada={desbloqueada} />
         <div>
           <div style={{
             fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.6px',
-            color: desbloqueada ? '#22c55e' : '#888', marginBottom: '4px',
+            color: desbloqueada ? 'var(--color-state-success)' : 'var(--color-text-dark-secondary)', marginBottom: '4px',
           }}>
             {desbloqueada ? 'Conquistada' : 'Ainda bloqueada'}
           </div>
-          <div style={{ fontSize: '16px', fontWeight: '800', color: '#F0F2F5' }}>{conquista.nome}</div>
+          <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--color-text-dark-primary)' }}>{conquista.nome}</div>
         </div>
-        <p style={{ fontSize: '13px', color: '#aaa', lineHeight: '1.6', margin: 0 }}>{conquista.descricao}</p>
+        <p style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)', lineHeight: '1.6', margin: 0 }}>{conquista.descricao}</p>
 
         {!desbloqueada && pct != null && (
           <div style={{ width: '100%' }}>
-            <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', marginBottom: '6px' }}>
               Você está em {minha.progresso_atual} de {minha.progresso_alvo}
             </div>
-            <div style={{ height: '6px', backgroundColor: '#2a2a2a', borderRadius: '3px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#fcc825', borderRadius: '3px' }} />
+            <div style={{ height: '6px', backgroundColor: 'var(--color-border-dark)', borderRadius: '3px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${pct}%`, backgroundColor: 'var(--color-action-primary)', borderRadius: '3px' }} />
             </div>
           </div>
         )}
 
         {desbloqueada && minha?.desbloqueada_em && (
-          <div style={{ fontSize: '11px', color: '#555' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)' }}>
             Desde {format(new Date(minha.desbloqueada_em), 'dd/MM/yyyy', { locale: ptBR })}
           </div>
         )}
@@ -109,14 +112,14 @@ function ModalDetalheConquista({ conquista, minha, onFechar }) {
 
 function ModalCatalogo({ catalogo, minhasPorId, onFechar, onSelecionar }) {
   return (
-    <Modal open onClose={onFechar} title="Todas as metas" size="lg">
+    <Modal open onClose={onFechar} title="Todas as metas" size="lg" theme="theme-dark">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
         {FAMILIAS_ORDEM.map(familia => {
           const itens = catalogo.filter(c => c.familia === familia)
           if (!itens.length) return null
           return (
             <div key={familia}>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
                 {familia}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))', gap: '10px' }}>
@@ -131,16 +134,16 @@ function ModalCatalogo({ catalogo, minhasPorId, onFechar, onSelecionar }) {
                       style={{
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
                         padding: '10px 6px', borderRadius: '12px', cursor: 'pointer',
-                        backgroundColor: '#1a1a1a', border: desbloqueada ? '1px solid #2a2a2a' : '1px dashed #333',
+                        backgroundColor: 'var(--color-surface-dark-raised)', border: desbloqueada ? '1px solid var(--color-border-dark)' : '1px dashed var(--color-text-dark-muted)',
                       }}
                     >
                       <IconeConquista icone={c.icone} nome={c.nome} tamanho={44} desbloqueada={desbloqueada} />
-                      <span style={{ fontSize: '9.5px', color: desbloqueada ? '#F0F2F5' : '#777', textAlign: 'center', lineHeight: '1.25' }}>
+                      <span style={{ fontSize: '9.5px', color: desbloqueada ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-muted)', textAlign: 'center', lineHeight: '1.25' }}>
                         {c.nome}
                       </span>
                       {!desbloqueada && pct != null && (
-                        <div style={{ width: '100%', height: '3px', backgroundColor: '#2a2a2a', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#fcc825' }} />
+                        <div style={{ width: '100%', height: '3px', backgroundColor: 'var(--color-border-dark)', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, backgroundColor: 'var(--color-action-primary)' }} />
                         </div>
                       )}
                     </button>
@@ -172,7 +175,7 @@ export function ConquistasCard({ alunoId }) {
   const desbloqueadas = catalogo.filter(c => minhasPorId[c.id]?.ativa)
 
   return (
-    <div>
+    <div className="theme-dark">
       {desbloqueadas.length > 0 && (
         <div style={{ marginBottom: '10px' }}>
           <FileiraConquistas conquistas={desbloqueadas} onSelecionar={setDetalheId} />
@@ -183,15 +186,15 @@ export function ConquistasCard({ alunoId }) {
         onClick={() => setCatalogoAberto(true)}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-          padding: '9px 12px', borderRadius: '10px', border: '1px solid #2a2a2a', backgroundColor: '#1a1a1a',
-          color: '#888', cursor: 'pointer', textAlign: 'left',
+          padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--color-border-dark)', backgroundColor: 'var(--color-surface-dark-raised)',
+          color: 'var(--color-text-dark-secondary)', cursor: 'pointer', textAlign: 'left',
         }}
       >
         <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           <span style={{ fontSize: '12px', fontWeight: '600' }}>Ver todas as metas</span>
-          <span style={{ fontSize: '11px', color: '#555' }}>{desbloqueadas.length}/{catalogo.length} metas conquistadas</span>
+          <span style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)' }}>{desbloqueadas.length}/{catalogo.length} metas conquistadas</span>
         </span>
-        <ChevronRight size={14} color="#555" style={{ flexShrink: 0 }} />
+        <ChevronRight size={14} color="var(--color-text-dark-secondary)" style={{ flexShrink: 0 }} />
       </button>
 
       {catalogoAberto && (

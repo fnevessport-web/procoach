@@ -14,6 +14,11 @@ import { AulasCoordenador } from '../aulas/AulasCoordenador'
 // cima, Grade completa do dia embutida embaixo. Sem os blocos de "Hoje —
 // acumulado"/"Professores agora"/"Modalidades" da Home normal, que não fazem
 // parte do que foi pedido pra esse acesso.
+//
+// Contexto escuro (mesma família da HomePage.jsx) — tokens --color-*-dark-* diretos.
+// A <AulasCoordenador somenteLeitura /> embutida no fim é ela mesma sempre clara (não usa
+// alias, é uma página de contexto fixo) — fica como uma "ilha clara" dentro dessa página
+// escura, o inverso do caso dos cards de Pontuação Beyond/Conquistas na ficha do aluno.
 
 function useAgoraEmSegundos() {
   const [agora, setAgora] = useState(() => Date.now())
@@ -48,22 +53,22 @@ function ProgressoAula({ horarioInicio, horarioFim }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-      <div style={{ height: '3px', borderRadius: '2px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+      <div style={{ height: '3px', borderRadius: '2px', backgroundColor: 'var(--color-border-dark-subtle)', overflow: 'hidden' }}>
         <div style={{
           height: '100%', width: `${pct}%`, borderRadius: '2px',
-          backgroundColor: '#e24b4a', transition: 'width 1s linear',
+          backgroundColor: 'var(--color-accent-live)', transition: 'width 1s linear',
         }} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <Timer size={10} color={emTolerancia ? '#e24b4a' : '#555'} style={{ flexShrink: 0 }} />
+        <Timer size={10} color={emTolerancia ? 'var(--color-state-warning)' : 'var(--color-text-dark-secondary)'} style={{ flexShrink: 0 }} />
         <span style={{
           fontSize: '9px', fontWeight: emTolerancia ? '700' : '400',
-          color: emTolerancia ? '#e24b4a' : '#555', fontVariantNumeric: 'tabular-nums',
+          color: emTolerancia ? 'var(--color-state-warning)' : 'var(--color-text-dark-secondary)', fontVariantNumeric: 'tabular-nums',
         }}>
           {formataMMSS(decorridoSeg)}
         </span>
         {emTolerancia && (
-          <span className="pulse-badge" style={{ fontSize: '9px', fontWeight: '700', color: '#e24b4a' }}>
+          <span className="pulse-badge" style={{ fontSize: '9px', fontWeight: '700', color: 'var(--color-state-warning)' }}>
             · aula finalizada
           </span>
         )}
@@ -83,7 +88,7 @@ function ModalidadesRow({ modalidades, onSelect }) {
   if (!modalidades?.length) return null
   return (
     <div className="modalidades-mobile-row" style={{ marginBottom: '26px' }}>
-      <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5', margin: '0 0 12px' }}>Modalidades</h2>
+      <h2 style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-dark-primary)', margin: '0 0 12px' }}>Modalidades</h2>
       <div className="modalidades-row">
         {modalidades.map(mod => {
           const icone = ICONES_MODALIDADES[mod.nome]
@@ -92,15 +97,15 @@ function ModalidadesRow({ modalidades, onSelect }) {
               key={mod.id}
               onClick={() => onSelect(mod)}
               className="modalidade-card"
-              style={{ border: '1px solid rgba(255,255,255,0.06)', background: '#1a1a1a' }}
+              style={{ border: '1px solid var(--color-border-dark-subtle)', background: 'var(--color-surface-dark-raised)' }}
             >
               <div className="modalidade-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {icone
                   ? <img src={icone} alt={mod.nome} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  : <span style={{ fontSize: '10px', color: '#555' }}>{mod.nome}</span>
+                  : <span style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)' }}>{mod.nome}</span>
                 }
               </div>
-              <span className="modalidade-label" style={{ color: '#888' }}>{mod.nome}</span>
+              <span className="modalidade-label" style={{ color: 'var(--color-text-dark-secondary)' }}>{mod.nome}</span>
             </button>
           )
         })}
@@ -141,17 +146,17 @@ export function HomeLeitura() {
       {/* Saudação */}
       <div style={{ margin: '16px 0 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: '700', color: 'var(--color-text-dark-primary)', margin: 0 }}>
             Olá, {perfil?.nome?.split(' ')[0] || 'Usuário'}
           </h1>
-          <p style={{ fontSize: '12px', color: '#555', margin: '2px 0 0' }}>Acesso do clube</p>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', margin: '2px 0 0' }}>Acesso do clube</p>
         </div>
         <div style={{
           width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0,
-          background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+          backgroundColor: 'var(--color-action-primary)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <span style={{ fontSize: '14px', fontWeight: '700', color: 'white' }}>{getIniciais(perfil?.nome)}</span>
+          <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-action-on-primary)' }}>{getIniciais(perfil?.nome)}</span>
         </div>
       </div>
 
@@ -160,9 +165,9 @@ export function HomeLeitura() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
             {aoVivoFiltrado.length > 0 && (
-              <span className="pulse-badge" style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#e24b4a', boxShadow: '0 0 8px rgba(226,75,74,0.7)' }} />
+              <span className="pulse-badge" style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--color-accent-live)', boxShadow: '0 0 8px rgba(194,212,97,0.7)' }} />
             )}
-            <h2 style={{ fontSize: '12px', fontWeight: '700', color: aoVivoFiltrado.length > 0 ? '#e24b4a' : '#888', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <h2 style={{ fontSize: '12px', fontWeight: '700', color: aoVivoFiltrado.length > 0 ? 'var(--color-accent-live)' : 'var(--color-text-dark-secondary)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               {aoVivoFiltrado.length > 0 ? 'AO VIVO' : 'Ao vivo agora'} · {aoVivoFiltrado.length} {aoVivoFiltrado.length === 1 ? 'aula' : 'aulas'}
             </h2>
           </div>
@@ -171,9 +176,9 @@ export function HomeLeitura() {
             <button onClick={() => setFiltroAoVivoAberto(!filtroAoVivoAberto)} style={{
               display: 'flex', alignItems: 'center', gap: '5px',
               padding: '5px 9px', borderRadius: '8px', cursor: 'pointer',
-              background: filtroAoVivo !== 'todas' ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
-              border: filtroAoVivo !== 'todas' ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-              color: filtroAoVivo !== 'todas' ? '#fcc825' : '#555', fontSize: '11px',
+              background: filtroAoVivo !== 'todas' ? 'rgba(165,76,46,0.12)' : 'var(--color-surface-dark-raised)',
+              border: filtroAoVivo !== 'todas' ? '1px solid rgba(165,76,46,0.45)' : '1px solid var(--color-border-dark)',
+              color: filtroAoVivo !== 'todas' ? 'var(--color-action-primary)' : 'var(--color-text-dark-secondary)', fontSize: '11px',
             }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
@@ -185,7 +190,7 @@ export function HomeLeitura() {
                 <div style={{ position: 'fixed', inset: 0, zIndex: 30 }} onClick={() => setFiltroAoVivoAberto(false)} />
                 <div style={{
                   position: 'absolute', right: 0, top: '100%', marginTop: '4px',
-                  backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+                  backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark)',
                   borderRadius: '10px', padding: '8px', zIndex: 40,
                   minWidth: '170px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                 }}>
@@ -193,8 +198,8 @@ export function HomeLeitura() {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
                     cursor: 'pointer', fontSize: '12px', marginBottom: '4px',
-                    background: filtroAoVivo === 'todas' ? 'rgba(252,200,37,0.1)' : 'transparent',
-                    color: filtroAoVivo === 'todas' ? '#fcc825' : '#888',
+                    background: filtroAoVivo === 'todas' ? 'rgba(165,76,46,0.12)' : 'transparent',
+                    color: filtroAoVivo === 'todas' ? 'var(--color-action-primary)' : 'var(--color-text-dark-secondary)',
                   }}>
                     Todas
                     {filtroAoVivo === 'todas' && <span>✓</span>}
@@ -204,8 +209,8 @@ export function HomeLeitura() {
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
                       cursor: 'pointer', fontSize: '12px', marginBottom: '2px',
-                      background: filtroAoVivo === e.valor ? 'rgba(252,200,37,0.1)' : 'transparent',
-                      color: filtroAoVivo === e.valor ? '#fcc825' : '#888',
+                      background: filtroAoVivo === e.valor ? 'rgba(165,76,46,0.12)' : 'transparent',
+                      color: filtroAoVivo === e.valor ? 'var(--color-action-primary)' : 'var(--color-text-dark-secondary)',
                     }}>
                       {e.label}
                       {filtroAoVivo === e.valor && <span>✓</span>}
@@ -219,15 +224,15 @@ export function HomeLeitura() {
 
         {isLoading ? <Loading /> : aoVivoAgora.length === 0 ? (
           <div style={{
-            padding: '20px', textAlign: 'center', fontSize: '12px', color: '#444',
-            backgroundColor: '#1a1a1a', borderRadius: '12px', border: '1px solid #252525',
+            padding: '20px', textAlign: 'center', fontSize: '12px', color: 'var(--color-text-dark-muted)',
+            backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px', border: '1px solid var(--color-border-dark)',
           }}>
             Nenhuma aula rolando agora
           </div>
         ) : aoVivoFiltrado.length === 0 ? (
           <div style={{
-            padding: '20px', textAlign: 'center', fontSize: '12px', color: '#444',
-            backgroundColor: '#1a1a1a', borderRadius: '12px', border: '1px solid #252525',
+            padding: '20px', textAlign: 'center', fontSize: '12px', color: 'var(--color-text-dark-muted)',
+            backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px', border: '1px solid var(--color-border-dark)',
           }}>
             Nenhuma aula ao vivo com esse filtro
           </div>
@@ -237,39 +242,39 @@ export function HomeLeitura() {
               <button key={aula.id} onClick={() => abrirAula(aula.id)} style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
                 padding: '8px 10px', borderRadius: '12px', textAlign: 'left', width: '100%',
-                backgroundColor: '#1a1a1a', border: '1px solid #252525', cursor: 'pointer',
+                backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark)', cursor: 'pointer',
                 boxSizing: 'border-box',
               }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
                   <FotoProfessor src={aula.professores?.foto_url} nome={aula.professores?.nome} />
-                  <span style={{ fontSize: '9px', color: '#555', maxWidth: '52px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: '9px', color: 'var(--color-text-dark-secondary)', maxWidth: '52px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {aula.professores?.nome?.split(' ')[0]}
                   </span>
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                    <span style={{ fontSize: '13px', color: '#F0F2F5', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--color-text-dark-primary)', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {aula.turmaNome}
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                      <span className="pulse-badge" style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#e24b4a' }} />
-                      <span style={{ fontSize: '9px', color: '#555' }}>{aula.horarioInicio?.slice(0, 5)}</span>
+                      <span className="pulse-badge" style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--color-accent-live)' }} />
+                      <span style={{ fontSize: '9px', color: 'var(--color-text-dark-secondary)' }}>{aula.horarioInicio?.slice(0, 5)}</span>
                       {aula.empresa && LOGO_EMPRESA[aula.empresa] && (
                         <img src={LOGO_EMPRESA[aula.empresa]} alt={aula.empresa} style={{ height: '12px', objectFit: 'contain', opacity: 0.85 }} />
                       )}
                     </div>
                   </div>
 
-                  <div style={{ fontSize: '11px', color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {[aula.modalidadeNome, aula.quadraNome].filter(Boolean).join(' · ')}
                   </div>
 
                   <div style={{ display: 'flex', gap: '5px' }}>
-                    <span style={{ padding: '2px 7px', borderRadius: '6px', backgroundColor: 'rgba(29,158,117,0.12)', color: '#1D9E75', fontSize: '10px', fontWeight: '600' }}>
+                    <span style={{ padding: '2px 7px', borderRadius: '6px', backgroundColor: 'rgba(75,139,106,0.15)', color: 'var(--color-state-success)', fontSize: '10px', fontWeight: '600' }}>
                       ✓ {aula.presentes}
                     </span>
-                    <span style={{ padding: '2px 7px', borderRadius: '6px', backgroundColor: 'rgba(226,75,74,0.12)', color: '#e24b4a', fontSize: '10px', fontWeight: '600' }}>
+                    <span style={{ padding: '2px 7px', borderRadius: '6px', backgroundColor: 'rgba(180,71,47,0.15)', color: 'var(--color-state-danger)', fontSize: '10px', fontWeight: '600' }}>
                       ✗ {aula.faltas}
                     </span>
                   </div>
@@ -287,7 +292,7 @@ export function HomeLeitura() {
 
       {/* Grade completa */}
       <div>
-        <h2 style={{ fontSize: '12px', fontWeight: '700', color: '#888', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        <h2 style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-dark-secondary)', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           Grade completa
         </h2>
         <AulasCoordenador somenteLeitura />

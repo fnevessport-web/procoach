@@ -46,12 +46,12 @@ const CRITERIOS = [
 
 const inputStyle = {
   width: '100%', padding: '10px 14px', borderRadius: '10px',
-  backgroundColor: '#111', border: '1px solid #2a2a2a',
-  color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+  backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
+  color: 'var(--color-text-light-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
 }
 
 const labelStyle = {
-  fontSize: '10px', color: '#555', textTransform: 'uppercase',
+  fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase',
   letterSpacing: '0.5px', marginBottom: '4px',
 }
 
@@ -89,7 +89,7 @@ function StarRating({ value, onChange, disabled }) {
       {[1,2,3,4,5].map(n => (
         <button key={n} onClick={() => !disabled && onChange(n)}
           style={{ background: 'none', border: 'none', cursor: disabled ? 'default' : 'pointer', padding: '2px' }}>
-          <Star size={20} fill={n <= value ? '#fcc825' : 'none'} color={n <= value ? '#fcc825' : '#333'} />
+          <Star size={20} fill={n <= value ? 'var(--color-action-primary)' : 'none'} color={n <= value ? 'var(--color-action-primary)' : 'var(--color-text-light-muted)'} />
         </button>
       ))}
     </div>
@@ -107,9 +107,9 @@ function PixCopiavel({ pix }) {
     <button onClick={copiar} style={{
       display: 'flex', alignItems: 'center', gap: '6px',
       padding: '8px 14px', borderRadius: '8px',
-      border: '1px solid rgba(252,200,37,0.3)',
-      backgroundColor: 'rgba(252,200,37,0.08)',
-      cursor: 'pointer', fontSize: '12px', color: '#fcc825', width: '100%',
+      border: '1px solid rgba(165,76,46,0.3)',
+      backgroundColor: 'rgba(165,76,46,0.08)',
+      cursor: 'pointer', fontSize: '12px', color: 'var(--color-action-primary)', width: '100%',
     }}>
       {copiado ? <Check size={13} /> : <Copy size={13} />}
       <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -149,26 +149,28 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
 
   // Via portal pro <body>: sem isso, o WebKit mobile prende esse position:fixed dentro do
   // .app-main (overflow-y + scroll-touch) e o modal fica cortado, sem cobrir a tela toda.
+  // Este modal só é renderizado a partir do DashboardProfessor.jsx (contexto Escuro) — mesmo
+  // definido fisicamente nesta página (Claro), usa tokens -dark-* diretos de propósito.
   return createPortal((
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-end' }}>
       <div onClick={e => e.stopPropagation()} style={{
-        width: '100%', backgroundColor: '#1a1a1a', borderRadius: '20px 20px 0 0', padding: '20px 16px 32px', boxSizing: 'border-box',
+        width: '100%', backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '20px 20px 0 0', padding: '20px 16px 32px', boxSizing: 'border-box',
         maxHeight: '82dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
       }}>
-        <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
+        <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--color-text-dark-muted)', borderRadius: '2px', margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5' }}>{dataLabel}</div>
-            <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{aulas.length} aula{aulas.length !== 1 ? 's' : ''} confirmada{aulas.length !== 1 ? 's' : ''}</div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>{dataLabel}</div>
+            <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>{aulas.length} aula{aulas.length !== 1 ? 's' : ''} confirmada{aulas.length !== 1 ? 's' : ''}</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-            <X size={18} color="#EF4444" />
+            <X size={18} color="var(--color-state-danger)" />
           </button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {isLoading ? (
-            <div style={{ textAlign: 'center', color: '#555', fontSize: '13px', padding: '24px' }}>Carregando...</div>
+            <div style={{ textAlign: 'center', color: 'var(--color-text-dark-secondary)', fontSize: '13px', padding: '24px' }}>Carregando...</div>
           ) : aulas.map(aula => {
             const horario = getHorario(aula)
             const nivel = getNivel(aula)
@@ -177,18 +179,18 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
             const presentes = presencas.filter(p => p.status_presenca === 'presente').length
             const ausentes = presencas.filter(p => p.status_presenca !== 'presente').length
             return (
-              <div key={aula.id} style={{ backgroundColor: '#111', borderRadius: '10px', padding: '10px 12px', border: '1px solid #222' }}>
+              <div key={aula.id} style={{ backgroundColor: 'var(--color-surface-dark-overlay)', borderRadius: '10px', padding: '10px 12px', border: '1px solid var(--color-border-dark)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: presencas.length > 0 ? '8px' : 0 }}>
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F2F5' }}>{nome}</div>
-                    {nivel && nivel !== nome && <div style={{ fontSize: '10px', color: '#555', marginTop: '1px' }}>{nivel}</div>}
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text-dark-primary)' }}>{nome}</div>
+                    {nivel && nivel !== nome && <div style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', marginTop: '1px' }}>{nivel}</div>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                    {horario && <span style={{ fontSize: '11px', color: '#fcc825', fontWeight: '600' }}>{horario}</span>}
+                    {horario && <span style={{ fontSize: '11px', color: 'var(--color-action-primary)', fontWeight: '600' }}>{horario}</span>}
                     {presencas.length > 0 && (
-                      <span style={{ fontSize: '10px', color: '#555' }}>
-                        <span style={{ color: '#22c55e' }}>✓{presentes}</span>{' '}
-                        {ausentes > 0 && <span style={{ color: '#EF4444' }}>✗{ausentes}</span>}
+                      <span style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)' }}>
+                        <span style={{ color: 'var(--color-state-success)' }}>✓{presentes}</span>{' '}
+                        {ausentes > 0 && <span style={{ color: 'var(--color-state-danger)' }}>✗{ausentes}</span>}
                       </span>
                     )}
                   </div>
@@ -196,13 +198,13 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
                 {presencas.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     {presencas.map((p, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '3px 0', borderTop: '1px solid #1a1a1a' }}>
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '3px 0', borderTop: '1px solid var(--color-surface-dark-raised)' }}>
                         {p.status_presenca === 'presente'
-                          ? <span style={{ color: '#22c55e', fontSize: '13px', fontWeight: '700', lineHeight: 1 }}>✓</span>
-                          : <span style={{ color: '#EF4444', fontSize: '13px', fontWeight: '700', lineHeight: 1 }}>✗</span>
+                          ? <span style={{ color: 'var(--color-state-success)', fontSize: '13px', fontWeight: '700', lineHeight: 1 }}>✓</span>
+                          : <span style={{ color: 'var(--color-state-danger)', fontSize: '13px', fontWeight: '700', lineHeight: 1 }}>✗</span>
                         }
-                        <span style={{ fontSize: '12px', color: p.status_presenca === 'presente' ? '#ccc' : '#555' }}>{p.alunos?.nome || '—'}</span>
-                        {p.status_presenca === 'falta_justificada' && <span style={{ fontSize: '9px', color: '#f97316', marginLeft: 'auto' }}>just.</span>}
+                        <span style={{ fontSize: '12px', color: p.status_presenca === 'presente' ? 'var(--color-text-dark-secondary)' : 'var(--color-text-dark-muted)' }}>{p.alunos?.nome || '—'}</span>
+                        {p.status_presenca === 'falta_justificada' && <span style={{ fontSize: '9px', color: 'var(--color-state-warning)', marginLeft: 'auto' }}>just.</span>}
                       </div>
                     ))}
                   </div>
@@ -824,17 +826,17 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
     const temBeach = nomesProf.some(n => MODALIDADES_BEACH.some(b => n.toLowerCase().includes(b.toLowerCase())))
     return { temProcopio, temBeach }
   }
-  const COR_DISP = { disponivel: '#22c55e', indisponivel: '#EF4444', talvez: '#fcc825' }
+  const COR_DISP = { disponivel: 'var(--color-state-success)', indisponivel: 'var(--color-state-danger)', talvez: 'var(--color-action-primary)' }
   const getStatusDisp = (dia, horario) => disponibilidades.find(d => d.dia_semana === dia && d.horario === horario)?.status || null
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#F0F2F5', margin: 0 }}>Colaboradores</h2>
+        <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: 0 }}>Colaboradores</h2>
         {podeEditarCadastros && (
           <button onClick={() => { setForm(FORM_VAZIO); setModalCriar(true) }} style={{
             padding: '8px 16px', borderRadius: '10px', border: 'none',
-            background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+            background: 'var(--color-action-primary)',
             color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
           }}>+ Novo</button>
         )}
@@ -845,15 +847,15 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
         <button onClick={() => setFiltroAberto(v => !v)} style={{
           display: 'flex', alignItems: 'center', gap: '6px',
           padding: '7px 12px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-          background: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
-          outline: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-          color: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') ? '#fcc825' : '#555', fontSize: '12px',
+          background: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-raised)',
+          outline: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') ? '1px solid rgba(165,76,46,0.4)' : '1px solid var(--color-border-light)',
+          color: (filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)', fontSize: '12px',
         }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
           </svg>
           Filtrar
-          {(filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') && <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#fcc825', flexShrink: 0 }} />}
+          {(filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') && <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-action-primary)', flexShrink: 0 }} />}
         </button>
 
         {filtroAberto && (
@@ -861,11 +863,11 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setFiltroAberto(false)} />
             <div style={{
               position: 'absolute', top: '100%', left: 0, marginTop: '6px',
-              backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+              backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)',
               borderRadius: '12px', padding: '12px', zIndex: 50,
               minWidth: '180px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
             }}>
-              <div style={{ fontSize: '10px', color: '#444', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Função</div>
+              <div style={{ fontSize: '10px', color: 'var(--color-text-light-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Função</div>
               {[
                 { key: 'todos', label: 'Todos' },
                 { key: 'professor', label: 'Professores' },
@@ -877,17 +879,17 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
                   cursor: 'pointer', fontSize: '12px', marginBottom: '2px',
-                  background: filtroFuncao === f.key ? 'rgba(252,200,37,0.1)' : 'transparent',
-                  color: filtroFuncao === f.key ? '#fcc825' : '#888',
+                  background: filtroFuncao === f.key ? 'rgba(165,76,46,0.1)' : 'transparent',
+                  color: filtroFuncao === f.key ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)',
                 }}>
                   {f.label}
                   {filtroFuncao === f.key && <span style={{ fontSize: '10px' }}>✓</span>}
                 </button>
               ))}
 
-              <div style={{ height: '1px', backgroundColor: '#2a2a2a', margin: '10px 0' }} />
+              <div style={{ height: '1px', backgroundColor: 'var(--color-border-light)', margin: '10px 0' }} />
 
-              <div style={{ fontSize: '10px', color: '#444', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Empresa</div>
+              <div style={{ fontSize: '10px', color: 'var(--color-text-light-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Empresa</div>
               {[
                 { key: 'todas', label: 'Todas' },
                 { key: 'procopio', label: 'Procopio' },
@@ -897,28 +899,28 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
                   cursor: 'pointer', fontSize: '12px', marginBottom: '2px',
-                  background: filtroEmpresa === f.key ? 'rgba(207,27,155,0.1)' : 'transparent',
-                  color: filtroEmpresa === f.key ? '#cf1b9b' : '#888',
+                  background: filtroEmpresa === f.key ? 'rgba(61,107,122,0.1)' : 'transparent',
+                  color: filtroEmpresa === f.key ? 'var(--color-state-info)' : 'var(--color-text-light-secondary)',
                 }}>
                   {f.label}
                   {filtroEmpresa === f.key && <span style={{ fontSize: '10px' }}>✓</span>}
                 </button>
               ))}
 
-              <div style={{ height: '1px', backgroundColor: '#2a2a2a', margin: '10px 0' }} />
+              <div style={{ height: '1px', backgroundColor: 'var(--color-border-light)', margin: '10px 0' }} />
 
-              <div style={{ fontSize: '10px', color: '#444', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Status</div>
+              <div style={{ fontSize: '10px', color: 'var(--color-text-light-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Status</div>
               {[
-                { key: 'ativos', label: 'Ativos', cor: '#22c55e' },
-                { key: 'inativos', label: 'Inativos', cor: '#555' },
-                { key: 'todos', label: 'Todos', cor: '#888' },
+                { key: 'ativos', label: 'Ativos', cor: 'var(--color-state-success)' },
+                { key: 'inativos', label: 'Inativos', cor: 'var(--color-text-light-secondary)' },
+                { key: 'todos', label: 'Todos', cor: 'var(--color-text-light-secondary)' },
               ].map(f => (
                 <button key={f.key} onClick={() => { setFiltroAtivo(f.key); setFiltroAberto(false) }} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   width: '100%', padding: '7px 8px', borderRadius: '8px', border: 'none',
                   cursor: 'pointer', fontSize: '12px', marginBottom: '2px',
-                  background: filtroAtivo === f.key ? 'rgba(34,197,94,0.08)' : 'transparent',
-                  color: filtroAtivo === f.key ? f.cor : '#888',
+                  background: filtroAtivo === f.key ? 'rgba(75,139,106,0.08)' : 'transparent',
+                  color: filtroAtivo === f.key ? f.cor : 'var(--color-text-light-secondary)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                     <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: f.cor, flexShrink: 0 }} />
@@ -931,7 +933,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
               {(filtroFuncao !== 'todos' || filtroEmpresa !== 'todas' || filtroAtivo !== 'ativos') && (
                 <button onClick={() => { setFiltroFuncao('todos'); setFiltroEmpresa('todas'); setFiltroAtivo('ativos'); setFiltroAberto(false) }} style={{
                   width: '100%', marginTop: '8px', padding: '6px', borderRadius: '8px',
-                  border: 'none', background: 'rgba(239,68,68,0.1)', color: '#EF4444',
+                  border: 'none', background: 'rgba(180,71,47,0.1)', color: 'var(--color-state-danger)',
                   fontSize: '11px', cursor: 'pointer',
                 }}>Limpar filtros</button>
               )}
@@ -940,7 +942,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
         )}
       </div>
 
-      {isLoading ? <p style={{ color: '#555' }}>Carregando...</p> : (
+      {isLoading ? <p style={{ color: 'var(--color-text-light-secondary)' }}>Carregando...</p> : (
         <div className="professores-grid">
           {professores.filter(prof => {
             // Sem permissão pra ver todos: só enxerga o próprio card (não vê salário/dados de colegas)
@@ -968,7 +970,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     onClick={e => { e.stopPropagation(); setMenuCardId(menuCardId === prof.id ? null : prof.id) }}
                     style={{
                       position: 'absolute', top: '4px', right: '4px', zIndex: 2,
-                      background: 'none', border: 'none', color: '#555', cursor: 'pointer',
+                      background: 'none', border: 'none', color: 'var(--color-text-light-secondary)', cursor: 'pointer',
                       padding: '4px', display: 'flex', borderRadius: '6px',
                     }}
                   >
@@ -982,7 +984,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                         onClick={e => e.stopPropagation()}
                         style={{
                           position: 'absolute', top: '30px', right: '4px', zIndex: 4,
-                          width: '170px', backgroundColor: '#1e1e1e', border: '1px solid #2a2a2a',
+                          width: '170px', backgroundColor: 'var(--color-border-light-subtle)', border: '1px solid var(--color-border-light)',
                           borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', overflow: 'hidden',
                           textAlign: 'left',
                         }}
@@ -991,7 +993,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                           onClick={() => toggleAtivoProfessor(prof)}
                           style={{
                             width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '10px 12px', fontSize: '12px', color: '#F0F2F5',
+                            padding: '10px 12px', fontSize: '12px', color: 'var(--color-text-light-primary)',
                             backgroundColor: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
                           }}
                         >
@@ -1002,8 +1004,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                           onClick={() => excluirProfessorPermanente(prof)}
                           style={{
                             width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '10px 12px', fontSize: '12px', color: '#e24b4a',
-                            backgroundColor: 'transparent', border: 'none', borderTop: '1px solid #2a2a2a', cursor: 'pointer', textAlign: 'left',
+                            padding: '10px 12px', fontSize: '12px', color: 'var(--color-state-danger)',
+                            backgroundColor: 'transparent', border: 'none', borderTop: '1px solid var(--color-border-light)', cursor: 'pointer', textAlign: 'left',
                           }}
                         >
                           <Trash2 size={13} />
@@ -1018,29 +1020,29 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
               <div className="professor-avatar" style={{
                 margin: '0 auto 10px',
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #fcc825, #cf1b9b)',
+                background: 'var(--color-action-primary)',
                 padding: '2px', boxSizing: 'border-box',
               }}>
                 <div style={{
                   width: '100%', height: '100%', borderRadius: '50%',
-                  backgroundColor: '#1a1a1a', overflow: 'hidden',
+                  backgroundColor: 'var(--color-surface-light-raised)', overflow: 'hidden',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   {prof.foto_url
                     ? <img src={prof.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <span style={{ fontSize: '20px', fontWeight: '700', color: '#fcc825' }}>
+                    : <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-action-primary)' }}>
                         {prof.nome?.split(' ').map(p => p[0]).slice(0, 2).join('')}
                       </span>
                   }
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: prof.ativo !== false ? '#22c55e' : '#444', flexShrink: 0 }} />
-                <span style={{ fontSize: '13px', fontWeight: '700', color: '#F0F2F5', lineHeight: 1.3 }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: prof.ativo !== false ? 'var(--color-state-success)' : 'var(--color-text-light-muted)', flexShrink: 0 }} />
+                <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-light-primary)', lineHeight: 1.3 }}>
                   {prof.apelido || prof.nome?.split(' ')[0]}
                 </span>
               </div>
-              <div style={{ fontSize: '11px', color: '#888', marginTop: '4px', lineHeight: 1.4, wordBreak: 'break-word' }}>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '4px', lineHeight: 1.4, wordBreak: 'break-word' }}>
                 {prof.funcao && prof.funcao !== 'professor'
                   ? prof.funcao.charAt(0).toUpperCase() + prof.funcao.slice(1)
                   : (prof.modalidades_ids || []).length > 0
@@ -1060,16 +1062,16 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             width: '100%', maxHeight: '94dvh', overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain',
-            backgroundColor: '#151515', borderRadius: '20px 20px 0 0',
+            backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '20px 20px 0 0',
             padding: '20px 16px 32px', boxSizing: 'border-box',
           }}>
-            <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 20px' }} />
+            <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--color-text-light-muted)', borderRadius: '2px', margin: '0 auto 20px' }} />
 
             <input ref={fotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadFoto} />
             <input ref={contratoInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadContrato} />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
-              <button onClick={() => setCardAberto(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '4px' }}>
+              <button onClick={() => setCardAberto(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light-secondary)', padding: '4px' }}>
                 <X size={20} />
               </button>
             </div>
@@ -1079,24 +1081,24 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
               {/* Foto maior + botão câmera + desde */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                 <div style={{ position: 'relative', width: 84, height: 84 }}>
-                  <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', padding: '2px', boxSizing: 'border-box' }}>
-                    <div style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: '#1a1a1a', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'var(--color-action-primary)', padding: '2px', boxSizing: 'border-box' }}>
+                    <div style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: 'var(--color-surface-light-raised)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {cardAberto.foto_url
                         ? <a href={cardAberto.foto_url} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
                             <img src={cardAberto.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </a>
-                        : <span style={{ fontSize: '26px', fontWeight: '700', color: '#fcc825' }}>
+                        : <span style={{ fontSize: '26px', fontWeight: '700', color: 'var(--color-action-primary)' }}>
                             {cardAberto.nome?.split(' ').map(p => p[0]).slice(0, 2).join('')}
                           </span>
                       }
                     </div>
                   </div>
-                  <button onClick={() => fotoInputRef.current?.click()} style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: '50%', border: 'none', backgroundColor: '#fcc825', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {uploadandoFoto ? '...' : <Camera size={12} color="#110f0f" />}
+                  <button onClick={() => fotoInputRef.current?.click()} style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: '50%', border: 'none', backgroundColor: 'var(--color-action-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {uploadandoFoto ? '...' : <Camera size={12} color="var(--color-surface-light-overlay)" />}
                   </button>
                 </div>
                 {cardAberto.data_inicio && (
-                  <div style={{ fontSize: '9px', color: '#444', textAlign: 'center', textTransform: 'capitalize' }}>
+                  <div style={{ fontSize: '9px', color: 'var(--color-text-light-muted)', textAlign: 'center', textTransform: 'capitalize' }}>
                     desde {format(new Date(cardAberto.data_inicio + 'T12:00'), "MMM/yyyy", { locale: ptBR })}
                   </div>
                 )}
@@ -1104,9 +1106,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
 
               {/* Nome + contatos */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '17px', fontWeight: '800', color: '#F0F2F5', lineHeight: 1.2 }}>
+                <div style={{ fontSize: '17px', fontWeight: '800', color: 'var(--color-text-light-primary)', lineHeight: 1.2 }}>
                   {cardAberto.apelido || cardAberto.nome}
-                  {cardAberto.apelido && <div style={{ fontSize: '11px', color: '#555', fontWeight: '400', marginTop: '2px' }}>{cardAberto.nome}</div>}
+                  {cardAberto.apelido && <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', fontWeight: '400', marginTop: '2px' }}>{cardAberto.nome}</div>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
                   {cardAberto.telefone && (
@@ -1115,9 +1117,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     </button>
                   )}
                   {cardAberto.instagram && (
-                    <button onClick={() => window.open(`https://instagram.com/${cardAberto.instagram.replace('@','').replace(/.*instagram\.com\//,'')}`, '_blank')} style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(207,27,155,0.15)', border: '1px solid rgba(207,27,155,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#555" stroke="none"/>
+                    <button onClick={() => window.open(`https://instagram.com/${cardAberto.instagram.replace('@','').replace(/.*instagram\.com\//,'')}`, '_blank')} style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(61,107,122,0.15)', border: '1px solid rgba(61,107,122,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-light-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="var(--color-text-light-secondary)" stroke="none"/>
                       </svg>
                     </button>
                   )}
@@ -1131,15 +1133,15 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   return (temProcopio || temBeach) && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {temProcopio && <img src="/images/logoprocopio.png" alt="Procopio" style={{ height: '22px', objectFit: 'contain', opacity: 0.9 }} />}
-                      {temProcopio && temBeach && <span style={{ color: '#333', fontSize: '10px' }}>|</span>}
+                      {temProcopio && temBeach && <span style={{ color: 'var(--color-text-light-muted)', fontSize: '10px' }}>|</span>}
                       {temBeach && <img src="/images/beacharena.png" alt="Beach Arena" style={{ height: '22px', objectFit: 'contain', opacity: 0.9 }} />}
                     </div>
                   )
                 })()}
                 {cardAberto.funcao === 'professor' && (
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '34px', fontWeight: '900', color: '#fcc825', lineHeight: 1 }}>{totalAulas}</div>
-                    <div style={{ fontSize: '8px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1.3 }}>Total de<br/>Aulas</div>
+                    <div style={{ fontSize: '34px', fontWeight: '900', color: 'var(--color-action-primary)', lineHeight: 1 }}>{totalAulas}</div>
+                    <div style={{ fontSize: '8px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1.3 }}>Total de<br/>Aulas</div>
                   </div>
                 )}
               </div>
@@ -1148,25 +1150,25 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
 
             {/* Acesso ao sistema (gestor) */}
             {podeEditarCadastros && (
-              <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '14px 16px', border: '1px solid rgba(252,200,37,0.15)', marginBottom: '16px' }}>
+              <div style={{ backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '14px', padding: '14px 16px', border: '1px solid rgba(165,76,46,0.15)', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-                  <Lock size={13} color="#555" />
-                  <span style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Acesso ao sistema</span>
+                  <Lock size={13} color="var(--color-text-light-secondary)" />
+                  <span style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Acesso ao sistema</span>
                 </div>
 
                 {carregandoPerfilVinculado ? (
-                  <div style={{ fontSize: '12px', color: '#555' }}>Carregando...</div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Carregando...</div>
                 ) : perfilVinculado ? (
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                      <div style={{ fontSize: '12px', color: '#F0F2F5' }}>
-                        Login ativo <span style={{ color: '#555' }}>· CPF {mascararCPF(cardAberto.cpf) || '—'}</span>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-light-primary)' }}>
+                        Login ativo <span style={{ color: 'var(--color-text-light-secondary)' }}>· CPF {mascararCPF(cardAberto.cpf) || '—'}</span>
                       </div>
                       {!mostrandoResetSenha && (
                         <button onClick={() => setMostrandoResetSenha(true)} style={{
                           display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '9px',
-                          backgroundColor: 'rgba(252,200,37,0.1)', border: '1px solid rgba(252,200,37,0.3)',
-                          color: '#fcc825', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap',
+                          backgroundColor: 'rgba(165,76,46,0.1)', border: '1px solid rgba(165,76,46,0.3)',
+                          color: 'var(--color-action-primary)', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap',
                         }}>
                           <KeyRound size={13} /> Resetar senha
                         </button>
@@ -1175,7 +1177,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
 
                     {mostrandoResetSenha && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-                        <p style={{ fontSize: '11px', color: '#888', margin: 0 }}>
+                        <p style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', margin: 0 }}>
                           Defina uma senha temporária e passe pro professor — ele vai ser obrigado a trocar por uma senha só dele no próximo login.
                         </p>
                         <div style={{ position: 'relative' }}>
@@ -1183,7 +1185,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                             onChange={e => setNovaSenhaReset(e.target.value)} style={{ ...inputStyle, paddingRight: '40px' }} />
                           <button type="button" onClick={() => setMostrarNovaSenhaReset(v => !v)} style={{
                             position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
-                            background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '4px', display: 'flex',
+                            background: 'none', border: 'none', color: 'var(--color-text-light-secondary)', cursor: 'pointer', padding: '4px', display: 'flex',
                           }}>
                             {mostrarNovaSenhaReset ? <EyeOff size={16} /> : <Eye size={16} />}
                           </button>
@@ -1191,15 +1193,15 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button onClick={handleResetarSenha} disabled={resetandoSenha} style={{
                             flex: 1, padding: '10px', borderRadius: '9px', border: 'none',
-                            background: 'linear-gradient(135deg, #fcc825, #d28c3c, #cf1b9b)',
+                            background: 'var(--color-action-primary)',
                             color: 'white', fontSize: '12px', fontWeight: '700',
                             cursor: resetandoSenha ? 'not-allowed' : 'pointer', opacity: resetandoSenha ? 0.7 : 1,
                           }}>
                             {resetandoSenha ? 'Salvando...' : 'Salvar senha nova'}
                           </button>
                           <button onClick={() => { setMostrandoResetSenha(false); setNovaSenhaReset('') }} style={{
-                            padding: '10px 14px', borderRadius: '9px', border: '1px solid #2a2a2a',
-                            backgroundColor: 'transparent', color: '#888', fontSize: '12px', cursor: 'pointer',
+                            padding: '10px 14px', borderRadius: '9px', border: '1px solid var(--color-border-light)',
+                            backgroundColor: 'transparent', color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer',
                           }}>
                             Cancelar
                           </button>
@@ -1216,7 +1218,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                         onChange={e => setFormAcesso(f => ({ ...f, senha: e.target.value }))} style={{ ...inputStyle, paddingRight: '40px' }} />
                       <button type="button" onClick={() => setMostrarSenhaAcesso(v => !v)} style={{
                         position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
-                        background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '4px', display: 'flex',
+                        background: 'none', border: 'none', color: 'var(--color-text-light-secondary)', cursor: 'pointer', padding: '4px', display: 'flex',
                       }}>
                         {mostrarSenhaAcesso ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -1226,7 +1228,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                         onChange={e => setFormAcesso(f => ({ ...f, confirmacao: e.target.value }))} style={{ ...inputStyle, paddingRight: '40px' }} />
                       <button type="button" onClick={() => setMostrarSenhaAcesso(v => !v)} style={{
                         position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
-                        background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '4px', display: 'flex',
+                        background: 'none', border: 'none', color: 'var(--color-text-light-secondary)', cursor: 'pointer', padding: '4px', display: 'flex',
                       }}>
                         {mostrarSenhaAcesso ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -1234,15 +1236,15 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
                       <button onClick={handleCriarAcesso} disabled={salvandoAcesso} style={{
                         flex: 1, padding: '10px', borderRadius: '9px', border: 'none',
-                        background: 'linear-gradient(135deg, #fcc825, #d28c3c, #cf1b9b)',
+                        background: 'var(--color-action-primary)',
                         color: 'white', fontSize: '12px', fontWeight: '700',
                         cursor: salvandoAcesso ? 'not-allowed' : 'pointer', opacity: salvandoAcesso ? 0.7 : 1,
                       }}>
                         {salvandoAcesso ? 'Criando...' : 'Criar acesso'}
                       </button>
                       <button onClick={() => { setCriandoAcesso(false); setFormAcesso({ cpf: '', senha: '', confirmacao: '' }) }} style={{
-                        padding: '10px 14px', borderRadius: '9px', border: '1px solid #2a2a2a',
-                        backgroundColor: 'transparent', color: '#888', fontSize: '12px', cursor: 'pointer',
+                        padding: '10px 14px', borderRadius: '9px', border: '1px solid var(--color-border-light)',
+                        backgroundColor: 'transparent', color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer',
                       }}>
                         Cancelar
                       </button>
@@ -1251,8 +1253,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 ) : (
                   <button onClick={() => { setCriandoAcesso(true); setFormAcesso({ cpf: cardAberto.cpf || '', senha: '', confirmacao: '' }) }} style={{
                     display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '9px',
-                    backgroundColor: 'rgba(252,200,37,0.1)', border: '1px solid rgba(252,200,37,0.3)',
-                    color: '#fcc825', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                    backgroundColor: 'rgba(165,76,46,0.1)', border: '1px solid rgba(165,76,46,0.3)',
+                    color: 'var(--color-action-primary)', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
                   }}>
                     <Lock size={13} /> Criar acesso ao sistema
                   </button>
@@ -1264,36 +1266,36 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 Colaborador CLT (gestor/financeiro/auxiliar) recebe salário fixo, editável na aba Dados. */}
             {cardAberto.funcao === 'professor' && (<>
             {/* Financeiro resumo topo */}
-            <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '14px 16px', border: '1px solid rgba(252,200,37,0.15)', marginBottom: '16px' }}>
+            <div style={{ backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '14px', padding: '14px 16px', border: '1px solid rgba(165,76,46,0.15)', marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{labelMesMostrar} · {ganhosMostrar.qtd} aulas</div>
-                  <div style={{ fontSize: '24px', fontWeight: '800', color: '#fcc825' }}>R$ {ganhosMostrar.valor.toFixed(2).replace('.', ',')}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{labelMesMostrar} · {ganhosMostrar.qtd} aulas</div>
+                  <div style={{ fontSize: '24px', fontWeight: '800', color: 'var(--color-action-primary)' }}>R$ {ganhosMostrar.valor.toFixed(2).replace('.', ',')}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '9px', color: '#555', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Receita Extra</div>
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: ganhosMostrar.valorExtras > 0 ? '#cf1b9b' : '#333' }}>
+                    <div style={{ fontSize: '9px', color: 'var(--color-text-light-secondary)', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Receita Extra</div>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: ganhosMostrar.valorExtras > 0 ? 'var(--color-state-info)' : 'var(--color-text-light-muted)' }}>
                       {ganhosMostrar.valorExtras > 0 ? `R$ ${ganhosMostrar.valorExtras.toFixed(2).replace('.', ',')}` : '—'}
                     </div>
                   </div>
-                  <button onClick={() => setModalExtra(true)} style={{ width: '28px', height: '28px', borderRadius: '8px', border: '1px solid #2a2a2a', backgroundColor: '#111', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Plus size={14} color="#555" />
+                  <button onClick={() => setModalExtra(true)} style={{ width: '28px', height: '28px', borderRadius: '8px', border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-overlay)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Plus size={14} color="var(--color-text-light-secondary)" />
                   </button>
                 </div>
               </div>
-              <div style={{ height: '3px', borderRadius: '2px', backgroundColor: '#222', overflow: 'hidden', marginBottom: '4px' }}>
-                <div style={{ height: '100%', width: `${progressoMes}%`, background: 'linear-gradient(90deg, #fcc825, #cf1b9b)', borderRadius: '2px' }} />
+              <div style={{ height: '3px', borderRadius: '2px', backgroundColor: 'var(--color-border-light)', overflow: 'hidden', marginBottom: '4px' }}>
+                <div style={{ height: '100%', width: `${progressoMes}%`, background: 'var(--color-action-primary)', borderRadius: '2px' }} />
               </div>
-              <div style={{ fontSize: '10px', color: '#333', textAlign: 'right' }}>Dia {diaAtual} de {diasNoMes} · {progressoMes}% do mês</div>
+              <div style={{ fontSize: '10px', color: 'var(--color-text-light-muted)', textAlign: 'right' }}>Dia {diaAtual} de {diasNoMes} · {progressoMes}% do mês</div>
             </div>
 
             {/* Modal pagamento extra */}
             {modalExtra && (
               <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }} onClick={() => setModalExtra(false)}>
-                <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box' }}>
-                  <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
-                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '16px' }}>{formExtra.id ? '✏️ Editar Extra' : '+ Pagamento Extra'}</div>
+                <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box' }}>
+                  <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--color-text-light-muted)', borderRadius: '2px', margin: '0 auto 16px' }} />
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)', marginBottom: '16px' }}>{formExtra.id ? '✏️ Editar Extra' : '+ Pagamento Extra'}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div><div style={labelStyle}>Data</div>
                       <input type="date" style={inputStyle} value={formExtra.data_pagamento} onChange={e => setFormExtra(f => ({ ...f, data_pagamento: e.target.value }))} /></div>
@@ -1310,8 +1312,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                         </select></div>
                     )}
                     <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                      <button onClick={() => setModalExtra(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
-                      <button onClick={handleSalvarExtra} disabled={salvandoExtra} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                      <button onClick={() => setModalExtra(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
+                      <button onClick={handleSalvarExtra} disabled={salvandoExtra} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                         {salvandoExtra ? 'Salvando...' : '💾 Salvar'}
                       </button>
                     </div>
@@ -1321,8 +1323,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             )}
 
             {/* Gráfico evolução */}
-            <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '14px 16px', border: '1px solid #222', marginBottom: '16px' }}>
-              <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Evolução — últimos 6 meses</div>
+            <div style={{ backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '14px', padding: '14px 16px', border: '1px solid var(--color-border-light)', marginBottom: '16px' }}>
+              <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>Evolução — últimos 6 meses</div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', height: '60px' }}>
                 {dadosGrafico.map((d, i) => {
                   const isHL = mesSelecionado
@@ -1330,8 +1332,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     : i === 5
                   return (
                     <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                      <div style={{ width: '100%', borderRadius: '4px 4px 0 0', height: `${Math.max((d.qtd / maxGrafico) * 48, d.qtd > 0 ? 4 : 0)}px`, background: isHL ? 'linear-gradient(180deg, #fcc825, #cf1b9b)' : '#2a2a2a' }} />
-                      <div style={{ fontSize: '9px', color: isHL ? '#fcc825' : '#444' }}>{d.label}</div>
+                      <div style={{ width: '100%', borderRadius: '4px 4px 0 0', height: `${Math.max((d.qtd / maxGrafico) * 48, d.qtd > 0 ? 4 : 0)}px`, background: isHL ? 'var(--color-action-primary)' : 'var(--color-border-light)' }} />
+                      <div style={{ fontSize: '9px', color: isHL ? 'var(--color-action-primary)' : 'var(--color-text-light-muted)' }}>{d.label}</div>
                     </div>
                   )
                 })}
@@ -1339,12 +1341,12 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             </div>
 
             {/* Grid de meses */}
-            <div style={{ backgroundColor: '#1a1a1a', borderRadius: '14px', padding: '14px 16px', border: '1px solid #222', marginBottom: '16px' }}>
+            <div style={{ backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '14px', padding: '14px 16px', border: '1px solid var(--color-border-light)', marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Aulas por mês</div>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Aulas por mês</div>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   {[anoAtual - 1, anoAtual].map(a => (
-                    <button key={a} onClick={() => setAnoSelecionado(a)} style={{ padding: '3px 8px', borderRadius: '6px', border: 'none', fontSize: '11px', background: anoSelecionado === a ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#111', color: anoSelecionado === a ? 'white' : '#555', cursor: 'pointer' }}>{a}</button>
+                    <button key={a} onClick={() => setAnoSelecionado(a)} style={{ padding: '3px 8px', borderRadius: '6px', border: 'none', fontSize: '11px', background: anoSelecionado === a ? 'var(--color-action-primary)' : 'var(--color-surface-light-overlay)', color: anoSelecionado === a ? 'white' : 'var(--color-text-light-secondary)', cursor: 'pointer' }}>{a}</button>
                   ))}
                 </div>
               </div>
@@ -1355,14 +1357,14 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   const isSelecionado = mesSelecionado?.mes === i + 1 && mesSelecionado?.ano === anoSelecionado
                   return (
                     <button key={m} onClick={() => setMesSelecionado(isSelecionado ? null : { mes: i + 1, ano: anoSelecionado })} style={{
-                      backgroundColor: isSelecionado ? 'rgba(207,27,155,0.18)' : isAtual ? 'rgba(252,200,37,0.1)' : '#111',
+                      backgroundColor: isSelecionado ? 'rgba(61,107,122,0.18)' : isAtual ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-overlay)',
                       borderRadius: '10px', padding: '8px 6px',
-                      border: isSelecionado ? '1px solid rgba(207,27,155,0.55)' : isAtual ? '1px solid rgba(252,200,37,0.3)' : '1px solid #1e1e1e',
+                      border: isSelecionado ? '1px solid rgba(61,107,122,0.55)' : isAtual ? '1px solid rgba(165,76,46,0.3)' : '1px solid var(--color-border-light-subtle)',
                       cursor: 'pointer', textAlign: 'center',
                     }}>
-                      <div style={{ fontSize: '10px', color: isSelecionado ? '#cf1b9b' : isAtual ? '#fcc825' : '#555', fontWeight: '600' }}>{m}</div>
-                      <div style={{ fontSize: isSelecionado ? '16px' : '13px', fontWeight: '700', color: isSelecionado ? '#22c55e' : '#F0F2F5', margin: '2px 0' }}>{qtd > 0 ? qtd : '—'}</div>
-                      {valor > 0 && <div style={{ fontSize: '9px', color: isSelecionado ? '#22c55e' : '#22c55e', opacity: isSelecionado ? 1 : 0.7 }}>R${valor.toFixed(0)}</div>}
+                      <div style={{ fontSize: '10px', color: isSelecionado ? 'var(--color-state-info)' : isAtual ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)', fontWeight: '600' }}>{m}</div>
+                      <div style={{ fontSize: isSelecionado ? '16px' : '13px', fontWeight: '700', color: isSelecionado ? 'var(--color-state-success)' : 'var(--color-text-light-primary)', margin: '2px 0' }}>{qtd > 0 ? qtd : '—'}</div>
+                      {valor > 0 && <div style={{ fontSize: '9px', color: isSelecionado ? 'var(--color-state-success)' : 'var(--color-state-success)', opacity: isSelecionado ? 1 : 0.7 }}>R${valor.toFixed(0)}</div>}
                     </button>
                   )
                 })}
@@ -1374,21 +1376,21 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   const { qtd, valor } = calcularGanhosMes(mesSelecionado.mes, mesSelecionado.ano)
                   const extrasDoMes = pagamentosExtras.filter(p => p.mes === mesSelecionado.mes && p.ano === mesSelecionado.ano)
                   return (
-                    <div style={{ marginTop: '12px', backgroundColor: '#0d0d0d', borderRadius: '10px', padding: '12px', border: '1px solid rgba(207,27,155,0.2)' }}>
+                    <div style={{ marginTop: '12px', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', padding: '12px', border: '1px solid rgba(61,107,122,0.2)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#cf1b9b' }}>{MESES[mesSelecionado.mes - 1]}/{mesSelecionado.ano} · {qtd} aulas · R${valor.toFixed(2).replace('.', ',')}</div>
-                        <button onClick={() => setMesSelecionado(null)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}><X size={14} /></button>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-state-info)' }}>{MESES[mesSelecionado.mes - 1]}/{mesSelecionado.ano} · {qtd} aulas · R${valor.toFixed(2).replace('.', ',')}</div>
+                        <button onClick={() => setMesSelecionado(null)} style={{ background: 'none', border: 'none', color: 'var(--color-text-light-secondary)', cursor: 'pointer' }}><X size={14} /></button>
                       </div>
 
                       {(() => {
                         const boleto = boletos.find(b => b.mes === mesSelecionado.mes && b.ano === mesSelecionado.ano)
                         return (
                           <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-                            <label style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', backgroundColor: boleto?.boleto_url ? 'rgba(34,197,94,0.1)' : '#111', color: boleto?.boleto_url ? '#22c55e' : '#555', outline: boleto?.boleto_url ? '1px solid rgba(34,197,94,0.3)' : '1px dashed #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                            <label style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', backgroundColor: boleto?.boleto_url ? 'rgba(75,139,106,0.1)' : 'var(--color-surface-light-overlay)', color: boleto?.boleto_url ? 'var(--color-state-success)' : 'var(--color-text-light-secondary)', outline: boleto?.boleto_url ? '1px solid rgba(75,139,106,0.3)' : '1px dashed var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                               <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadBoleto(e, mesSelecionado.mes, mesSelecionado.ano)} />
                               <Upload size={11} />{boleto?.boleto_url ? 'Boleto ✓' : 'Boleto'}
                             </label>
-                            <label style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', backgroundColor: boleto?.nf_url ? 'rgba(34,197,94,0.1)' : '#111', color: boleto?.nf_url ? '#22c55e' : '#555', outline: boleto?.nf_url ? '1px solid rgba(34,197,94,0.3)' : '1px dashed #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                            <label style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', backgroundColor: boleto?.nf_url ? 'rgba(75,139,106,0.1)' : 'var(--color-surface-light-overlay)', color: boleto?.nf_url ? 'var(--color-state-success)' : 'var(--color-text-light-secondary)', outline: boleto?.nf_url ? '1px solid rgba(75,139,106,0.3)' : '1px dashed var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                               <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadNF(e, mesSelecionado.mes, mesSelecionado.ano)} />
                               <FileText size={11} />{boleto?.nf_url ? 'NF ✓' : 'NF'}
                             </label>
@@ -1397,19 +1399,19 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                       })()}
 
                       {diasComAula.length === 0 ? (
-                        <div style={{ fontSize: '12px', color: '#444', textAlign: 'center', marginBottom: '8px' }}>Nenhuma aula confirmada</div>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-light-muted)', textAlign: 'center', marginBottom: '8px' }}>Nenhuma aula confirmada</div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
                           {diasComAula.map(dia => {
                             const dataStr = `${mesSelecionado.ano}-${String(mesSelecionado.mes).padStart(2,'0')}-${String(dia).padStart(2,'0')}`
                             return (
-                              <button key={dia} onClick={() => setDiaSelecionado({ dataStr, professorId: cardAberto.id })} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', backgroundColor: '#111', borderRadius: '8px', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}
-                                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#181818'}
-                                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#111'}>
-                                <span style={{ fontSize: '12px', color: '#888' }}>Dia {String(dia).padStart(2, '0')}/{String(mesSelecionado.mes).padStart(2, '0')}</span>
+                              <button key={dia} onClick={() => setDiaSelecionado({ dataStr, professorId: cardAberto.id })} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '8px', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+                                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-light-overlay)'}
+                                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-light-overlay)'}>
+                                <span style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Dia {String(dia).padStart(2, '0')}/{String(mesSelecionado.mes).padStart(2, '0')}</span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#22c55e' }}>{diasMap[dia]} {diasMap[dia] === 1 ? 'aula' : 'aulas'}</span>
-                                  <span style={{ fontSize: '11px', color: '#333' }}>›</span>
+                                  <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-state-success)' }}>{diasMap[dia]} {diasMap[dia] === 1 ? 'aula' : 'aulas'}</span>
+                                  <span style={{ fontSize: '11px', color: 'var(--color-text-light-muted)' }}>›</span>
                                 </div>
                               </button>
                             )
@@ -1418,24 +1420,24 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                       )}
                       {extrasDoMes.length > 0 && (
                         <>
-                          <div style={{ fontSize: '10px', color: '#cf1b9b', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '8px 0 6px' }}>Extras</div>
+                          <div style={{ fontSize: '10px', color: 'var(--color-state-info)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '8px 0 6px' }}>Extras</div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             {extrasDoMes.map(ex => (
-                              <div key={ex.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', backgroundColor: 'rgba(207,27,155,0.06)', borderRadius: '8px', border: '1px solid rgba(207,27,155,0.15)' }}>
+                              <div key={ex.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', backgroundColor: 'rgba(61,107,122,0.06)', borderRadius: '8px', border: '1px solid rgba(61,107,122,0.15)' }}>
                                 <div>
-                                  <div style={{ fontSize: '12px', color: '#F0F2F5' }}>{ex.descricao}</div>
-                                  <div style={{ fontSize: '10px', color: '#555' }}>{format(new Date(ex.data_pagamento + 'T12:00'), 'dd/MM/yyyy')}</div>
+                                  <div style={{ fontSize: '12px', color: 'var(--color-text-light-primary)' }}>{ex.descricao}</div>
+                                  <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)' }}>{format(new Date(ex.data_pagamento + 'T12:00'), 'dd/MM/yyyy')}</div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#cf1b9b' }}>R${Number(ex.valor).toFixed(2).replace('.', ',')}</span>
-                                    <button onClick={() => { setFormExtra({ id: ex.id, data_pagamento: ex.data_pagamento, descricao: ex.descricao, valor: ex.valor, empresa: ex.empresa || '' }); setModalExtra(true) }} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(252,200,37,0.1)', color: '#fcc825', cursor: 'pointer' }}>
+                                    <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-state-info)' }}>R${Number(ex.valor).toFixed(2).replace('.', ',')}</span>
+                                    <button onClick={() => { setFormExtra({ id: ex.id, data_pagamento: ex.data_pagamento, descricao: ex.descricao, valor: ex.valor, empresa: ex.empresa || '' }); setModalExtra(true) }} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(165,76,46,0.1)', color: 'var(--color-action-primary)', cursor: 'pointer' }}>
                                       <Pencil size={11} />
                                     </button>
                                     <button onClick={async () => {
                                       if (!confirm('Excluir este extra?')) return
                                       await supabase.from('pagamentos_extras').delete().eq('id', ex.id)
                                       qc.invalidateQueries({ queryKey: ['pagamentos_extras', cardAberto.id] })
-                                    }} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer' }}>
+                                    }} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(180,71,47,0.1)', color: 'var(--color-state-danger)', cursor: 'pointer' }}>
                                       <X size={11} />
                                     </button>
                                   </div>
@@ -1451,7 +1453,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             </>)}
 
             {/* Abas */}
-            <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', backgroundColor: '#111', borderRadius: '10px', padding: '4px' }}>
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', padding: '4px' }}>
               {[
                 { key: 'perfil', label: 'Dados' },
                 { key: 'painel', label: 'Painel', somenteProfessor: true },
@@ -1460,7 +1462,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 { key: 'disponibilidade', label: 'Grade' },
                 { key: 'historico', label: 'Histórico', somenteGestor: true },
               ].filter(a => (!a.somenteGestor || podeVerTodosSalarios) && (!a.somenteProfessor || cardAberto.funcao === 'professor')).map(a => (
-                <button key={a.key} onClick={() => setAba(a.key)} style={{ flex: 1, padding: '8px', borderRadius: '7px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer', background: aba === a.key ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : 'transparent', color: aba === a.key ? 'white' : '#555' }}>{a.label}</button>
+                <button key={a.key} onClick={() => setAba(a.key)} style={{ flex: 1, padding: '8px', borderRadius: '7px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer', background: aba === a.key ? 'var(--color-action-primary)' : 'transparent', color: aba === a.key ? 'white' : 'var(--color-text-light-secondary)' }}>{a.label}</button>
               ))}
             </div>
 
@@ -1474,7 +1476,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             {aba === 'perfil' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div><div style={labelStyle}>Nome Completo</div><input style={inputStyle} placeholder="Nome completo *" value={form.nome} onChange={e => set('nome', e.target.value)} /></div>
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Contato</div>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Contato</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div><div style={labelStyle}>Telefone</div><input style={inputStyle} placeholder="(11) 99999-9999" value={form.telefone} onChange={e => set('telefone', e.target.value)} /></div>
                   <div><div style={labelStyle}>Instagram</div><input style={inputStyle} placeholder="@usuario" value={form.instagram} onChange={e => set('instagram', e.target.value)} /></div>
@@ -1509,13 +1511,13 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   )
                 )}
 
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>CREF</div>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>CREF</div>
                 <button onClick={() => set('tem_cref', !form.tem_cref)} style={{
                   display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px',
                   borderRadius: '10px', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left',
-                  background: form.tem_cref ? 'rgba(252,200,37,0.1)' : '#111',
-                  outline: form.tem_cref ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-                  color: form.tem_cref ? '#fcc825' : '#555', fontSize: '13px',
+                  background: form.tem_cref ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-overlay)',
+                  outline: form.tem_cref ? '1px solid rgba(165,76,46,0.4)' : '1px solid var(--color-border-light)',
+                  color: form.tem_cref ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)', fontSize: '13px',
                 }}>
                   <span>{form.tem_cref ? '✓' : '○'}</span>
                   <span>{form.tem_cref ? 'Possui CREF' : 'Possui CREF ou Liminar?'}</span>
@@ -1529,14 +1531,14 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <a href={cardAberto.cref_url} target="_blank" rel="noreferrer" style={{
                           flex: 1, display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px',
-                          borderRadius: '10px', border: '1px solid rgba(252,200,37,0.3)',
-                          backgroundColor: 'rgba(252,200,37,0.06)', textDecoration: 'none', color: '#fcc825', fontSize: '13px',
+                          borderRadius: '10px', border: '1px solid rgba(165,76,46,0.3)',
+                          backgroundColor: 'rgba(165,76,46,0.06)', textDecoration: 'none', color: 'var(--color-action-primary)', fontSize: '13px',
                         }}>
                           <FileText size={14} /> Ver CREF
                         </a>
                         <label style={{
-                          padding: '10px 14px', borderRadius: '10px', border: '1px solid #2a2a2a',
-                          background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer',
+                          padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--color-border-light)',
+                          background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer',
                           display: 'flex', alignItems: 'center',
                         }}>
                           <input type="file" accept="image/*,.pdf" style={{ display: 'none' }}
@@ -1556,8 +1558,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     ) : (
                       <label style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                        padding: '10px', borderRadius: '10px', border: '1px dashed #2a2a2a',
-                        background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer', width: '100%',
+                        padding: '10px', borderRadius: '10px', border: '1px dashed var(--color-border-light)',
+                        background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '13px', cursor: 'pointer', width: '100%',
                         boxSizing: 'border-box',
                       }}>
                         <input type="file" accept="image/*,.pdf" style={{ display: 'none' }}
@@ -1577,7 +1579,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   </>
                 )}
 
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Dados Pessoais</div>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Dados Pessoais</div>
                 <div><div style={labelStyle}>Nascimento</div><input type="date" style={inputStyle} value={form.nascimento} onChange={e => set('nascimento', e.target.value)} /></div>
                 <div><div style={labelStyle}>CPF</div><input style={inputStyle} placeholder="•••.•••.•••-••" inputMode="numeric" value={mascararCPF(form.cpf)} onChange={e => set('cpf', apenasDigitosCPF(e.target.value))} /></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -1601,9 +1603,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                             set('modalidades_ids', selecionada ? atual.filter(id => id !== m.id) : [...atual, m.id])
                           }} style={{
                             padding: '8px 4px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                            background: selecionada ? '#fcc825' : '#111',
-                            outline: selecionada ? 'none' : '1px solid #2a2a2a',
-                            color: selecionada ? '#110f0f' : '#555',
+                            background: selecionada ? 'var(--color-action-primary)' : 'var(--color-surface-light-overlay)',
+                            outline: selecionada ? 'none' : '1px solid var(--color-border-light)',
+                            color: selecionada ? 'var(--color-surface-light-overlay)' : 'var(--color-text-light-secondary)',
                             fontSize: '11px', fontWeight: selecionada ? '700' : '400',
                             textAlign: 'center', lineHeight: 1.3,
                           }}>
@@ -1615,14 +1617,14 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   </div>
                 </div>
 
-<div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Dados do CNPJ</div>
+<div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Dados do CNPJ</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div><div style={labelStyle}>CNPJ</div>
                     <input style={inputStyle} placeholder="00.000.000/0000-00" value={form.cnpj} onChange={e => set('cnpj', e.target.value)} /></div>
                   <div><div style={labelStyle}>Razão Social</div>
                     <input style={inputStyle} placeholder="Nome da empresa" value={form.razao_social} onChange={e => set('razao_social', e.target.value)} /></div>
                 </div>
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Endereço</div>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Endereço</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div><div style={labelStyle}>CEP</div><input style={inputStyle} placeholder="00000-000" value={form.cep} onChange={e => { set('cep', e.target.value); buscarCep(e.target.value, setForm) }} /></div>
                   <div><div style={labelStyle}>Número</div><input style={inputStyle} placeholder="Nº" value={form.numero} onChange={e => set('numero', e.target.value)} /></div>
@@ -1633,21 +1635,21 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   <div><div style={labelStyle}>Complemento</div><input style={inputStyle} placeholder="Apto..." value={form.complemento} onChange={e => set('complemento', e.target.value)} /></div>
                 </div>
 
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Contrato</div>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Contrato</div>
                 {cardAberto.contrato_url ? (
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <a href={cardAberto.contrato_url} target="_blank" rel="noreferrer" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '10px', border: '1px solid rgba(252,200,37,0.3)', backgroundColor: 'rgba(252,200,37,0.06)', textDecoration: 'none', color: '#fcc825', fontSize: '13px' }}>
+                    <a href={cardAberto.contrato_url} target="_blank" rel="noreferrer" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '10px', border: '1px solid rgba(165,76,46,0.3)', backgroundColor: 'rgba(165,76,46,0.06)', textDecoration: 'none', color: 'var(--color-action-primary)', fontSize: '13px' }}>
                       <FileText size={14} /> Ver contrato
                     </a>
-                    <button onClick={() => contratoInputRef.current?.click()} style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer' }}>Substituir</button>
+                    <button onClick={() => contratoInputRef.current?.click()} style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer' }}>Substituir</button>
                   </div>
                 ) : (
-                  <button onClick={() => contratoInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', border: '1px dashed #2a2a2a', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer', width: '100%' }}>
+                  <button onClick={() => contratoInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', border: '1px dashed var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '13px', cursor: 'pointer', width: '100%' }}>
                     <Upload size={14} /> Upload do contrato (PDF)
                   </button>
                 )}
 
-                <button onClick={handleSalvar} disabled={salvando} style={{ marginTop: '8px', width: '100%', padding: '13px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+                <button onClick={handleSalvar} disabled={salvando} style={{ marginTop: '8px', width: '100%', padding: '13px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
                   {salvando ? 'Salvando...' : '💾 Salvar dados'}
                 </button>
               </div>
@@ -1656,7 +1658,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             {/* ABA FINANCEIRO */}
             {aba === 'financeiro' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dados Bancários</div>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dados Bancários</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div><div style={labelStyle}>Banco</div>
                     <select style={inputStyle} value={form.banco} onChange={e => set('banco', e.target.value)}>
@@ -1682,19 +1684,19 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 {cardAberto.chave_pix && <PixCopiavel pix={cardAberto.chave_pix} />}
                 {cardAberto.banco === 'Itaú' && (
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: 'rgba(249,115,22,0.08)', borderRadius: '8px', border: '1px solid rgba(249,115,22,0.2)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: 'rgba(201,138,60,0.08)', borderRadius: '8px', border: '1px solid rgba(201,138,60,0.2)' }}>
                       <span style={{ fontSize: '16px' }}>🧡</span>
-                      <span style={{ fontSize: '12px', color: '#f97316', fontWeight: '600' }}>Correntista Itaú — pagar via PIX</span>
+                      <span style={{ fontSize: '12px', color: 'var(--color-state-warning)', fontWeight: '600' }}>Correntista Itaú — pagar via PIX</span>
                     </div>
                     {form.nome_titular && (
-                      <div style={{ fontSize: '11px', color: '#555', marginTop: '6px', paddingLeft: '2px' }}>{form.nome_titular}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '6px', paddingLeft: '2px' }}>{form.nome_titular}</div>
                     )}
                   </div>
                 )}
 
                 {/* Dados do titular da conta */}
-                <div style={{ backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dados bancários do titular</div>
+                <div style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', border: '1px solid var(--color-border-light)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dados bancários do titular</div>
                   {/* Checkbox mesmo professor */}
                   <button
                     type="button"
@@ -1709,9 +1711,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     style={{
                       display: 'flex', alignItems: 'center', gap: '8px',
                       padding: '8px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                      background: form.titular_proprio ? 'rgba(252,200,37,0.1)' : '#1a1a1a',
-                      outline: form.titular_proprio ? '1px solid rgba(252,200,37,0.4)' : '1px solid #2a2a2a',
-                      color: form.titular_proprio ? '#fcc825' : '#888', fontSize: '12px',
+                      background: form.titular_proprio ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-raised)',
+                      outline: form.titular_proprio ? '1px solid rgba(165,76,46,0.4)' : '1px solid var(--color-border-light)',
+                      color: form.titular_proprio ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)', fontSize: '12px',
                     }}
                   >
                     <span style={{ fontSize: '14px' }}>{form.titular_proprio ? '✓' : '○'}</span>
@@ -1728,14 +1730,14 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 <div>
                   <div style={labelStyle}>Empresa(s) onde atua</div>
                   <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                    {[{ key: 'trabalha_procopio', label: 'Procopio', cor: '#fcc825' }, { key: 'trabalha_beach', label: 'Beach Arena', cor: '#cf1b9b' }].map(({ key, label, cor }) => (
+                    {[{ key: 'trabalha_procopio', label: 'Procopio', cor: 'var(--color-action-primary)' }, { key: 'trabalha_beach', label: 'Beach Arena', cor: 'var(--color-state-info)' }].map(({ key, label, cor }) => (
                       <button key={key} onClick={() => set(key, !form[key])} style={{
-                        flex: 1, padding: '8px', borderRadius: '10px', border: `1px solid ${form[key] ? cor : '#2a2a2a'}`,
+                        flex: 1, padding: '8px', borderRadius: '10px', border: `1px solid ${form[key] ? cor : 'var(--color-border-light)'}`,
                         background: form[key] ? `${cor}18` : 'transparent',
-                        color: form[key] ? cor : '#444', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                        color: form[key] ? cor : 'var(--color-text-light-muted)', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                       }}>
-                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: form[key] ? cor : '#333', flexShrink: 0 }} />
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: form[key] ? cor : 'var(--color-text-light-muted)', flexShrink: 0 }} />
                         {label}
                       </button>
                     ))}
@@ -1746,13 +1748,13 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {form.trabalha_procopio && (
                     <div>
-                      <div style={{ ...labelStyle, color: '#fcc825' }}>Valor por Aula — Procopio (R$)</div>
+                      <div style={{ ...labelStyle, color: 'var(--color-action-primary)' }}>Valor por Aula — Procopio (R$)</div>
                       <input type="number" style={inputStyle} placeholder="0,00" value={form.valor_aula} onChange={e => set('valor_aula', e.target.value)} />
                     </div>
                   )}
                   {form.trabalha_beach && (
                     <div>
-                      <div style={{ ...labelStyle, color: '#cf1b9b' }}>Valor por Aula — Beach Arena (R$)</div>
+                      <div style={{ ...labelStyle, color: 'var(--color-state-info)' }}>Valor por Aula — Beach Arena (R$)</div>
                       <input type="number" style={inputStyle} placeholder="0,00" value={form.valor_aula_beach} onChange={e => set('valor_aula_beach', e.target.value)} />
                     </div>
                   )}
@@ -1761,12 +1763,12 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 <div>
                   <div style={labelStyle}>Status do Colaborador</div>
                   <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                    {[{ val: true, label: 'Ativo', cor: '#22c55e' }, { val: false, label: 'Inativo', cor: '#555' }].map(({ val, label, cor }) => (
+                    {[{ val: true, label: 'Ativo', cor: 'var(--color-state-success)' }, { val: false, label: 'Inativo', cor: 'var(--color-text-light-secondary)' }].map(({ val, label, cor }) => (
                       <button key={String(val)} onClick={() => set('ativo', val)} style={{
                         flex: 1, padding: '8px', borderRadius: '10px',
-                        border: `1px solid ${form.ativo === val ? cor : '#2a2a2a'}`,
+                        border: `1px solid ${form.ativo === val ? cor : 'var(--color-border-light)'}`,
                         background: form.ativo === val ? `${cor}18` : 'transparent',
-                        color: form.ativo === val ? cor : '#444', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                        color: form.ativo === val ? cor : 'var(--color-text-light-muted)', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
                       }}>
                         <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: cor, display: 'inline-block', marginRight: '6px', verticalAlign: 'middle' }} />
                         {label}
@@ -1775,32 +1777,32 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   </div>
                 </div>
 
-                <button onClick={handleSalvar} disabled={salvando} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                <button onClick={handleSalvar} disabled={salvando} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                   {salvando ? 'Salvando...' : '💾 Salvar dados bancários'}
                 </button>
 
                 <div>
-                  <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '8px', marginBottom: '4px' }}>Histórico de pagamentos</div>
-                  <div style={{ fontSize: '10px', color: '#444', marginBottom: '10px' }}>Clique num mês na grade "Aulas por mês" acima pra ver o resumo e anexar boleto/NF.</div>
+                  <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '8px', marginBottom: '4px' }}>Histórico de pagamentos</div>
+                  <div style={{ fontSize: '10px', color: 'var(--color-text-light-muted)', marginBottom: '10px' }}>Clique num mês na grade "Aulas por mês" acima pra ver o resumo e anexar boleto/NF.</div>
                 </div>
 
                 {mesesFinanceiro.map(({ mes, ano }) => {
                   const { qtd, valor } = calcularGanhosMes(mes, ano)
                   if (qtd === 0) return null
                   return (
-                    <div key={`${mes}-${ano}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: '10px', padding: '10px 14px', border: mes === mesAtual && ano === anoAtual ? '1px solid rgba(252,200,37,0.2)' : '1px solid #222' }}>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: mes === mesAtual && ano === anoAtual ? '#fcc825' : '#F0F2F5' }}>{MESES[mes - 1]}/{ano}</div>
+                    <div key={`${mes}-${ano}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '10px', padding: '10px 14px', border: mes === mesAtual && ano === anoAtual ? '1px solid rgba(165,76,46,0.2)' : '1px solid var(--color-border-light)' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: mes === mesAtual && ano === anoAtual ? 'var(--color-action-primary)' : 'var(--color-text-light-primary)' }}>{MESES[mes - 1]}/{ano}</div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#22c55e' }}>R$ {valor.toFixed(2).replace('.', ',')}</div>
-                        <div style={{ fontSize: '10px', color: '#555' }}>{qtd} aulas</div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-state-success)' }}>R$ {valor.toFixed(2).replace('.', ',')}</div>
+                        <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)' }}>{qtd} aulas</div>
                       </div>
                     </div>
                   )
                 })}
 
-                <div style={{ backgroundColor: 'rgba(252,200,37,0.08)', borderRadius: '12px', padding: '14px', border: '1px solid rgba(252,200,37,0.2)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Total acumulado ({totalAulas} aulas)</div>
-                  <div style={{ fontSize: '22px', fontWeight: '800', color: '#fcc825' }}>R$ {totalGeral.toFixed(2).replace('.', ',')}</div>
+                <div style={{ backgroundColor: 'rgba(165,76,46,0.08)', borderRadius: '12px', padding: '14px', border: '1px solid rgba(165,76,46,0.2)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Total acumulado ({totalAulas} aulas)</div>
+                  <div style={{ fontSize: '22px', fontWeight: '800', color: 'var(--color-action-primary)' }}>R$ {totalGeral.toFixed(2).replace('.', ',')}</div>
                 </div>
               </div>
             )}
@@ -1810,19 +1812,19 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {avaliacoes.length > 0 && (
                   <>
-                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Histórico</div>
+                    <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Histórico</div>
                     <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
                       {avaliacoes.map((av, i) => {
                         const tomarAcao = av.media <= 2
                         return (
-                          <div key={av.id} style={{ flexShrink: 0, width: '72px', textAlign: 'center', backgroundColor: '#1a1a1a', borderRadius: '10px', padding: '10px 8px', border: tomarAcao ? '1px solid rgba(239,68,68,0.5)' : '1px solid #222' }}>
-                            <div style={{ fontSize: '16px', fontWeight: '800', color: tomarAcao ? '#EF4444' : '#fcc825' }}>{avaliacoes.length - i}ª</div>
+                          <div key={av.id} style={{ flexShrink: 0, width: '72px', textAlign: 'center', backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '10px', padding: '10px 8px', border: tomarAcao ? '1px solid rgba(180,71,47,0.5)' : '1px solid var(--color-border-light)' }}>
+                            <div style={{ fontSize: '16px', fontWeight: '800', color: tomarAcao ? 'var(--color-state-danger)' : 'var(--color-action-primary)' }}>{avaliacoes.length - i}ª</div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', margin: '4px 0' }}>
-                              <Star size={10} fill="#fcc825" color="#fcc825" />
-                              <span style={{ fontSize: '12px', fontWeight: '700', color: '#F0F2F5' }}>{av.media}</span>
+                              <Star size={10} fill="var(--color-action-primary)" color="var(--color-action-primary)" />
+                              <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>{av.media}</span>
                             </div>
-                            <div style={{ fontSize: '9px', color: '#444' }}>{format(new Date(av.data_avaliacao + 'T12:00'), 'dd/MM/yy')}</div>
-                            {tomarAcao && <div style={{ fontSize: '8px', color: '#EF4444', fontWeight: '600', marginTop: '4px' }}>⚠️ AÇÃO</div>}
+                            <div style={{ fontSize: '9px', color: 'var(--color-text-light-muted)' }}>{format(new Date(av.data_avaliacao + 'T12:00'), 'dd/MM/yy')}</div>
+                            {tomarAcao && <div style={{ fontSize: '8px', color: 'var(--color-state-danger)', fontWeight: '600', marginTop: '4px' }}>⚠️ AÇÃO</div>}
                           </div>
                         )
                       })}
@@ -1830,32 +1832,32 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   </>
                 )}
 
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nova Avaliação</div>
-                <div style={{ backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '16px', border: '1px solid #222', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nova Avaliação</div>
+                <div style={{ backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '12px', padding: '16px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   {CRITERIOS.map(c => (
                     <div key={c.key}>
-                      <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>{c.label}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '6px' }}>{c.label}</div>
                       <StarRating value={novasNotas[c.key]} onChange={v => setNovasNotas(n => ({ ...n, [c.key]: v }))} />
                     </div>
                   ))}
                   <div>
-                    <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>Observação (opcional)</div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '6px' }}>Observação (opcional)</div>
                     <textarea rows={3} style={{ ...inputStyle, resize: 'none' }} placeholder="Pontos fortes, pontos de melhoria..." value={novasNotas.observacao} onChange={e => setNovasNotas(n => ({ ...n, observacao: e.target.value }))} />
                   </div>
-                  <button onClick={() => setModalAval(true)} style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                  <button onClick={() => setModalAval(true)} style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                     ⭐ Salvar Avaliação
                   </button>
 
                   {modalAval && (
                     <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }} onClick={() => setModalAval(false)}>
-                      <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box', maxHeight: '80dvh', overflowY: 'auto' }}>
-                        <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
-                        <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '4px' }}>Confirmar avaliação</div>
-                        <div style={{ fontSize: '11px', color: '#555', marginBottom: '16px' }}>{cardAberto.nome}</div>
+                      <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box', maxHeight: '80dvh', overflowY: 'auto' }}>
+                        <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--color-text-light-muted)', borderRadius: '2px', margin: '0 auto 16px' }} />
+                        <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}>Confirmar avaliação</div>
+                        <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginBottom: '16px' }}>{cardAberto.nome}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                           <div><div style={labelStyle}>Data da avaliação</div>
                             <input type="date" style={inputStyle} value={dataAvaliacao} onChange={e => setDataAvaliacao(e.target.value)} /></div>
-                          <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Avaliadores</div>
+                          <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Avaliadores</div>
                           {avaliadores.map((av, i) => (
                             <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1863,18 +1865,18 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                                 <input style={inputStyle} placeholder="Cargo (ex: Gestor, Coord. Técnico)" value={av.cargo} onChange={e => setAvaliadores(prev => prev.map((a, j) => j === i ? { ...a, cargo: e.target.value } : a))} />
                               </div>
                               {avaliadores.length > 1 && (
-                                <button onClick={() => setAvaliadores(prev => prev.filter((_, j) => j !== i))} style={{ padding: '6px', borderRadius: '8px', border: 'none', backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', cursor: 'pointer', marginTop: '2px' }}>
+                                <button onClick={() => setAvaliadores(prev => prev.filter((_, j) => j !== i))} style={{ padding: '6px', borderRadius: '8px', border: 'none', backgroundColor: 'rgba(180,71,47,0.1)', color: 'var(--color-state-danger)', cursor: 'pointer', marginTop: '2px' }}>
                                   <Trash2 size={13} />
                                 </button>
                               )}
                             </div>
                           ))}
-                          <button onClick={() => setAvaliadores(prev => [...prev, { nome: '', cargo: '' }])} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', borderRadius: '8px', border: '1px dashed #2a2a2a', background: 'none', color: '#555', fontSize: '12px', cursor: 'pointer' }}>
+                          <button onClick={() => setAvaliadores(prev => [...prev, { nome: '', cargo: '' }])} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', borderRadius: '8px', border: '1px dashed var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer' }}>
                             <Plus size={13} /> Adicionar avaliador
                           </button>
                           <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                            <button onClick={() => setModalAval(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
-                            <button onClick={handleSalvarAvaliacao} disabled={salvandoAval} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                            <button onClick={() => setModalAval(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
+                            <button onClick={handleSalvarAvaliacao} disabled={salvandoAval} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                               {salvandoAval ? 'Salvando...' : '⭐ Confirmar'}
                             </button>
                           </div>
@@ -1887,29 +1889,29 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 {avaliacoes.map((av, i) => {
                   const tomarAcao = av.media <= 2
                   return (
-                    <div key={av.id} style={{ backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '14px', border: tomarAcao ? '1px solid rgba(239,68,68,0.4)' : '1px solid #222' }}>
+                    <div key={av.id} style={{ backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '12px', padding: '14px', border: tomarAcao ? '1px solid rgba(180,71,47,0.4)' : '1px solid var(--color-border-light)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <div style={{ fontSize: '12px', color: '#555' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
                           {avaliacoes.length - i}ª avaliação · {format(new Date(av.data_avaliacao + 'T12:00'), 'dd/MM/yyyy')}
                           {av.avaliadores?.length > 0 && (
-                            <div style={{ fontSize: '10px', color: '#444', marginTop: '2px' }}>
+                            <div style={{ fontSize: '10px', color: 'var(--color-text-light-muted)', marginTop: '2px' }}>
                               {av.avaliadores.map(a => `${a.nome}${a.cargo ? ` (${a.cargo})` : ''}`).join(' · ')}
                             </div>
                           )}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Star size={12} fill="#fcc825" color="#fcc825" />
-                          <span style={{ fontSize: '13px', fontWeight: '700', color: tomarAcao ? '#EF4444' : '#fcc825' }}>{av.media}</span>
-                          {tomarAcao && <span style={{ fontSize: '10px', color: '#EF4444', fontWeight: '600', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(239,68,68,0.1)' }}>⚠️ TOMAR AÇÃO</span>}
+                          <Star size={12} fill="var(--color-action-primary)" color="var(--color-action-primary)" />
+                          <span style={{ fontSize: '13px', fontWeight: '700', color: tomarAcao ? 'var(--color-state-danger)' : 'var(--color-action-primary)' }}>{av.media}</span>
+                          {tomarAcao && <span style={{ fontSize: '10px', color: 'var(--color-state-danger)', fontWeight: '600', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(180,71,47,0.1)' }}>⚠️ TOMAR AÇÃO</span>}
                         </div>
                       </div>
                       {CRITERIOS.map(c => (
                         <div key={c.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '11px', color: '#555' }}>{c.label}</span>
+                          <span style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>{c.label}</span>
                           <StarRating value={av[c.key]} disabled />
                         </div>
                       ))}
-                      {av.observacao && <div style={{ fontSize: '11px', color: '#888', marginTop: '8px', fontStyle: 'italic', borderTop: '1px solid #1e1e1e', paddingTop: '8px' }}>{av.observacao}</div>}
+                      {av.observacao && <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '8px', fontStyle: 'italic', borderTop: '1px solid var(--color-border-light-subtle)', paddingTop: '8px' }}>{av.observacao}</div>}
                     </div>
                   )
                 })}
@@ -1919,20 +1921,20 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             {/* ABA DISPONIBILIDADE */}
             {aba === 'disponibilidade' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Grade de disponibilidade</div>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Grade de disponibilidade</div>
                 <div style={{ overflowX: 'auto' }}>
                   <div style={{ display: 'flex', gap: '4px', marginBottom: '6px', paddingLeft: '36px' }}>
                     {DIAS_LABEL.map(d => (
-                      <div key={d} style={{ width: '36px', flexShrink: 0, textAlign: 'center', fontSize: '9px', color: '#555', fontWeight: '600' }}>{d}</div>
+                      <div key={d} style={{ width: '36px', flexShrink: 0, textAlign: 'center', fontSize: '9px', color: 'var(--color-text-light-secondary)', fontWeight: '600' }}>{d}</div>
                     ))}
                   </div>
                   {HORARIOS_GRADE.map(horario => (
                     <div key={horario} style={{ display: 'flex', gap: '4px', marginBottom: '4px', alignItems: 'center' }}>
-                      <div style={{ width: '32px', flexShrink: 0, fontSize: '9px', color: '#444', textAlign: 'right', paddingRight: '4px' }}>{horario}</div>
+                      <div style={{ width: '32px', flexShrink: 0, fontSize: '9px', color: 'var(--color-text-light-muted)', textAlign: 'right', paddingRight: '4px' }}>{horario}</div>
                       {DIAS_SEMANA.map(dia => {
                         const status = getStatusDisp(dia, horario)
                         return (
-                          <div key={dia} style={{ width: '36px', height: '28px', flexShrink: 0, borderRadius: '6px', backgroundColor: status ? COR_DISP[status] + '25' : '#111', border: `1px solid ${status ? COR_DISP[status] + '60' : '#1e1e1e'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div key={dia} style={{ width: '36px', height: '28px', flexShrink: 0, borderRadius: '6px', backgroundColor: status ? COR_DISP[status] + '25' : 'var(--color-surface-light-overlay)', border: `1px solid ${status ? COR_DISP[status] + '60' : 'var(--color-border-light-subtle)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {status && <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: COR_DISP[status] }} />}
                           </div>
                         )
@@ -1941,15 +1943,15 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   ))}
                 </div>
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '8px' }}>
-                  {[['disponivel','#22c55e','Disponível'],['talvez','#fcc825','Talvez'],['indisponivel','#EF4444','Indisponível']].map(([s,c,l]) => (
+                  {[['disponivel','var(--color-state-success)','Disponível'],['talvez','var(--color-action-primary)','Talvez'],['indisponivel','var(--color-state-danger)','Indisponível']].map(([s,c,l]) => (
                     <div key={s} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: c }} />
-                      <span style={{ fontSize: '10px', color: '#555' }}>{l}</span>
+                      <span style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)' }}>{l}</span>
                     </div>
                   ))}
                 </div>
                 {disponibilidades.length === 0 && (
-                  <div style={{ textAlign: 'center', fontSize: '12px', color: '#444', padding: '20px' }}>
+                  <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--color-text-light-muted)', padding: '20px' }}>
                     Professor ainda não preencheu a disponibilidade
                   </div>
                 )}
@@ -1959,13 +1961,13 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             {aba === 'historico' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {historicoProf.length === 0 ? (
-                  <div style={{ textAlign: 'center', fontSize: '12px', color: '#444', padding: '20px' }}>
+                  <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--color-text-light-muted)', padding: '20px' }}>
                     Nenhuma ação registrada ainda.
                   </div>
                 ) : historicoProf.map(log => (
-                  <div key={log.id} style={{ backgroundColor: '#111', borderRadius: '10px', padding: '10px 12px', border: '1px solid #1e1e1e' }}>
-                    <div style={{ fontSize: '12px', color: '#F0F2F5' }}>{formatarHistorico(log)}</div>
-                    <div style={{ fontSize: '10px', color: '#555', marginTop: '4px' }}>
+                  <div key={log.id} style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', padding: '10px 12px', border: '1px solid var(--color-border-light-subtle)' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-light-primary)' }}>{formatarHistorico(log)}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', marginTop: '4px' }}>
                       {format(new Date(log.criado_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </div>
                   </div>
@@ -1988,9 +1990,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       {/* MODAL CRIAR */}
       {modalCriar && createPortal((
         <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }} onClick={() => { setModalCriar(false); setTipoColaborador(null); setCpfNovoColaborador(''); setSenhaNovoColaborador('') }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: '#151515', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box', maxHeight: '85dvh', overflowY: 'auto' }}>
-            <div style={{ width: '40px', height: '4px', backgroundColor: '#333', borderRadius: '2px', margin: '0 auto 16px' }} />
-            <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '16px' }}>Novo Colaborador</div>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box', maxHeight: '85dvh', overflowY: 'auto' }}>
+            <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--color-text-light-muted)', borderRadius: '2px', margin: '0 auto 16px' }} />
+            <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)', marginBottom: '16px' }}>Novo Colaborador</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
                 <div style={labelStyle}>Tipo de colaborador *</div>
@@ -1998,9 +2000,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   {TIPOS_COLABORADOR.map(t => (
                     <button key={t.value} type="button" onClick={() => setTipoColaborador(t.value)} style={{
                       padding: '10px 4px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                      background: tipoColaborador === t.value ? 'linear-gradient(135deg, #fcc825, #cf1b9b)' : '#111',
-                      outline: tipoColaborador === t.value ? 'none' : '1px solid #2a2a2a',
-                      color: tipoColaborador === t.value ? 'white' : '#888',
+                      background: tipoColaborador === t.value ? 'var(--color-action-primary)' : 'var(--color-surface-light-overlay)',
+                      outline: tipoColaborador === t.value ? 'none' : '1px solid var(--color-border-light)',
+                      color: tipoColaborador === t.value ? 'white' : 'var(--color-text-light-secondary)',
                       fontSize: '12px', fontWeight: tipoColaborador === t.value ? '700' : '400',
                       textAlign: 'center',
                     }}>
@@ -2030,9 +2032,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                           set('modalidades_ids', selecionada ? atual.filter(id => id !== m.id) : [...atual, m.id])
                         }} style={{
                           padding: '8px 4px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                          background: selecionada ? '#fcc825' : '#111',
-                          outline: selecionada ? 'none' : '1px solid #2a2a2a',
-                          color: selecionada ? '#110f0f' : '#555',
+                          background: selecionada ? 'var(--color-action-primary)' : 'var(--color-surface-light-overlay)',
+                          outline: selecionada ? 'none' : '1px solid var(--color-border-light)',
+                          color: selecionada ? 'var(--color-surface-light-overlay)' : 'var(--color-text-light-secondary)',
                           fontSize: '11px', fontWeight: selecionada ? '700' : '400',
                           textAlign: 'center', lineHeight: 1.3,
                         }}>
@@ -2045,8 +2047,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
               )}
 
               <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                <button onClick={() => { setModalCriar(false); setTipoColaborador(null); setCpfNovoColaborador(''); setSenhaNovoColaborador('') }} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #2a2a2a', background: 'none', color: '#555', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
-                <button onClick={handleCriarColaborador} disabled={salvando || !form.nome.trim() || !tipoColaborador} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                <button onClick={() => { setModalCriar(false); setTipoColaborador(null); setCpfNovoColaborador(''); setSenhaNovoColaborador('') }} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={handleCriarColaborador} disabled={salvando || !form.nome.trim() || !tipoColaborador} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
                   {salvando ? 'Salvando...' : 'Cadastrar'}
                 </button>
               </div>

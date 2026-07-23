@@ -16,8 +16,8 @@ import { FileiraConquistas } from './ConquistasCard'
 import toast from 'react-hot-toast'
 
 const toastStyle = {
-  background: '#1a1a1a', color: '#F0F2F5',
-  border: '1px solid rgba(252,200,37,0.3)',
+  background: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
+  border: '1px solid rgba(165,76,46,0.3)',
   borderRadius: '10px', fontSize: '13px',
 }
 
@@ -35,7 +35,7 @@ function hexParaRgb(hex) {
 
 function SecaoTitulo({ children }) {
   return (
-    <div style={{ fontSize: '11px', fontWeight: '700', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+    <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
       {children}
     </div>
   )
@@ -43,7 +43,7 @@ function SecaoTitulo({ children }) {
 
 function CardVazio({ texto }) {
   return (
-    <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: '#111', border: '1px dashed #2a2a2a', textAlign: 'center', fontSize: '12px', color: '#555' }}>
+    <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px dashed var(--color-border-light)', textAlign: 'center', fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
       {texto}
     </div>
   )
@@ -101,7 +101,7 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
 
   const pcScoreAtual = ultimaAvaliacao.pc_score
   const nivelAtual = pcScoreAtual != null ? nivelPorPcScore(pcScoreAtual) : null
-  const corPcScore = nivelAtual?.cor || '#888'
+  const corPcScore = nivelAtual?.cor || 'var(--color-text-light-secondary)'
 
   const variacaoPcScore = pcScoreAtual != null && avaliacaoAnterior?.pc_score != null
     ? pcScoreAtual - avaliacaoAnterior.pc_score
@@ -219,8 +219,8 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
             disabled={exportando}
             style={{
               display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '8px 14px', borderRadius: '9px', border: '1px solid #2a2a2a', cursor: exportando ? 'default' : 'pointer',
-              backgroundColor: '#111', color: '#F0F2F5', fontSize: '12px', fontWeight: '600',
+              padding: '8px 14px', borderRadius: '9px', border: '1px solid var(--color-border-light)', cursor: exportando ? 'default' : 'pointer',
+              backgroundColor: 'var(--color-surface-light-overlay)', color: 'var(--color-text-light-primary)', fontSize: '12px', fontWeight: '600',
               opacity: exportando ? 0.6 : 1,
             }}
           >
@@ -233,8 +233,8 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
               onClick={handleBaixarPDF}
               style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '8px 14px', borderRadius: '9px', border: '1px solid #2a2a2a', cursor: 'pointer',
-                backgroundColor: '#111', color: '#F0F2F5', fontSize: '12px', fontWeight: '600',
+                padding: '8px 14px', borderRadius: '9px', border: '1px solid var(--color-border-light)', cursor: 'pointer',
+                backgroundColor: 'var(--color-surface-light-overlay)', color: 'var(--color-text-light-primary)', fontSize: '12px', fontWeight: '600',
               }}
             >
               <Download size={13} /> Baixar PDF
@@ -245,7 +245,7 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
                 style={{
                   display: 'flex', alignItems: 'center', gap: '6px',
                   padding: '8px 14px', borderRadius: '9px', border: 'none', cursor: 'pointer',
-                  background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white', fontSize: '12px', fontWeight: '600',
+                  background: 'var(--color-action-primary)', color: 'white', fontSize: '12px', fontWeight: '600',
                 }}
               >
                 <Share2 size={13} /> Encaminhar
@@ -258,10 +258,10 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
       {pendenteMaisRecente && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '10px',
-          backgroundColor: 'rgba(252,200,37,0.08)', border: '1px solid rgba(252,200,37,0.25)',
+          backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.25)',
         }}>
-          <AlertTriangle size={14} color="#fcc825" style={{ flexShrink: 0 }} />
-          <span style={{ fontSize: '12px', color: '#fcc825' }}>
+          <AlertTriangle size={14} color="var(--color-action-primary)" style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: '12px', color: 'var(--color-action-primary)' }}>
             Nova avaliação aguardando confirmação de {nomesFaltando} — ainda não entra nas métricas abaixo.
           </span>
         </div>
@@ -270,10 +270,10 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
       {reavaliacaoPendente && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '10px',
-          backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+          backgroundColor: 'rgba(180,71,47,0.08)', border: '1px solid rgba(180,71,47,0.25)',
         }}>
-          <AlertTriangle size={14} color="#EF4444" style={{ flexShrink: 0 }} />
-          <span style={{ fontSize: '12px', color: '#EF4444' }}>
+          <AlertTriangle size={14} color="var(--color-state-danger)" style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: '12px', color: 'var(--color-state-danger)' }}>
             Reavaliação pendente — última avaliação há mais de {REAVALIACAO_PRAZO_DIAS} dias.
           </span>
         </div>
@@ -281,19 +281,19 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
 
       {/* Destaques lado a lado */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-        <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#111', border: '1px solid #2a2a2a' }}>
-          <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+        <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)' }}>
+          <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
             Aulas com presença
           </div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#F0F2F5' }}>{totalPresencas}</div>
+          <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--color-text-light-primary)' }}>{totalPresencas}</div>
         </div>
-        <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#111', border: `1px solid ${corPcScore}44` }}>
+        <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'var(--color-surface-light-overlay)', border: `1px solid ${corPcScore}44` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <span style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>PC Score</span>
+            <span style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>PC Score</span>
             <button
               onClick={() => navigate('/pontuacao')}
               title="Como funciona a pontuação"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#444' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--color-text-light-muted)' }}
             >
               <HelpCircle size={12} />
             </button>
@@ -305,7 +305,7 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
             {variacaoPcScore != null && variacaoPcScore !== 0 && (
               <span style={{
                 display: 'flex', alignItems: 'center', fontSize: '12px', fontWeight: '700',
-                color: melhorou ? '#22c55e' : '#EF4444',
+                color: melhorou ? 'var(--color-state-success)' : 'var(--color-state-danger)',
               }}>
                 {melhorou ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
                 {Math.abs(variacaoPcScore)}
@@ -320,8 +320,8 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
 
       {pcScoreAtual == null && (
         <div style={{
-          padding: '10px 12px', borderRadius: '10px', fontSize: '11px', color: '#f97316',
-          backgroundColor: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)',
+          padding: '10px 12px', borderRadius: '10px', fontSize: '11px', color: 'var(--color-state-warning)',
+          backgroundColor: 'rgba(201,138,60,0.08)', border: '1px solid rgba(201,138,60,0.25)',
         }}>
           Essa avaliação não tem PC Score calculado — falta faixa etária do aluno (data de nascimento
           ou seleção manual do professor).
@@ -331,16 +331,16 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
       {/* Radar dos 5 domínios (cada um é a média dos seus subitens, nota 1-10) */}
       <div>
         <SecaoTitulo>Perfil técnico</SecaoTitulo>
-        <div style={{ backgroundColor: '#111', borderRadius: '12px', border: '1px solid #2a2a2a', padding: '10px' }}>
-          <div style={{ fontSize: '11px', color: '#555', padding: '6px 8px 10px' }}>{fmtData(ultimaAvaliacao.data_avaliacao)}</div>
+        <div style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '12px', border: '1px solid var(--color-border-light)', padding: '10px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', padding: '6px 8px 10px' }}>{fmtData(ultimaAvaliacao.data_avaliacao)}</div>
           <div style={{ width: '100%', height: 220 }}>
             <ResponsiveContainer>
               <RadarChart data={radarData} outerRadius="70%">
-                <PolarGrid stroke="#2a2a2a" />
-                <PolarAngleAxis dataKey="dimensao" tick={{ fill: '#888', fontSize: 11 }} />
-                <PolarRadiusAxis domain={[0, 10]} tick={{ fill: '#444', fontSize: 9 }} axisLine={false} />
-                <Radar dataKey="valor" stroke="#fcc825" fill="#fcc825" fillOpacity={0.35} strokeWidth={2} />
-                <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#F0F2F5' }} />
+                <PolarGrid stroke="var(--color-border-light)" />
+                <PolarAngleAxis dataKey="dimensao" tick={{ fill: 'var(--color-text-light-secondary)', fontSize: 11 }} />
+                <PolarRadiusAxis domain={[0, 10]} tick={{ fill: 'var(--color-text-light-muted)', fontSize: 9 }} axisLine={false} />
+                <Radar dataKey="valor" stroke="var(--color-action-primary)" fill="var(--color-action-primary)" fillOpacity={0.35} strokeWidth={2} />
+                <Tooltip contentStyle={{ backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'var(--color-text-light-primary)' }} />
               </RadarChart>
             </ResponsiveContainer>
           </div>
@@ -354,10 +354,10 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
           {mediasDominio.map(u => (
             <div key={u.nome} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '9px 12px', borderRadius: '9px', backgroundColor: '#111', border: '1px solid #2a2a2a',
+              padding: '9px 12px', borderRadius: '9px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
             }}>
-              <span style={{ fontSize: '13px', color: '#F0F2F5' }}>{u.nome}</span>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: '#fcc825' }}>{formataNota(u.media)}</span>
+              <span style={{ fontSize: '13px', color: 'var(--color-text-light-primary)' }}>{u.nome}</span>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{formataNota(u.media)}</span>
             </div>
           ))}
         </div>
@@ -367,18 +367,18 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
       {evolucaoPcScore.length > 1 && (
         <div>
           <SecaoTitulo>Evolução do PC Score</SecaoTitulo>
-          <div style={{ backgroundColor: '#111', borderRadius: '12px', border: '1px solid #2a2a2a', padding: '10px', width: '100%', height: 160 }}>
+          <div style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '12px', border: '1px solid var(--color-border-light)', padding: '10px', width: '100%', height: 160 }}>
             <ResponsiveContainer>
               <LineChart data={evolucaoPcScore} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
-                <CartesianGrid stroke="#2a2a2a" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="data" tick={{ fill: '#555', fontSize: 10 }} axisLine={{ stroke: '#2a2a2a' }} tickLine={false} />
-                <YAxis domain={[1, 100]} reversed tick={{ fill: '#555', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#F0F2F5' }} />
-                <Line type="monotone" dataKey="pcScore" stroke="#cf1b9b" strokeWidth={2} dot={{ r: 4, fill: '#cf1b9b' }} />
+                <CartesianGrid stroke="var(--color-border-light)" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="data" tick={{ fill: 'var(--color-text-light-secondary)', fontSize: 10 }} axisLine={{ stroke: 'var(--color-border-light)' }} tickLine={false} />
+                <YAxis domain={[1, 100]} reversed tick={{ fill: 'var(--color-text-light-secondary)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'var(--color-text-light-primary)' }} />
+                <Line type="monotone" dataKey="pcScore" stroke="var(--color-state-info)" strokeWidth={2} dot={{ r: 4, fill: 'var(--color-state-info)' }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
-          <p style={{ fontSize: '10px', color: '#555', margin: '6px 0 0' }}>Quanto mais pra baixo no gráfico, melhor o nível técnico.</p>
+          <p style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', margin: '6px 0 0' }}>Quanto mais pra baixo no gráfico, melhor o nível técnico.</p>
         </div>
       )}
 
@@ -387,8 +387,8 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
         <SecaoTitulo>Análise inteligente</SecaoTitulo>
         {ultimaAvaliacao.narrativa_ia ? (
           <div style={{
-            padding: '14px', borderRadius: '12px', backgroundColor: '#111', border: '1px solid #2a2a2a',
-            fontSize: '13px', color: '#ccc', lineHeight: '1.6',
+            padding: '14px', borderRadius: '12px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
+            fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.6',
           }}>
             {ultimaAvaliacao.narrativa_ia}
           </div>
@@ -430,11 +430,11 @@ function HistoricoCompleto({ aluno, modalidadeId, avaliacoes, navigate }) {
           return (
             <div key={a.id} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '9px 12px', borderRadius: '9px', backgroundColor: '#111', border: '1px solid #2a2a2a',
+              padding: '9px 12px', borderRadius: '9px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
             }}>
               <div>
-                <div style={{ fontSize: '12px', color: '#F0F2F5' }}>{fmtData(a.data_avaliacao)}</div>
-                <div style={{ fontSize: '10px', color: '#666' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-light-primary)' }}>{fmtData(a.data_avaliacao)}</div>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)' }}>
                   {a.professores?.nome || 'Professor não identificado'}
                   {a.status === 'pendente' && ' · pendente de confirmação'}
                 </div>
@@ -444,7 +444,7 @@ function HistoricoCompleto({ aluno, modalidadeId, avaliacoes, navigate }) {
                 <button
                   onClick={() => navigate('/avaliar-aluno', { state: { alunoId: aluno.id, alunoNome: aluno.nome, modalidadeId, avaliacaoParaEditar: a } })}
                   title="Editar avaliação"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', padding: '4px', display: 'flex', alignItems: 'center' }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light-secondary)', padding: '4px', display: 'flex', alignItems: 'center' }}
                 >
                   <Pencil size={13} />
                 </button>

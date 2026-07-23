@@ -34,7 +34,7 @@ export function PageLoading() {
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-        <img src="/images/logoprocoach.png" alt="ProCoach" style={{ height: '48px', objectFit: 'contain' }} />
+        <img src="/images/logo-pc-cream.png" alt="ProCoach" style={{ height: '48px', objectFit: 'contain' }} />
         <Loader2 size={24} className="spin" style={{ color: 'var(--color-action-primary)' }} />
       </div>
     </div>

@@ -11,7 +11,7 @@ export function SelecionarEmpresaPage({ empresas, onSelecionar }) {
   return (
     <div className="fade-in" style={{
       height: '100vh', width: '100%',
-      backgroundColor: '#110f0f',
+      backgroundColor: 'var(--color-surface-light-base)',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: '24px 16px',
@@ -19,9 +19,9 @@ export function SelecionarEmpresaPage({ empresas, onSelecionar }) {
     }}>
       <div style={{ width: '100%', maxWidth: '420px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <img src="/images/logoprocoach.png" alt="ProCoach" style={{ height: '48px', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
-          <h1 style={{ fontSize: '16px', fontWeight: '700', color: '#F0F2F5', margin: '0 0 4px' }}>Qual empresa você quer acessar?</h1>
-          <p style={{ fontSize: '12px', color: '#555', margin: 0 }}>Você tem acesso a mais de uma empresa no ProCoach</p>
+          <img src="/images/logo-pc-green.png" alt="ProCoach" style={{ height: '48px', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
+          <h1 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: '0 0 4px' }}>Qual empresa você quer acessar?</h1>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', margin: 0 }}>Você tem acesso a mais de uma empresa no ProCoach</p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -33,35 +33,35 @@ export function SelecionarEmpresaPage({ empresas, onSelecionar }) {
               style={{
                 display: 'flex', alignItems: 'center', gap: '14px',
                 padding: '16px', borderRadius: '16px',
-                backgroundColor: '#1a1a1a', border: '1px solid #222',
+                backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)',
                 cursor: 'pointer', textAlign: 'left', width: '100%', boxSizing: 'border-box',
                 animation: `fadeIn 0.3s ease-out ${i * 60}ms both`,
               }}
             >
               <div style={{
                 width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0,
-                backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backgroundColor: 'var(--color-surface-light-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 overflow: 'hidden',
               }}>
                 {empresa.logoUrl
                   ? <img src={empresa.logoUrl} alt={empresa.nome} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  : <span style={{ fontSize: '18px', fontWeight: '700', color: '#fcc825' }}>{empresa.nome?.[0]?.toUpperCase()}</span>
+                  : <span style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{empresa.nome?.[0]?.toUpperCase()}</span>
                 }
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '15px', fontWeight: '600', color: '#F0F2F5' }}>{empresa.nome}</div>
-                <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
+                <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--color-text-light-primary)' }}>{empresa.nome}</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginTop: '2px' }}>
                   {LABEL_ROLE[empresa.role] || empresa.role}
                 </div>
               </div>
-              <span style={{ color: '#333', fontSize: '18px' }}>›</span>
+              <span style={{ color: 'var(--color-text-light-muted)', fontSize: '18px' }}>›</span>
             </button>
           ))}
         </div>
 
         <button onClick={signOut} style={{
           display: 'block', margin: '24px auto 0', background: 'none', border: 'none',
-          color: '#444', fontSize: '12px', cursor: 'pointer',
+          color: 'var(--color-text-light-muted)', fontSize: '12px', cursor: 'pointer',
         }}>
           Sair
         </button>
@@ -69,7 +69,7 @@ export function SelecionarEmpresaPage({ empresas, onSelecionar }) {
 
       <style>{`
         .empresa-card { transition: border-color 0.15s ease-out, transform 0.15s ease-out, background-color 0.15s ease-out; }
-        .empresa-card:hover { border-color: rgba(252,200,37,0.5) !important; background-color: #1e1a10 !important; transform: translateY(-1px); }
+        .empresa-card:hover { border-color: rgba(165,76,46,0.5) !important; background-color: rgba(165,76,46,0.06) !important; transform: translateY(-1px); }
       `}</style>
     </div>
   )

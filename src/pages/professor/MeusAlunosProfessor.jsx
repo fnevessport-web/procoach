@@ -9,8 +9,8 @@ import { Loading } from '../../components/ui/Loading'
 
 const inputStyle = {
   width: '100%', padding: '10px 12px', borderRadius: '10px',
-  backgroundColor: '#111', border: '1px solid #2a2a2a',
-  color: '#F0F2F5', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+  backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
+  color: 'var(--color-text-light-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
 }
 
 function useMeusAlunos(professorId) {
@@ -93,10 +93,10 @@ export function MeusAlunosProfessor() {
 
   return (
     <div className="fade-in">
-      <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#F0F2F5', margin: '16px 0' }}>Meus Alunos</h1>
+      <h1 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: '16px 0' }}>Meus Alunos</h1>
 
       <div style={{ position: 'relative', marginBottom: '16px' }}>
-        <Search size={14} color="#555" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+        <Search size={14} color="var(--color-text-light-secondary)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
         <input
           style={{ ...inputStyle, paddingLeft: '34px' }}
           placeholder="Buscar aluno..."
@@ -106,23 +106,23 @@ export function MeusAlunosProfessor() {
       </div>
 
       {isLoading ? <Loading /> : filtrados.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: '#555', fontSize: '13px' }}>
+        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--color-text-light-secondary)', fontSize: '13px' }}>
           {busca ? 'Nenhum aluno encontrado.' : 'Nenhum aluno matriculado nas suas turmas ainda.'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {filtrados.map(aluno => (
             <div key={aluno.id} style={{
-              backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '12px 14px',
-              border: aluno.alerta_nivel ? '1px solid rgba(252,200,37,0.25)' : '1px solid rgba(255,255,255,0.06)',
+              backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '12px', padding: '12px 14px',
+              border: aluno.alerta_nivel ? '1px solid rgba(165,76,46,0.25)' : '1px solid rgba(30,43,36,0.06)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                 <button
                   onClick={() => navigate(`/cadastros/alunos/${aluno.id}`)}
                   style={{ minWidth: 0, background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer' }}
                 >
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#F0F2F5' }}>{aluno.nome}</div>
-                  <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{aluno.turmas.join(' · ')}</div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)' }}>{aluno.nome}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '2px' }}>{aluno.turmas.join(' · ')}</div>
                 </button>
                 <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                   <button
@@ -131,7 +131,7 @@ export function MeusAlunosProfessor() {
                     style={{
                       display: 'flex', alignItems: 'center', gap: '5px',
                       padding: '6px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                      backgroundColor: '#111', color: '#888', fontSize: '11px', fontWeight: '600',
+                      backgroundColor: 'var(--color-surface-light-overlay)', color: 'var(--color-text-light-secondary)', fontSize: '11px', fontWeight: '600',
                     }}
                   >
                     <ClipboardList size={12} /> Avaliar
@@ -139,8 +139,8 @@ export function MeusAlunosProfessor() {
                   <button onClick={() => (classificando === aluno.id ? setClassificando(null) : abrirClassificacao(aluno))} style={{
                     display: 'flex', alignItems: 'center', gap: '5px',
                     padding: '6px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                    backgroundColor: aluno.alerta_nivel ? 'rgba(252,200,37,0.15)' : '#111',
-                    color: aluno.alerta_nivel ? '#fcc825' : '#888', fontSize: '11px', fontWeight: '600',
+                    backgroundColor: aluno.alerta_nivel ? 'rgba(165,76,46,0.15)' : 'var(--color-surface-light-overlay)',
+                    color: aluno.alerta_nivel ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)', fontSize: '11px', fontWeight: '600',
                   }}>
                     <AlertTriangle size={12} />
                     {aluno.alerta_nivel ? aluno.nivel_avaliado_prof : 'Classificar nível'}
@@ -149,16 +149,16 @@ export function MeusAlunosProfessor() {
               </div>
 
               {classificando === aluno.id && (
-                <div style={{ marginTop: '10px', backgroundColor: '#111', borderRadius: '10px', border: '1px solid #2a2a2a', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ marginTop: '10px', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', border: '1px solid var(--color-border-light)', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div>
-                    <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px' }}>Nível real avaliado</div>
+                    <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '4px' }}>Nível real avaliado</div>
                     <select value={form.nivel} onChange={e => setForm(f => ({ ...f, nivel: e.target.value }))} style={inputStyle}>
                       <option value="">Selecione o nível...</option>
                       {todosNiveis?.map(n => <option key={n.id} value={n.nome}>{n.nome}</option>)}
                     </select>
                   </div>
                   <div>
-                    <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px' }}>Observação (opcional)</div>
+                    <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '4px' }}>Observação (opcional)</div>
                     <textarea
                       placeholder="Ex: Aluno está evoluindo bem, pode subir de turma..."
                       value={form.obs} onChange={e => setForm(f => ({ ...f, obs: e.target.value }))}
@@ -168,17 +168,17 @@ export function MeusAlunosProfessor() {
                   <div style={{ display: 'flex', gap: '6px' }}>
                     {aluno.alerta_nivel && (
                       <button onClick={() => removerNivel(aluno.id)} disabled={salvando} style={{
-                        flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.3)',
-                        background: 'none', color: '#EF4444', fontSize: '11px', cursor: 'pointer',
+                        flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid rgba(180,71,47,0.3)',
+                        background: 'none', color: 'var(--color-state-danger)', fontSize: '11px', cursor: 'pointer',
                       }}>Remover</button>
                     )}
                     <button onClick={() => setClassificando(null)} style={{
-                      flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #2a2a2a',
-                      background: 'none', color: '#555', fontSize: '11px', cursor: 'pointer',
+                      flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border-light)',
+                      background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '11px', cursor: 'pointer',
                     }}>Cancelar</button>
                     <button onClick={() => salvarNivel(aluno.id)} disabled={salvando || !form.nivel} style={{
                       flex: 2, padding: '8px', borderRadius: '8px', border: 'none',
-                      background: 'linear-gradient(135deg, #fcc825, #cf1b9b)', color: 'white',
+                      background: 'var(--color-action-primary)', color: 'white',
                       fontSize: '11px', fontWeight: '600', cursor: 'pointer', opacity: !form.nivel ? 0.6 : 1,
                     }}>{salvando ? 'Salvando...' : 'Salvar'}</button>
                   </div>
@@ -186,7 +186,7 @@ export function MeusAlunosProfessor() {
               )}
 
               {aluno.alerta_nivel && aluno.obs_nivel_prof && classificando !== aluno.id && (
-                <div style={{ fontSize: '11px', color: '#888', marginTop: '6px', fontStyle: 'italic' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '6px', fontStyle: 'italic' }}>
                   📝 {aluno.obs_nivel_prof}
                 </div>
               )}

@@ -403,7 +403,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       pintarFundo()
 
       try {
-        const resp = await fetch('/images/logoprocoach.png')
+        const resp = await fetch('/images/logo-pc-cream.png')
         const blob = await resp.blob()
         const logoBase64 = await new Promise((resolve, reject) => {
           const reader = new FileReader()
