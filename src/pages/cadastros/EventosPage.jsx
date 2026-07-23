@@ -207,12 +207,14 @@ function FormIncluirInscricao({ eventoId, inscricoes, onFechar }) {
   })
 
   async function handleSalvar() {
-    if (!form.slot_id || !form.nome_crianca.trim() || !form.data_nascimento || !form.nome_responsavel.trim() || !form.whatsapp_responsavel.trim()) {
+    // Confirmado sempre precisa de um horário real; lista de espera pode ficar "geral" (sem
+    // slot_id), já que o clube pode abrir horários além dos 6 atuais.
+    if ((form.status === 'confirmado' && !form.slot_id) || !form.nome_crianca.trim() || !form.data_nascimento || !form.nome_responsavel.trim() || !form.whatsapp_responsavel.trim()) {
       return toast.error('Preencha todos os campos', { style: toastStyle })
     }
     try {
       await incluir.mutateAsync({
-        slot_id: form.slot_id,
+        slot_id: form.slot_id || null,
         nome_crianca: form.nome_crianca.trim(),
         data_nascimento: form.data_nascimento,
         nome_responsavel: form.nome_responsavel.trim(),
@@ -229,7 +231,7 @@ function FormIncluirInscricao({ eventoId, inscricoes, onFechar }) {
   return (
     <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: '#111', border: '1px solid rgba(252,200,37,0.2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <select value={form.slot_id} onChange={e => setForm(f => ({ ...f, slot_id: e.target.value }))} style={inputStyle}>
-        <option value="">Escolha o horário...</option>
+        <option value="">Sem horário (lista de espera geral)</option>
         {slots?.map(s => (
           <option key={s.id} value={s.id}>
             {s.horario?.slice(0, 5)} · {s.quadra} ({confirmadosPorSlot[s.id] || 0}/{s.capacidade} vagas)

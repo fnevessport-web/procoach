@@ -319,7 +319,6 @@ export function EventoInscricaoPage() {
   }
 
   function validarForm() {
-    if (todasLotadas && !slotSelecionado) return 'Escolha o horário de sua preferência.'
     if (!form.nome_crianca.trim()) return 'Informe o nome completo da criança.'
     if (!form.data_nascimento) return 'Informe a data de nascimento.'
     if (!form.nome_responsavel.trim()) return 'Informe o nome do responsável.'
@@ -355,17 +354,37 @@ export function EventoInscricaoPage() {
     return data?.[0]?.status
   }
 
+  // Lista de espera "geral" (todasLotadas) não amarra a nenhum horário específico — o clube
+  // pode abrir horários novos além dos 6 atuais, então perguntar preferência entre eles não
+  // faz sentido aqui. Só guarda os dados; slot_id fica NULL nesse tipo de registro.
+  async function entrarListaEsperaGeral() {
+    const { error } = await supabase.rpc('entrar_lista_espera_evento', {
+      p_evento_id: evento.id,
+      p_nome_crianca: form.nome_crianca.trim(),
+      p_data_nascimento: form.data_nascimento,
+      p_nome_responsavel: form.nome_responsavel.trim(),
+      p_whatsapp_responsavel: form.whatsapp_responsavel.trim(),
+      p_disponibilidade_turmas: disponibilidade.length ? disponibilidade : null,
+    })
+    if (error) throw error
+  }
+
   async function handleConfirmar() {
     setErro('')
     setEnviando(true)
     try {
-      // Já sabemos de antemão que é lista de espera (todasLotadas) — pula a detecção de
-      // "esgotado", já manda p_aceitar_espera=true direto.
-      const status = await inscrever(todasLotadas)
+      if (todasLotadas) {
+        await entrarListaEsperaGeral()
+        setResultado('lista_espera')
+        setModalAberto(false)
+        return
+      }
+      const status = await inscrever(false)
       if (status === 'esgotado') {
         // Corrida rara: a vaga que parecia livre (leitura de até 15s atrás) sumiu entre o
-        // carregamento da página e a confirmação — cai no mesmo prompt de lista de espera
-        // como rede de segurança, sem travar o fluxo.
+        // carregamento da página e a confirmação — cai no prompt de lista de espera DESSE
+        // horário específico como rede de segurança (aqui sim faz sentido amarrar ao slot,
+        // é uma preferência real que a pessoa acabou de expressar clicando nele).
         setEtapaModal('esgotado')
       } else {
         setResultado(status)
@@ -436,7 +455,9 @@ export function EventoInscricaoPage() {
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
         <div style={{ color: C.tinta, fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Você está na lista de espera!</div>
         <div style={{ color: C.textoSuave, fontSize: '13px', lineHeight: '1.6', marginBottom: '24px' }}>
-          {form.nome_crianca} entrou na lista de espera do horário das {formatarHora(slotSelecionado?.horario)} · {slotSelecionado?.quadra}. Se abrir vaga, avisaremos {form.nome_responsavel} por WhatsApp.
+          {slotSelecionado
+            ? <>{form.nome_crianca} entrou na lista de espera do horário das {formatarHora(slotSelecionado.horario)} · {slotSelecionado.quadra}. Se abrir vaga, avisaremos {form.nome_responsavel} por WhatsApp.</>
+            : <>{form.nome_crianca} entrou na lista de espera da {evento.nome}. Assim que abrirmos um horário novo, avisaremos {form.nome_responsavel} por WhatsApp.</>}
         </div>
         <BotoesFinais onNovaInscricao={novaInscricao} onEncerrar={() => setSessaoEncerrada(true)} />
       </div>
@@ -528,15 +549,8 @@ export function EventoInscricaoPage() {
               <div style={{ fontSize: '16px', fontWeight: '700', color: C.tinta, marginBottom: '2px' }}>Dados da inscrição</div>
 
               {todasLotadas && (
-                <div>
-                  <div style={labelStyle}>Horário de preferência *</div>
-                  <select style={inputStyle} value={slotSelecionado?.slot_id || ''}
-                    onChange={e => setSlotSelecionado(slots.find(s => s.slot_id === e.target.value) || null)}>
-                    <option value="">Escolha um horário...</option>
-                    {slots.map(s => (
-                      <option key={s.slot_id} value={s.slot_id}>{formatarHora(s.horario)} · {s.quadra}</option>
-                    ))}
-                  </select>
+                <div style={{ fontSize: '12px', color: C.textoSuave, lineHeight: '1.6' }}>
+                  Todos os horários estão lotados no momento — deixe os dados abaixo que avisamos assim que abrir uma vaga (o clube pode liberar novos horários além dos 6 atuais).
                 </div>
               )}
 
@@ -585,13 +599,18 @@ export function EventoInscricaoPage() {
                 {todasLotadas ? 'Confira a lista de espera' : 'Confira o agendamento'}
               </div>
               <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: `${C.salvia}18`, border: `1px solid ${C.salvia}66`, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ fontSize: '13px', color: C.tinta }}><strong>Evento:</strong> {evento.nome}</div>
                 <div style={{ fontSize: '13px', color: C.tinta }}><strong>Dia:</strong> {formatarData(evento.data_evento)}</div>
-                <div style={{ fontSize: '13px', color: C.tinta }}><strong>Horário{todasLotadas ? ' preferido' : ''}:</strong> {formatarHora(slotSelecionado?.horario)}</div>
-                <div style={{ fontSize: '13px', color: C.tinta }}><strong>Quadra:</strong> {slotSelecionado?.quadra}</div>
+                {!todasLotadas && (
+                  <>
+                    <div style={{ fontSize: '13px', color: C.tinta }}><strong>Horário:</strong> {formatarHora(slotSelecionado?.horario)}</div>
+                    <div style={{ fontSize: '13px', color: C.tinta }}><strong>Quadra:</strong> {slotSelecionado?.quadra}</div>
+                  </>
+                )}
               </div>
               {todasLotadas && (
                 <div style={{ fontSize: '12px', color: C.textoSuave, lineHeight: '1.6' }}>
-                  Todos os horários estão lotados no momento — ao confirmar, {form.nome_crianca || 'seu filho(a)'} entra na lista de espera. Avisaremos por WhatsApp se abrir vaga.
+                  Todos os horários estão lotados no momento — ao confirmar, {form.nome_crianca || 'seu filho(a)'} entra na lista de espera geral. Avisaremos por WhatsApp se abrir uma vaga (nesses horários ou em novos que o clube abrir).
                 </div>
               )}
               <div style={{ fontSize: '12px', color: C.textoSuave, lineHeight: '1.6' }}>
