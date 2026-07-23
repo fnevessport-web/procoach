@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Info } from 'lucide-react'
 
 const secaoStyle = { marginBottom: '28px' }
 const tituloStyle = { fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)', margin: '0 0 10px' }
@@ -42,11 +42,12 @@ export function PoliticaPrivacidadePage() {
         </div>
 
         <div style={{
-          padding: '14px 16px', borderRadius: '12px', marginBottom: '28px',
+          display: 'flex', gap: '10px', padding: '14px 16px', borderRadius: '12px', marginBottom: '28px',
           backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.25)',
         }}>
+          <Info size={16} color="var(--color-action-primary)" style={{ flexShrink: 0, marginTop: '1px' }} />
           <p style={{ fontSize: '12px', color: 'var(--color-action-primary)', margin: 0, lineHeight: '1.6' }}>
-            ⚠️ Este documento descreve tecnicamente quais dados o sistema ProCoach coleta e como
+            Este documento descreve tecnicamente quais dados o sistema ProCoach coleta e como
             trata cada um deles. Recomendamos que um advogado revise o texto antes de tratá-lo
             como o documento jurídico oficial do negócio (base legal, cláusulas contratuais e
             eventuais obrigações setoriais específicas ficam a critério dessa revisão).

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { XCircle, CheckCircle2, Send } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 
@@ -14,9 +15,9 @@ const DIAS = [
 const HORARIOS = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
 
 const STATUS = {
-  disponivel: { cor: 'var(--color-state-success)', bg: 'rgba(75,139,106,0.15)', borda: 'rgba(75,139,106,0.4)', label: '✅ Disponível' },
-  talvez: { cor: 'var(--color-state-warning)', bg: 'rgba(201,138,60,0.15)', borda: 'rgba(201,138,60,0.4)', label: '🤔 Talvez' },
-  indisponivel: { cor: 'var(--color-state-danger)', bg: 'rgba(180,71,47,0.15)', borda: 'rgba(180,71,47,0.4)', label: '❌ Indisponível' },
+  disponivel: { cor: 'var(--color-state-success)', bg: 'rgba(75,139,106,0.15)', borda: 'rgba(75,139,106,0.4)', label: 'Disponível' },
+  talvez: { cor: 'var(--color-state-warning)', bg: 'rgba(201,138,60,0.15)', borda: 'rgba(201,138,60,0.4)', label: 'Talvez' },
+  indisponivel: { cor: 'var(--color-state-danger)', bg: 'rgba(180,71,47,0.15)', borda: 'rgba(180,71,47,0.4)', label: 'Indisponível' },
 }
 
 const CICLO = ['disponivel', 'talvez', 'indisponivel']
@@ -97,7 +98,7 @@ export function DisponibilidadePage() {
   if (!professor) return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '40px', marginBottom: '16px' }}>❌</div>
+        <XCircle size={40} color="var(--color-state-danger)" style={{ marginBottom: '16px' }} />
         <div style={{ color: 'var(--color-text-light-primary)', fontSize: '16px', fontWeight: '600' }}>Link inválido</div>
         <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '13px', marginTop: '8px' }}>Este link de disponibilidade não existe ou expirou.</div>
       </div>
@@ -107,7 +108,7 @@ export function DisponibilidadePage() {
   if (enviado) return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
+        <CheckCircle2 size={48} color="var(--color-state-success)" style={{ marginBottom: '16px' }} />
         <div style={{ color: 'var(--color-text-light-primary)', fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Disponibilidade enviada!</div>
         <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '13px' }}>Obrigado, {professor.nome}! Suas informações foram salvas com sucesso.</div>
       </div>
@@ -130,7 +131,7 @@ export function DisponibilidadePage() {
 
         <div style={{ marginBottom: '24px' }}>
           <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}>
-            Olá, {professor.nome}! 👋
+            Olá, {professor.nome}!
           </div>
           <div style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.5' }}>
             Preencha sua disponibilidade semanal. Toque em cada horário para alternar entre as opções.
@@ -188,6 +189,7 @@ export function DisponibilidadePage() {
           onClick={handleSalvar}
           disabled={salvando}
           style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
             width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
             background: 'var(--color-action-primary)',
             color: 'white', fontSize: '15px', fontWeight: '700',
@@ -195,7 +197,7 @@ export function DisponibilidadePage() {
             marginTop: '8px', marginBottom: '32px',
           }}
         >
-          {salvando ? 'Enviando...' : '✅ Enviar Disponibilidade'}
+          {salvando ? 'Enviando...' : <><Send size={15} /> Enviar Disponibilidade</>}
         </button>
       </div>
     </div>

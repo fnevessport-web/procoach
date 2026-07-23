@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, TriangleAlert } from 'lucide-react'
 import { useModalidadeDashboard, getOpcoesMeses } from '../../hooks/useModalidadeDashboard'
 import { ICONES_MODALIDADES, EMPRESAS, DIAS_HEATMAP } from '../../constants/modalidades'
 import { classificarPct, CORES_SEMAFORO } from '../../constants/semaforo'
@@ -229,7 +229,7 @@ export function ModalidadePage() {
                 backgroundColor: 'rgba(180,71,47,0.08)', border: '1px solid rgba(180,71,47,0.25)',
                 display: 'flex', alignItems: 'center', gap: '10px',
               }}>
-                <span style={{ fontSize: '16px' }}>⚠️</span>
+                <TriangleAlert size={16} color="var(--color-state-danger)" style={{ flexShrink: 0 }} />
                 <span style={{ fontSize: '12px', color: 'var(--color-text-dark-primary)', lineHeight: '1.4' }}>
                   <strong style={{ color: 'var(--color-state-danger)' }}>{riscoEvasao.length} aluno{riscoEvasao.length === 1 ? '' : 's'}</strong> em risco alto de evasão (3+ faltas seguidas) — veja a lista em "Alerta — risco de evasão" abaixo.
                 </span>

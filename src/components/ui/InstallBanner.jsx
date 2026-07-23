@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Download, X } from 'lucide-react'
+import { Download, X, Smartphone } from 'lucide-react'
 
 // Dual-contexto: usa var() dentro de classe utilitária arbitrária do Tailwind (bg-[var(--...)])
 // — os aliases genéricos (--surface-raised, --text-primary...) fazem esse banner se adaptar ao
@@ -44,7 +44,7 @@ export function InstallBanner() {
   return (
     <div className="flex items-center gap-3 px-4 py-3 mb-4 rounded-xl bg-[var(--surface-raised)] border border-[var(--color-action-primary)]/30">
       <div className="w-8 h-8 rounded-lg bg-[var(--color-action-primary)]/15 flex items-center justify-center flex-shrink-0">
-        <span className="text-lg">🏆</span>
+        <Smartphone size={16} className="text-[var(--color-action-primary)]" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">Instalar ProCoach</div>

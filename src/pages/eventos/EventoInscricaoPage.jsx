@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { XCircle, CheckCircle2, ClipboardList, TriangleAlert, DoorOpen } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { mascararTelefoneBR, apenasDigitosTelefone } from '../../lib/telefone'
@@ -419,7 +420,7 @@ export function EventoInscricaoPage() {
   if (!evento) return (
     <TelaCentralizada>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '40px', marginBottom: '16px' }}>❌</div>
+        <XCircle size={40} color={C.vinho} style={{ marginBottom: '16px' }} />
         <div style={{ color: C.tinta, fontSize: '16px', fontWeight: '700' }}>Link inválido</div>
         <div style={{ color: C.textoSuave, fontSize: '13px', marginTop: '8px' }}>Este evento não existe ou as inscrições foram encerradas.</div>
       </div>
@@ -429,7 +430,7 @@ export function EventoInscricaoPage() {
   if (sessaoEncerrada) return (
     <TelaCentralizada>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '40px', marginBottom: '16px' }}>👋</div>
+        <DoorOpen size={40} color={C.marinho} style={{ marginBottom: '16px' }} />
         <div style={{ color: C.tinta, fontSize: '16px', fontWeight: '700' }}>Até já!</div>
         <div style={{ color: C.textoSuave, fontSize: '13px', marginTop: '8px' }}>Pode fechar esta página com tranquilidade.</div>
       </div>
@@ -439,7 +440,7 @@ export function EventoInscricaoPage() {
   if (resultado === 'confirmado') return (
     <TelaCentralizada>
       <div style={{ textAlign: 'center', maxWidth: '380px' }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
+        <CheckCircle2 size={48} color="#3F835B" style={{ marginBottom: '16px' }} />
         <div style={{ color: C.tinta, fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Inscrição confirmada!</div>
         <div style={{ color: C.textoSuave, fontSize: '13px', lineHeight: '1.6', marginBottom: '24px' }}>
           {form.nome_crianca} está inscrito(a) na {evento.nome}, no horário das {formatarHora(slotSelecionado?.horario)} · {slotSelecionado?.quadra}. Qualquer novidade, avisaremos {form.nome_responsavel} por WhatsApp.
@@ -452,7 +453,7 @@ export function EventoInscricaoPage() {
   if (resultado === 'lista_espera') return (
     <TelaCentralizada>
       <div style={{ textAlign: 'center', maxWidth: '380px' }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
+        <ClipboardList size={48} color={C.laranja} style={{ marginBottom: '16px' }} />
         <div style={{ color: C.tinta, fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Você está na lista de espera!</div>
         <div style={{ color: C.textoSuave, fontSize: '13px', lineHeight: '1.6', marginBottom: '24px' }}>
           {slotSelecionado
@@ -489,7 +490,9 @@ export function EventoInscricaoPage() {
           </div>
 
           <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: `${C.laranja}18`, border: `1px solid ${C.laranja}66`, marginBottom: '20px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '700', color: C.laranja, marginBottom: '6px' }}>⚠️ Esta turma não é indicada para iniciantes</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '700', color: C.laranja, marginBottom: '6px' }}>
+              <TriangleAlert size={14} style={{ flexShrink: 0 }} /> Esta turma não é indicada para iniciantes
+            </div>
             <div style={{ fontSize: '12px', color: C.tinta, lineHeight: '1.6' }}>
               Crianças iniciantes, que ainda não jogam tênis, devem se matricular nas aulas regulares que temos durante a semana, para aprimorar a técnica — e, quem sabe, no futuro, fazer parte dessa turma competitiva.
             </div>

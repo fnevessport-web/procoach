@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react'
+import { Loader2, Inbox } from 'lucide-react'
 
 // Loading/Skeleton/EmptyState são dual-contexto (aliases genéricos). PageLoading é o splash
 // inicial — aparece antes do app decidir tema por rota (durante o carregamento de auth), então
@@ -50,7 +50,7 @@ export function EmptyState({ icon, iconImg, title, description, action }) {
       {iconImg ? (
         <img src={iconImg} alt={title} style={{ width: '56px', height: '56px', objectFit: 'contain', opacity: 0.2 }} />
       ) : (
-        <div style={{ fontSize: '40px' }}>{icon || '📭'}</div>
+        <div style={{ color: 'var(--text-muted)' }}>{icon || <Inbox size={40} />}</div>
       )}
       <div style={{ fontSize: '15px', fontWeight: '500', color: 'var(--text-primary)' }}>{title}</div>
       {description && <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '240px' }}>{description}</p>}

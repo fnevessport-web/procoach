@@ -294,7 +294,7 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
       return toast.error('Selecione o professor responsável pela avaliação antes de confirmar.', { style: toastStyle })
     }
     try {
-      let mensagemSucesso = '✅ Avaliação atualizada!'
+      let mensagemSucesso = 'Avaliação atualizada!'
       const historicoPcScore = (avaliacoesAnteriores || [])
         .slice(-4)
         .filter(a => a.pc_score != null)
@@ -325,8 +325,8 @@ function FormularioAvaliacao({ aluno, alunoId, alunoNome, professorId, professor
           historicoPcScore,
         })
         mensagemSucesso = avaliacaoSalva?.status === 'pendente'
-          ? '✅ Avaliação registrada — aguardando confirmação do(s) outro(s) professor(es).'
-          : '✅ Avaliação registrada!'
+          ? 'Avaliação registrada — aguardando confirmação do(s) outro(s) professor(es).'
+          : 'Avaliação registrada!'
       }
       if (novoNivel && novoNivel !== nivelAtual) {
         await atualizarNivel.mutateAsync({ alunoId, modalidadeId, nivel: novoNivel })

@@ -31,7 +31,7 @@ inline, então o uso real é `var(--color-action-primary)`).
 --color-text-light-primary/-secondary/-muted    #1E2B24 / #4A5850 / #8A8577
 
 --color-action-primary/-hover/-active/-on-primary/-disabled   #A54C2E / #8E4126 / #77361F / #FDF8F0 / #A54C2E66
---color-accent-live / -on-live                  #C2D461 / #1E2B24   (uso raro: ao vivo, conquistas, badges)
+--color-accent-live / -on-live                  #A54C2E / #FDF8F0   (uso raro: ao vivo, conquistas, badges — mesmo tom do saibro)
 --color-state-success/-warning/-danger/-info    #4B8B6A / #C98A3C / #B4472F / #3D6B7A
 
 --font-family-sans   'Inter' (corpo, tabelas, labels)

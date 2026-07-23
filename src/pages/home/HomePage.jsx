@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format, startOfMonth } from 'date-fns'
-import { Timer, ChevronRight } from 'lucide-react'
+import { Timer, ChevronRight, TriangleAlert, PartyPopper } from 'lucide-react'
 import { useModalidades } from '../../hooks/useModalidades'
 import { useHomeDashboard } from '../../hooks/useHomeDashboard'
 import { useRelatorioMensal, gerarInsights } from '../../hooks/useRelatorioMensal'
@@ -28,7 +28,7 @@ function formataMMSS(totalSegundos) {
 }
 
 // Contexto escuro (página é Dashboard/visão geral) — tokens --color-*-dark-* diretos, sem
-// alias, já que essa página nunca é clara. --color-accent-live (lima) é o token reservado
+// alias, já que essa página nunca é clara. --color-accent-live (saibro) é o token reservado
 // pra "ao vivo" (pedido explícito do redesign); --color-state-danger é só pra falta/alerta real.
 function ProgressoAula({ horarioInicio, horarioFim }) {
   const agoraMs = useAgoraEmSegundos()
@@ -161,7 +161,7 @@ export function HomePage() {
           backgroundColor: 'rgba(180,71,47,0.1)', border: '1px solid rgba(180,71,47,0.35)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-            <span style={{ fontSize: '14px' }}>⚠️</span>
+            <TriangleAlert size={14} color="var(--color-state-danger)" />
             <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-state-danger)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               {alertasSemProfessor.length} {alertasSemProfessor.length === 1 ? 'aula sem professor' : 'aulas sem professor'}
             </span>
@@ -227,17 +227,19 @@ export function HomePage() {
       <div style={{ marginBottom: '26px' }}>
         {feriadoHoje && (
           <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
             backgroundColor: 'rgba(61,107,122,0.12)', border: '1px solid rgba(61,107,122,0.35)',
             borderRadius: '10px', padding: '10px 14px', marginBottom: '12px',
             fontSize: '12px', color: 'var(--color-state-info)',
           }}>
-            🎉 Feriado — {feriadoHoje}: não teremos aula hoje.
+            <PartyPopper size={14} style={{ flexShrink: 0 }} />
+            Feriado — {feriadoHoje}: não teremos aula hoje.
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
             {aoVivoFiltrado.length > 0 && (
-              <span className="pulse-badge" style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--color-accent-live)', boxShadow: '0 0 8px rgba(194,212,97,0.7)' }} />
+              <span className="pulse-badge" style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--color-accent-live)', boxShadow: '0 0 8px rgba(165,76,46,0.7)' }} />
             )}
             <h2 style={{ fontSize: '12px', fontWeight: '700', color: aoVivoFiltrado.length > 0 ? 'var(--color-accent-live)' : 'var(--color-text-dark-secondary)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               {aoVivoFiltrado.length > 0 ? 'AO VIVO' : 'Ao vivo agora'} · {aoVivoFiltrado.length} {aoVivoFiltrado.length === 1 ? 'aula' : 'aulas'}

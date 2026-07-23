@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { format, addDays, addMonths, startOfMonth, getDaysInMonth, getDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Plus, Calendar, UserPlus, X, ChevronRight, ChevronLeft, Copy, Check } from 'lucide-react'
+import { Plus, Calendar, UserPlus, X, ChevronRight, ChevronLeft, Copy, Check, CheckCircle2, Zap, Lightbulb, AlertTriangle, User } from 'lucide-react'
 import { useAulas, useGerarAulas, useRelatorioReposicoes } from '../../hooks/useAulas'
 import { useTurmas } from '../../hooks/useTurmas'
 import { useProfessores } from '../../hooks/useProfessores'
@@ -144,7 +144,7 @@ export function AulasAdmin() {
             cursor: 'pointer', textAlign: 'left', width: '100%',
           }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}>⚡ Aula Avulsa</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}><Zap size={13} /> Aula Avulsa</div>
               <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Uma única aula — sem data de término</div>
             </div>
             <ChevronRight size={16} color="var(--color-text-light-secondary)" />
@@ -156,7 +156,7 @@ export function AulasAdmin() {
             cursor: 'pointer', textAlign: 'left', width: '100%',
           }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}>📅 Aula Mensal / Recorrente</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}><Calendar size={13} /> Aula Mensal / Recorrente</div>
               <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Gera aulas de uma turma por período</div>
             </div>
             <ChevronRight size={16} color="var(--color-text-light-secondary)" />
@@ -167,7 +167,7 @@ export function AulasAdmin() {
       {/* Menu atalho */}
       <Modal open={modalGerar === 'menu_atalho'} onClose={fecharTudo} title="Nova Aula" size="sm">
         <div style={{ marginBottom: '14px', padding: '10px 12px', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', border: '1px solid rgba(165,76,46,0.2)' }}>
-          <div style={{ fontSize: '11px', color: 'var(--color-action-primary)', marginBottom: '4px' }}>⚡ Atalho selecionado</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--color-action-primary)', marginBottom: '4px' }}><Zap size={10} /> Atalho selecionado</div>
           <div style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', fontWeight: '600' }}>
             {atalho?.quadraNome} · {atalho?.horario}
           </div>
@@ -183,7 +183,7 @@ export function AulasAdmin() {
             cursor: 'pointer', textAlign: 'left', width: '100%',
           }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}>⚡ Aula Avulsa</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}><Zap size={13} /> Aula Avulsa</div>
               <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Quadra e horário já preenchidos</div>
             </div>
             <ChevronRight size={16} color="var(--color-text-light-secondary)" />
@@ -195,7 +195,7 @@ export function AulasAdmin() {
             cursor: 'pointer', textAlign: 'left', width: '100%',
           }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}>📅 Aula Mensal / Recorrente</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}><Calendar size={13} /> Aula Mensal / Recorrente</div>
               <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Gera aulas de uma turma por período</div>
             </div>
             <ChevronRight size={16} color="var(--color-text-light-secondary)" />
@@ -329,11 +329,11 @@ function ModalCopiarGrade({ open, onClose }) {
   }
 
   return (
-    <Modal open={open} onClose={() => { resetar(); onClose() }} title="📋 Copiar Grade" size="sm">
+    <Modal open={open} onClose={() => { resetar(); onClose() }} title={<><Copy size={15} style={{ verticalAlign: 'middle', marginRight: '6px' }} />Copiar Grade</>} size="sm">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {resultado !== null ? (
           <div style={{ textAlign: 'center', padding: '16px 0' }}>
-            <div style={{ fontSize: '40px', marginBottom: '8px' }}>✅</div>
+            <CheckCircle2 size={40} color="var(--color-state-success)" style={{ marginBottom: '8px' }} />
             <div style={{ fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '6px' }}>{resultado} aulas copiadas!</div>
             <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
               Grade de {format(new Date(dataOrigem + 'T12:00'), "dd/MM", { locale: ptBR })} → {format(new Date(dataDestino + 'T12:00'), "dd/MM", { locale: ptBR })}
@@ -349,8 +349,9 @@ function ModalCopiarGrade({ open, onClose }) {
           </div>
         ) : (
           <>
-            <div style={{ padding: '12px', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', border: '1px solid var(--color-border-light)', fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
-              💡 Copia a estrutura das aulas avulsas (quadra, horário, professor, nível) sem as presenças.
+            <div style={{ display: 'flex', gap: '8px', padding: '12px', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', border: '1px solid var(--color-border-light)', fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
+              <Lightbulb size={14} style={{ flexShrink: 0, marginTop: '1px' }} />
+              Copia a estrutura das aulas avulsas (quadra, horário, professor, nível) sem as presenças.
             </div>
 
             <div>
@@ -600,7 +601,7 @@ function AulasReposicoes() {
       </div>
 
       {isLoading ? <Loading /> : filtrada.length === 0 ? (
-        <EmptyState icon="🎉"
+        <EmptyState icon={<CheckCircle2 size={40} />}
           title={viewTab === 'repostas' ? 'Nenhuma reposição feita ainda' : 'Nenhuma falta justificada'}
           description={viewTab === 'repostas' ? 'Ninguém repôs aula com esses filtros' : 'Nenhuma reposição pendente'} />
       ) : (
@@ -771,7 +772,7 @@ function ModalReposicao({ aluno, onClose }) {
           </div>
 
           {aluno.pendentes.length === 0 && aluno.agendadas.length === 0 && aluno.repostas.length === 0 && (
-            <EmptyState icon="🎉" title="Nada por aqui" description="Sem faltas registradas" />
+            <EmptyState icon={<CheckCircle2 size={40} />} title="Nada por aqui" description="Sem faltas registradas" />
           )}
 
           {aluno.pendentes.length > 0 && (
@@ -852,11 +853,11 @@ function ModalGerarAulas({ open, onClose }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="📅 Aula Mensal / Recorrente" size="sm">
+    <Modal open={open} onClose={onClose} title={<><Calendar size={15} style={{ verticalAlign: 'middle', marginRight: '6px' }} />Aula Mensal / Recorrente</>} size="sm">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {resultado !== null ? (
           <div style={{ textAlign: 'center', padding: '16px 0' }}>
-            <div style={{ fontSize: '40px', marginBottom: '8px' }}>✅</div>
+            <CheckCircle2 size={40} color="var(--color-state-success)" style={{ marginBottom: '8px' }} />
             <div style={{ fontWeight: '600', color: 'var(--color-text-light-primary)' }}>{resultado} aulas geradas!</div>
             <button onClick={() => { onClose(); setResultado(null) }} style={{
               marginTop: '16px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
@@ -1105,7 +1106,7 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
       )
 
       if (temConflito) {
-        toast.error(`⚠️ Já existe uma aula em ${quadraNome} às ${form.horario} neste dia!`)
+        toast.error(`Já existe uma aula em ${quadraNome} às ${form.horario} neste dia!`)
         setSalvando(false)
         return
       }
@@ -1150,7 +1151,9 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
   }
 
   return (
-    <Modal open={open} onClose={() => { resetTudo(); onClose() }} title={step === 'replicar' ? '📅 Replicar Aula' : '⚡ Aula Avulsa'} size="md">
+    <Modal open={open} onClose={() => { resetTudo(); onClose() }} title={step === 'replicar'
+      ? <><Calendar size={15} style={{ verticalAlign: 'middle', marginRight: '6px' }} />Replicar Aula</>
+      : <><Zap size={15} style={{ verticalAlign: 'middle', marginRight: '6px' }} />Aula Avulsa</>} size="md">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
         {/* ── Step: Replicar ── */}
@@ -1258,8 +1261,8 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
         {step === 'form' && <>
 
         {atalho && (
-          <div style={{ padding: '8px 12px', backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.2)', borderRadius: '8px', fontSize: '12px', color: 'var(--color-action-primary)' }}>
-            ⚡ Atalho: <strong>{atalho.quadraNome}</strong> · <strong>{atalho.horario}</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '8px 12px', backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.2)', borderRadius: '8px', fontSize: '12px', color: 'var(--color-action-primary)' }}>
+            <Zap size={11} style={{ flexShrink: 0 }} /> Atalho: <strong>{atalho.quadraNome}</strong> · <strong>{atalho.horario}</strong>
           </div>
         )}
 
@@ -1337,12 +1340,12 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
             </button>
           ) : (
             <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid rgba(165,76,46,0.2)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-action-primary)' }}>👤 Novo Aluno</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: '600', color: 'var(--color-action-primary)' }}><User size={13} /> Novo Aluno</div>
               <div style={{ position: 'relative' }}>
                 <input placeholder="Nome completo *" value={novoAluno.nome} onChange={e => setNovoAluno(n => ({ ...n, nome: e.target.value }))} style={inputInline} />
                 {sugestoesNome.length > 0 && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid rgba(165,76,46,0.4)', borderRadius: '10px', marginTop: '4px', maxHeight: '150px', overflowY: 'auto' }}>
-                    <div style={{ fontSize: '10px', color: 'var(--color-action-primary)', padding: '6px 12px 4px', borderBottom: '1px solid var(--color-border-light)' }}>⚠️ Já cadastrado — clique para adicionar direto</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--color-action-primary)', padding: '6px 12px 4px', borderBottom: '1px solid var(--color-border-light)' }}><AlertTriangle size={10} /> Já cadastrado — clique para adicionar direto</div>
                     {sugestoesNome.map(a => (
                       <button key={a.id} onClick={() => { adicionarAluno(a, 'avulso'); resetNovoAluno() }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', color: 'var(--color-text-light-primary)', fontSize: '13px', textAlign: 'left', cursor: 'pointer', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                         onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-border-light)'}

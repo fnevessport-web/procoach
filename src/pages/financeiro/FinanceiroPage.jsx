@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, endOfMonth, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash } from 'lucide-react'
+import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash, Search } from 'lucide-react'
 import {
   useCustoProfessores,
   useAulasProfessorFinanceiro,
@@ -674,7 +674,7 @@ export function FinanceiroPage() {
     }
     try {
       await confirmarPagamento.mutateAsync({ professorId: professorSel.id, mes, ano: anoSel })
-      toast.success('✅ Pagamento confirmado!', { style: toastStyle })
+      toast.success('Pagamento confirmado!', { style: toastStyle })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
@@ -1401,7 +1401,7 @@ export function FinanceiroPage() {
           color: 'var(--color-text-dark-secondary)', fontSize: '12px', marginBottom: '10px', boxSizing: 'border-box',
         }}>
           <Upload size={14} />
-          {uploadingReceita ? 'Enviando...' : receitaRecord?.arquivo_nome ? `📄 ${receitaRecord.arquivo_nome}` : 'Anexar relatório do clube'}
+          {uploadingReceita ? 'Enviando...' : receitaRecord?.arquivo_nome ? receitaRecord.arquivo_nome : 'Anexar relatório do clube'}
           {receitaRecord?.arquivo_url && (
             <a href={receitaRecord.arquivo_url} target="_blank" rel="noreferrer"
               onClick={e => e.stopPropagation()}
@@ -1477,7 +1477,7 @@ export function FinanceiroPage() {
               color: 'var(--color-text-dark-primary)', fontSize: '13px', outline: 'none',
             }}
           />
-          <span style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-dark-secondary)', fontSize: '13px', pointerEvents: 'none' }}>🔍</span>
+          <Search size={13} color="var(--color-text-dark-secondary)" style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           {buscaProf && (
             <button onClick={() => setBuscaProf('')} style={{
               position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
@@ -1648,7 +1648,7 @@ export function FinanceiroPage() {
               color: custoArqPendente ? 'var(--color-action-primary)' : 'var(--color-text-dark-secondary)', fontSize: '12px',
             }}>
               <Upload size={13} />
-              {uploadingCusto ? 'Enviando...' : custoArqPendente ? `📄 ${custoArqPendente.nome}` : 'Anexar NF (opcional)'}
+              {uploadingCusto ? 'Enviando...' : custoArqPendente ? custoArqPendente.nome : 'Anexar NF (opcional)'}
             </button>
 
             <div style={{ display: 'flex', gap: '8px' }}>

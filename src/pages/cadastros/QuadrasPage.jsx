@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Edit2, Trash2 } from 'lucide-react'
+import { Plus, Edit2, Trash2, Search, Grid3X3 } from 'lucide-react'
 import { useQuadras, useQuadrasActions } from '../../hooks/useQuadras'
 import { useModalidades } from '../../hooks/useModalidades'
 import useAppStore from '../../store/useAppStore'
@@ -70,7 +70,7 @@ export function QuadrasPage() {
             value={busca}
             onChange={e => setBusca(e.target.value)}
           />
-          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light-secondary)', fontSize: '14px' }}>🔍</span>
+          <Search size={14} color="var(--color-text-light-secondary)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
         </div>
         <button onClick={abrirCriar} style={{
           padding: '10px 16px', borderRadius: '10px', border: 'none',
@@ -85,7 +85,7 @@ export function QuadrasPage() {
         <p style={{ color: 'var(--color-text-light-secondary)', fontSize: '14px' }}>Carregando...</p>
       ) : !filtradas?.length ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
-          <div style={{ fontSize: '40px', marginBottom: '8px' }}>🟩</div>
+          <Grid3X3 size={40} color="var(--color-text-light-secondary)" style={{ marginBottom: '8px' }} />
           <p style={{ color: 'var(--color-text-light-secondary)', fontSize: '14px', marginBottom: '16px' }}>Nenhuma quadra cadastrada</p>
           <button onClick={abrirCriar} style={{
             padding: '10px 20px', borderRadius: '10px', border: 'none',

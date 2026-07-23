@@ -8,16 +8,16 @@ import { useAuth } from '../../hooks/useAuth'
 // componente compartilhado.
 function CampoLogin({ label, ...props }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-      {label && <label style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', fontWeight: '500' }}>{label}</label>}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      {label && <label style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', fontWeight: '500', letterSpacing: '0.3px' }}>{label}</label>}
       <input
         {...props}
         className="login-input"
         style={{
           width: '100%', background: 'transparent', border: 'none',
           borderBottom: '1px solid rgba(240,234,216,0.3)',
-          color: 'var(--color-text-dark-primary)', fontSize: '15px',
-          padding: '8px 2px', outline: 'none', boxSizing: 'border-box',
+          color: 'var(--color-text-dark-primary)', fontSize: '13px',
+          padding: '5px 2px', outline: 'none', boxSizing: 'border-box',
           transition: 'border-color 0.2s',
         }}
         onFocus={e => { e.target.style.borderBottomColor = 'var(--color-action-primary)' }}
@@ -68,15 +68,11 @@ export function LoginPage() {
           confirmar visualmente com a foto real e subir a opacidade se precisar. */}
       <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(30,43,36,0.45)', pointerEvents: 'none' }} />
 
-      <div style={{ width: '100%', maxWidth: '400px', margin: 'auto 0', position: 'relative', zIndex: 1 }}>
+      <div style={{ width: '100%', maxWidth: '360px', marginTop: 'auto', marginBottom: '7vh', position: 'relative', zIndex: 1 }}>
 
-        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-          {/* O selo/marca já aparece na própria fotografia de fundo (rede na quadra de saibro)
-              — não sobrepõe outro logo grande aqui, só o wordmark. */}
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '30px', fontWeight: '700', color: 'var(--color-text-dark-primary)', letterSpacing: '0.5px' }}>
-            PROCOACH SPORT
-          </div>
-          <p style={{ color: 'var(--color-text-dark-secondary)', fontSize: '13px', margin: '8px 0 0', letterSpacing: '1px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <img src="/images/logo-pc-cream.png" alt="ProCoach" style={{ height: '72px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
+          <p style={{ color: 'var(--color-text-dark-secondary)', fontSize: '12px', margin: '10px 0 0', letterSpacing: '1px' }}>
             Gestão esportiva inteligente
           </p>
         </div>
@@ -88,10 +84,10 @@ export function LoginPage() {
             backgroundColor: 'rgba(30,43,36,0.55)',
             backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
             border: '1px solid rgba(240,234,216,0.15)',
-            borderRadius: '16px', padding: '32px', boxSizing: 'border-box',
+            borderRadius: '16px', padding: '24px', boxSizing: 'border-box',
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <CampoLogin
               label="CPF ou e-mail" type="text" placeholder="Seu CPF (professor) ou e-mail (gestor)"
               name="username" autoComplete="username"
@@ -104,10 +100,10 @@ export function LoginPage() {
                 value={form.senha} onChange={e => update('senha', e.target.value)} required
               />
               <button type="button" onClick={() => setMostrarSenha(v => !v)} style={{
-                position: 'absolute', right: '2px', bottom: '8px', background: 'none', border: 'none',
+                position: 'absolute', right: '2px', bottom: '5px', background: 'none', border: 'none',
                 color: 'var(--color-text-dark-secondary)', cursor: 'pointer', padding: '4px', display: 'flex',
               }}>
-                {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
+                {mostrarSenha ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
 

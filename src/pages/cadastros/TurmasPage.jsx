@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Edit2, Clock, Users } from 'lucide-react'
+import { Plus, Edit2, Clock, Users, School, Search, TriangleAlert, Target, LandPlot, User } from 'lucide-react'
 import { useTurmas, useSalvarTurma } from '../../hooks/useTurmas'
 import { useProfessores } from '../../hooks/useProfessores'
 import { useNiveis } from '../../hooks/useNiveis'
@@ -148,7 +148,7 @@ export function TurmasPage({ onIrParaProfessores }) {
                 fontSize: '13px', outline: 'none', boxSizing: 'border-box',
               }}
             />
-            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light-secondary)' }}>🔍</span>
+            <Search size={14} color="var(--color-text-light-secondary)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           </div>
         </div>
         <Button onClick={abrirCriar} size="sm">
@@ -157,7 +157,7 @@ export function TurmasPage({ onIrParaProfessores }) {
       </div>
 
       {isLoading ? <Loading /> : !filtradas?.length ? (
-        <EmptyState icon="🏫" title="Nenhuma turma" action={<Button onClick={abrirCriar}><Plus size={16} /> Criar</Button>} />
+        <EmptyState icon={<School size={40} />} title="Nenhuma turma" action={<Button onClick={abrirCriar}><Plus size={16} /> Criar</Button>} />
       ) : (
         <div className="flex flex-col gap-3">
           {filtradas.map(turma => {
@@ -172,8 +172,8 @@ export function TurmasPage({ onIrParaProfessores }) {
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--color-text-light-secondary)]">
                         {turma.professores?.nome
-                          ? <span>👨‍🏫 {turma.professores.nome}</span>
-                          : <span style={{ color: 'var(--color-state-warning)' }}>⚠️ sem professor</span>
+                          ? <span className="flex items-center gap-1"><User size={11} /> {turma.professores.nome}</span>
+                          : <span className="flex items-center gap-1" style={{ color: 'var(--color-state-warning)' }}><TriangleAlert size={11} /> sem professor</span>
                         }
                         {turma.horario_dia_semana && (
                           <span className="flex items-center gap-1">
@@ -183,8 +183,8 @@ export function TurmasPage({ onIrParaProfessores }) {
                             {turma.horario_fim && `–${turma.horario_fim.slice(0, 5)}`}
                           </span>
                         )}
-                        {turma.niveis?.nome && <span>🎯 {turma.niveis.nome}</span>}
-                        {turma.quadras?.nome && <span>🏟️ {turma.quadras.nome}</span>}
+                        {turma.niveis?.nome && <span className="flex items-center gap-1"><Target size={11} /> {turma.niveis.nome}</span>}
+                        {turma.quadras?.nome && <span className="flex items-center gap-1"><LandPlot size={11} /> {turma.quadras.nome}</span>}
                         <span className="flex items-center gap-1">
                           <Users size={11} /> {alunosAtivos.length} alunos
                         </span>

@@ -47,9 +47,11 @@
   --color-action-on-primary:     #FDF8F0;
   --color-action-disabled:       #A54C2E66;
 
-  /* Acento (uso raro: ao vivo, conquistas, badges) */
-  --color-accent-live:    #C2D461;
-  --color-accent-on-live: #1E2B24;
+  /* Acento (uso raro: ao vivo, conquistas, badges) — mesmo tom do saibro (--color-action-primary),
+     pedido explícito do redesign: o lima original destoava, o saibro se aproxima do vermelho e
+     combina mais com a ideia de "acontecendo agora". */
+  --color-accent-live:    #A54C2E;
+  --color-accent-on-live: #FDF8F0;
 
   /* Estados — mesmo significado que o app já usava (verde=ok, âmbar=atenção,
      vermelho=problema, azul=info), só com tons mais dessaturados/editoriais */
@@ -76,6 +78,17 @@
   --text-primary: var(--color-text-dark-primary);
   --text-secondary: var(--color-text-dark-secondary);
   --text-muted: var(--color-text-dark-muted);
+}
+
+/* Textura de fundo das paginas em contexto escuro (dashboard/analise) — só na raiz do <main>
+   (.app-main), nunca nas "ilhas escuras" aninhadas (BlocoPontuacaoBeyond/ConquistasCard), que
+   também levam a classe .theme-dark mas são blocos pequenos dentro de uma página Clara. */
+.app-main.theme-dark {
+  background-color: var(--color-surface-dark-base);
+  background-image: url('/images/fundo-tela.png');
+  background-size: cover;
+  background-position: top center;
+  background-repeat: no-repeat;
 }
 .theme-light {
   --surface: var(--color-surface-light-base);

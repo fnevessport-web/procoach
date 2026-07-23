@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Trash2, MessageCircle, Pencil, Camera, X } from 'lucide-react'
+import { Trash2, MessageCircle, Pencil, Camera, X, Search, Users, UserRound } from 'lucide-react'
 import {
   useAlunos, useSalvarAluno, useExcluirAluno,
   useFamiliaAluno, useSalvarVinculoFamilia, useExcluirVinculoFamilia,
@@ -182,7 +182,7 @@ export function AlunosPage() {
             value={busca}
             onChange={e => setBusca(e.target.value)}
           />
-          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light-secondary)', fontSize: '14px' }}>🔍</span>
+          <Search size={14} color="var(--color-text-light-secondary)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
         </div>
         <button onClick={abrirCriar} style={{
           padding: '10px 16px', borderRadius: '10px', border: 'none',
@@ -193,7 +193,7 @@ export function AlunosPage() {
 
       {isLoading ? <Loading /> : !filtrados?.length ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
-          <div style={{ fontSize: '40px', marginBottom: '8px' }}>👥</div>
+          <Users size={40} color="var(--color-text-light-secondary)" style={{ marginBottom: '8px' }} />
           <p style={{ color: 'var(--color-text-light-secondary)', fontSize: '14px', marginBottom: '16px' }}>Nenhum aluno cadastrado</p>
           <button onClick={abrirCriar} style={{
             padding: '10px 20px', borderRadius: '10px', border: 'none',
@@ -233,7 +233,9 @@ export function AlunosPage() {
                   <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginTop: '2px' }}>
                     {aluno.modalidades?.nome || '—'}
                     {aluno.menor_idade && aluno.nome_responsavel && (
-                      <span style={{ marginLeft: '6px' }}>👤 {aluno.nome_responsavel}</span>
+                      <span style={{ marginLeft: '6px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        <UserRound size={11} /> {aluno.nome_responsavel}
+                      </span>
                     )}
                   </div>
                 </div>

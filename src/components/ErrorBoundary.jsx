@@ -1,4 +1,5 @@
 import { Component } from 'react'
+import { TriangleAlert } from 'lucide-react'
 
 export class ErrorBoundary extends Component {
   constructor(props) {
@@ -22,7 +23,7 @@ export class ErrorBoundary extends Component {
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           padding: '24px', textAlign: 'center', boxSizing: 'border-box',
         }}>
-          <div style={{ fontSize: '40px', marginBottom: '16px' }}>⚠️</div>
+          <TriangleAlert size={40} color="var(--color-state-warning)" style={{ marginBottom: '16px' }} />
           <p style={{ fontSize: '15px', fontWeight: '600', color: 'var(--color-text-dark-primary)', margin: '0 0 8px' }}>
             Algo deu errado
           </p>

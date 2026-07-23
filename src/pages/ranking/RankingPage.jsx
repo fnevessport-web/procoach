@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Trophy, Plus, ChevronDown, ChevronUp, Check, AlertTriangle, X, Award, HelpCircle, Download } from 'lucide-react'
+import { Trophy, Plus, ChevronDown, ChevronUp, Check, AlertTriangle, X, Award, HelpCircle, Download, Medal } from 'lucide-react'
 import {
   useClassificacaoRanking, useJogosEmAberto,
   useCriarJogo, useLancarPlacar, useConfirmarPlacar, useContestarPlacar, useCancelarJogo,
@@ -30,7 +30,7 @@ const toastStyle = {
   borderRadius: '10px', fontSize: '13px',
 }
 
-const MEDALHAS = { 1: '🥇', 2: '🥈', 3: '🥉' }
+const CORES_MEDALHA = { 1: 'var(--color-action-primary)', 2: 'var(--color-text-dark-secondary)', 3: 'var(--color-state-warning)' }
 
 function corNivel(nivel) {
   return NIVEIS_ASSIDUIDADE.find(n => n.chave === nivel)?.cor || 'var(--color-text-dark-secondary)'
@@ -475,8 +475,10 @@ function LinhaClassificacao({ posicao, tipoRanking, expandido, onToggle }) {
         display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '10px 12px',
         borderRadius: '10px', border: 'none', backgroundColor: 'var(--color-surface-dark-raised)', cursor: 'pointer', textAlign: 'left',
       }}>
-        <span style={{ width: '26px', textAlign: 'center', fontSize: MEDALHAS[posicao.posicao] ? '16px' : '13px', fontWeight: '700', color: 'var(--color-text-dark-secondary)', flexShrink: 0 }}>
-          {MEDALHAS[posicao.posicao] || posicao.posicao}
+        <span style={{ width: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '700', color: 'var(--color-text-dark-secondary)', flexShrink: 0 }}>
+          {CORES_MEDALHA[posicao.posicao]
+            ? <Medal size={16} color={CORES_MEDALHA[posicao.posicao]} />
+            : posicao.posicao}
         </span>
         {posicao.alunos?.foto_url ? (
           <img src={posicao.alunos.foto_url} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />

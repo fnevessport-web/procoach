@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil, Lock, KeyRound, Eye, EyeOff, MoreVertical, Ban, RotateCcw } from 'lucide-react'
+import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil, Lock, KeyRound, Eye, EyeOff, MoreVertical, Ban, RotateCcw, Save, Landmark, TriangleAlert } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { usePermissions } from '../../hooks/usePermissions'
@@ -1295,7 +1295,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
               <div style={{ position: 'fixed', inset: 0, zIndex: 60, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end' }} onClick={() => setModalExtra(false)}>
                 <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box' }}>
                   <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--color-text-light-muted)', borderRadius: '2px', margin: '0 auto 16px' }} />
-                  <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)', marginBottom: '16px' }}>{formExtra.id ? '✏️ Editar Extra' : '+ Pagamento Extra'}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)', marginBottom: '16px' }}>
+                    {formExtra.id ? <><Pencil size={14} /> Editar Extra</> : '+ Pagamento Extra'}
+                  </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div><div style={labelStyle}>Data</div>
                       <input type="date" style={inputStyle} value={formExtra.data_pagamento} onChange={e => setFormExtra(f => ({ ...f, data_pagamento: e.target.value }))} /></div>
@@ -1313,8 +1315,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     )}
                     <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                       <button onClick={() => setModalExtra(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>
-                      <button onClick={handleSalvarExtra} disabled={salvandoExtra} style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-                        {salvandoExtra ? 'Salvando...' : '💾 Salvar'}
+                      <button onClick={handleSalvarExtra} disabled={salvandoExtra} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flex: 2, padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                        {salvandoExtra ? 'Salvando...' : <><Save size={14} /> Salvar</>}
                       </button>
                     </div>
                   </div>
@@ -1649,8 +1651,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   </button>
                 )}
 
-                <button onClick={handleSalvar} disabled={salvando} style={{ marginTop: '8px', width: '100%', padding: '13px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
-                  {salvando ? 'Salvando...' : '💾 Salvar dados'}
+                <button onClick={handleSalvar} disabled={salvando} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '8px', width: '100%', padding: '13px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+                  {salvando ? 'Salvando...' : <><Save size={15} /> Salvar dados</>}
                 </button>
               </div>
             )}
@@ -1685,7 +1687,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 {cardAberto.banco === 'Itaú' && (
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: 'rgba(201,138,60,0.08)', borderRadius: '8px', border: '1px solid rgba(201,138,60,0.2)' }}>
-                      <span style={{ fontSize: '16px' }}>🧡</span>
+                      <Landmark size={15} color="var(--color-state-warning)" style={{ flexShrink: 0 }} />
                       <span style={{ fontSize: '12px', color: 'var(--color-state-warning)', fontWeight: '600' }}>Correntista Itaú — pagar via PIX</span>
                     </div>
                     {form.nome_titular && (
@@ -1777,8 +1779,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   </div>
                 </div>
 
-                <button onClick={handleSalvar} disabled={salvando} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-                  {salvando ? 'Salvando...' : '💾 Salvar dados bancários'}
+                <button onClick={handleSalvar} disabled={salvando} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                  {salvando ? 'Salvando...' : <><Save size={14} /> Salvar dados bancários</>}
                 </button>
 
                 <div>
@@ -1824,7 +1826,11 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                               <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>{av.media}</span>
                             </div>
                             <div style={{ fontSize: '9px', color: 'var(--color-text-light-muted)' }}>{format(new Date(av.data_avaliacao + 'T12:00'), 'dd/MM/yy')}</div>
-                            {tomarAcao && <div style={{ fontSize: '8px', color: 'var(--color-state-danger)', fontWeight: '600', marginTop: '4px' }}>⚠️ AÇÃO</div>}
+                            {tomarAcao && (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', fontSize: '8px', color: 'var(--color-state-danger)', fontWeight: '600', marginTop: '4px' }}>
+                                <TriangleAlert size={9} /> AÇÃO
+                              </div>
+                            )}
                           </div>
                         )
                       })}
@@ -1902,7 +1908,11 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Star size={12} fill="var(--color-action-primary)" color="var(--color-action-primary)" />
                           <span style={{ fontSize: '13px', fontWeight: '700', color: tomarAcao ? 'var(--color-state-danger)' : 'var(--color-action-primary)' }}>{av.media}</span>
-                          {tomarAcao && <span style={{ fontSize: '10px', color: 'var(--color-state-danger)', fontWeight: '600', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(180,71,47,0.1)' }}>⚠️ TOMAR AÇÃO</span>}
+                          {tomarAcao && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--color-state-danger)', fontWeight: '600', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(180,71,47,0.1)' }}>
+                              <TriangleAlert size={10} /> TOMAR AÇÃO
+                            </span>
+                          )}
                         </div>
                       </div>
                       {CRITERIOS.map(c => (

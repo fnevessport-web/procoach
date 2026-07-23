@@ -52,7 +52,7 @@ export function Header() {
         <img
           src="/images/logo-pc-cream.png"
           alt="ProCoach"
-          style={{ height: '28px', objectFit: 'contain' }}
+          style={{ height: '42px', objectFit: 'contain' }}
         />
 
         {fromRoute && (

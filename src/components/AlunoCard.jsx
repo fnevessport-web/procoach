@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Camera, MessageCircle, ChevronRight, ClipboardList, Plus, Trophy } from 'lucide-react'
+import { Camera, MessageCircle, ChevronRight, ClipboardList, Plus, Trophy, UserX } from 'lucide-react'
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -127,7 +127,7 @@ export function AlunoCard({ alunoId }) {
   }
 
   if (isLoading) return <Loading />
-  if (!aluno) return <EmptyState icon="🤷" title="Aluno não encontrado" />
+  if (!aluno) return <EmptyState icon={<UserX size={40} />} title="Aluno não encontrado" />
 
   return (
     <div className="fade-in">

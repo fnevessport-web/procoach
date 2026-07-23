@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown, Info, History, Repeat } from 'lucide-react'
+import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown, Info, History, Repeat, CloudRain, Trash2, Save, User, MessageSquareText, DollarSign, Plus, Minus, CalendarDays, PartyPopper, StickyNote } from 'lucide-react'
 import { horarioParaMinutos } from '../../constants/modalidades'
 import { getFeriado } from '../../constants/feriados'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas, confirmarAulasElegiveis, gerarReposicoesPorCancelamento, useAvisarFalta } from '../../hooks/useAulas'
@@ -26,9 +26,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
 const STATUS_AULA = [
-  { value: 'dada', label: '✅ Confirmada', paga: true },
-  { value: 'nao_dada', label: '❌ Sem Aula', paga: true },
-  { value: 'cancelada', label: '🌧️ Cancelada', paga: false },
+  { value: 'dada', label: 'Confirmada', icone: Check, paga: true },
+  { value: 'nao_dada', label: 'Sem Aula', icone: X, paga: true },
+  { value: 'cancelada', label: 'Cancelada', icone: CloudRain, paga: false },
 ]
 
 const MOTIVOS_CANCELAMENTO = ['Chuva', 'Falta do professor', 'Manutenção da quadra', 'Outro']
@@ -256,9 +256,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       qc.invalidateQueries({ queryKey: ['aulas'] })
       qc.invalidateQueries({ queryKey: ['relatorio_repos'] })
       toast.success(
-        acaoMassa === 'confirmar' ? '✅ Todas as aulas confirmadas!' :
-        acaoMassa === 'sem_aula' ? '❌ Todas marcadas como Sem Aula!' :
-        '🌧️ Todas as aulas canceladas!',
+        acaoMassa === 'confirmar' ? 'Todas as aulas confirmadas!' :
+        acaoMassa === 'sem_aula' ? 'Todas marcadas como Sem Aula!' :
+        'Todas as aulas canceladas!',
         { style: toastStyle }
       )
       setModalMassa(null)
@@ -310,7 +310,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   async function handleAvisarFalta(aulaId, alunoId, nomeAluno) {
     try {
       await avisarFalta.mutateAsync({ aulaId, alunoId })
-      toast.success(`🗣️ Falta de ${nomeAluno} avisada — vaga aberta pra aula avulsa`, { style: toastStyle })
+      toast.success(`Falta de ${nomeAluno} avisada — vaga aberta pra aula avulsa`, { style: toastStyle })
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
     }
@@ -695,7 +695,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       if (error) throw error
       qc.invalidateQueries({ queryKey: ['aulas'] })
       setEditandoNotas(false)
-      toast.success('📋 Observação salva!', { style: toastStyle })
+      toast.success('Observação salva!', { style: toastStyle })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
@@ -758,7 +758,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       updatePresenca(aulaId, alunoId, 'nivel_avaliado_prof', alerta.nivel)
       updatePresenca(aulaId, alunoId, 'obs_nivel_prof', alerta.obs)
       setAlertaNivel(prev => ({ ...prev, [alunoId]: null }))
-      toast.success('⚠️ Alerta de nível salvo!', { style: toastStyle })
+      toast.success('Alerta de nível salvo!', { style: toastStyle })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
@@ -912,7 +912,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       }
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
-      toast.success('✅ Presenças salvas!', { style: toastStyle })
+      toast.success('Presenças salvas!', { style: toastStyle })
       reposicoesBaixadas.forEach(r => {
         if (!r.dataFaltaResolvida) return
         toast.success(
@@ -1077,7 +1077,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       )
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
-      toast.success(`✅ ${nomeSubstituto} substituindo nessa aula!`, { style: toastStyle })
+      toast.success(`${nomeSubstituto} substituindo nessa aula!`, { style: toastStyle })
       setSubstituindoProfessor(false)
       setNovoProfessorSubstitutoId('')
     } catch (err) {
@@ -1240,7 +1240,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
         [{ aluno_id: promptOutraTurma.alunoId }]
       )
       qc.invalidateQueries({ queryKey: ['aulas'] })
-      toast.success(`✅ ${promptOutraTurma.alunoNome} incluído(a) também em ${turma.nome}!`, { style: toastStyle })
+      toast.success(`${promptOutraTurma.alunoNome} incluído(a) também em ${turma.nome}!`, { style: toastStyle })
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
     } finally {
@@ -1376,7 +1376,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
             onClick={() => document.getElementById('datepicker-grade').showPicker()}
             style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', textTransform: 'capitalize', cursor: 'pointer' }}
           >
-            {label} <span style={{ fontSize: '11px', color: 'var(--color-text-light-muted)' }}>📅</span>
+            {label} <CalendarDays size={11} color="var(--color-text-light-muted)" style={{ verticalAlign: 'middle' }} />
           </div>
           <input
             id="datepicker-grade"
@@ -1402,11 +1402,13 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
 
       {feriado && (
         <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
           backgroundColor: 'rgba(61,107,122,0.1)', border: '1px solid rgba(61,107,122,0.3)',
           borderRadius: '10px', padding: '10px 14px', marginBottom: '12px',
           fontSize: '12px', color: 'var(--color-state-info)',
         }}>
-          🎉 Feriado — {feriado}: não teremos aula hoje.
+          <PartyPopper size={14} style={{ flexShrink: 0 }} />
+          Feriado — {feriado}: não teremos aula hoje.
         </div>
       )}
 
@@ -1558,9 +1560,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {[
-                    { key: 'confirmar', emoji: '✅', label: 'Confirmar todas as aulas', sub: 'Todos os alunos marcados como Presente', color: 'var(--color-state-success)' },
-                    { key: 'sem_aula', emoji: '❌', label: 'Sem Aula', sub: 'Todos os alunos marcados como Falta', color: 'var(--color-state-danger)' },
-                    { key: 'cancelar', emoji: '🌧️', label: 'Cancelar todas', sub: 'Todos os alunos com Falta Justificada', color: 'var(--color-state-info)' },
+                    { key: 'confirmar', icone: Check, label: 'Confirmar todas as aulas', sub: 'Todos os alunos marcados como Presente', color: 'var(--color-state-success)' },
+                    { key: 'sem_aula', icone: X, label: 'Sem Aula', sub: 'Todos os alunos marcados como Falta', color: 'var(--color-state-danger)' },
+                    { key: 'cancelar', icone: CloudRain, label: 'Cancelar todas', sub: 'Todos os alunos com Falta Justificada', color: 'var(--color-state-info)' },
                   ].map(op => (
                     <button key={op.key} onClick={() => { setAcaoMassa(op.key); setModalMassa('confirmar') }} style={{
                       display: 'flex', alignItems: 'center', gap: '12px',
@@ -1570,7 +1572,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                       onMouseEnter={e => e.currentTarget.style.borderColor = op.color + '50'}
                       onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border-light)'}
                     >
-                      <span style={{ fontSize: '20px' }}>{op.emoji}</span>
+                      <op.icone size={20} color={op.color} style={{ flexShrink: 0 }} />
                       <div>
                         <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text-light-primary)' }}>{op.label}</div>
                         <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '2px' }}>{op.sub}</div>
@@ -1586,8 +1588,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
             ) : (
               <>
                 <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
-                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>
-                    {acaoMassa === 'confirmar' ? '✅' : acaoMassa === 'sem_aula' ? '❌' : '🌧️'}
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                    {acaoMassa === 'confirmar'
+                      ? <Check size={32} color="var(--color-state-success)" />
+                      : acaoMassa === 'sem_aula'
+                      ? <X size={32} color="var(--color-state-danger)" />
+                      : <CloudRain size={32} color="var(--color-state-info)" />}
                   </div>
                   <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)', marginBottom: '6px' }}>
                     {acaoMassa === 'confirmar' ? 'Confirmar todas as aulas?' : acaoMassa === 'sem_aula' ? 'Marcar todas como Sem Aula?' : 'Cancelar todas as aulas?'}
@@ -1634,11 +1640,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       {/* Aviso dia futuro */}
       {isFuturo && (
         <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
           backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.2)',
           borderRadius: '10px', padding: '8px 14px', marginBottom: '12px',
           fontSize: '12px', color: 'var(--color-action-primary)', textAlign: 'center',
         }}>
-          📅 Aulas futuras — status bloqueado até o dia da aula
+          <CalendarDays size={13} style={{ flexShrink: 0 }} /> Aulas futuras — status bloqueado até o dia da aula
         </div>
       )}
 
@@ -1677,7 +1684,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
             <>
               <span style={{ fontSize: '11px', color: 'var(--color-border-light)', flexShrink: 0 }}>·</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
-                <span style={{ fontSize: '11px' }}>🌧️</span>
+                <CloudRain size={11} color="var(--color-state-info)" />
                 <span style={{ fontSize: '11px', color: 'var(--color-state-info)', fontWeight: '600' }}>{aulasCanceladas}</span>
               </div>
             </>
@@ -1838,15 +1845,15 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                           ? <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', backgroundColor: 'rgba(30,43,36,0.06)', color: 'var(--color-text-light-secondary)' }}>sem aluno</span>
                           : <span />
                         }
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dotColor, flexShrink: 0 }} />
-                          {hasAlerta && <span style={{ fontSize: '9px' }}>⚠️</span>}
-                          {hasReposicao && <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: COR_REPOSICAO, flexShrink: 0 }} />}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {hasAlerta && <AlertTriangle size={9} color="var(--color-state-warning)" />}
+                          {hasReposicao && <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: COR_REPOSICAO, flexShrink: 0 }} />}
                           {hasNotas && <FileText size={8} color="var(--color-text-light-muted)" />}
-                          {idsComConversa.has(aulaCelula.id) && <MessageCircle size={8} color="var(--color-state-info)" />}
+                          {idsComConversa.has(aulaCelula.id) && <MessageCircle size={8} color="var(--color-text-light-muted)" />}
                           {!semAluno && aulaCelula.status_aula === 'dada' && aulaCelula.paga_professor === true && (
-                            <Crown size={9} color="var(--color-action-primary)" title="Validada e confirmada pro pagamento" />
+                            <Crown size={9} color="var(--color-text-light-muted)" title="Validada e confirmada pro pagamento" />
                           )}
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dotColor, flexShrink: 0 }} />
                         </div>
                       </div>
                       <div style={{ fontSize: '11px', fontWeight: '600', color: aulaEhFutura ? 'var(--color-text-light-muted)' : 'var(--color-text-light-primary)', lineHeight: '1.3', marginBottom: '4px' }}>
@@ -1854,13 +1861,16 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                       </div>
                       <div style={{ fontSize: '10px', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: semProfessor ? 'var(--color-state-warning)' : 'var(--color-text-light-secondary)' }}>
                         {semProfessor
-                          ? '⚠️ sem professor'
-                          : <>{aulaCelula.eh_substituicao && <span title="Substituição">🔁 </span>}{aulaCelula.professores?.nome?.split(' ')[0]}</>
+                          ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><AlertTriangle size={9} /> sem professor</span>
+                          : <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              {aulaCelula.eh_substituicao && <Repeat size={9} title="Substituição" style={{ flexShrink: 0 }} />}
+                              {aulaCelula.professores?.nome?.split(' ')[0]}
+                            </span>
                         }
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {aulaEhFutura
-                          ? <span style={{ fontSize: '10px', color: 'var(--color-text-light-muted)' }}>📅 agendada</span>
+                          ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: 'var(--color-text-light-muted)' }}><Clock size={9} /> agendada</span>
                           : <>
                             <span style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)' }}><b>T</b>{qtdTotal}</span>
                             {qtdP > 0 && <span style={{ fontSize: '10px', color: 'var(--color-state-success)' }}>✓{qtdP}</span>}
@@ -1908,11 +1918,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     <span
                       title={aula.prof_titular?.nome ? `Titular da turma: ${aula.prof_titular.nome}` : 'Substituição'}
                       style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '3px',
                         fontSize: '9px', fontWeight: '700', padding: '2px 6px', borderRadius: '5px',
                         backgroundColor: 'rgba(61,107,122,0.15)', color: COR_REPOSICAO,
                       }}
                     >
-                      🔁 Substituição
+                      <Repeat size={9} /> Substituição
                     </span>
                   )}
                 </div>
@@ -2057,8 +2068,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                           <div style={{ color: 'var(--color-text-light-primary)', marginBottom: '2px' }}>
                             {item.usuario || 'sistema'} · {format(new Date(item.criado_em), "dd/MM/yyyy 'às' HH:mm")}
                           </div>
-                          {adicionados.length > 0 && <div>➕ Adicionado(s): {adicionados.join(', ')}</div>}
-                          {removidos.length > 0 && <div>➖ Removido(s): {removidos.join(', ')}</div>}
+                          {adicionados.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Plus size={10} /> Adicionado(s): {adicionados.join(', ')}</div>
+                          )}
+                          {removidos.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Minus size={10} /> Removido(s): {removidos.join(', ')}</div>
+                          )}
                           {adicionados.length === 0 && removidos.length === 0 && <div>Aula atualizada.</div>}
                         </div>
                       )
@@ -2164,11 +2179,13 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
 
             {aulaFutura && (
               <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: '8px',
                 backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.2)',
                 borderRadius: '10px', padding: '10px 14px', marginBottom: '14px',
                 fontSize: '12px', color: 'var(--color-action-primary)',
               }}>
-                📅 Aula agendada para o futuro — dá pra marcar como Sem Aula/Cancelada e ajustar presenças com antecedência, se já souber que não vai acontecer.
+                <CalendarDays size={14} style={{ flexShrink: 0, marginTop: '1px' }} />
+                Aula agendada para o futuro — dá pra marcar como Sem Aula/Cancelada e ajustar presenças com antecedência, se já souber que não vai acontecer.
               </div>
             )}
 
@@ -2180,7 +2197,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     border: '1px solid rgba(165,76,46,0.2)', padding: '12px',
                     display: 'flex', flexDirection: 'column', gap: '10px',
                   }}>
-                    <div style={{ fontSize: '12px', color: 'var(--color-action-primary)', fontWeight: '600' }}>✏️ Editar Aula</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--color-action-primary)', fontWeight: '600' }}><Pencil size={12} /> Editar Aula</div>
                     <div>
                       <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginBottom: '4px' }}>Data</div>
                       <input type="date" value={editForm.data_aula} onChange={e => setEditForm(f => ({ ...f, data_aula: e.target.value }))} style={inputStyle} />
@@ -2226,7 +2243,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     </button>
                     {!confirmandoExclusao ? (
                       <button onClick={() => setConfirmandoExclusao(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(180,71,47,0.3)', background: 'none', color: 'var(--color-state-danger)', fontSize: '12px', cursor: 'pointer' }}>
-                        🗑️ Excluir
+                        <Trash2 size={12} /> Excluir
                       </button>
                     ) : (
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '6px 10px', borderRadius: '8px', backgroundColor: 'rgba(180,71,47,0.08)', border: '1px solid rgba(180,71,47,0.3)' }}>
@@ -2252,7 +2269,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                 )}
                 {!confirmandoExclusao ? (
                   <button onClick={() => setConfirmandoExclusao(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(180,71,47,0.3)', background: 'none', color: 'var(--color-state-danger)', fontSize: '12px', cursor: 'pointer' }}>
-                    🗑️ Excluir aula
+                    <Trash2 size={12} /> Excluir aula
                   </button>
                 ) : (
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '6px 10px', borderRadius: '8px', backgroundColor: 'rgba(180,71,47,0.08)', border: '1px solid rgba(180,71,47,0.3)' }}>
@@ -2284,8 +2301,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                 />
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={() => setEditandoNotas(false)} style={{ flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '11px', cursor: 'pointer' }}>Cancelar</button>
-                  <button onClick={() => handleSalvarNotas(aula.id)} style={{ flex: 2, padding: '7px', borderRadius: '8px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
-                    💾 Salvar observação
+                  <button onClick={() => handleSalvarNotas(aula.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', flex: 2, padding: '7px', borderRadius: '8px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
+                    <Save size={12} /> Salvar observação
                   </button>
                 </div>
               </div>
@@ -2314,12 +2331,13 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                       if (s.value === 'cancelada') setMostrarMotivoCancelamento(true)
                       else { setMostrarMotivoCancelamento(false); handleStatusAula(aula.id, s.value) }
                     }} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
                       flex: 1, padding: '8px 4px', borderRadius: '8px', border: 'none',
                       fontSize: '11px', fontWeight: '500', cursor: 'pointer',
                       background: statusAtual === s.value ? 'var(--color-action-primary)' : 'var(--color-surface-light-overlay)',
                       color: statusAtual === s.value ? 'white' : 'var(--color-text-light-secondary)',
                       boxSizing: 'border-box', transition: 'all 0.15s',
-                    }}>{s.label}</button>
+                    }}><s.icone size={12} /> {s.label}</button>
                   ))}
                 </div>
                 {mostrarMotivoCancelamento && (
@@ -2336,8 +2354,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     </div>
                   </div>
                 )}
-                <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '6px' }}>
-                  💰 Professor: <span style={{ color: aula.paga_professor ? 'var(--color-state-success)' : 'var(--color-state-danger)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '6px' }}>
+                  <DollarSign size={11} style={{ flexShrink: 0 }} /> Professor: <span style={{ color: aula.paga_professor ? 'var(--color-state-success)' : 'var(--color-state-danger)' }}>
                     {aula.paga_professor ? 'Aula paga' : 'Aula não paga'}
                   </span>
                   {statusAtual === 'cancelada' && aula.motivo_cancelamento && (
@@ -2371,7 +2389,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                           textDecoration: temAlerta ? 'underline' : 'none',
                           textDecorationColor: 'var(--color-action-primary)', textDecorationStyle: 'dotted',
                         }}>{aluno.nome}</span>
-                        {temAlerta && <span style={{ fontSize: '11px' }}>⚠️</span>}
+                        {temAlerta && <AlertTriangle size={11} color="var(--color-state-warning)" />}
                         {isReposicao && (
                           <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(61,107,122,0.15)', color: COR_REPOSICAO, fontWeight: '600' }}>reposição</span>
                         )}
@@ -2395,8 +2413,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                             {TIPO_PARTICIPACAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                           </select>
                           {aulaFutura && aluno.status_presenca !== 'falta_justificada' && (
-                            <button onClick={() => handleAvisarFalta(aula.id, aluno.aluno_id, aluno.nome)} title="Avisar falta — abre vaga avulsa" disabled={avisarFalta.isPending} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(201,138,60,0.1)', color: 'var(--color-state-warning)', fontSize: '13px' }}>
-                              🗣️
+                            <button onClick={() => handleAvisarFalta(aula.id, aluno.aluno_id, aluno.nome)} title="Avisar falta — abre vaga avulsa" disabled={avisarFalta.isPending} style={{ display: 'flex', alignItems: 'center', padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(201,138,60,0.1)', color: 'var(--color-state-warning)' }}>
+                              <MessageSquareText size={12} />
                             </button>
                           )}
                           <button onClick={() => iniciarRemocaoAluno(aula, aluno.aluno_id)} title="Remover" style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(180,71,47,0.08)', color: 'var(--color-state-danger)' }}>
@@ -2407,8 +2425,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     </div>
 
                     {origemAberta === aluno.aluno_id && aluno.criado_por_nome && (
-                      <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '8px', backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '6px', padding: '6px 8px' }}>
-                        👤 Incluído por <span style={{ color: 'var(--color-text-light-primary)' }}>{aluno.criado_por_nome}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '8px', backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '6px', padding: '6px 8px' }}>
+                        <User size={10} style={{ flexShrink: 0 }} /> Incluído por <span style={{ color: 'var(--color-text-light-primary)' }}>{aluno.criado_por_nome}</span>
                         {aluno.criado_em && ` em ${format(new Date(aluno.criado_em), "dd/MM/yyyy 'às' HH:mm")}`}
                       </div>
                     )}
@@ -2454,7 +2472,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
 
                     {alertaAberto && (
                       <div style={{ backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '8px', border: '1px solid rgba(165,76,46,0.2)', padding: '10px', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <div style={{ fontSize: '11px', color: 'var(--color-action-primary)', fontWeight: '600' }}>⚠️ Avaliação de Nível pelo Professor</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--color-action-primary)', fontWeight: '600' }}><AlertTriangle size={11} /> Avaliação de Nível pelo Professor</div>
                         <div>
                           <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '4px' }}>Nível real avaliado</div>
                           <select value={alertaAberto.nivel} onChange={e => setAlertaNivel(prev => ({ ...prev, [aluno.aluno_id]: { ...prev[aluno.aluno_id], nivel: e.target.value } }))} style={{ ...inputStyle, fontSize: '12px' }}>
@@ -2477,9 +2495,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     )}
 
                     {temAlerta && !alertaAberto && aluno.obs_nivel_prof && (
-                      <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '6px', fontStyle: 'italic' }}>
-                        📝 {aluno.nivel_avaliado_prof && <span style={{ color: 'var(--color-action-primary)' }}>{aluno.nivel_avaliado_prof} · </span>}
-                        {aluno.obs_nivel_prof}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px', fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '6px', fontStyle: 'italic' }}>
+                        <StickyNote size={10} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <span>
+                          {aluno.nivel_avaliado_prof && <span style={{ color: 'var(--color-action-primary)' }}>{aluno.nivel_avaliado_prof} · </span>}
+                          {aluno.obs_nivel_prof}
+                        </span>
                       </div>
                     )}
 
@@ -2527,7 +2548,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                   </div>
                 ) : (
                   <div style={{ padding: '12px', borderRadius: '12px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid rgba(165,76,46,0.2)', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                    <div style={{ fontSize: '12px', color: 'var(--color-action-primary)', fontWeight: '600' }}>👤 Novo Aluno</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--color-action-primary)', fontWeight: '600' }}><User size={12} /> Novo Aluno</div>
                     <div style={{ position: 'relative' }}>
                       <input placeholder="Nome completo *" value={novoAlunoModal.nome} onChange={e => setNovoAlunoModal(n => ({ ...n, nome: e.target.value }))} style={inputStyle} />
                       {(() => {
@@ -2539,7 +2560,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                           : []
                         return sugestoes.length > 0 ? (
                           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid rgba(165,76,46,0.4)', borderRadius: '10px', marginTop: '4px', maxHeight: '150px', overflowY: 'auto' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--color-action-primary)', padding: '6px 12px 4px', borderBottom: '1px solid var(--color-border-light)' }}>⚠️ Já cadastrado — clique para adicionar direto</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--color-action-primary)', padding: '6px 12px 4px', borderBottom: '1px solid var(--color-border-light)' }}><AlertTriangle size={10} /> Já cadastrado — clique para adicionar direto</div>
                             {sugestoes.map(a => (
                               <button key={a.id} onClick={() => { adicionarAlunoNaLista(aula.id, a); setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '' }) }}
                                 style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', color: 'var(--color-text-light-primary)', fontSize: '13px', textAlign: 'left', cursor: 'pointer', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
@@ -2607,11 +2628,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
 
             {podeMarcarPresenca && (
               <button onClick={() => handleSalvarPresencas(aula.id)} disabled={salvarPresencas.isPending} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                 marginTop: '12px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
                 background: 'var(--color-action-primary)',
                 color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer', boxSizing: 'border-box',
               }}>
-                {salvarPresencas.isPending ? 'Salvando...' : aulaFutura ? '💾 Salvar alunos da turma' : '💾 Salvar Presenças'}
+                {salvarPresencas.isPending ? 'Salvando...' : <><Save size={14} /> {aulaFutura ? 'Salvar alunos da turma' : 'Salvar Presenças'}</>}
               </button>
             )}
           </div>

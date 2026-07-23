@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { format, addDays, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronRight, X, AlertTriangle, Check, MessageCircle, Sparkles } from 'lucide-react'
+import { ChevronRight, X, AlertTriangle, Check, MessageCircle, Sparkles, Eye } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { usePendenciasConfirmacao, useConfirmarAvaliacaoTecnica, useResumoTecnicoTurma } from '../../hooks/useAlunos'
@@ -371,7 +371,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
             fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)', textTransform: 'uppercase',
             letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px',
           }}>
-            👀 De olho ({meusAlertasFaltas.length})
+            <Eye size={13} /> De olho ({meusAlertasFaltas.length})
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {meusAlertasFaltas.map(a => {

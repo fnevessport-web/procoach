@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, ClipboardList, Search } from 'lucide-react'
+import { AlertTriangle, ClipboardList, Search, StickyNote } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useNiveis } from '../../hooks/useNiveis'
 import useAppStore from '../../store/useAppStore'
@@ -186,8 +186,9 @@ export function MeusAlunosProfessor() {
               )}
 
               {aluno.alerta_nivel && aluno.obs_nivel_prof && classificando !== aluno.id && (
-                <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '6px', fontStyle: 'italic' }}>
-                  📝 {aluno.obs_nivel_prof}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '6px', fontStyle: 'italic' }}>
+                  <StickyNote size={11} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  {aluno.obs_nivel_prof}
                 </div>
               )}
             </div>

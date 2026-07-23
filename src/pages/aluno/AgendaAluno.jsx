@@ -87,7 +87,7 @@ export function AgendaAluno() {
         valorCobrado: usarReposicao ? null : VALOR_AVULSA_PLACEHOLDER,
       })
       toast.success(
-        usarReposicao ? '✅ Reposição agendada!' : `✅ Aula avulsa agendada — R$ ${VALOR_AVULSA_PLACEHOLDER}`,
+        usarReposicao ? 'Reposição agendada!' : `Aula avulsa agendada — R$ ${VALOR_AVULSA_PLACEHOLDER}`,
         { style: toastStyle }
       )
       setSlotSel(null)

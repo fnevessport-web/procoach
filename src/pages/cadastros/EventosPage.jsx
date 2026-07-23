@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Copy, Check, ChevronDown, ChevronUp, Trash2, UserPlus } from 'lucide-react'
+import { Copy, Check, ChevronDown, ChevronUp, Trash2, UserPlus, Trophy } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
 
@@ -285,7 +285,9 @@ function CardEvento({ evento }) {
       <div style={{ padding: '16px', cursor: 'pointer' }} onClick={() => setAberto(a => !a)}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>🏆 {evento.nome}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>
+              <Trophy size={14} color="var(--color-action-primary)" style={{ flexShrink: 0 }} /> {evento.nome}
+            </div>
             <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginTop: '2px' }}>
               {formatarData(evento.data_evento)} · {evento.hora_inicio?.slice(0, 5)}–{evento.hora_fim?.slice(0, 5)}
               {evento.idade_min != null && ` · ${evento.idade_min}-${evento.idade_max} anos`}
