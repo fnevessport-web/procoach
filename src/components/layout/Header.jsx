@@ -14,10 +14,12 @@ function getIniciais(nome) {
   return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
 }
 
-// Header é "chrome" fixo do app (como a Sidebar) — sempre no tom escuro da marca,
-// independente do contexto claro/escuro da página carregada no <main>. Por isso usa os
-// tokens --color-*-dark-* diretos, não os aliases --surface/--text-primary (esses são só
-// pra componentes que aparecem DENTRO do conteúdo roteado, ex: Modal, Input).
+// Header é "chrome" fixo do app (como a Sidebar) — sempre escuro, independente do contexto
+// claro/escuro da página carregada no <main>. Fundo usa os tokens --color-chrome-* (marrom
+// escuro, deliberadamente diferente do verde-court do conteúdo das páginas); texto/borda
+// continuam nos --color-text-dark-*/--color-border-dark-* de sempre. Nunca os aliases
+// --surface/--text-primary (esses são só pra componentes que aparecem DENTRO do conteúdo
+// roteado, ex: Modal, Input).
 export function Header() {
   const { user, perfil, signOut } = useAuth()
   const { podeVerSino } = usePermissions()
@@ -41,19 +43,27 @@ export function Header() {
   return (
     <header style={{
       flexShrink: 0, zIndex: 40,
-      backgroundColor: 'rgba(30,43,36,0.85)',
+      backgroundColor: 'rgba(42,29,21,0.85)',
       backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)',
-      borderBottom: '0.5px solid var(--color-border-dark-subtle)',
+      borderBottom: '0.5px solid var(--color-chrome-border)',
       paddingTop: 'env(safe-area-inset-top)',
     }}>
       <div className="header-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', gap: '8px', minWidth: 0 }}>
 
-        <img
-          src="/images/logo-pc-cream.png"
-          alt="ProCoach"
-          style={{ height: '42px', objectFit: 'contain' }}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flexShrink: 0 }}>
+          <img
+            src="/images/logo-pc-cream.png"
+            alt="ProCoach"
+            style={{ height: '36px', objectFit: 'contain', flexShrink: 0 }}
+          />
+          <span className="header-wordmark" style={{
+            fontFamily: 'var(--font-display)', fontWeight: '700', fontSize: '16px',
+            letterSpacing: '0.5px', color: 'var(--color-text-dark-primary)', whiteSpace: 'nowrap',
+          }}>
+            PROCOACH SPORT
+          </span>
+        </div>
 
         {fromRoute && (
           <button
@@ -91,8 +101,8 @@ export function Header() {
               onClick={() => setEmpresaSelecionada(null)}
               title="Trocar empresa"
               style={{
-                padding: '6px', borderRadius: '8px', border: '1px solid var(--color-border-dark-subtle)',
-                backgroundColor: 'var(--color-surface-dark-raised)', color: 'var(--color-text-dark-secondary)', cursor: 'pointer',
+                padding: '6px', borderRadius: '8px', border: '1px solid var(--color-chrome-border)',
+                backgroundColor: 'var(--color-chrome-raised)', color: 'var(--color-text-dark-secondary)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center',
               }}
             >
@@ -121,7 +131,7 @@ export function Header() {
               style={{
                 display: 'flex', alignItems: 'center', gap: '5px',
                 padding: '5px 8px', borderRadius: '10px',
-                backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)',
+                backgroundColor: 'var(--color-chrome-raised)', border: '1px solid var(--color-chrome-border)',
                 cursor: 'pointer', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box',
               }}
             >
@@ -150,11 +160,11 @@ export function Header() {
                 <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(false)} />
                 <div style={{
                   position: 'absolute', right: 0, top: '100%', marginTop: '8px',
-                  width: '180px', backgroundColor: 'var(--color-surface-dark-raised)',
-                  border: '1px solid var(--color-border-dark-subtle)', borderRadius: '12px',
+                  width: '180px', backgroundColor: 'var(--color-chrome-raised)',
+                  border: '1px solid var(--color-chrome-border)', borderRadius: '12px',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 50, overflow: 'hidden'
                 }}>
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-dark-subtle)' }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-chrome-border)' }}>
                     <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--color-text-dark-primary)' }}>{perfil?.nome || 'Usuário'}</div>
                     <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', textTransform: 'capitalize' }}>
                       {empresaSelecionada?.role || perfil?.role}

@@ -34,6 +34,9 @@ inline, então o uso real é `var(--color-action-primary)`).
 --color-accent-live / -on-live                  #A54C2E / #FDF8F0   (uso raro: ao vivo, conquistas, badges — mesmo tom do saibro)
 --color-state-success/-warning/-danger/-info    #4B8B6A / #C98A3C / #B4472F / #3D6B7A
 
+--color-chrome-base/-raised/-border             #2A1D15 / #3A2A1E / #4A3826   (só Header/Sidebar/
+  BottomNav/SinoAlertas — chrome fixo do app, ver seção "Arquitetura de tema" abaixo)
+
 --font-family-sans   'Inter' (corpo, tabelas, labels)
 --font-display        'Playfair Display' (títulos, nomes de seção, números-herói — nunca em texto corrido/tabela densa)
 ```
@@ -85,8 +88,13 @@ de contexto não usa dark-mode media query nem prop de tema espalhada — usa du
      herda a classe/variáveis por cascata normal mesmo que logicamente esteja "dentro" de uma
      página com tema definido.
 3. **Chrome fixo do app** (`Header.jsx`, `Sidebar.jsx`, `BottomNav.jsx`, `SinoAlertas.jsx`): fica
-   sempre escuro, tokens `-dark-*` diretos, independente da página carregada — não faz parte da
-   troca de contexto (é a barra de navegação, não conteúdo).
+   sempre escuro, independente da página carregada — não faz parte da troca de contexto (é a
+   barra de navegação, não conteúdo). Fundo/borda usam os tokens `--color-chrome-*` (marrom-café,
+   pedido explícito pra diferenciar do verde-court do conteúdo — referência visual foi o app
+   "Lits"); texto continua nos `-dark-*` de sempre (`--color-text-dark-*`), que têm contraste de
+   sobra nos dois tons. `PageLoading` (`Loading.jsx`) é a única exceção: fica no verde-court
+   (`--color-surface-dark-base`) de propósito, pra combinar com o Login (splash pré-tema, não é
+   "navegação").
 
 ### Mapeamento de cores de status (não quebrar reconhecimento)
 

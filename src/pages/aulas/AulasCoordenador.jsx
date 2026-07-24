@@ -1811,31 +1811,41 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                   // nasce 'dada' por padrão no banco mesmo sem ninguém ter confirmado nada.
                   // Feriado com aluno: cor própria (roxo) — já conta como paga, mas ninguém vai
                   // dar aula de verdade, então não faz sentido misturar com o verde de "dada".
+                  // Cor por estado, pedido explícito do redesign: turma ativa (aulaEhFutura) fica
+                  // como já estava (azul-info); aula que já passou e foi confirmada ('dada') usa
+                  // o saibro da marca em vez do verde antigo, pra reforçar que aquilo é "aula que
+                  // aconteceu"; aula inativa (semAluno) fica bem apagada — fundo claro raso, texto
+                  // cinza-mudo, sem o antigo hack de opacity (que desbotava borda e fundo junto de
+                  // forma inconsistente).
                   const ehFeriadoComAluno = !!feriado && !semAluno
                   const borderColor = ehFeriadoComAluno ? 'rgba(61,107,122,0.4)'
                     : semAluno ? 'rgba(30,43,36,0.06)'
                     : st === 'futura' ? 'rgba(61,107,122,0.3)'
-                    : st === 'dada' ? 'rgba(75,139,106,0.3)'
+                    : st === 'dada' ? 'rgba(165,76,46,0.35)'
                     : st === 'nao_dada' ? 'rgba(180,71,47,0.3)'
                     : 'rgba(61,107,122,0.3)'
                   const dotColor = ehFeriadoComAluno ? 'var(--color-state-info)'
                     : semAluno ? 'var(--color-text-light-muted)'
                     : st === 'futura' ? 'var(--color-state-info)'
-                    : st === 'dada' ? 'var(--color-state-success)'
+                    : st === 'dada' ? 'var(--color-action-primary)'
                     : st === 'nao_dada' ? 'var(--color-state-danger)'
                     : 'var(--color-state-info)'
+                  const bgColor = semAluno ? 'var(--color-surface-light-base)'
+                    : aulaEhFutura ? 'var(--color-surface-light-base)'
+                    : (!ehFeriadoComAluno && st === 'dada') ? 'rgba(165,76,46,0.05)'
+                    : 'var(--color-surface-light-raised)'
+                  const textoApagado = aulaEhFutura || semAluno
 
                   const isHighlighted = highlightedAulaId === aulaCelula.id
 
                   return (
                     <button key={quadra} id={`aula-cel-${aulaCelula.id}`} onClick={() => abrirAula(aulaCelula)} style={{
                       width: '140px', flexShrink: 0, marginRight: '4px',
-                      backgroundColor: isHighlighted ? 'rgba(165,76,46,0.15)' : (aulaEhFutura ? 'var(--color-surface-light-base)' : 'var(--color-surface-light-raised)'),
+                      backgroundColor: isHighlighted ? 'rgba(165,76,46,0.15)' : bgColor,
                       borderRadius: '10px', border: `1px solid ${isHighlighted ? 'var(--color-action-primary)' : borderColor}`,
                       padding: '8px 10px', cursor: 'pointer', textAlign: 'left',
                       minHeight: '72px', boxSizing: 'border-box',
                       display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-                      opacity: semAluno ? 0.45 : 1,
                       transition: 'background-color 0.3s ease, border-color 0.3s ease',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -1856,10 +1866,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                           <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dotColor, flexShrink: 0 }} />
                         </div>
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: '600', color: aulaEhFutura ? 'var(--color-text-light-muted)' : 'var(--color-text-light-primary)', lineHeight: '1.3', marginBottom: '4px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '600', color: textoApagado ? 'var(--color-text-light-muted)' : 'var(--color-text-light-primary)', lineHeight: '1.3', marginBottom: '4px' }}>
                         {nivel || (isAv ? 'Avulsa' : aulaCelula.turmas?.nome || '—')}
                       </div>
-                      <div style={{ fontSize: '10px', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: semProfessor ? 'var(--color-state-warning)' : 'var(--color-text-light-secondary)' }}>
+                      <div style={{ fontSize: '10px', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: semProfessor ? 'var(--color-state-warning)' : (textoApagado ? 'var(--color-text-light-muted)' : 'var(--color-text-light-secondary)') }}>
                         {semProfessor
                           ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><AlertTriangle size={9} /> sem professor</span>
                           : <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -1872,7 +1882,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                         {aulaEhFutura
                           ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: 'var(--color-text-light-muted)' }}><Clock size={9} /> agendada</span>
                           : <>
-                            <span style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)' }}><b>T</b>{qtdTotal}</span>
+                            <span style={{ fontSize: '10px', color: textoApagado ? 'var(--color-text-light-muted)' : 'var(--color-text-light-secondary)' }}><b>T</b>{qtdTotal}</span>
                             {qtdP > 0 && <span style={{ fontSize: '10px', color: 'var(--color-state-success)' }}>✓{qtdP}</span>}
                             {qtdF > 0 && <span style={{ fontSize: '10px', color: 'var(--color-state-danger)' }}>✗{qtdF}</span>}
                           </>

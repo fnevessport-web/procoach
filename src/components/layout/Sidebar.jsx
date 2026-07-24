@@ -14,10 +14,6 @@ export function Sidebar() {
 
   return (
     <nav className="sidebar-desktop">
-      <div className="sidebar-logo">
-        <img src="/images/logo-pc-cream.png" alt="ProCoach" />
-      </div>
-
       <div className="sidebar-items">
         {items.map(({ path, icon: Icon, label }) => {
           const active = location.pathname === path || (path !== '/' && location.pathname.startsWith(path))

@@ -30,6 +30,16 @@
   --color-text-dark-secondary:    #B4BFB6;
   --color-text-dark-muted:        #7E8C82;
 
+  /* Chrome fixo do app (Header/Sidebar/BottomNav/SinoAlertas) — tom marrom-café escuro,
+     deliberadamente diferente do verde-court do conteúdo das páginas (pedido explícito do
+     redesign, inspirado no fundo do app "Lits" de referência). Mesma família de matiz do
+     saibro (--color-action-primary), só bem mais escuro/dessaturado — o texto/borda continuam
+     usando os tokens --color-text-dark-*/--color-border-dark-* de sempre, que têm contraste de
+     sobra nos dois fundos.  */
+  --color-chrome-base:    #2A1D15;
+  --color-chrome-raised:  #3A2A1E;
+  --color-chrome-border:  #4A3826;
+
   /* Contexto claro (agenda, cadastros, operação, páginas públicas) */
   --color-surface-light-base:     #F0EAD8;
   --color-surface-light-raised:   #F7F3E8;
@@ -195,15 +205,15 @@ button {
 }
 
 /* ── Shell do app: trava a tela (sem bounce), cada pagina rola por dentro.
-   Sidebar/Header/BottomNav são o "chrome" fixo do app — sempre no tom escuro
-   da marca, independente do contexto (claro/escuro) da página carregada
+   Sidebar/Header/BottomNav são o "chrome" fixo do app — sempre no tom marrom-café
+   de --color-chrome-*, independente do contexto (claro/escuro) da página carregada
    dentro do <main>. Só o conteúdo roteado troca de tema. ── */
 .app-shell {
   height: 100vh;
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background-color: var(--color-surface-dark-base);
+  background-color: var(--color-chrome-base);
   overflow: hidden;
 }
 
@@ -233,6 +243,12 @@ button {
   box-sizing: border-box;
 }
 
+/* Telas bem estreitas: some só o wordmark, mantém o selo (evita brigar por espaço com
+   sino/menu de usuário) */
+@media (max-width: 380px) {
+  .header-wordmark { display: none; }
+}
+
 @media (min-width: 768px) {
   .app-shell-content { margin-left: 64px; }
   .app-main {
@@ -257,8 +273,8 @@ button {
     position: fixed;
     top: 0; left: 0; bottom: 0;
     width: 64px;
-    background-color: var(--color-surface-dark-base);
-    border-right: 0.5px solid var(--color-border-dark-subtle);
+    background-color: var(--color-chrome-base);
+    border-right: 0.5px solid var(--color-chrome-border);
     z-index: 50;
     padding: 16px 0;
     overflow: hidden;
@@ -269,16 +285,6 @@ button {
     box-shadow: 4px 0 32px rgba(0,0,0,0.45);
   }
 }
-
-.sidebar-logo {
-  display: flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 20px;
-  margin-bottom: 24px;
-  flex-shrink: 0;
-}
-.sidebar-logo img { height: 22px; object-fit: contain; }
 
 .sidebar-items {
   display: flex;

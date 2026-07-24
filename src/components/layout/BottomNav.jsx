@@ -20,7 +20,7 @@ export function BottomNav() {
         aria-label="Mostrar menu"
         style={{
           flexShrink: 0, zIndex: 40, width: '100%', border: 'none',
-          backgroundColor: 'var(--color-surface-dark-base)', borderTop: '1px solid var(--color-border-dark-subtle)',
+          backgroundColor: 'var(--color-chrome-base)', borderTop: '1px solid var(--color-chrome-border)',
           padding: '6px 0 calc(6px + env(safe-area-inset-bottom))',
           display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
         }}
@@ -33,8 +33,8 @@ export function BottomNav() {
   return (
     <nav className="bottom-nav" style={{
       flexShrink: 0, zIndex: 40,
-      backgroundColor: 'var(--color-surface-dark-base)',
-      borderTop: '1px solid var(--color-border-dark-subtle)',
+      backgroundColor: 'var(--color-chrome-base)',
+      borderTop: '1px solid var(--color-chrome-border)',
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-around',
