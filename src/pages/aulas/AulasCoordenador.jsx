@@ -1804,37 +1804,35 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                   const semAluno = qtdTotal === 0
                   const semProfessor = !isAv && !aulaCelula.professores
 
-                  // Futura + já tem aluno matriculado: destaca com uma cor que não é usada em
-                  // mais nada na grade (verde/vermelho/azul/amarelo já têm outro significado),
-                  // só pra bater o olho e ver rápido onde já foi matriculado alguém.
-                  // Sem aluno nenhum: sempre neutro, independente do status_aula — esse campo
-                  // nasce 'dada' por padrão no banco mesmo sem ninguém ter confirmado nada.
-                  // Feriado com aluno: cor própria (roxo) — já conta como paga, mas ninguém vai
-                  // dar aula de verdade, então não faz sentido misturar com o verde de "dada".
-                  // Cor por estado, pedido explícito do redesign: turma ativa (aulaEhFutura) fica
-                  // como já estava (azul-info); aula que já passou e foi confirmada ('dada') usa
-                  // o saibro da marca em vez do verde antigo, pra reforçar que aquilo é "aula que
-                  // aconteceu"; aula inativa (semAluno) fica bem apagada — fundo claro raso, texto
-                  // cinza-mudo, sem o antigo hack de opacity (que desbotava borda e fundo junto de
-                  // forma inconsistente).
+                  // Feriado com aluno: cor própria (info) — já conta como paga, mas ninguém vai
+                  // dar aula de verdade, então não faz sentido misturar com o resto.
+                  //
+                  // Cor por estado (3ª rodada de ajuste, pedido explícito): os 3 estados usam
+                  // fundo claro/neutro sempre — a cor mora só no farol (bolinha), nunca pinta o
+                  // cartão inteiro, pra ficar minimalista de propósito:
+                  //   - futura (turma ativa, agendada) → farol saibro, texto normal
+                  //   - dada (já passou e foi confirmada) → fundo branco (fica "em destaque"),
+                  //     farol verde — nunca fundo verde inteiro, ficou ruim numa rodada anterior
+                  //   - semAluno (inativa) → fundo com leve véu neutro, texto cinza-claro
+                  //     apagado, farol cinza — dá pra ler, mas bate o olho que tá inativa
                   const ehFeriadoComAluno = !!feriado && !semAluno
                   const borderColor = ehFeriadoComAluno ? 'rgba(61,107,122,0.4)'
-                    : semAluno ? 'rgba(30,43,36,0.06)'
-                    : st === 'futura' ? 'rgba(61,107,122,0.3)'
-                    : st === 'dada' ? 'rgba(165,76,46,0.35)'
+                    : semAluno ? 'var(--color-border-light-subtle)'
+                    : st === 'futura' ? 'rgba(165,76,46,0.3)'
+                    : st === 'dada' ? 'var(--color-border-light-subtle)'
                     : st === 'nao_dada' ? 'rgba(180,71,47,0.3)'
                     : 'rgba(61,107,122,0.3)'
                   const dotColor = ehFeriadoComAluno ? 'var(--color-state-info)'
                     : semAluno ? 'var(--color-text-light-muted)'
-                    : st === 'futura' ? 'var(--color-state-info)'
-                    : st === 'dada' ? 'var(--color-action-primary)'
+                    : st === 'futura' ? 'var(--color-action-primary)'
+                    : st === 'dada' ? 'var(--color-state-success)'
                     : st === 'nao_dada' ? 'var(--color-state-danger)'
                     : 'var(--color-state-info)'
-                  const bgColor = semAluno ? 'var(--color-surface-light-base)'
+                  const bgColor = semAluno ? 'rgba(30,43,36,0.035)'
                     : aulaEhFutura ? 'var(--color-surface-light-base)'
-                    : (!ehFeriadoComAluno && st === 'dada') ? 'rgba(165,76,46,0.05)'
+                    : (!ehFeriadoComAluno && st === 'dada') ? 'var(--color-surface-light-overlay)'
                     : 'var(--color-surface-light-raised)'
-                  const textoApagado = aulaEhFutura || semAluno
+                  const textoApagado = semAluno
 
                   const isHighlighted = highlightedAulaId === aulaCelula.id
 

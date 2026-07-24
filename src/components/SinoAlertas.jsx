@@ -79,10 +79,10 @@ export function SinoAlertas() {
           <div style={{
             position: 'absolute', right: 0, top: '100%', marginTop: '8px',
             width: '280px', maxHeight: '360px', overflowY: 'auto',
-            backgroundColor: 'var(--color-chrome-raised)', border: '1px solid var(--color-chrome-border)', borderRadius: '14px',
+            backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)', borderRadius: '14px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 50,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid var(--color-chrome-border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid var(--color-border-dark-subtle)' }}>
               <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>Alertas</span>
               {naoLidos > 0 && (
                 <button onClick={() => marcarTodosLidos.mutate()} style={{ background: 'none', border: 'none', color: 'var(--color-action-primary)', fontSize: '11px', cursor: 'pointer' }}>
@@ -106,7 +106,7 @@ export function SinoAlertas() {
                     onKeyDown={e => { if (e.key === 'Enter') handleClickAlerta(a) }}
                     style={{
                       display: 'flex', gap: '8px', width: '100%', padding: '10px 14px',
-                      border: 'none', borderBottom: '1px solid var(--color-chrome-border)', background: a.lido ? 'transparent' : 'rgba(165,76,46,0.08)',
+                      border: 'none', borderBottom: '1px solid var(--color-border-dark-subtle)', background: a.lido ? 'transparent' : 'rgba(165,76,46,0.08)',
                       cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box',
                     }}
                   >
