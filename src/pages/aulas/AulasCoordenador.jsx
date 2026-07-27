@@ -1807,14 +1807,17 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                   // Feriado com aluno: cor própria (info) — já conta como paga, mas ninguém vai
                   // dar aula de verdade, então não faz sentido misturar com o resto.
                   //
-                  // Cor por estado (3ª rodada de ajuste, pedido explícito): os 3 estados usam
+                  // Cor por estado (4ª rodada de ajuste, pedido explícito): os 3 estados usam
                   // fundo claro/neutro sempre — a cor mora só no farol (bolinha), nunca pinta o
                   // cartão inteiro, pra ficar minimalista de propósito:
                   //   - futura (turma ativa, agendada) → farol saibro, texto normal
                   //   - dada (já passou e foi confirmada) → fundo branco (fica "em destaque"),
-                  //     farol verde — nunca fundo verde inteiro, ficou ruim numa rodada anterior
-                  //   - semAluno (inativa) → fundo com leve véu neutro, texto cinza-claro
-                  //     apagado, farol cinza — dá pra ler, mas bate o olho que tá inativa
+                  //     farol verde
+                  //   - semAluno (inativa) → MESMO fundo branco de "dada" (senão ela chama mais
+                  //     atenção que as outras duas, viravam destaque errado) — só a fonte muda:
+                  //     texto geral num cinza bem claro (--color-text-light-faded), o rótulo
+                  //     "sem aluno" fica num cinza mais escuro (secondary) pra continuar legível
+                  //     mesmo com o resto do cartão apagado. Farol cinza-mudo.
                   const ehFeriadoComAluno = !!feriado && !semAluno
                   const borderColor = ehFeriadoComAluno ? 'rgba(61,107,122,0.4)'
                     : semAluno ? 'var(--color-border-light-subtle)'
@@ -1828,7 +1831,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     : st === 'dada' ? 'var(--color-state-success)'
                     : st === 'nao_dada' ? 'var(--color-state-danger)'
                     : 'var(--color-state-info)'
-                  const bgColor = semAluno ? 'rgba(30,43,36,0.035)'
+                  const bgColor = semAluno ? 'var(--color-surface-light-overlay)'
                     : aulaEhFutura ? 'var(--color-surface-light-base)'
                     : (!ehFeriadoComAluno && st === 'dada') ? 'var(--color-surface-light-overlay)'
                     : 'var(--color-surface-light-raised)'
@@ -1864,10 +1867,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                           <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dotColor, flexShrink: 0 }} />
                         </div>
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: '600', color: textoApagado ? 'var(--color-text-light-muted)' : 'var(--color-text-light-primary)', lineHeight: '1.3', marginBottom: '4px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '600', color: textoApagado ? 'var(--color-text-light-faded)' : 'var(--color-text-light-primary)', lineHeight: '1.3', marginBottom: '4px' }}>
                         {nivel || (isAv ? 'Avulsa' : aulaCelula.turmas?.nome || '—')}
                       </div>
-                      <div style={{ fontSize: '10px', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: semProfessor ? 'var(--color-state-warning)' : (textoApagado ? 'var(--color-text-light-muted)' : 'var(--color-text-light-secondary)') }}>
+                      <div style={{ fontSize: '10px', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: semProfessor ? 'var(--color-state-warning)' : (textoApagado ? 'var(--color-text-light-faded)' : 'var(--color-text-light-secondary)') }}>
                         {semProfessor
                           ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><AlertTriangle size={9} /> sem professor</span>
                           : <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -1880,7 +1883,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                         {aulaEhFutura
                           ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: 'var(--color-text-light-muted)' }}><Clock size={9} /> agendada</span>
                           : <>
-                            <span style={{ fontSize: '10px', color: textoApagado ? 'var(--color-text-light-muted)' : 'var(--color-text-light-secondary)' }}><b>T</b>{qtdTotal}</span>
+                            <span style={{ fontSize: '10px', color: textoApagado ? 'var(--color-text-light-faded)' : 'var(--color-text-light-secondary)' }}><b>T</b>{qtdTotal}</span>
                             {qtdP > 0 && <span style={{ fontSize: '10px', color: 'var(--color-state-success)' }}>✓{qtdP}</span>}
                             {qtdF > 0 && <span style={{ fontSize: '10px', color: 'var(--color-state-danger)' }}>✗{qtdF}</span>}
                           </>

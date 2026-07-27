@@ -48,7 +48,7 @@ operação do dia a dia), nunca pela unidade (Procópio/Beach Arena — a distin
 só o logo/nome, não o tema).
 
 - **Escuro**: Dashboard/Home, Ranking (Pontuação Beyond), Conquistas/gamificação, telas de
-  análise/métricas (ex: página de modalidade), Financeiro, Mensagens, Login.
+  análise/métricas (ex: página de modalidade, Relatório Mensal/KPIs), Financeiro, Mensagens, Login.
 - **Claro**: Agenda/grade de aulas, Cadastros (alunos/professores/turmas/níveis/quadras/eventos),
   ficha do aluno, Match de Aulas, disponibilidade de professores, Reposições, páginas públicas
   (`/disponibilidade/:token`, `/eventos/:slug`), Configurações.
@@ -56,10 +56,10 @@ só o logo/nome, não o tema).
   (`BlocoPontuacaoBeyond.jsx`) e o card de Conquistas (`ConquistasCard.jsx`), mesmo aparecendo
   dentro da ficha do aluno (página clara) — mantêm o tratamento escuro que já têm no
   Ranking/Home, envolvidos numa `className="theme-dark"` própria.
-- **Intocado**: `src/pages/kpis/**` (relatório mensal completo) e `src/lib/relatorioPdf.js`
-  (gerador de PDF) mantêm a identidade Beyond/Procópio de sempre — não redesenhar. Telas que só
-  *disparam* a geração de um PDF (ex: botão "Exportar PDF" no Ranking) não são afetadas por essa
-  regra — só o conteúdo do PDF em si fica intocado.
+- **Intocado**: só `src/lib/relatorioPdf.js` (gerador de PDF/PNG em si) mantém a identidade
+  Beyond/Procópio de sempre — o PDF exportado continua igual. A TELA que dispara essa geração
+  (`src/pages/kpis/KPIsPage.jsx`, `RelatoriosLeituraPage.jsx` — Relatório Mensal, contexto
+  Escuro) entrou no redesign normalmente; só o arquivo exportado (PDF/PNG) fica intocado.
 
 ### Arquitetura de tema (como aplicar em página nova)
 
@@ -146,8 +146,8 @@ arquivo. `NIVEIS_ASSIDUIDADE`/`corNivel()` (`src/lib/pontuacaoBeyond.js`) també
 Toda a varredura de hex→token das ~60 páginas/componentes foi concluída (`grep -roE
 "#[0-9a-fA-F]{3,8}" src --include="*.jsx"` só retorna as exceções abaixo, todas intencionais):
 
-- `src/pages/kpis/**` e `src/lib/relatorioPdf.js` — intocados por regra explícita (identidade
-  Beyond/Procópio do relatório mensal).
+- `src/lib/relatorioPdf.js` — intocado por regra explícita (identidade Beyond/Procópio do
+  PDF/PNG exportado). `src/pages/kpis/**` (a tela) já entrou no redesign (contexto Escuro).
 - `src/constants/coresClube.js`, `src/lib/pontuacaoBeyond.js` (`NIVEIS_ASSIDUIDADE`),
   `src/lib/pcScore.js` (`NIVEIS_PC_SCORE`) — paletas compartilhadas com o PDF ou documentadas
   como à parte; qualquer tela que só **referencia** essas constantes (`n.cor`, `corNivel()`)

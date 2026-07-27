@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { XCircle, CheckCircle2, ClipboardList, TriangleAlert, DoorOpen } from 'lucide-react'
+import { XCircle, CheckCircle2, ClipboardList, TriangleAlert, DoorOpen, Cake, Hourglass } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { mascararTelefoneBR, apenasDigitosTelefone } from '../../lib/telefone'
@@ -489,6 +489,15 @@ export function EventoInscricaoPage() {
             </div>
           </div>
 
+          <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: `${C.marinho}18`, border: `1px solid ${C.marinho}66`, marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '700', color: C.marinho, marginBottom: '6px' }}>
+              <Cake size={14} style={{ flexShrink: 0 }} /> Faixa etária: 11 a 15 anos
+            </div>
+            <div style={{ fontSize: '12px', color: C.tinta, lineHeight: '1.6' }}>
+              Esta seletiva é voltada para crianças e adolescentes nascidos entre <strong>03/08/2010</strong> e <strong>02/08/2015</strong>.
+            </div>
+          </div>
+
           <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: `${C.laranja}18`, border: `1px solid ${C.laranja}66`, marginBottom: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '700', color: C.laranja, marginBottom: '6px' }}>
               <TriangleAlert size={14} style={{ flexShrink: 0 }} /> Esta turma não é indicada para iniciantes
@@ -500,7 +509,7 @@ export function EventoInscricaoPage() {
 
           {todasLotadas ? (
             <div style={{ padding: '18px 16px', borderRadius: '12px', backgroundColor: `${C.vinho}18`, border: `1px solid ${C.vinho}66`, textAlign: 'center' }}>
-              <div style={{ fontSize: '32px', marginBottom: '8px' }}>⏳</div>
+              <Hourglass size={32} color={C.vinho} style={{ margin: '0 auto 8px' }} />
               <div style={{ fontSize: '15px', fontWeight: '700', color: C.vinho, marginBottom: '6px' }}>Vagas encerradas</div>
               <div style={{ fontSize: '13px', color: C.tinta, lineHeight: '1.6', marginBottom: '18px' }}>
                 Todas as turmas do Kids Competitivo já estão lotadas. Você pode entrar na lista de espera — se abrir uma vaga, avisaremos por WhatsApp.
@@ -639,7 +648,7 @@ export function EventoInscricaoPage() {
 
           {etapaModal === 'esgotado' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontSize: '32px', textAlign: 'center' }}>⏳</div>
+              <Hourglass size={32} color={C.laranja} style={{ margin: '0 auto', display: 'block' }} />
               <div style={{ fontSize: '16px', fontWeight: '700', color: C.tinta, textAlign: 'center' }}>Esse horário está lotado!</div>
               <div style={{ fontSize: '13px', color: C.textoSuave, lineHeight: '1.6', textAlign: 'center', marginBottom: '10px' }}>
                 O horário das {formatarHora(slotSelecionado?.horario)} na {slotSelecionado?.quadra} acabou de ser preenchido. Podemos colocar {form.nome_crianca || 'seu filho(a)'} na lista de espera desse horário — se abrir vaga, avisaremos vocês por WhatsApp.

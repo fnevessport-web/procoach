@@ -55,9 +55,11 @@ export function LoginPage() {
       height: '100vh', width: '100%', position: 'relative',
       // backgroundColor fica como fallback: se a imagem faltar, mostra só o verde-court sólido,
       // sem ícone de imagem quebrada (diferente de <img>, background-image ausente só não desenha nada).
+      // Usa a mesma textura das páginas em contexto escuro (fundo-tela.png) em vez da foto da
+      // rede — a foto competia visualmente com o selo/logo, pedido explícito pra simplificar.
       backgroundColor: 'var(--color-surface-dark-base)',
-      backgroundImage: "url('/images/login-bg.png')",
-      backgroundSize: 'cover', backgroundPosition: 'center',
+      backgroundImage: "url('/images/fundo-tela.png')",
+      backgroundSize: 'cover', backgroundPosition: 'top center',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', padding: '24px 16px', boxSizing: 'border-box',
       overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',

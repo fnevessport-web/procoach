@@ -41,23 +41,23 @@ export function RelatoriosLeituraPage() {
       minHeight: 'calc(100vh - 160px)', gap: '24px', padding: '24px',
     }}>
       <div style={{
-        width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#1a1a1a',
-        border: '1px solid rgba(252,200,37,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--color-surface-dark-raised)',
+        border: '1px solid rgba(165,76,46,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <Lock size={22} color="#fcc825" />
+        <Lock size={22} color="var(--color-action-primary)" />
       </div>
 
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '15px', fontWeight: '700', color: '#F0F2F5', marginBottom: '4px' }}>Relatórios</div>
-        <div style={{ fontSize: '12px', color: '#555' }}>Digite o PIN de acesso</div>
+        <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-dark-primary)', marginBottom: '4px' }}>Relatórios</div>
+        <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)' }}>Digite o PIN de acesso</div>
       </div>
 
       <div style={{ display: 'flex', gap: '12px' }}>
         {[0, 1, 2, 3].map(i => (
           <div key={i} style={{
             width: '16px', height: '16px', borderRadius: '50%',
-            border: `1.5px solid ${erro ? '#EF4444' : 'rgba(252,200,37,0.4)'}`,
-            backgroundColor: i < pin.length ? (erro ? '#EF4444' : '#fcc825') : 'transparent',
+            border: `1.5px solid ${erro ? 'var(--color-state-danger)' : 'rgba(165,76,46,0.4)'}`,
+            backgroundColor: i < pin.length ? (erro ? 'var(--color-state-danger)' : 'var(--color-action-primary)') : 'transparent',
             transition: 'background-color 0.15s',
           }} />
         ))}
@@ -66,18 +66,18 @@ export function RelatoriosLeituraPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 64px)', gap: '12px' }}>
         {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(n => (
           <button key={n} onClick={() => digitar(n)} style={{
-            width: '64px', height: '64px', borderRadius: '50%', border: '1px solid #2a2a2a',
-            backgroundColor: '#1a1a1a', color: '#F0F2F5', fontSize: '20px', fontWeight: '600', cursor: 'pointer',
+            width: '64px', height: '64px', borderRadius: '50%', border: '1px solid var(--color-border-dark)',
+            backgroundColor: 'var(--color-surface-dark-raised)', color: 'var(--color-text-dark-primary)', fontSize: '20px', fontWeight: '600', cursor: 'pointer',
           }}>{n}</button>
         ))}
         <div />
         <button onClick={() => digitar('0')} style={{
-          width: '64px', height: '64px', borderRadius: '50%', border: '1px solid #2a2a2a',
-          backgroundColor: '#1a1a1a', color: '#F0F2F5', fontSize: '20px', fontWeight: '600', cursor: 'pointer',
+          width: '64px', height: '64px', borderRadius: '50%', border: '1px solid var(--color-border-dark)',
+          backgroundColor: 'var(--color-surface-dark-raised)', color: 'var(--color-text-dark-primary)', fontSize: '20px', fontWeight: '600', cursor: 'pointer',
         }}>0</button>
         <button onClick={apagar} style={{
-          width: '64px', height: '64px', borderRadius: '50%', border: '1px solid #2a2a2a',
-          backgroundColor: '#1a1a1a', color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+          width: '64px', height: '64px', borderRadius: '50%', border: '1px solid var(--color-border-dark)',
+          backgroundColor: 'var(--color-surface-dark-raised)', color: 'var(--color-text-dark-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
         }}>
           <Delete size={18} />
         </button>
