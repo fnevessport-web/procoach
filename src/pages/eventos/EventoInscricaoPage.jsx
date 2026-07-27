@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { Cake } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { mascararTelefoneBR, apenasDigitosTelefone } from '../../lib/telefone'
@@ -485,6 +486,15 @@ export function EventoInscricaoPage() {
             <div style={{ fontSize: '13px', fontWeight: '700', color: C.tinta, marginBottom: '8px' }}>Sobre a turma Kids Competitivo</div>
             <div style={{ fontSize: '13px', color: C.textoSuave, lineHeight: '1.7' }}>
               O Kids Competitivo é uma turma específica para um treinamento mais focado em formação desportiva. Por isso, as crianças que entram nesse grupo já precisam ter um nível de jogo consolidado.
+            </div>
+          </div>
+
+          <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: `${C.marinho}18`, border: `1px solid ${C.marinho}66`, marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '700', color: C.marinho, marginBottom: '6px' }}>
+              <Cake size={14} style={{ flexShrink: 0 }} /> Faixa etária: 11 a 15 anos
+            </div>
+            <div style={{ fontSize: '12px', color: C.tinta, lineHeight: '1.6' }}>
+              Esta seletiva é voltada para crianças e adolescentes nascidos entre <strong>03/08/2010</strong> e <strong>02/08/2015</strong>.
             </div>
           </div>
 
