@@ -44,14 +44,14 @@ function formatarHora(horaStr) {
   return horaStr ? horaStr.slice(0, 5) : ''
 }
 
-function calcularIdade(dataNascimento, dataReferencia) {
-  const nasc = new Date(dataNascimento + 'T12:00:00')
-  const ref = new Date(dataReferencia + 'T12:00:00')
-  let idade = ref.getFullYear() - nasc.getFullYear()
-  const aindaNaoFezAniversario = (ref.getMonth() < nasc.getMonth()) ||
-    (ref.getMonth() === nasc.getMonth() && ref.getDate() < nasc.getDate())
-  if (aindaNaoFezAniversario) idade--
-  return idade
+// Idade "por ano de nascimento" (categoria de competição), não idade exata no dia do evento —
+// pedido explícito do clube: uma criança que faz 11 anos em novembro já entra na categoria
+// 11-15 mesmo que o evento seja em agosto (antes do aniversário dela). Só o ano de nascimento
+// importa, mês/dia não contam pra elegibilidade.
+function idadeNoAnoDoEvento(dataNascimento, dataEvento) {
+  const anoNascimento = new Date(dataNascimento + 'T12:00:00').getFullYear()
+  const anoEvento = new Date(dataEvento + 'T12:00:00').getFullYear()
+  return anoEvento - anoNascimento
 }
 
 // Fundo "papel timbrado" do clube (textura sutil sobre o creme) — recriado em CSS em vez de
@@ -156,7 +156,7 @@ function CardSlot({ slot, selecionado, onClick }) {
 function Checklist({ selecionadas, onToggle }) {
   return (
     <div>
-      <div style={labelStyle}>Se seu filho(a) for aprovado(a), quais desses dias/horários funcionam pra vocês, pra treinar no Kids Competitivo?</div>
+      <div style={labelStyle}>Se seu filho(a) for aprovado(a), quais desses dias/horários funcionam pra vocês, pra treinar no Tênis Juvenil?</div>
       <div style={{ fontSize: '11px', color: C.textoSuave, marginBottom: '8px' }}>Pode selecionar mais de uma opção.</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {OPCOES_DISPONIBILIDADE.map(op => {
@@ -325,9 +325,10 @@ export function EventoInscricaoPage() {
     if (!form.nome_responsavel.trim()) return 'Informe o nome do responsável.'
     if (!form.whatsapp_responsavel.trim()) return 'Informe o WhatsApp do responsável.'
     if (evento.idade_min != null && evento.idade_max != null) {
-      const idade = calcularIdade(form.data_nascimento, evento.data_evento)
+      const idade = idadeNoAnoDoEvento(form.data_nascimento, evento.data_evento)
       if (idade < evento.idade_min || idade > evento.idade_max) {
-        return `Este evento é para crianças de ${evento.idade_min} a ${evento.idade_max} anos. A idade calculada foi ${idade} anos.`
+        const anoEvento = evento.data_evento.slice(0, 4)
+        return `Este evento é para crianças que completam de ${evento.idade_min} a ${evento.idade_max} anos em ${anoEvento}. A idade calculada foi ${idade} anos.`
       }
     }
     return ''
@@ -483,20 +484,27 @@ export function EventoInscricaoPage() {
           </div>
 
           <div style={{ ...cardStyle, marginBottom: '14px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '700', color: C.tinta, marginBottom: '8px' }}>Sobre a turma Kids Competitivo</div>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: C.tinta, marginBottom: '8px' }}>Sobre a turma Tênis Juvenil</div>
             <div style={{ fontSize: '13px', color: C.textoSuave, lineHeight: '1.7' }}>
-              O Kids Competitivo é uma turma específica para um treinamento mais focado em formação desportiva. Por isso, as crianças que entram nesse grupo já precisam ter um nível de jogo consolidado.
+              O Tênis Juvenil é uma turma específica para um treinamento mais focado em formação desportiva. Por isso, as crianças que entram nesse grupo já precisam ter um nível de jogo consolidado.
             </div>
           </div>
 
-          <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: `${C.marinho}18`, border: `1px solid ${C.marinho}66`, marginBottom: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '700', color: C.marinho, marginBottom: '6px' }}>
-              <Cake size={14} style={{ flexShrink: 0 }} /> Faixa etária: 11 a 15 anos
-            </div>
-            <div style={{ fontSize: '12px', color: C.tinta, lineHeight: '1.6' }}>
-              Esta seletiva é voltada para crianças e adolescentes nascidos entre <strong>03/08/2010</strong> e <strong>02/08/2015</strong>.
-            </div>
-          </div>
+          {(() => {
+            const anoEvento = Number(evento.data_evento.slice(0, 4))
+            const anoNascMin = anoEvento - evento.idade_max
+            const anoNascMax = anoEvento - evento.idade_min
+            return (
+              <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: `${C.marinho}18`, border: `1px solid ${C.marinho}66`, marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '700', color: C.marinho, marginBottom: '6px' }}>
+                  <Cake size={14} style={{ flexShrink: 0 }} /> Faixa etária: {evento.idade_min} a {evento.idade_max} anos
+                </div>
+                <div style={{ fontSize: '12px', color: C.tinta, lineHeight: '1.6' }}>
+                  Esta seletiva é voltada para crianças e adolescentes nascidos entre <strong>01/01/{anoNascMin}</strong> e <strong>31/12/{anoNascMax}</strong> — vale a idade que a criança completa em {anoEvento}, mesmo que o aniversário caia depois da data do evento.
+                </div>
+              </div>
+            )
+          })()}
 
           <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: `${C.laranja}18`, border: `1px solid ${C.laranja}66`, marginBottom: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '700', color: C.laranja, marginBottom: '6px' }}>
@@ -512,7 +520,7 @@ export function EventoInscricaoPage() {
               <Hourglass size={32} color={C.vinho} style={{ margin: '0 auto 8px' }} />
               <div style={{ fontSize: '15px', fontWeight: '700', color: C.vinho, marginBottom: '6px' }}>Vagas encerradas</div>
               <div style={{ fontSize: '13px', color: C.tinta, lineHeight: '1.6', marginBottom: '18px' }}>
-                Todas as turmas do Kids Competitivo já estão lotadas. Você pode entrar na lista de espera — se abrir uma vaga, avisaremos por WhatsApp.
+                Todas as turmas do Tênis Juvenil já estão lotadas. Você pode entrar na lista de espera — se abrir uma vaga, avisaremos por WhatsApp.
               </div>
               <button onClick={abrirModalListaEspera} style={{
                 width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
