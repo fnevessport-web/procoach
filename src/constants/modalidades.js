@@ -99,6 +99,43 @@ export function isAulaIndividual(aula) {
   return parseObservacoes(aula.observacoes).nivel === 'Individual'
 }
 
+// A partir de 1/8/2026, aula de Tênis em GRUPO com só 1 aluno pagante vira deficitária
+// pro clube no valor cheio — decisão do coordenador foi pagar R$100 fixo nesse caso
+// específico, em vez do valor normal do professor. Vale só pra Tênis (as outras
+// modalidades continuam no valor cheio de sempre) e só a partir dessa data — aulas
+// de antes ficam com o valor de sempre, mesmo recalculadas depois.
+export const DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO = '2026-08-01'
+export const VALOR_AULA_GRUPO_1_ALUNO = 100
+
+// Valor cheio configurado pro professor (valor_aula, ou valor_aula_beach se a aula for
+// na Beach Arena e esse campo estiver preenchido) — mesma regra usada nos 3 lugares que
+// hoje calculam ganho de professor (Financeiro, Dashboard do Professor, Cadastros).
+export function valorCheioProfessor(professor, empresa) {
+  const valorBase = Number(professor?.valor_aula || professor?.valor_hora_aula || 0)
+  return empresa === 'beach_arena' && professor?.valor_aula_beach
+    ? Number(professor.valor_aula_beach)
+    : valorBase
+}
+
+// Quantos alunos "pagantes" (não-cortesia) estão na lista de presença dessa aula —
+// cortesia nunca é cobrada do cliente, então não pode contar pra decidir se a turma
+// em grupo "lotou" ou ficou só com 1 aluno.
+export function qtdAlunosPagantes(aula) {
+  return (aula.presencas || []).filter(p => p.tipo_participacao !== 'cortesia').length
+}
+
+// Valor que o professor recebe por essa aula específica — normalmente o valor cheio
+// configurado pra ele, exceto no caso Tênis-grupo-1-aluno-pagante-a-partir-de-agosto
+// descrito acima em DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO.
+export function calcularValorAula(aula, professor, empresa) {
+  const valorCheio = valorCheioProfessor(professor, empresa)
+  if (getModalidadeDaAula(aula) !== 'Tênis') return valorCheio
+  if (isAulaIndividual(aula)) return valorCheio
+  if (!aula.data_aula || aula.data_aula < DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO) return valorCheio
+  if (qtdAlunosPagantes(aula) === 1) return VALOR_AULA_GRUPO_1_ALUNO
+  return valorCheio
+}
+
 // Quantas vezes cada dia da semana ocorre dentro do período — é o denominador da
 // média (ex.: "somar as 5 segundas-feiras e dividir por 5"). Usar sempre o fim do
 // período até "hoje" (não o fim do mês) quando o mês ainda está em andamento deixa

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { logAudit } from '../lib/audit'
 import { format } from 'date-fns'
 import { confirmarAulasElegiveis } from './useAulas'
+import { calcularValorAula } from '../constants/modalidades'
 
 // ──────────────────────────────────────────────────────────────────────
 // Autorização de pagamento pelo coordenador
@@ -183,7 +184,8 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
         .from('aulas')
         .select(`
           id, professor_executou_id, turma_id, observacoes, data_aula,
-          turmas(nome, horario_inicio, quadras(nome)),
+          turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome)),
+          presencas(tipo_participacao),
           professores!professor_executou_id(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular)
         `)
         .gte('data_aula', dataInicio)
@@ -212,7 +214,7 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
           por[p.id] = { ...p, valorUnitario, totalAulas: 0, totalValor: 0 }
         }
         por[p.id].totalAulas++
-        por[p.id].totalValor += por[p.id].valorUnitario
+        por[p.id].totalValor += calcularValorAula(a, p, empresa)
       })
 
       return Object.values(por).sort((a, b) => b.totalValor - a.totalValor)
@@ -222,8 +224,10 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
   })
 }
 
-// Aulas de um professor específico no período, filtradas por empresa
-export function useAulasProfessorFinanceiro({ professorId, empresa, dataInicio, dataFim }) {
+// Aulas de um professor específico no período, filtradas por empresa. `professor`
+// (com valor_aula/valor_aula_beach) é opcional — sem ele, cada aula sai sem o campo
+// `valor` calculado (quem chama sem passar professor só quer a lista/contagem).
+export function useAulasProfessorFinanceiro({ professorId, professor, empresa, dataInicio, dataFim }) {
   return useQuery({
     queryKey: ['fin_aulas_prof', professorId, empresa, dataInicio, dataFim],
     queryFn: async () => {
@@ -233,7 +237,8 @@ export function useAulasProfessorFinanceiro({ professorId, empresa, dataInicio, 
         .from('aulas')
         .select(`
           id, data_aula, turma_id, observacoes, status_aula,
-          turmas(nome, horario_inicio, quadras(nome))
+          turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome)),
+          presencas(tipo_participacao)
         `)
         .eq('professor_executou_id', professorId)
         .gte('data_aula', dataInicio)
@@ -244,12 +249,14 @@ export function useAulasProfessorFinanceiro({ professorId, empresa, dataInicio, 
       if (error) throw error
 
       const quadras = QUADRAS_EMPRESA[empresa] || []
-      return (aulas || []).filter(a => {
+      const filtradas = (aulas || []).filter(a => {
         const q = a.turma_id ? (a.turmas?.quadras?.nome || '') : parseQuadraObs(a.observacoes)
         if (empresa && !quadras.includes(q)) return false
         const horario = a.turmas?.horario_inicio || parseHorarioObs(a.observacoes)
         return aulaJaComecou(a.data_aula, horario)
       })
+      if (!professor) return filtradas
+      return filtradas.map(a => ({ ...a, valor: calcularValorAula(a, professor, empresa) }))
     },
     enabled: !!professorId && !!dataInicio && !!dataFim,
     staleTime: 60000,
@@ -274,17 +281,20 @@ export function useBoletosProfessor(professorId) {
   })
 }
 
-// IDs de professores com pagamento confirmado no mês/ano
-export function usePagamentosConfirmados({ mes, ano }) {
+// IDs de professores com pagamento confirmado no mês/ano (por empresa — ver nota em
+// useConfirmarPagamento sobre a constraint de boletos_professor incluir `empresa`).
+export function usePagamentosConfirmados({ mes, ano, empresa }) {
   return useQuery({
-    queryKey: ['pagamentos_confirmados', mes, ano],
+    queryKey: ['pagamentos_confirmados', mes, ano, empresa],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('boletos_professor')
         .select('professor_id')
         .eq('mes', mes)
         .eq('ano', ano)
         .eq('status', 'pago')
+      if (empresa) q = q.eq('empresa', empresa)
+      const { data, error } = await q
       if (error) throw error
       return new Set((data || []).map(b => b.professor_id))
     },
@@ -293,13 +303,19 @@ export function usePagamentosConfirmados({ mes, ano }) {
   })
 }
 
+// boletos_professor é único por (professor_id, mes, ano, empresa) — onConflict precisa
+// bater exatamente com essa constraint, senão o Postgres recusa o upsert inteiro com
+// 42P10 ("no unique or exclusion constraint matching..."), mesmo quando não há conflito
+// de fato. Faltava `empresa` aqui (e em handleUploadBoleto/NF do ProfessoresPage.jsx),
+// fazendo TODO upsert nessa tabela falhar sempre — era o motivo de professores não
+// conseguirem anexar Boleto/NF nem o gestor conseguir marcar "Pago".
 export function useConfirmarPagamento() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ professorId, mes, ano }) => {
+    mutationFn: async ({ professorId, mes, ano, empresa }) => {
       const { error } = await supabase
         .from('boletos_professor')
-        .upsert({ professor_id: professorId, mes, ano, status: 'pago' }, { onConflict: 'professor_id,mes,ano' })
+        .upsert({ professor_id: professorId, mes, ano, empresa, status: 'pago' }, { onConflict: 'professor_id,mes,ano,empresa' })
       if (error) throw error
     },
     onSuccess: (_, { mes, ano, professorId }) => {
@@ -312,13 +328,14 @@ export function useConfirmarPagamento() {
 export function useDesfazerPagamento() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ professorId, mes, ano }) => {
+    mutationFn: async ({ professorId, mes, ano, empresa }) => {
       const { error } = await supabase
         .from('boletos_professor')
         .update({ status: 'pendente' })
         .eq('professor_id', professorId)
         .eq('mes', mes)
         .eq('ano', ano)
+        .eq('empresa', empresa)
       if (error) throw error
     },
     onSuccess: (_, { mes, ano, professorId }) => {

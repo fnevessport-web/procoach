@@ -12,7 +12,7 @@ import { useAlertaFaltasConsecutivas } from '../../hooks/useAlertaFaltas'
 import { useAbrirConversaDoAluno } from '../../hooks/useMensagens'
 import { nivelPorPcScore, REAVALIACAO_PRAZO_DIAS } from '../../lib/pcScore'
 import useAppStore from '../../store/useAppStore'
-import { horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula, diaSemanaDaData } from '../../constants/modalidades'
+import { horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula, diaSemanaDaData, calcularValorAula } from '../../constants/modalidades'
 import { Loading } from '../../components/ui/Loading'
 import { ModalDetalhesDia } from '../cadastros/ProfessoresPage'
 import toast from 'react-hot-toast'
@@ -154,7 +154,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
       await confirmarAulasElegiveis({ professorId, dataFim: hoje })
       const { data, error } = await supabase
         .from('aulas')
-        .select('id, data_aula, status_aula, paga_professor')
+        .select('id, data_aula, status_aula, paga_professor, turmas(niveis(nome), modalidades(nome)), presencas(tipo_participacao)')
         .eq('professor_executou_id', professorId)
         .eq('status_aula', 'dada')
         .eq('paga_professor', true)
@@ -230,11 +230,11 @@ export function DashboardProfessor({ professorIdProp } = {}) {
       return d.getMonth() + 1 === mes && d.getFullYear() === ano
     })
     const qtd = doMes.length
-    const valorAula = professor?.valor_aula || 0
+    const valorAulas = doMes.reduce((acc, a) => acc + calcularValorAula(a, professor), 0)
     const valorExtras = pagamentosExtras
       .filter(p => p.mes === mes && p.ano === ano)
       .reduce((acc, p) => acc + (p.valor || 0), 0)
-    return { qtd, valor: qtd * valorAula + valorExtras }
+    return { qtd, valor: valorAulas + valorExtras }
   }
 
   const ganhosMesAtual = calcularGanhosMes(mesAtual, anoAtual)
@@ -468,7 +468,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
           <MesExpandidoDetalhe
             mes={mesExpandido.mes}
             ano={mesExpandido.ano}
-            valorAula={professor?.valor_aula || 0}
+            professor={professor}
             aulas={aulasHistorico.filter(a => {
               const d = new Date(a.data_aula + 'T12:00')
               return d.getMonth() + 1 === mesExpandido.mes && d.getFullYear() === mesExpandido.ano
@@ -661,7 +661,7 @@ function Legenda({ cor, label, tipo }) {
   )
 }
 
-function MesExpandidoDetalhe({ mes, ano, aulas, valorAula, onClose, onSelecionarDia }) {
+function MesExpandidoDetalhe({ mes, ano, aulas, professor, onClose, onSelecionarDia }) {
   const porDia = {}
   aulas.forEach(a => { (porDia[a.data_aula] ||= []).push(a) })
   const dias = Object.keys(porDia).sort((a, b) => b.localeCompare(a))
@@ -678,6 +678,7 @@ function MesExpandidoDetalhe({ mes, ano, aulas, valorAula, onClose, onSelecionar
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
           {dias.map(dataStr => {
             const doDia = porDia[dataStr]
+            const totalDia = doDia.reduce((acc, a) => acc + calcularValorAula(a, professor), 0)
             return (
               <button key={dataStr} onClick={() => onSelecionarDia(dataStr)} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -687,7 +688,7 @@ function MesExpandidoDetalhe({ mes, ano, aulas, valorAula, onClose, onSelecionar
                 <span style={{ textTransform: 'capitalize' }}>{format(new Date(dataStr + 'T12:00'), "dd 'de' MMM", { locale: ptBR })}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ color: 'var(--color-text-dark-secondary)' }}>{doDia.length} aula{doDia.length !== 1 ? 's' : ''}</span>
-                  <span style={{ color: 'var(--color-action-primary)', fontWeight: '600' }}>R$ {(doDia.length * valorAula).toFixed(2).replace('.', ',')}</span>
+                  <span style={{ color: 'var(--color-action-primary)', fontWeight: '600' }}>R$ {totalDia.toFixed(2).replace('.', ',')}</span>
                   <ChevronRight size={14} color="var(--color-text-dark-secondary)" />
                 </span>
               </button>
@@ -721,11 +722,21 @@ function ModalCelula({ celulaAtiva, onClose }) {
         <div style={{ fontSize: '13px', color: 'var(--color-text-dark-primary)', marginBottom: '10px' }}>{horario} — {totalAlunos} aluno(s)</div>
         {(info.presencasRegulares.length > 0 || info.presencasReposicao.length > 0) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '4px' }}>
-            {info.presencasRegulares.map(p => (
-              <div key={p.id} style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)', padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--color-surface-dark-overlay)' }}>
-                {p.alunos.nome}
-              </div>
-            ))}
+            {info.presencasRegulares.map(p => {
+              const cortesia = p.tipo_participacao === 'cortesia'
+              return (
+                <div key={p.id} style={{
+                  fontSize: '13px', padding: '8px 10px', borderRadius: '8px',
+                  backgroundColor: cortesia ? 'rgba(201,138,60,0.1)' : 'var(--color-surface-dark-overlay)',
+                  color: cortesia ? 'var(--color-state-warning)' : 'var(--color-text-dark-secondary)',
+                  fontWeight: cortesia ? '700' : '400',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  {p.alunos.nome}
+                  {cortesia && <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(201,138,60,0.18)', fontWeight: '600' }}>cortesia</span>}
+                </div>
+              )
+            })}
             {info.presencasReposicao.map(p => (
               <div key={p.id} style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)', padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--color-surface-dark-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 {p.alunos.nome}

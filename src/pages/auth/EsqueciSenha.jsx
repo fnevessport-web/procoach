@@ -38,8 +38,11 @@ export function EsqueciSenha() {
     }
   }
 
+  // .theme-light explícito pelo mesmo motivo do TrocarSenha.jsx: fora do AppLayout, o
+  // <Input> compartilhado (var(--text-primary) etc.) não tem de onde herdar o tema e cai
+  // no default do body (texto claro pra fundo escuro), ilegível no card creme daqui.
   return (
-    <div style={{
+    <div className="theme-light" style={{
       height: '100vh', width: '100%', backgroundColor: 'var(--color-surface-light-base)',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       padding: '24px 16px', boxSizing: 'border-box',

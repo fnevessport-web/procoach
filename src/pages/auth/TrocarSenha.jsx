@@ -115,8 +115,12 @@ export function TrocarSenha() {
 
   const aguardandoDadosProfessor = !!professorId && (carregandoProfessor || !form)
 
+  // .theme-light explícito: página fica fora do <main> do AppLayout (não roteada por
+  // temaDaRota), então os aliases genéricos que <Input> usa (var(--text-primary) etc.) não
+  // tinham de onde herdar e caíam no default global do body (texto claro pra fundo escuro),
+  // ficando ilegível em cima do card creme desta tela.
   return (
-    <div style={{
+    <div className="theme-light" style={{
       height: '100vh', width: '100%', backgroundColor: 'var(--color-surface-light-base)',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       padding: '24px 16px', boxSizing: 'border-box',

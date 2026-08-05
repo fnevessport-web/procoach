@@ -25,6 +25,7 @@ import { RelatoriosLeituraPage } from './pages/kpis/RelatoriosLeituraPage'
 import { MensagensPage } from './pages/mensagens/MensagensPage'
 import { DashboardProfessor } from './pages/professor/DashboardProfessor'
 import { MeuPerfilProfessor } from './pages/professor/MeuPerfilProfessor'
+import { MeuFinanceiroProfessor } from './pages/professor/MeuFinanceiroProfessor'
 import { MeusAlunosProfessor } from './pages/professor/MeusAlunosProfessor'
 import { AvaliarAluno } from './pages/professor/AvaliarAluno'
 import { RankingPage } from './pages/ranking/RankingPage'
@@ -103,6 +104,9 @@ function AppRouter() {
         } />
         <Route path="/meu-perfil" element={
           <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MeuPerfilProfessor /></RouteGuard>
+        } />
+        <Route path="/meu-financeiro" element={
+          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MeuFinanceiroProfessor /></RouteGuard>
         } />
         <Route path="/meus-alunos" element={
           <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MeusAlunosProfessor /></RouteGuard>

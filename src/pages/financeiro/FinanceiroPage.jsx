@@ -20,6 +20,7 @@ import {
   useDesautorizar,
 } from '../../hooks/useFinanceiro'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
+import { calcularValorAula } from '../../constants/modalidades'
 import { useEmpresaVinculada } from '../../hooks/useProfessores'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
@@ -333,7 +334,7 @@ function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado })
 // DetalhesDiaModal — aulas de um dia específico do professor
 // ──────────────────────────────────────────────────────────────────────
 
-function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onClose, financeiroState }) {
+function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAulas, valorUnitario, onClose, financeiroState }) {
   const dataFmt = format(parseISO(dataStr + 'T12:00:00'), "EEEE, dd 'de' MMMM", { locale: ptBR })
   const navigate = useNavigate()
 
@@ -344,7 +345,7 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
       // 1) busca aulas do dia
       const { data: aulasData, error: e1 } = await supabase
         .from('aulas')
-        .select('id, turma_id, observacoes, turmas(nome, horario_inicio, quadras(nome))')
+        .select('id, turma_id, observacoes, data_aula, turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome))')
         .eq('professor_executou_id', professorId)
         .eq('data_aula', dataStr)
         .eq('status_aula', 'dada')
@@ -358,7 +359,7 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
       const ids = lista.map(a => a.id)
       const { data: presData } = await supabase
         .from('presencas')
-        .select('aula_id, status_presenca, aluno_id')
+        .select('aula_id, status_presenca, aluno_id, tipo_participacao')
         .in('aula_id', ids)
 
       // 3) busca nomes dos alunos separadamente
@@ -376,7 +377,11 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
         if (!mapa[p.aula_id]) mapa[p.aula_id] = []
         mapa[p.aula_id].push({ ...p, nomeAluno: alunoNomes[p.aluno_id] || null })
       })
-      return lista.map(a => ({ ...a, presencas: mapa[a.id] || [] }))
+      return lista.map(a => ({
+        ...a,
+        presencas: mapa[a.id] || [],
+        valor: professor ? calcularValorAula({ ...a, presencas: mapa[a.id] || [] }, professor, empresaId) : valorUnitario,
+      }))
     },
     enabled: !!professorId && !!dataStr,
     staleTime: 30000,
@@ -391,6 +396,7 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
   }
 
   const contagem = aulas.length || totalAulas
+  const totalDia = aulas.length ? aulas.reduce((s, a) => s + (a.valor ?? valorUnitario), 0) : contagem * valorUnitario
 
   return createPortal((
     <div style={{ position: 'fixed', inset: 0, zIndex: 900, backgroundColor: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
@@ -430,7 +436,7 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
                     {info.quadra && <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '1px' }}>{info.quadra}</div>}
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{fmtBRL(valorUnitario)}</div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{fmtBRL(a.valor ?? valorUnitario)}</div>
                     {presencas.length > 0 && (
                       <div style={{ fontSize: '10px', marginTop: '2px' }}>
                         <span style={{ color: 'var(--color-state-success)' }}>✓{presentes}</span>{' '}
@@ -460,7 +466,7 @@ function DetalhesDiaModal({ dataStr, professorId, totalAulas, valorUnitario, onC
 
         <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--color-border-dark)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)' }}>Total do dia</span>
-          <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{fmtBRL(contagem * valorUnitario)}</span>
+          <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{fmtBRL(totalDia)}</span>
         </div>
       </div>
     </div>
@@ -518,7 +524,7 @@ export function FinanceiroPage() {
     empresa: empresaId, mes, ano: anoSel,
   })
   const { data: aulasProf = [], isLoading: loadingAulasProf } = useAulasProfessorFinanceiro({
-    professorId: professorSel?.id, empresa: empresaId, dataInicio, dataFim: dataFimEfetivo,
+    professorId: professorSel?.id, professor: professorSel, empresa: empresaId, dataInicio, dataFim: dataFimEfetivo,
   })
   const { data: boletos = [] } = useBoletosProfessor(professorSel?.id)
 
@@ -544,7 +550,7 @@ export function FinanceiroPage() {
   const extrasProfDaEmpresa = extrasProf.filter(e => extraPertenceAEmpresa(e.empresa, professorSel, empresaId))
 
   // Extras de todos os professores do mês (para a lista principal)
-  const { data: todoExtras = [] } = useQuery({
+  const { data: todoExtras = [], isFetched: todoExtrasCarregou } = useQuery({
     queryKey: ['pagamentos_extras_todos_fin', mes, anoSel],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -580,7 +586,7 @@ export function FinanceiroPage() {
   // Gera automaticamente o lançamento de "Salário fixo" do mês (por empresa) pra
   // quem tem esse valor configurado no cadastro e ainda não tem o lançamento —
   // evita ter que criar manualmente todo mês pra quem ganha fixo (ex: Fernando, Michel).
-  const { data: colabsSalarioFixo = [] } = useQuery({
+  const { data: colabsSalarioFixo = [], isFetched: colabsSalarioFixoCarregou } = useQuery({
     queryKey: ['colaboradores_salario_fixo'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -593,7 +599,11 @@ export function FinanceiroPage() {
     staleTime: 5 * 60 * 1000,
   })
   useEffect(() => {
-    if (!empresaId) return
+    // Só decide o que "falta lançar" depois que as duas queries acima realmente
+    // carregaram — antes disso `todoExtras`/`colabsSalarioFixo` caem no default []
+    // (não é "ainda não tem lançamento", é "ainda não sei"), e rodar o insert nesse
+    // meio-tempo duplicava o Salário fixo a cada vez que a página montava.
+    if (!empresaId || !todoExtrasCarregou || !colabsSalarioFixoCarregou) return
     const jaTem = new Set(
       todoExtras
         .filter(e => e.descricao === 'Salário fixo' && e.empresa === empresaId)
@@ -616,13 +626,13 @@ export function FinanceiroPage() {
       qc.invalidateQueries({ queryKey: ['pagamentos_extras_todos_fin', mes, anoSel] })
       qc.invalidateQueries({ queryKey: ['pagamentos_extras_fin'] })
     })()
-  }, [empresaId, mes, anoSel, todoExtras, colabsSalarioFixo, dataInicio, qc])
+  }, [empresaId, mes, anoSel, todoExtras, todoExtrasCarregou, colabsSalarioFixo, colabsSalarioFixoCarregou, dataInicio, qc])
 
   const salvarLancamento = useSalvarLancamento()
   const removerLancamento = useRemoverLancamento()
   const confirmarPagamento = useConfirmarPagamento()
   const desfazerPagamento = useDesfazerPagamento()
-  const { data: pagamentosConfirmados = new Set() } = usePagamentosConfirmados({ mes, ano: anoSel })
+  const { data: pagamentosConfirmados = new Set() } = usePagamentosConfirmados({ mes, ano: anoSel, empresa: empresaId })
   const { data: liberacoes = new Set() } = useLiberacoesPagamento({ mes, ano: anoSel })
   const desautorizar = useDesautorizar()
 
@@ -644,8 +654,12 @@ export function FinanceiroPage() {
   const valorUnitarioProf = empresaId === 'beach_arena' && professorSel?.valor_aula_beach
     ? Number(professorSel.valor_aula_beach)
     : Number(professorSel?.valor_aula || professorSel?.valor_hora_aula || 0)
+  // Cada aula pode valer diferente do valorUnitario "cheio" — turma de Tênis em grupo
+  // com só 1 aluno pagante a partir de 1/8/2026 vale R$100 fixo (ver calcularValorAula).
+  const somaAulasProf = aulasProf.reduce((s, a) => s + (a.valor ?? valorUnitarioProf), 0)
+  const temAulaComDesconto = aulasProf.some(a => a.valor != null && a.valor !== valorUnitarioProf)
   const totalExtrasProf = extrasProfDaEmpresa.reduce((s, e) => s + Number(e.valor || 0), 0)
-  const totalPagarProf = totalAulasProf * valorUnitarioProf + totalExtrasProf
+  const totalPagarProf = somaAulasProf + totalExtrasProf
   const pagamentoConfirmado = professorSel ? pagamentosConfirmados.has(professorSel.id) : false
   const pagamentoAutorizado = professorSel ? liberacoes.has(professorSel.id) : false
 
@@ -673,7 +687,7 @@ export function FinanceiroPage() {
       return
     }
     try {
-      await confirmarPagamento.mutateAsync({ professorId: professorSel.id, mes, ano: anoSel })
+      await confirmarPagamento.mutateAsync({ professorId: professorSel.id, mes, ano: anoSel, empresa: empresaId })
       toast.success('Pagamento confirmado!', { style: toastStyle })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
@@ -681,7 +695,7 @@ export function FinanceiroPage() {
   async function handleDesfazerPagamento() {
     if (!professorSel) return
     try {
-      await desfazerPagamento.mutateAsync({ professorId: professorSel.id, mes, ano: anoSel })
+      await desfazerPagamento.mutateAsync({ professorId: professorSel.id, mes, ano: anoSel, empresa: empresaId })
       toast.success('Pagamento desmarcado', { style: toastStyle })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
@@ -1046,7 +1060,10 @@ export function FinanceiroPage() {
             {fmtBRL(totalPagarProf)}
           </div>
           <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', marginTop: '4px' }}>
-            {totalAulasProf} aulas × {fmtBRL(valorUnitarioProf)}
+            {temAulaComDesconto
+              ? <>{totalAulasProf} aulas — {fmtBRL(somaAulasProf)} <span style={{ color: 'var(--color-state-warning)' }}>(com turma a R$100)</span></>
+              : <>{totalAulasProf} aulas × {fmtBRL(valorUnitarioProf)}</>
+            }
             {totalExtrasProf > 0 && (
               <span style={{ color: 'var(--color-state-info)', marginLeft: '6px' }}>
                 + {fmtBRL(totalExtrasProf)} extra{extrasProfDaEmpresa.length > 1 ? 's' : ''}
@@ -1290,6 +1307,8 @@ export function FinanceiroPage() {
           <DetalhesDiaModal
             dataStr={detalhesDia.dataStr}
             professorId={professorSel.id}
+            professor={professorSel}
+            empresaId={empresaId}
             totalAulas={detalhesDia.aulas.length}
             valorUnitario={valorUnitarioProf}
             onClose={() => setDetalhesDia(null)}
@@ -1305,7 +1324,7 @@ export function FinanceiroPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {diasOrdenados.map(([dataStr, aulasNoDia]) => {
               const dataFmt = format(parseISO(dataStr + 'T12:00:00'), "dd/MM · EEEE", { locale: ptBR })
-              const totalDia = aulasNoDia.length * valorUnitarioProf
+              const totalDia = aulasNoDia.reduce((s, a) => s + (a.valor ?? valorUnitarioProf), 0)
               const pct = Math.round((aulasNoDia.length / Math.max(...diasOrdenados.map(([,a]) => a.length), 1)) * 100)
               return (
                 <button

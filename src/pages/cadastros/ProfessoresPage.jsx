@@ -13,6 +13,7 @@ import toast from 'react-hot-toast'
 import { apenasDigitosCPF, mascararCPF, cpfParaEmailSintetico } from '../../lib/cpf'
 import { buscarCep } from '../../lib/cep'
 import { BANCOS, ESTADOS } from '../../constants/geografia'
+import { calcularValorAula } from '../../constants/modalidades'
 import { DashboardProfessor } from '../professor/DashboardProfessor'
 
 const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']
@@ -128,7 +129,7 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
         .select(`
           id, turma_id, observacoes,
           turmas(nome, horario_inicio, niveis(nome)),
-          presencas(presente, status_presenca, alunos(nome))
+          presencas(presente, status_presenca, tipo_participacao, alunos(nome))
         `)
         .eq('professor_executou_id', professorId)
         .eq('data_aula', dataStr)
@@ -197,16 +198,20 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
                 </div>
                 {presencas.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    {presencas.map((p, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '3px 0', borderTop: '1px solid var(--color-surface-dark-raised)' }}>
-                        {p.status_presenca === 'presente'
-                          ? <span style={{ color: 'var(--color-state-success)', fontSize: '13px', fontWeight: '700', lineHeight: 1 }}>✓</span>
-                          : <span style={{ color: 'var(--color-state-danger)', fontSize: '13px', fontWeight: '700', lineHeight: 1 }}>✗</span>
-                        }
-                        <span style={{ fontSize: '12px', color: p.status_presenca === 'presente' ? 'var(--color-text-dark-secondary)' : 'var(--color-text-dark-muted)' }}>{p.alunos?.nome || '—'}</span>
-                        {p.status_presenca === 'falta_justificada' && <span style={{ fontSize: '9px', color: 'var(--color-state-warning)', marginLeft: 'auto' }}>just.</span>}
-                      </div>
-                    ))}
+                    {presencas.map((p, i) => {
+                      const cortesia = p.tipo_participacao === 'cortesia'
+                      return (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '3px 0', borderTop: '1px solid var(--color-surface-dark-raised)' }}>
+                          {p.status_presenca === 'presente'
+                            ? <span style={{ color: 'var(--color-state-success)', fontSize: '13px', fontWeight: '700', lineHeight: 1 }}>✓</span>
+                            : <span style={{ color: 'var(--color-state-danger)', fontSize: '13px', fontWeight: '700', lineHeight: 1 }}>✗</span>
+                          }
+                          <span style={{ fontSize: '12px', fontWeight: cortesia ? '700' : '400', color: cortesia ? 'var(--color-state-warning)' : p.status_presenca === 'presente' ? 'var(--color-text-dark-secondary)' : 'var(--color-text-dark-muted)' }}>{p.alunos?.nome || '—'}</span>
+                          {cortesia && <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(201,138,60,0.15)', color: 'var(--color-state-warning)', fontWeight: '600' }}>cortesia</span>}
+                          {p.status_presenca === 'falta_justificada' && <span style={{ fontSize: '9px', color: 'var(--color-state-warning)', marginLeft: 'auto' }}>just.</span>}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -218,7 +223,7 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
   ), document.body)
 }
 
-export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
+export default function ProfessoresPage({ autoAbrirProprio = false, abaInicial = 'perfil' } = {}) {
   const qc = useQueryClient()
   const { podeVerTodosSalarios, podeEditarCadastros } = usePermissions()
   const { perfil } = useAppStore()
@@ -227,7 +232,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   const empresaVinculada = useEmpresaVinculada()
   const [cardAberto, setCardAberto] = useState(null)
   const [menuCardId, setMenuCardId] = useState(null)
-  const [aba, setAba] = useState('perfil')
+  const [aba, setAba] = useState(abaInicial)
   const [modalCriar, setModalCriar] = useState(false)
   const [form, setForm] = useState(FORM_VAZIO)
   const [salvando, setSalvando] = useState(false)
@@ -241,6 +246,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   const [dataAvaliacao, setDataAvaliacao] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [uploadandoFoto, setUploadandoFoto] = useState(false)
   const [mesSelecionado, setMesSelecionado] = useState(null)
+  const [empresaBoletoSel, setEmpresaBoletoSel] = useState('procopio')
   const [diaSelecionado, setDiaSelecionado] = useState(null)
   const [modalExtra, setModalExtra] = useState(false)
   const [formExtra, setFormExtra] = useState({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '', empresa: '' })
@@ -281,9 +287,14 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   useEffect(() => {
     if (autoAbrirProprio && !cardAberto && perfil?.professor_id) {
       const proprio = professores.find(p => p.id === perfil.professor_id)
-      if (proprio) setCardAberto(proprio)
+      if (proprio) {
+        setCardAberto(proprio)
+        // Atalho "Financeiro" (bottom nav) já entra com o mês atual aberto — economiza
+        // o clique no quadradinho do mês que a aba normalmente exige antes de anexar.
+        if (abaInicial === 'financeiro') setMesSelecionado({ mes: mesAtual, ano: anoAtual })
+      }
     }
-  }, [autoAbrirProprio, professores, perfil?.professor_id])
+  }, [autoAbrirProprio, abaInicial, professores, perfil?.professor_id])
 
   const { data: modalidades = [] } = useQuery({
     queryKey: ['modalidades'],
@@ -338,7 +349,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       await confirmarAulasElegiveis({ professorId: cardAberto.id })
       const { data, error } = await supabase
         .from('aulas')
-        .select('data_aula, status_aula, paga_professor, status')
+        .select('data_aula, status_aula, paga_professor, status, turmas(niveis(nome), modalidades(nome)), presencas(tipo_participacao)')
         .eq('professor_executou_id', cardAberto.id)
         .eq('status_aula', 'dada')
         .eq('paga_professor', true)
@@ -675,32 +686,38 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
     } catch (err) { alert('Erro upload contrato: ' + err.message) }
   }
 
-  async function handleUploadBoleto(e, mes, ano) {
+  // boletos_professor é único por (professor_id, mes, ano, empresa) — onConflict tem que
+  // bater exatamente com essa constraint, senão o upsert falha sempre com 42P10 (era o bug:
+  // faltava `empresa` aqui, então nenhum professor conseguia anexar Boleto/NF pelo próprio
+  // perfil). `empresa` vem de quem chama (ver bloco da aba Financeiro mais abaixo).
+  async function handleUploadBoleto(e, mes, ano, empresa) {
     const file = e.target.files?.[0]
     if (!file || !cardAberto?.id) return
     try {
-      const path = `professores/${cardAberto.id}/boleto_${ano}_${mes}.pdf`
+      const path = `professores/${cardAberto.id}/boleto_${empresa}_${ano}_${mes}.pdf`
       const { error: upErr } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
       if (upErr) throw upErr
       const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
-      await supabase.from('boletos_professor').upsert({
-        professor_id: cardAberto.id, mes, ano, boleto_url: publicUrl, status: 'pendente'
-      }, { onConflict: 'professor_id,mes,ano' })
+      const { error: dbErr } = await supabase.from('boletos_professor').upsert({
+        professor_id: cardAberto.id, mes, ano, empresa, boleto_url: publicUrl, status: 'pendente'
+      }, { onConflict: 'professor_id,mes,ano,empresa' })
+      if (dbErr) throw dbErr
       qc.invalidateQueries({ queryKey: ['boletos', cardAberto.id] })
     } catch (err) { alert('Erro upload boleto: ' + err.message) }
   }
 
-  async function handleUploadNF(e, mes, ano) {
+  async function handleUploadNF(e, mes, ano, empresa) {
     const file = e.target.files?.[0]
     if (!file || !cardAberto?.id) return
     try {
-      const path = `professores/${cardAberto.id}/nf_${ano}_${mes}.pdf`
+      const path = `professores/${cardAberto.id}/nf_${empresa}_${ano}_${mes}.pdf`
       const { error: upErr } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
       if (upErr) throw upErr
       const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
-      await supabase.from('boletos_professor').upsert({
-        professor_id: cardAberto.id, mes, ano, nf_url: publicUrl,
-      }, { onConflict: 'professor_id,mes,ano' })
+      const { error: dbErr } = await supabase.from('boletos_professor').upsert({
+        professor_id: cardAberto.id, mes, ano, empresa, nf_url: publicUrl,
+      }, { onConflict: 'professor_id,mes,ano,empresa' })
+      if (dbErr) throw dbErr
       qc.invalidateQueries({ queryKey: ['boletos', cardAberto.id] })
     } catch (err) { alert('Erro upload NF: ' + err.message) }
   }
@@ -734,8 +751,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       return d.getMonth() + 1 === mes && d.getFullYear() === ano
     })
     const qtd = doMes.length
-    const valorAula = cardAberto?.valor_aula || 0
-    const valorAulas = qtd * valorAula
+    const valorAulas = doMes.reduce((acc, a) => acc + calcularValorAula(a, cardAberto), 0)
     const valorExtras = pagamentosExtras
       .filter(p => p.mes === mes && p.ano === ano)
       .reduce((acc, p) => acc + (p.valor || 0), 0)
@@ -1385,18 +1401,35 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                       </div>
 
                       {(() => {
-                        const boleto = boletos.find(b => b.mes === mesSelecionado.mes && b.ano === mesSelecionado.ano)
+                        // Quem trabalha nas duas empresas tem uma linha de boletos_professor
+                        // por empresa (mesmo mês) — precisa saber qual delas está em edição.
+                        const empresaAtual = extraEhMultiEmpresa ? empresaBoletoSel : (cardAberto.trabalha_beach ? 'beach_arena' : 'procopio')
+                        const boleto = boletos.find(b => b.mes === mesSelecionado.mes && b.ano === mesSelecionado.ano && b.empresa === empresaAtual)
                         return (
-                          <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-                            <label style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', backgroundColor: boleto?.boleto_url ? 'rgba(75,139,106,0.1)' : 'var(--color-surface-light-overlay)', color: boleto?.boleto_url ? 'var(--color-state-success)' : 'var(--color-text-light-secondary)', outline: boleto?.boleto_url ? '1px solid rgba(75,139,106,0.3)' : '1px dashed var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                              <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadBoleto(e, mesSelecionado.mes, mesSelecionado.ano)} />
-                              <Upload size={11} />{boleto?.boleto_url ? 'Boleto ✓' : 'Boleto'}
-                            </label>
-                            <label style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', backgroundColor: boleto?.nf_url ? 'rgba(75,139,106,0.1)' : 'var(--color-surface-light-overlay)', color: boleto?.nf_url ? 'var(--color-state-success)' : 'var(--color-text-light-secondary)', outline: boleto?.nf_url ? '1px solid rgba(75,139,106,0.3)' : '1px dashed var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                              <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadNF(e, mesSelecionado.mes, mesSelecionado.ano)} />
-                              <FileText size={11} />{boleto?.nf_url ? 'NF ✓' : 'NF'}
-                            </label>
-                          </div>
+                          <>
+                            {extraEhMultiEmpresa && (
+                              <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                                {[{ id: 'procopio', label: 'Procópio', cor: 'var(--color-action-primary)' }, { id: 'beach_arena', label: 'Beach Arena', cor: 'var(--color-state-info)' }].map(op => (
+                                  <button key={op.id} onClick={() => setEmpresaBoletoSel(op.id)} style={{
+                                    flex: 1, padding: '5px', borderRadius: '7px', fontSize: '10px', fontWeight: '600', cursor: 'pointer',
+                                    border: `1px solid ${empresaAtual === op.id ? op.cor : 'var(--color-border-light)'}`,
+                                    background: empresaAtual === op.id ? `${op.cor}18` : 'transparent',
+                                    color: empresaAtual === op.id ? op.cor : 'var(--color-text-light-muted)',
+                                  }}>{op.label}</button>
+                                ))}
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                              <label style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', backgroundColor: boleto?.boleto_url ? 'rgba(75,139,106,0.1)' : 'var(--color-surface-light-overlay)', color: boleto?.boleto_url ? 'var(--color-state-success)' : 'var(--color-text-light-secondary)', outline: boleto?.boleto_url ? '1px solid rgba(75,139,106,0.3)' : '1px dashed var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadBoleto(e, mesSelecionado.mes, mesSelecionado.ano, empresaAtual)} />
+                                <Upload size={11} />{boleto?.boleto_url ? 'Boleto ✓' : 'Boleto'}
+                              </label>
+                              <label style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', backgroundColor: boleto?.nf_url ? 'rgba(75,139,106,0.1)' : 'var(--color-surface-light-overlay)', color: boleto?.nf_url ? 'var(--color-state-success)' : 'var(--color-text-light-secondary)', outline: boleto?.nf_url ? '1px solid rgba(75,139,106,0.3)' : '1px dashed var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadNF(e, mesSelecionado.mes, mesSelecionado.ano, empresaAtual)} />
+                                <FileText size={11} />{boleto?.nf_url ? 'NF ✓' : 'NF'}
+                              </label>
+                            </div>
+                          </>
                         )
                       })()}
 

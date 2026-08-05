@@ -60,6 +60,7 @@ const NIVEIS_ALUNO = [
 ]
 
 const COR_REPOSICAO = 'var(--color-state-info)'
+const COR_CORTESIA = 'var(--color-state-warning)'
 
 const toastStyle = {
   background: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
@@ -2384,17 +2385,18 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                 const temAlerta = aluno.alerta_nivel
                 const alertaAberto = alertaNivel[aluno.aluno_id]
                 const isReposicao = aluno.tipo_participacao === 'reposicao'
+                const isCortesia = aluno.tipo_participacao === 'cortesia'
                 const ehNovo = alunoRecemAdicionado === aluno.aluno_id && !alunosOriginais.has(String(aluno.aluno_id))
                 return (
                   <div key={aluno.aluno_id} style={{
                     borderRadius: '10px', padding: '10px 12px', boxSizing: 'border-box',
-                    border: ehNovo ? '1px solid rgba(165,76,46,0.5)' : isReposicao ? `1px solid rgba(61,107,122,0.3)` : temAlerta ? '1px solid rgba(165,76,46,0.25)' : '1px solid transparent',
-                    backgroundColor: isReposicao ? 'rgba(61,107,122,0.05)' : 'var(--color-surface-light-overlay)',
+                    border: ehNovo ? '1px solid rgba(165,76,46,0.5)' : isReposicao ? `1px solid rgba(61,107,122,0.3)` : isCortesia ? '1px solid rgba(201,138,60,0.3)' : temAlerta ? '1px solid rgba(165,76,46,0.25)' : '1px solid transparent',
+                    backgroundColor: isReposicao ? 'rgba(61,107,122,0.05)' : isCortesia ? 'rgba(201,138,60,0.06)' : 'var(--color-surface-light-overlay)',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
                         <span style={{
-                          fontSize: '13px', fontWeight: '500', color: 'var(--color-text-light-primary)',
+                          fontSize: '13px', fontWeight: isCortesia ? '700' : '500', color: isCortesia ? COR_CORTESIA : 'var(--color-text-light-primary)',
                           backgroundColor: temAlerta ? 'rgba(165,76,46,0.12)' : 'transparent',
                           borderRadius: '4px', padding: temAlerta ? '1px 6px' : '0',
                           textDecoration: temAlerta ? 'underline' : 'none',
@@ -2403,6 +2405,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                         {temAlerta && <AlertTriangle size={11} color="var(--color-state-warning)" />}
                         {isReposicao && (
                           <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(61,107,122,0.15)', color: COR_REPOSICAO, fontWeight: '600' }}>reposição</span>
+                        )}
+                        {isCortesia && (
+                          <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(201,138,60,0.15)', color: COR_CORTESIA, fontWeight: '600' }}>cortesia</span>
                         )}
                         {aluno.criado_por_nome && (
                           <button
@@ -2420,7 +2425,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                             <AlertTriangle size={12} />
                           </button>
                           <select value={aluno.tipo_participacao} onChange={e => updatePresenca(aula.id, aluno.aluno_id, 'tipo_participacao', e.target.value)}
-                            style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)', color: isReposicao ? COR_REPOSICAO : 'var(--color-text-light-secondary)', cursor: 'pointer', outline: 'none' }}>
+                            style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)', color: isReposicao ? COR_REPOSICAO : isCortesia ? COR_CORTESIA : 'var(--color-text-light-secondary)', cursor: 'pointer', outline: 'none' }}>
                             {TIPO_PARTICIPACAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                           </select>
                           {aulaFutura && aluno.status_presenca !== 'falta_justificada' && (

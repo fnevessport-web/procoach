@@ -27,6 +27,7 @@ export function getNavItems(roleBruto) {
       { path: '/aulas', icon: CalendarDays, label: 'Minhas Aulas' },
       { path: '/meus-alunos', icon: GraduationCap, label: 'Meus Alunos' },
       { path: '/ranking', icon: Trophy, label: 'Ranking' },
+      { path: '/meu-financeiro', icon: DollarSign, label: 'Financeiro' },
       { path: '/mensagens', icon: MessageCircle, label: 'Mensagens' },
       { path: '/meu-perfil', icon: User, label: 'Meu Perfil' },
     ]
