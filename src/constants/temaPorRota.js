@@ -10,6 +10,7 @@ const PREFIXOS_ESCUROS = [
   '/dashboard-professor',
   '/ranking',
   '/financeiro',
+  '/meu-financeiro',
   '/mensagens',
 ]
 

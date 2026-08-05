@@ -263,6 +263,46 @@ export function useAulasProfessorFinanceiro({ professorId, professor, empresa, d
   })
 }
 
+// Todas as aulas "fechadas" do próprio professor, sem recorte de mês — usado no
+// autoatendimento (/meu-financeiro), que monta os 12 meses do ano de uma vez em vez de
+// pedir um período por consulta. Cada aula sai com `empresa` resolvida pela quadra (igual
+// useCustoProfessores/useAulasProfessorFinanceiro) e `valor` já calculado pra essa empresa.
+export function useAulasAnoProfessor({ professorId, professor }) {
+  return useQuery({
+    queryKey: ['fin_aulas_ano_prof', professorId],
+    queryFn: async () => {
+      if (!professorId) return []
+      const hoje = format(new Date(), 'yyyy-MM-dd')
+      await confirmarAulasElegiveis({ professorId })
+      const { data: aulas, error } = await supabase
+        .from('aulas')
+        .select(`
+          id, data_aula, turma_id, observacoes,
+          turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome)),
+          presencas(tipo_participacao)
+        `)
+        .eq('professor_executou_id', professorId)
+        .eq('paga_professor', true)
+        .eq('status_aula', 'dada')
+        .lte('data_aula', hoje)
+        .order('data_aula', { ascending: true })
+      if (error) throw error
+
+      return (aulas || [])
+        .map(a => {
+          const q = a.turma_id ? (a.turmas?.quadras?.nome || '') : parseQuadraObs(a.observacoes)
+          const empresa = QUADRAS_EMPRESA.procopio.includes(q) ? 'procopio'
+            : QUADRAS_EMPRESA.beach_arena.includes(q) ? 'beach_arena' : null
+          const horario = a.turmas?.horario_inicio || parseHorarioObs(a.observacoes)
+          return { ...a, empresa, horario, valor: professor ? calcularValorAula(a, professor, empresa) : 0 }
+        })
+        .filter(a => aulaJaComecou(a.data_aula, a.horario))
+    },
+    enabled: !!professorId,
+    staleTime: 60000,
+  })
+}
+
 // Boleto do professor para um mês/ano específico
 export function useBoletosProfessor(professorId) {
   return useQuery({

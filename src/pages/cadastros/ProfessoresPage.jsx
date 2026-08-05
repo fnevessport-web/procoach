@@ -223,7 +223,7 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
   ), document.body)
 }
 
-export default function ProfessoresPage({ autoAbrirProprio = false, abaInicial = 'perfil' } = {}) {
+export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   const qc = useQueryClient()
   const { podeVerTodosSalarios, podeEditarCadastros } = usePermissions()
   const { perfil } = useAppStore()
@@ -232,7 +232,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false, abaInicial =
   const empresaVinculada = useEmpresaVinculada()
   const [cardAberto, setCardAberto] = useState(null)
   const [menuCardId, setMenuCardId] = useState(null)
-  const [aba, setAba] = useState(abaInicial)
+  const [aba, setAba] = useState('perfil')
   const [modalCriar, setModalCriar] = useState(false)
   const [form, setForm] = useState(FORM_VAZIO)
   const [salvando, setSalvando] = useState(false)
@@ -287,14 +287,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false, abaInicial =
   useEffect(() => {
     if (autoAbrirProprio && !cardAberto && perfil?.professor_id) {
       const proprio = professores.find(p => p.id === perfil.professor_id)
-      if (proprio) {
-        setCardAberto(proprio)
-        // Atalho "Financeiro" (bottom nav) já entra com o mês atual aberto — economiza
-        // o clique no quadradinho do mês que a aba normalmente exige antes de anexar.
-        if (abaInicial === 'financeiro') setMesSelecionado({ mes: mesAtual, ano: anoAtual })
-      }
+      if (proprio) setCardAberto(proprio)
     }
-  }, [autoAbrirProprio, abaInicial, professores, perfil?.professor_id])
+  }, [autoAbrirProprio, professores, perfil?.professor_id])
 
   const { data: modalidades = [] } = useQuery({
     queryKey: ['modalidades'],
