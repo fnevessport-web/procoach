@@ -279,7 +279,7 @@ export async function exportarListaAlunosPDF(linhas, { empresa, periodo }) {
 // escopo + presença por aluno), tudo num documento só por unidade.
 // ============================================================================================
 export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
-  const { resumo, heatmaps, presenca, periodo } = dados
+  const { resumo, heatmaps, presenca, vagas, periodo } = dados
   const { jsPDF } = await import('jspdf')
   const { autoTable } = await import('jspdf-autotable')
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
@@ -682,6 +682,24 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
     )
   }
 
+  // Vagas disponíveis: retrato de agora (matrícula não é histórica, não dá pra saber
+  // "quantas vagas tinha em 15/07"), não do período do relatório como o resto da página —
+  // por isso fica numa seção própria, não misturado com os números do mês.
+  if (vagas && vagas.totalCapacidade > 0) {
+    tituloSecao('Vagas disponíveis (retrato de hoje)')
+    blocoDestaque('Vagas preenchidas', `${vagas.totalAtivos}/${vagas.totalCapacidade} (${vagas.pctPreenchido}%)`, CORES_SEVERIDADE[classificarPct(vagas.pctPreenchido, { bom: 70, atencao: 40 })])
+    if (vagas.turmasInativas.length > 0) {
+      fontePadrao('normal', 8.5)
+      doc.setTextColor(...COR_TEXTO_SUAVE)
+      doc.text(`${vagas.turmasInativas.length} turma${vagas.turmasInativas.length === 1 ? '' : 's'} sem nenhum aluno ativo — candidata${vagas.turmasInativas.length === 1 ? '' : 's'} a fechar ou remanejar:`, margem, cursorY)
+      cursorY += 16
+      tabelaEstilizada(
+        [['Turma', 'Dia', 'Horário', 'Quadra', 'Vagas livres']],
+        vagas.turmasInativas.map(t => [t.turma, t.diaSemana, t.horario, t.quadra, String(t.capacidade)])
+      )
+    }
+  }
+
   tituloSecao('Comparação com o mês anterior')
   linhaComparativo('Aulas dadas', resumo.aulasDadas, resumo.comparativo.aulasDadasAnterior, resumo.comparativo.variacaoAulasDadas, resumo.comparativo.semHistoricoAnterior)
   linhaComparativo('Taxa de presença', `${resumo.taxaPresenca}%`, `${resumo.comparativo.taxaPresencaAnterior}%`, resumo.comparativo.variacaoTaxaPresenca, resumo.comparativo.semHistoricoAnterior)
@@ -826,7 +844,7 @@ function insightsHtml(insights) {
 // professores). Como o conteúdo não escala com o número de alunos (é sempre um punhado de
 // blocos fixos), sai numa imagem só de altura natural — só a lista de presença por aluno usa a
 // paginação de altura fixa, porque essa sim pode ter centenas de linhas.
-function montarPaginaResumoHtml({ resumo, nomeEmpresa, logoBeyond, logoUnidade, periodoLabel, geradoEm }) {
+function montarPaginaResumoHtml({ resumo, vagas, nomeEmpresa, logoBeyond, logoUnidade, periodoLabel, geradoEm }) {
   const container = document.createElement('div')
   container.style.cssText = `
     width: ${LARGURA_PAGINA_PNG}px; box-sizing: border-box; padding: 28px 32px;
@@ -897,6 +915,40 @@ function montarPaginaResumoHtml({ resumo, nomeEmpresa, logoBeyond, logoUnidade, 
             </tr>`).join('')}
         </tbody>
       </table>`)
+  }
+
+  // Vagas disponíveis: retrato de agora (matrícula não é histórica), não do período do
+  // relatório como o resto da página — fica em seção própria pra não confundir com os
+  // números do mês.
+  if (vagas && vagas.totalCapacidade > 0) {
+    secoes.push(`<div style="font-size:13px; font-weight:700; text-transform:uppercase; border-bottom:1px solid ${rgb(COR_TEXTO_SUAVE)}; padding-bottom:6px; margin:16px 0 12px;">Vagas disponíveis (retrato de hoje)</div>`)
+    secoes.push(`<div style="background:${rgb(COR_BRANCO)}; border:1px solid rgba(0,0,0,0.08); border-radius:8px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <div style="font-size:12px;">Vagas preenchidas</div>
+      <div style="font-size:20px; font-weight:800; color:${rgb(CORES_SEVERIDADE[classificarPct(vagas.pctPreenchido, { bom: 70, atencao: 40 })])};">${vagas.totalAtivos}/${vagas.totalCapacidade} (${vagas.pctPreenchido}%)</div>
+    </div>`)
+    if (vagas.turmasInativas.length > 0) {
+      secoes.push(`<div style="font-size:10.5px; color:${rgb(COR_TEXTO_SUAVE)}; margin-bottom:8px;">${vagas.turmasInativas.length} turma${vagas.turmasInativas.length === 1 ? '' : 's'} sem nenhum aluno ativo — candidata${vagas.turmasInativas.length === 1 ? '' : 's'} a fechar ou remanejar:</div>`)
+      secoes.push(`
+        <table style="width:100%; border-collapse:collapse; font-size:11px; margin-bottom:8px;">
+          <thead><tr style="background:${rgb(COR_MARINHO)}; color:${rgb(COR_BRANCO)};">
+            <th style="text-align:left; padding:6px 10px; font-size:10px;">Turma</th>
+            <th style="padding:6px 4px; font-size:10px;">Dia</th>
+            <th style="padding:6px 4px; font-size:10px;">Horário</th>
+            <th style="padding:6px 4px; font-size:10px;">Quadra</th>
+            <th style="padding:6px 4px; font-size:10px;">Vagas livres</th>
+          </tr></thead>
+          <tbody>
+            ${vagas.turmasInativas.map((t, i) => `
+              <tr style="background:${i % 2 === 1 ? 'rgba(0,0,0,0.03)' : 'transparent'};">
+                <td style="padding:6px 10px; border-bottom:1px solid rgba(0,0,0,0.08);">${t.turma}</td>
+                <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${t.diaSemana}</td>
+                <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${t.horario}</td>
+                <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${t.quadra}</td>
+                <td style="text-align:center; padding:6px 4px; border-bottom:1px solid rgba(0,0,0,0.08);">${t.capacidade}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`)
+    }
   }
 
   secoes.push(`<div style="font-size:13px; font-weight:700; text-transform:uppercase; border-bottom:1px solid ${rgb(COR_TEXTO_SUAVE)}; padding-bottom:6px; margin:4px 0 12px;">Comparação com o mês anterior</div>`)
@@ -1036,7 +1088,7 @@ async function gerarCapaPngBlob(empresa, geradoEm) {
 // lista de presença por aluno (essa em partes, se não couber numa página só). Tudo empacotado
 // num .zip quando sai mais de 1 imagem (navegador bloqueia downloads múltiplos em sequência).
 export async function exportarRelatorioCompletoPNG(dados, { empresa }) {
-  const { resumo, heatmaps, presenca, periodo } = dados
+  const { resumo, heatmaps, presenca, vagas, periodo } = dados
   const { default: html2canvas } = await import('html2canvas')
 
   let logoBeyond = null
@@ -1070,7 +1122,7 @@ export async function exportarRelatorioCompletoPNG(dados, { empresa }) {
 
   try {
     await capturar(
-      montarPaginaResumoHtml({ resumo, nomeEmpresa, logoBeyond, logoUnidade, periodoLabel, geradoEm }),
+      montarPaginaResumoHtml({ resumo, vagas, nomeEmpresa, logoBeyond, logoUnidade, periodoLabel, geradoEm }),
       `01-resumo-${base}.png`
     )
 

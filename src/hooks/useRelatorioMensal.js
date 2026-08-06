@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
-import { getQuadraNome, getModalidadeDaAula, construirHeatmapOcupacao, MODALIDADE_EMPRESA } from '../constants/modalidades'
+import { getQuadraNome, getModalidadeDaAula, construirHeatmapOcupacao, MODALIDADE_EMPRESA, VAGAS_GRUPO, VAGAS_INDIVIDUAL } from '../constants/modalidades'
 import { QUADRAS_EMPRESA } from './useFinanceiro'
 import { getFeriado } from '../constants/feriados'
 
@@ -11,6 +11,27 @@ const SELECT_AULAS = `
   turmas(nome, quadra_id, quadras(nome), modalidade_id, modalidades(nome), horario_inicio, nivel_id, niveis(nome)),
   presencas(id, aluno_id, status_presenca, tipo_participacao, alunos(nome))
 `
+
+// O Supabase/PostgREST corta qualquer select em 1000 linhas por padrão (config.toml
+// `max_rows`) — um mês cheio (Procópio + Beach Arena juntas, todo status) passa fácil
+// disso (ex.: julho/2026 teve 1560 linhas de aula), e sem paginação a consulta simplesmente
+// devolvia as primeiras 1000 sem avisar, derrubando "aulas dadas", o ranking de professores,
+// os mapas de calor e a presença por aluno — tudo calculado em cima de um recorte
+// incompleto do mês. `.order('id')` é obrigatório aqui: sem uma ordenação estável, cada
+// página do `.range()` pode repetir ou pular linhas.
+async function buscarTodasAsAulas(construirQuery) {
+  const TAMANHO_PAGINA = 1000
+  let offset = 0
+  let todas = []
+  while (true) {
+    const { data, error } = await construirQuery().order('id', { ascending: true }).range(offset, offset + TAMANHO_PAGINA - 1)
+    if (error) throw error
+    todas = todas.concat(data || [])
+    if (!data || data.length < TAMANHO_PAGINA) break
+    offset += TAMANHO_PAGINA
+  }
+  return todas
+}
 
 function empresaDaAula(aula) {
   const modalidade = getModalidadeDaAula(aula)
@@ -29,9 +50,16 @@ function agregar(aulas) {
   const aulasFiltradas = aulas || []
 
   const aulasProgramadas = aulasFiltradas.length
-  const aulasDadas = aulasFiltradas.filter(a => a.status_aula === 'dada')
+  // "Dada" sozinho não prova que a aula aconteceu: toda aula nasce com status_aula='dada'
+  // já na hora que a turma é gerada pro mês inteiro (limitação antiga do banco, ver
+  // useGerarAulas em useAulas.js), então 94% delas nunca passam por nenhuma confirmação de
+  // coordenador — o campo fica só o valor de fábrica. Presença registrada (pelo menos 1
+  // aluno marcado, presente ou falta) é o sinal real de que a aula rolou; é o mesmo critério
+  // que já vale pra decidir se o professor recebe (paga_professor em useAulas.js). Sem isso,
+  // "aulas dadas" contava também os horários vazios que nunca foram nem revisados.
+  const aulasDadas = aulasFiltradas.filter(a => a.status_aula === 'dada' && (a.presencas || []).length > 0)
   const aulasCanceladas = aulasFiltradas.filter(a => a.status_aula === 'cancelada')
-  const aulasSemAluno = aulasFiltradas.filter(a => !a.presencas || a.presencas.length === 0)
+  const aulasSemAluno = aulasFiltradas.filter(a => a.status_aula === 'dada' && (!a.presencas || a.presencas.length === 0))
 
   const motivosCancelamento = {}
   aulasCanceladas.forEach(a => {
@@ -59,7 +87,7 @@ function agregar(aulas) {
     const nome = getModalidadeDaAula(a) || 'Sem modalidade'
     if (!modMap[nome]) modMap[nome] = { nome, aulas: 0, dadas: 0, presencas: 0 }
     modMap[nome].aulas++
-    if (a.status_aula === 'dada') modMap[nome].dadas++
+    if (a.status_aula === 'dada' && (a.presencas || []).length > 0) modMap[nome].dadas++
     modMap[nome].presencas += (a.presencas || []).length
   })
   const porModalidade = Object.values(modMap).sort((a, b) => b.aulas - a.aulas)
@@ -69,7 +97,7 @@ function agregar(aulas) {
     const emp = empresaDaAula(a) || 'outro'
     if (!empresaMap[emp]) empresaMap[emp] = { empresa: emp, aulas: 0, dadas: 0, presencas: 0 }
     empresaMap[emp].aulas++
-    if (a.status_aula === 'dada') empresaMap[emp].dadas++
+    if (a.status_aula === 'dada' && (a.presencas || []).length > 0) empresaMap[emp].dadas++
     empresaMap[emp].presencas += (a.presencas || []).length
   })
   const porEmpresa = Object.values(empresaMap).sort((a, b) => b.aulas - a.aulas)
@@ -267,12 +295,10 @@ export async function buscarRelatorioMensal({ periodoInicio, periodoFim, empresa
   const inicioAnterior = format(startOfMonth(subMonths(new Date(inicio + 'T12:00'), 1)), 'yyyy-MM-dd')
   const fimAnterior = format(endOfMonth(subMonths(new Date(inicio + 'T12:00'), 1)), 'yyyy-MM-dd')
 
-  const [{ data: aulas, error: erroAtual }, { data: aulasAnterior, error: erroAnterior }] = await Promise.all([
-    supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicio).lte('data_aula', fim),
-    supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicioAnterior).lte('data_aula', fimAnterior),
+  const [aulas, aulasAnterior] = await Promise.all([
+    buscarTodasAsAulas(() => supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicio).lte('data_aula', fim)),
+    buscarTodasAsAulas(() => supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicioAnterior).lte('data_aula', fimAnterior)),
   ])
-  if (erroAtual) throw erroAtual
-  if (erroAnterior) throw erroAnterior
 
   const filtrar = (lista) => (lista || [])
     .filter(a => !empresa || empresaDaAula(a) === empresa)
@@ -281,6 +307,7 @@ export async function buscarRelatorioMensal({ periodoInicio, periodoFim, empresa
   const atual = agregar(filtrar(aulas))
   const anterior = agregar(filtrar(aulasAnterior))
   const { riscoAltoCount, atencaoCount } = contarRiscos(construirPresencaPorAluno(filtrar(aulas)))
+  const vagas = await buscarVagasDisponiveis({ empresa, modalidades })
 
   function variacao(chaveAtual, chaveAnterior) {
     if (!chaveAnterior) return null
@@ -291,6 +318,7 @@ export async function buscarRelatorioMensal({ periodoInicio, periodoFim, empresa
     ...atual,
     riscoAltoCount,
     atencaoCount,
+    vagas,
     comparativo: {
       aulasDadasAnterior: anterior.aulasDadas,
       taxaPresencaAnterior: anterior.taxaPresenca,
@@ -316,12 +344,10 @@ export async function buscarRelatorioCompleto({ periodoInicio, periodoFim, empre
   const inicioAnterior = format(startOfMonth(subMonths(new Date(inicio + 'T12:00'), 1)), 'yyyy-MM-dd')
   const fimAnterior = format(endOfMonth(subMonths(new Date(inicio + 'T12:00'), 1)), 'yyyy-MM-dd')
 
-  const [{ data: aulas, error: erroAtual }, { data: aulasAnterior, error: erroAnterior }] = await Promise.all([
-    supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicio).lte('data_aula', fim),
-    supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicioAnterior).lte('data_aula', fimAnterior),
+  const [aulas, aulasAnterior] = await Promise.all([
+    buscarTodasAsAulas(() => supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicio).lte('data_aula', fim)),
+    buscarTodasAsAulas(() => supabase.from('aulas').select(SELECT_AULAS).gte('data_aula', inicioAnterior).lte('data_aula', fimAnterior)),
   ])
-  if (erroAtual) throw erroAtual
-  if (erroAnterior) throw erroAnterior
 
   const modalidadesEmEscopo = modalidades && modalidades.length > 0 ? modalidades : modalidadesDaEmpresa(empresa)
 
@@ -362,7 +388,9 @@ export async function buscarRelatorioCompleto({ periodoInicio, periodoFim, empre
     .map(modalidade => ({ modalidade, heatmap: construirHeatmapOcupacao(aulasFiltradas, inicio, fim, modalidade) }))
     .filter(({ heatmap }) => heatmap.dias.length > 0 && heatmap.horas.length > 0)
 
-  return { resumo, heatmaps, presenca, periodo: { inicio, fim }, empresa }
+  const vagas = await buscarVagasDisponiveis({ empresa, modalidades: modalidadesEmEscopo })
+
+  return { resumo, heatmaps, presenca, vagas, periodo: { inicio, fim }, empresa }
 }
 
 export function useRelatorioMensal({ periodoInicio, periodoFim, empresa, modalidades } = {}) {
@@ -411,13 +439,12 @@ export async function buscarListaAlunosAtivos({ periodoInicio, periodoFim, empre
   const turmaIds = turmasFiltradas.map(t => t.id)
   if (turmaIds.length === 0) return []
 
-  const { data: aulas, error: erroAulas } = await supabase
+  const aulas = await buscarTodasAsAulas(() => supabase
     .from('aulas')
     .select('id, turma_id, presencas(aluno_id, status_presenca)')
     .in('turma_id', turmaIds)
     .gte('data_aula', inicio)
-    .lte('data_aula', fim)
-  if (erroAulas) throw erroAulas
+    .lte('data_aula', fim))
 
   const contagem = {}
   ;(aulas || []).forEach(a => {
@@ -464,5 +491,87 @@ export function useListaAlunosAtivos({ periodoInicio, periodoFim, empresa, modal
   return useQuery({
     queryKey: ['lista-alunos-ativos', periodoInicio, periodoFim, empresa, modalidades],
     queryFn: () => buscarListaAlunosAtivos({ periodoInicio, periodoFim, empresa, modalidades }),
+  })
+}
+
+// Vagas disponíveis: quanto ainda dá pra vender nas turmas que já existem — turma em grupo
+// tem 4 vagas, individual tem 1 (mesma convenção do mapa de calor); "vaga livre" é a
+// capacidade menos os alunos ATIVOS matriculados agora. É sempre um retrato do momento em
+// que o relatório é gerado (matrícula não é histórica, não dá pra saber "quantas vagas
+// tinha em 15/07"), não um número do período do relatório como o resto. Turma sem nenhum
+// aluno ativo entra como "inativa": continua ocupando horário na grade e gerando aula toda
+// semana, mas não tem ninguém matriculado — a capacidade inteira dela vira vaga livre.
+export async function buscarVagasDisponiveis({ empresa, modalidades } = {}) {
+  const { data: turmas, error } = await supabase
+    .from('turmas')
+    .select(`
+      id, nome, horario_dia_semana, horario_inicio, modalidade_id,
+      modalidades(nome), niveis!nivel_id(nome), quadras!quadra_id(nome),
+      turmas_alunos(aluno_id, ativo, alunos(id, ativo))
+    `)
+    .eq('ativo', true)
+  if (error) throw error
+
+  const modalidadesEmEscopo = modalidades && modalidades.length > 0 ? modalidades : null
+
+  const turmasFiltradas = (turmas || [])
+    .filter(t => !empresa || empresaDaTurma(t) === empresa)
+    .filter(t => !modalidadesEmEscopo || modalidadesEmEscopo.includes(t.modalidades?.nome))
+
+  const detalhe = turmasFiltradas.map(t => {
+    const ativos = (t.turmas_alunos || []).filter(ta => ta.ativo && ta.alunos?.ativo !== false).length
+    const individual = t.niveis?.nome === 'Individual'
+    const capacidade = individual ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
+    return {
+      turmaId: t.id,
+      turma: t.nome,
+      modalidade: t.modalidades?.nome || '',
+      diaSemana: DIAS_SEMANA_LABEL[t.horario_dia_semana] || t.horario_dia_semana || '',
+      horario: t.horario_inicio?.slice(0, 5) || '',
+      quadra: t.quadras?.nome || '',
+      capacidade,
+      ativos,
+      vagasLivres: Math.max(0, capacidade - ativos),
+      inativa: ativos === 0,
+    }
+  })
+
+  const turmasInativas = detalhe.filter(t => t.inativa).sort((a, b) => a.turma.localeCompare(b.turma, 'pt-BR'))
+  const turmasComVaga = detalhe.filter(t => !t.inativa && t.vagasLivres > 0).sort((a, b) => b.vagasLivres - a.vagasLivres)
+
+  const totalCapacidade = detalhe.reduce((s, t) => s + t.capacidade, 0)
+  const totalAtivos = detalhe.reduce((s, t) => s + t.ativos, 0)
+  const totalVagasLivres = detalhe.reduce((s, t) => s + t.vagasLivres, 0)
+  const pctPreenchido = totalCapacidade > 0 ? Math.round((totalAtivos / totalCapacidade) * 100) : 0
+
+  const porModalidadeMap = {}
+  detalhe.forEach(t => {
+    const nome = t.modalidade || 'Sem modalidade'
+    if (!porModalidadeMap[nome]) porModalidadeMap[nome] = { modalidade: nome, capacidade: 0, ativos: 0, vagasLivres: 0, turmasInativas: 0 }
+    porModalidadeMap[nome].capacidade += t.capacidade
+    porModalidadeMap[nome].ativos += t.ativos
+    porModalidadeMap[nome].vagasLivres += t.vagasLivres
+    if (t.inativa) porModalidadeMap[nome].turmasInativas++
+  })
+  const porModalidade = Object.values(porModalidadeMap)
+    .map(m => ({ ...m, pctPreenchido: m.capacidade > 0 ? Math.round((m.ativos / m.capacidade) * 100) : 0 }))
+    .sort((a, b) => b.capacidade - a.capacidade)
+
+  return {
+    totalTurmas: detalhe.length,
+    totalCapacidade,
+    totalAtivos,
+    totalVagasLivres,
+    pctPreenchido,
+    turmasInativas,
+    turmasComVaga,
+    porModalidade,
+  }
+}
+
+export function useVagasDisponiveis({ empresa, modalidades } = {}) {
+  return useQuery({
+    queryKey: ['vagas-disponiveis', empresa, modalidades],
+    queryFn: () => buscarVagasDisponiveis({ empresa, modalidades }),
   })
 }

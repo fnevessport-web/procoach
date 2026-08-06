@@ -95,7 +95,7 @@ export function ModalidadePage() {
 
   const {
     modalidade, empresa, temDados, acontecendoAgora, mes,
-    mapaCalor, ocupacaoTurmas, topAlunos, riscoEvasao, rankingProfessores,
+    mapaCalor, ocupacaoTurmas, vagasResumo, topAlunos, riscoEvasao, rankingProfessores,
     isLoading,
   } = useModalidadeDashboard(nomeModalidade, { mesAtual, mesComparacao })
 
@@ -287,6 +287,26 @@ export function ModalidadePage() {
 
           {/* Ocupação das turmas */}
           <Section label="Ocupação das turmas">
+            {vagasResumo && vagasResumo.totalCapacidade > 0 && (
+              <div style={{
+                ...cardStyle, marginBottom: '10px',
+                border: `0.5px solid ${CORES_SEMAFORO[classificarPct(vagasResumo.pctPreenchido, { bom: 70, atencao: 40 })]}55`,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px',
+              }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)' }}>Vagas preenchidas</div>
+                  <div style={{ fontSize: '18px', fontWeight: '700', color: CORES_SEMAFORO[classificarPct(vagasResumo.pctPreenchido, { bom: 70, atencao: 40 })] }}>
+                    {vagasResumo.totalAtivos}/{vagasResumo.totalCapacidade} <span style={{ fontSize: '13px' }}>({vagasResumo.pctPreenchido}%)</span>
+                  </div>
+                </div>
+                {vagasResumo.turmasInativas > 0 && (
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)' }}>Turmas sem aluno ativo</div>
+                    <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-state-danger)' }}>{vagasResumo.turmasInativas}</div>
+                  </div>
+                )}
+              </div>
+            )}
             <div style={cardStyle}>
               <div style={{ maxHeight: '150px', overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {ocupacaoTurmas.length === 0 ? (

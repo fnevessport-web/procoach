@@ -314,6 +314,40 @@ export function KPIsPage() {
             <span style={{ fontSize: '20px', fontWeight: '700', color: CORES_SEMAFORO[classificarPct(rel.taxaPresenca)] }}>{rel.taxaPresenca}%</span>
           </div>
 
+          {/* Vagas disponíveis — retrato de agora (matrícula não é histórica), não do
+              período do relatório como o resto da tela. Turma em grupo = 4 vagas,
+              individual = 1, mesma convenção do mapa de calor. */}
+          {rel.vagas && (
+            <>
+              <div style={{
+                padding: '16px', borderRadius: '16px', backgroundColor: 'var(--color-surface-dark-raised)',
+                border: `1px solid ${CORES_SEMAFORO[classificarPct(rel.vagas.pctPreenchido, { bom: 70, atencao: 40 })]}33`,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--color-text-dark-primary)' }}>Vagas preenchidas</span>
+                  <SeloSemaforo pct={rel.vagas.pctPreenchido} limites={{ bom: 70, atencao: 40 }} />
+                </div>
+                <span style={{ fontSize: '20px', fontWeight: '700', color: CORES_SEMAFORO[classificarPct(rel.vagas.pctPreenchido, { bom: 70, atencao: 40 })] }}>
+                  {rel.vagas.totalAtivos}/{rel.vagas.totalCapacidade} ({rel.vagas.pctPreenchido}%)
+                </span>
+              </div>
+
+              {rel.vagas.turmasInativas.length > 0 && (
+                <Bloco icon={Ban} titulo={`Turmas sem nenhum aluno ativo (${rel.vagas.turmasInativas.length}) — candidatas a fechar ou remanejar`}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', maxHeight: '280px', overflowY: 'auto' }}>
+                    {rel.vagas.turmasInativas.map(t => (
+                      <div key={t.turmaId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
+                        <span style={{ color: 'var(--color-text-dark-primary)' }}>{t.turma}</span>
+                        <span style={{ color: 'var(--color-text-dark-secondary)', flexShrink: 0 }}>{t.capacidade} vaga{t.capacidade === 1 ? '' : 's'} livre{t.capacidade === 1 ? '' : 's'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Bloco>
+              )}
+            </>
+          )}
+
           {/* Insights Executivos */}
           {insights.length > 0 && (
             <Bloco icon={BrainCircuit} titulo="Insights executivos">

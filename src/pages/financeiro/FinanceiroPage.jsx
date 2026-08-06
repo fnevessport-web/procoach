@@ -1587,17 +1587,25 @@ export function FinanceiroPage() {
                       </span>
                     </div>
                   </div>
-                  {/* Lock icon — coordinator authorization */}
+                  {/* Cadeado — autorização do coordenador pra pagar. Maior e com fundo
+                      colorido (não só o ícone pequeno de antes) pra dar pra bater o olho
+                      na lista inteira e ver quem já está liberado, sem precisar clicar em
+                      cada professor — pedido explícito do time de Financeiro. */}
                   <div
                     onClick={autorizado
                       ? e => handleDesautorizar(prof.id, e)
                       : e => handleAbrirPin(prof.id, e)
                     }
-                    style={{ flexShrink: 0, padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                    style={{
+                      flexShrink: 0, padding: '9px', borderRadius: '10px', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center',
+                      backgroundColor: autorizado ? 'rgba(75,139,106,0.18)' : 'var(--color-surface-dark-overlay)',
+                      border: autorizado ? '1.5px solid var(--color-state-success)' : '1px solid var(--color-border-dark)',
+                    }}
                   >
                     {autorizado
-                      ? <LockOpen size={16} color="var(--color-state-success)" />
-                      : <Lock size={16} color="var(--color-text-dark-muted)" />
+                      ? <LockOpen size={20} color="var(--color-state-success)" />
+                      : <Lock size={20} color="var(--color-text-dark-muted)" />
                     }
                   </div>
                 </button>

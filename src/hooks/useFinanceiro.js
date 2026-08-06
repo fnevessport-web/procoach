@@ -87,6 +87,25 @@ function parseHorarioObs(obs) {
   return partes[2] || ''
 }
 
+// Mesmo limite de 1000 linhas por consulta do PostgREST que afetava o Relatório Mensal
+// (ver useRelatorioMensal.js) também vale aqui — um período com muita aula paga (2+ meses,
+// ou as duas empresas somadas) pode passar de 1000 e cortar silenciosamente o cálculo de
+// quanto cada professor recebe. `.order('id')` é obrigatório: sem ordenação estável, cada
+// página do `.range()` pode repetir ou pular linhas.
+async function buscarTodasAsAulas(construirQuery) {
+  const TAMANHO_PAGINA = 1000
+  let offset = 0
+  let todas = []
+  while (true) {
+    const { data, error } = await construirQuery().order('id', { ascending: true }).range(offset, offset + TAMANHO_PAGINA - 1)
+    if (error) throw error
+    todas = todas.concat(data || [])
+    if (!data || data.length < TAMANHO_PAGINA) break
+    offset += TAMANHO_PAGINA
+  }
+  return todas
+}
+
 // Retorna true se a aula já começou (para o dia de hoje, filtra por horário)
 function aulaJaComecou(dataAula, horarioInicio) {
   const hoje = format(new Date(), 'yyyy-MM-dd')
@@ -180,7 +199,7 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
     queryFn: async () => {
       if (!empresa || !dataInicio || !dataFim) return []
       await confirmarAulasElegiveis({ dataInicio, dataFim })
-      const { data: aulas, error } = await supabase
+      const aulas = await buscarTodasAsAulas(() => supabase
         .from('aulas')
         .select(`
           id, professor_executou_id, turma_id, observacoes, data_aula,
@@ -191,8 +210,7 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
         .gte('data_aula', dataInicio)
         .lte('data_aula', dataFim)
         .eq('paga_professor', true)
-        .eq('status_aula', 'dada')
-      if (error) throw error
+        .eq('status_aula', 'dada'))
 
       const quadras = QUADRAS_EMPRESA[empresa] || []
       const filtradas = (aulas || []).filter(a => {

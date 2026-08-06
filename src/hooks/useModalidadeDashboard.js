@@ -5,10 +5,9 @@ import { ptBR } from 'date-fns/locale'
 import {
   MODALIDADE_EMPRESA, getModalidadeDaAula,
   horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula,
-  DIAS_HEATMAP, construirHeatmapOcupacao,
+  DIAS_HEATMAP, construirHeatmapOcupacao, VAGAS_GRUPO, VAGAS_INDIVIDUAL,
 } from '../constants/modalidades'
 
-const CAPACIDADE_TURMA = 4
 const HORAS_HEATMAP = Array.from({ length: 16 }, (_, i) => 6 + i) // 06h..21h
 
 function ehPresente(p) {
@@ -118,7 +117,7 @@ export function useModalidadeDashboard(nomeModalidade, { mesAtual, mesComparacao
     queryFn: async () => {
       const { data, error } = await supabase
         .from('turmas')
-        .select('id, nome, horario_inicio, horario_dia_semana, quadras(nome), turmas_alunos(id, ativo)')
+        .select('id, nome, horario_inicio, horario_dia_semana, quadras(nome), niveis(nome), turmas_alunos(id, ativo, alunos(ativo))')
         .eq('modalidade_id', modalidadeId)
         .eq('ativo', true)
       if (error) throw error
@@ -212,10 +211,14 @@ export function useModalidadeDashboard(nomeModalidade, { mesAtual, mesComparacao
   }))
 
   // ── Ocupação das turmas ──────────────────────────────────────────
+  // Capacidade por turma, não fixa em 4 pra todo mundo — turma "Individual" tem 1 vaga
+  // (mesma convenção do mapa de calor); antes toda individual aparecia como "1/4",
+  // parecendo vazia quando na verdade já estava lotada com o único aluno possível.
   const ocupacaoTurmas = turmasModalidade
     .map(t => {
-      const ocupacao = t.turmas_alunos?.filter(ta => ta.ativo).length || 0
-      const nivel = ocupacao >= CAPACIDADE_TURMA ? 'cheio' : ocupacao >= 2 ? 'medio' : 'baixo'
+      const ocupacao = t.turmas_alunos?.filter(ta => ta.ativo && ta.alunos?.ativo !== false).length || 0
+      const capacidade = t.niveis?.nome === 'Individual' ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
+      const nivel = ocupacao >= capacidade ? 'cheio' : ocupacao >= 2 ? 'medio' : 'baixo'
       return {
         id: t.id,
         nome: t.nome,
@@ -223,11 +226,24 @@ export function useModalidadeDashboard(nomeModalidade, { mesAtual, mesComparacao
         diaSemana: t.horario_dia_semana || '',
         quadraNome: t.quadras?.nome || '',
         ocupacao,
-        capacidade: CAPACIDADE_TURMA,
+        capacidade,
+        vagasLivres: Math.max(0, capacidade - ocupacao),
+        inativa: ocupacao === 0,
         nivel,
       }
     })
     .sort((a, b) => (a.diaSemana || '').localeCompare(b.diaSemana || '') || a.horario.localeCompare(b.horario))
+
+  const turmasInativas = ocupacaoTurmas.filter(t => t.inativa)
+  const vagasResumo = {
+    totalCapacidade: ocupacaoTurmas.reduce((s, t) => s + t.capacidade, 0),
+    totalAtivos: ocupacaoTurmas.reduce((s, t) => s + t.ocupacao, 0),
+    totalVagasLivres: ocupacaoTurmas.reduce((s, t) => s + t.vagasLivres, 0),
+    turmasInativas: turmasInativas.length,
+  }
+  vagasResumo.pctPreenchido = vagasResumo.totalCapacidade > 0
+    ? Math.round((vagasResumo.totalAtivos / vagasResumo.totalCapacidade) * 100)
+    : 0
 
   // ── Top alunos — frequência (mês selecionado) ───────────────────
   const alunoStats = {}
@@ -297,6 +313,7 @@ export function useModalidadeDashboard(nomeModalidade, { mesAtual, mesComparacao
     mes,
     mapaCalor,
     ocupacaoTurmas,
+    vagasResumo,
     topAlunos,
     riscoEvasao,
     rankingProfessores,
