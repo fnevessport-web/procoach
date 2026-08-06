@@ -225,23 +225,76 @@ export async function exportarListaAlunosPDF(linhas, { empresa, periodo }) {
   const { autoTable } = await import('jspdf-autotable')
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
   const margem = 40
+
+  // Mesma identidade do relatório completo (fundo com textura, lockup Beyond + logo da
+  // unidade — troca sozinho pra Beach Arena via LOGO_UNIDADE_PRETO[empresa], faixa de 4
+  // cores) — antes essa lista saía só com um título em texto puro, sem marca nenhuma.
+  let texturaBase64 = null
+  let logoBeyond = null
+  let logoUnidade = null
+  const iconesBase64 = []
+  try { texturaBase64 = await carregarImagemRedimensionada('/images/bg-texture.png', 900, 'image/jpeg', 0.5) } catch {}
+  try { logoBeyond = await carregarLogoAutoCrop(LOGO_BEYOND_PRETO, 260) } catch {}
+  try { logoUnidade = await carregarLogoAutoCrop(LOGO_UNIDADE_PRETO[empresa], 260) } catch {}
+  for (const src of ICONES_EMPRESA[empresa] || []) {
+    try { iconesBase64.push(await carregarImagemRedimensionada(src, 64, 'image/png')) } catch {}
+  }
 
   const nomeEmpresa = NOME_EMPRESA[empresa] || empresa
   const periodoLabel = `${format(new Date(periodo.inicio + 'T12:00'), 'dd/MM/yyyy')} a ${format(new Date(periodo.fim + 'T12:00'), 'dd/MM/yyyy')}`
   const geradoEm = format(new Date(), "dd/MM/yyyy 'às' HH:mm")
 
+  function pintarFundo() {
+    doc.setFillColor(...COR_CREME)
+    doc.rect(0, 0, pageWidth, pageHeight, 'F')
+    if (texturaBase64) {
+      try {
+        doc.saveGraphicsState()
+        doc.setGState(new doc.GState({ opacity: 0.45 }))
+        doc.addImage(texturaBase64, 'JPEG', 0, 0, pageWidth, pageHeight)
+        doc.restoreGraphicsState()
+      } catch {}
+    }
+  }
+  pintarFundo()
+
+  const alturaLogo = 22
+  const yTopoLogo = 22
+  const textoX = desenharLockupLogos(doc, { logoBeyond, logoUnidade, x: margem, yTopo: yTopoLogo, altura: alturaLogo, corLinha: COR_TEXTO_SUAVE })
+  const cyTexto = yTopoLogo + alturaLogo / 2
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(14)
+  doc.setFontSize(15)
   doc.setTextColor(...COR_TINTA)
-  doc.text(`Lista de Alunos — ${nomeEmpresa}`, margem, 40)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
+  doc.text('LISTA DE ALUNOS', textoX, cyTexto - 3)
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(10)
   doc.setTextColor(...COR_TEXTO_SUAVE)
-  doc.text(`Período: ${periodoLabel}  ·  ${linhas.length} aluno${linhas.length === 1 ? '' : 's'}  ·  Gerado em ${geradoEm}`, margem, 56)
+  doc.text(nomeEmpresa.toUpperCase(), textoX, cyTexto + 11)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7.5)
+  doc.setTextColor(...COR_TEXTO_SUAVE)
+  doc.text(`Período: ${periodoLabel}`, pageWidth - margem, 26, { align: 'right' })
+  doc.text(`${linhas.length} aluno${linhas.length === 1 ? '' : 's'}  ·  Gerado em ${geradoEm}`, pageWidth - margem, 37, { align: 'right' })
+
+  const iconeTam = 15
+  let iconeX = pageWidth - margem - iconeTam
+  iconesBase64.forEach(b64 => {
+    try { doc.addImage(b64, 'PNG', iconeX, 46, iconeTam, iconeTam) } catch {}
+    iconeX -= iconeTam + 6
+  })
+
+  const faixaY = 70
+  const faixaW = (pageWidth - margem * 2) / 4
+  CORES_CHIP.forEach((cor, i) => {
+    doc.setFillColor(...cor)
+    doc.rect(margem + i * faixaW, faixaY, faixaW - 3, 4, 'F')
+  })
 
   autoTable(doc, {
-    startY: 74,
+    startY: faixaY + 26,
     head: [['Aluno', 'Turma/Nível', 'Dia da Semana', 'Horário', 'Total de Aulas', 'Presença', 'Falta', 'Falta Justificada', '% Frequência']],
     body: linhas.map(l => [
       l.nome,
@@ -260,6 +313,7 @@ export async function exportarListaAlunosPDF(linhas, { empresa, periodo }) {
     alternateRowStyles: { fillColor: [249, 247, 243] },
     columnStyles: { 4: { halign: 'center' }, 5: { halign: 'center' }, 6: { halign: 'center' }, 7: { halign: 'center' }, 8: { halign: 'center' } },
     margin: { left: margem, right: margem },
+    willDrawPage: pintarFundo,
   })
 
   const totalPaginas = doc.internal.getNumberOfPages()
@@ -268,7 +322,7 @@ export async function exportarListaAlunosPDF(linhas, { empresa, periodo }) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7)
     doc.setTextColor(...COR_TEXTO_SUAVE)
-    doc.text(`Gerado pelo ProCoach em ${geradoEm}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 16, { align: 'center' })
+    doc.text(`Gerado pelo ProCoach em ${geradoEm}`, pageWidth / 2, pageHeight - 16, { align: 'center' })
   }
 
   doc.save(`lista-alunos-${empresa}-${periodo.inicio}-a-${periodo.fim}.pdf`)
