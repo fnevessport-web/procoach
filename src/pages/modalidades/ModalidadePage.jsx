@@ -240,8 +240,8 @@ export function ModalidadePage() {
           {/* Mapa de calor */}
           <Section label="Mapa de calor">
             <div style={cardStyle}>
-              <p style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', margin: '0 0 12px', lineHeight: '1.4' }}>
-                Cor = % de ocupação das vagas do horário (turma em grupo cheia + individual cheia pesa igual a duas turmas em grupo cheias) — não é número bruto de gente, nem % de presença.
+              <p style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', margin: '0 0 12px', lineHeight: '1.5' }}>
+                Cor = % de ocupação das vagas do horário, calculada a partir das presenças registradas nas aulas. Cada turma em grupo tem 4 vagas, cada aula individual tem 1 vaga — turmas simultâneas no mesmo horário somam as vagas. Ex.: às 11h, 1 turma em grupo cheia (4 presenças) + 1 individual cheia (1 presença) = 5 de 5 vagas = 100%. Já às 12h, 5 presenças divididas em 2 turmas em grupo (4+4 = 8 vagas possíveis) = 5 de 8 = 63% — mesmo número de pessoas, ocupação diferente. O número no card é a média de presenças no horário, não a % de ocupação.
               </p>
               <div style={{ overflowX: 'auto' }}>
                 <div className="heatmap-grid">

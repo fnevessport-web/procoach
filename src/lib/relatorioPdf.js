@@ -556,8 +556,11 @@ export async function exportarRelatorioCompletoPDF(dados, { empresa }) {
     tituloSecao(`Mapa de calor de demanda — ${nomeModalidade}`)
     fontePadrao('normal', 8)
     doc.setTextColor(...COR_TEXTO_SUAVE)
-    doc.text('Cor = % de ocupação das vagas do horário (grupo cheio + individual cheio pesa igual a duas turmas em grupo cheias). Número = média de inscritos.', margem, cursorY, { maxWidth: pageWidth - margem * 2 })
-    cursorY += 20
+    const textoLegendaHeatmap = 'Cor = % de ocupação das vagas do horário, calculada a partir das presenças registradas nas aulas. Cada turma em grupo tem 4 vagas, cada aula individual tem 1 vaga — quando há mais de uma turma no mesmo horário, as vagas de todas se somam. Ex.: às 11h, 1 turma em grupo cheia (4 presenças) + 1 individual cheia (1 presença) = 5 de 5 vagas = 100%. Já às 12h, 5 presenças divididas em 2 turmas em grupo (4+4 = 8 vagas possíveis) = 5 de 8 = 63%, mesmo com o mesmo número de pessoas. Número exibido no card = média de presenças no horário.'
+    const linhasLegendaHeatmap = doc.splitTextToSize(textoLegendaHeatmap, pageWidth - margem * 2)
+    garantirEspaco(linhasLegendaHeatmap.length * 10 + 14)
+    doc.text(linhasLegendaHeatmap, margem, cursorY)
+    cursorY += linhasLegendaHeatmap.length * 10 + 10
 
     const larguraRotulo = 32
     const larguraTotal = pageWidth - margem * 2 - larguraRotulo
@@ -948,7 +951,7 @@ function montarPaginaHeatmapHtml({ heatmap, modalidade, nomeEmpresa, logoBeyond,
 
   container.innerHTML = cabecalhoHtml({ titulo: 'RELATÓRIO EXECUTIVO', nomeEmpresa, logoBeyond, logoUnidade, periodoLabel, geradoEm })
     + `<div style="font-size:13px; font-weight:700; text-transform:uppercase; border-bottom:1px solid ${rgb(COR_TEXTO_SUAVE)}; padding-bottom:6px; margin-bottom:8px;">Mapa de calor de demanda — ${modalidade}</div>`
-    + `<div style="font-size:10px; color:${rgb(COR_TEXTO_SUAVE)}; margin-bottom:14px;">Cor = % de ocupação das vagas do horário. Número = média de inscritos.</div>`
+    + `<div style="font-size:10px; color:${rgb(COR_TEXTO_SUAVE)}; margin-bottom:14px; line-height:1.5;">Cor = % de ocupação das vagas do horário, calculada a partir das presenças registradas nas aulas. Cada turma em grupo tem 4 vagas, cada aula individual tem 1 vaga — turmas simultâneas no mesmo horário somam as vagas. Ex.: 1 grupo cheio (4) + 1 individual cheio (1) = 5 de 5 vagas = 100%; já 5 presenças em 2 turmas em grupo (4+4 = 8 vagas) = 5 de 8 = 63%. Número no card = média de presenças no horário.</div>`
     + `<div style="display:grid; grid-template-columns:${colunas}; gap:4px; margin-bottom:6px;"><div></div>${cabecalhoDias}</div>`
     + celulasHtml
     + `<div style="margin-top:14px; text-align:center; font-size:9px; color:${rgb(COR_TEXTO_SUAVE)};">Gerado pelo ProCoach em ${geradoEm}</div>`
