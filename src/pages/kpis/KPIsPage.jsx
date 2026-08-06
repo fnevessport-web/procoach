@@ -5,7 +5,8 @@ import {
   Ban, LineChart, PartyPopper, Users, ThumbsUp, ThumbsDown, FileText, BrainCircuit,
   BarChart3, LandPlot, Trophy,
 } from 'lucide-react'
-import { useRelatorioMensal, useListaAlunosAtivos, buscarRelatorioCompleto, buscarListaAlunosAtivos, gerarInsights } from '../../hooks/useRelatorioMensal'
+import { useRelatorioMensal, useListaAlunosAtivos, buscarRelatorioCompleto, buscarListaAlunosAtivos, buscarTurmasCadastro, gerarInsights } from '../../hooks/useRelatorioMensal'
+import { exportarListaAlunosCSV, exportarListaAlunosExcel, exportarTurmasCSV, exportarTurmasExcel } from '../../lib/relatorioExport'
 import { useModalidades } from '../../hooks/useModalidades'
 import { EMPRESAS, MODALIDADE_EMPRESA, ICONES_MODALIDADES } from '../../constants/modalidades'
 import { classificarPct, CORES_SEMAFORO, LABEL_SEMAFORO } from '../../constants/semaforo'
@@ -37,6 +38,7 @@ export function KPIsPage() {
   const [aba, setAba] = useState('completo')
   const [buscaAluno, setBuscaAluno] = useState('')
   const [gerandoLista, setGerandoLista] = useState(false)
+  const [gerandoTurmas, setGerandoTurmas] = useState(null)
   const { data: modalidades } = useModalidades()
 
   const modalidadesDisponiveis = (modalidades || []).filter(m => unidadesSelecionadas.includes(MODALIDADE_EMPRESA[m.nome]))
@@ -137,6 +139,47 @@ export function KPIsPage() {
       toast.error('Erro ao gerar lista: ' + err.message, { style: toastStyle })
     } finally {
       setGerandoLista(false)
+    }
+  }
+
+  // CSV/Excel da lista de alunos — usa o mesmo dado já carregado na tela (listaAlunos),
+  // reage à unidade/modalidade/período marcados no momento, sem refazer a busca.
+  async function handleExportarListaPlanilha(formato) {
+    if (!listaAlunos || listaAlunos.length === 0) {
+      return toast.error('Nenhum aluno pra exportar com esse filtro', { style: toastStyle })
+    }
+    try {
+      const empresaArquivo = empresaPreview || 'procopio-e-beach-arena'
+      const opcoes = { empresa: empresaArquivo, periodo: { inicio: periodoInicio, fim: periodoFim } }
+      if (formato === 'csv') exportarListaAlunosCSV(listaAlunos, opcoes)
+      else await exportarListaAlunosExcel(listaAlunos, opcoes)
+      toast.success(`${formato.toUpperCase()} gerado!`, { style: toastStyle })
+    } catch (err) {
+      toast.error('Erro ao exportar: ' + err.message, { style: toastStyle })
+    }
+  }
+
+  // Turmas cadastradas (ativas e desativadas) com vagas preenchidas — pedido do clube,
+  // relatório à parte porque é retrato de agora (matrícula não é histórica), não do período
+  // selecionado como o resto da tela.
+  async function handleExportarTurmas(formato) {
+    if (unidadesSelecionadas.length === 0) {
+      return toast.error('Selecione Procópio, Beach Arena ou as duas', { style: toastStyle })
+    }
+    setGerandoTurmas(formato)
+    try {
+      for (const empresaAlvo of unidadesSelecionadas) {
+        const modalidadesDaUnidade = modalidadesSelecionadas.filter(m => MODALIDADE_EMPRESA[m] === empresaAlvo)
+        const filtroModalidades = modalidadesSelecionadas.length > 0 ? modalidadesDaUnidade : null
+        const turmas = await buscarTurmasCadastro({ empresa: empresaAlvo, modalidades: filtroModalidades })
+        if (formato === 'csv') exportarTurmasCSV(turmas, { empresa: empresaAlvo })
+        else await exportarTurmasExcel(turmas, { empresa: empresaAlvo })
+      }
+      toast.success(`${formato.toUpperCase()} gerado!`, { style: toastStyle })
+    } catch (err) {
+      toast.error('Erro ao gerar turmas: ' + err.message, { style: toastStyle })
+    } finally {
+      setGerandoTurmas(null)
     }
   }
 
@@ -451,6 +494,54 @@ export function KPIsPage() {
         }}>
           <Download size={16} /> {gerandoLista ? 'Gerando PDF...' : 'Exportar Lista em PDF'}
         </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => handleExportarListaPlanilha('csv')} style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px',
+            borderRadius: '12px', border: '1px solid var(--color-border-dark)', cursor: 'pointer',
+            background: 'var(--color-surface-dark-raised)', color: 'var(--color-text-dark-primary)', fontSize: '13px', fontWeight: '600',
+          }}>
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={() => handleExportarListaPlanilha('excel')} style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px',
+            borderRadius: '12px', border: '1px solid var(--color-border-dark)', cursor: 'pointer',
+            background: 'var(--color-surface-dark-raised)', color: 'var(--color-text-dark-primary)', fontSize: '13px', fontWeight: '600',
+          }}>
+            <Download size={14} /> Excel
+          </button>
+        </div>
+      </div>
+
+      {/* Turmas cadastradas (ativas e desativadas) + vagas preenchidas — pedido do clube,
+          retrato de agora, não do período selecionado acima. */}
+      <div style={{
+        padding: '14px', borderRadius: '12px', backgroundColor: 'var(--color-surface-dark-raised)',
+        border: '1px solid rgba(255,255,255,0.06)', marginBottom: '20px',
+      }}>
+        <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-text-dark-primary)', marginBottom: '2px' }}>
+          Turmas cadastradas (ativas e desativadas)
+        </div>
+        <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '10px' }}>
+          Cadastro completo com vagas preenchidas de cada turma — retrato de agora, não do período acima.
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => handleExportarTurmas('csv')} disabled={!!gerandoTurmas} style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px',
+            borderRadius: '12px', border: '1px solid var(--color-border-dark)', cursor: unidadesSelecionadas.length === 0 ? 'not-allowed' : 'pointer',
+            background: 'var(--color-surface-dark-overlay)', color: 'var(--color-text-dark-primary)', fontSize: '13px', fontWeight: '600',
+            opacity: gerandoTurmas && gerandoTurmas !== 'csv' ? 0.5 : 1,
+          }}>
+            <Download size={14} /> {gerandoTurmas === 'csv' ? 'Gerando...' : 'CSV'}
+          </button>
+          <button onClick={() => handleExportarTurmas('excel')} disabled={!!gerandoTurmas} style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px',
+            borderRadius: '12px', border: '1px solid var(--color-border-dark)', cursor: unidadesSelecionadas.length === 0 ? 'not-allowed' : 'pointer',
+            background: 'var(--color-surface-dark-overlay)', color: 'var(--color-text-dark-primary)', fontSize: '13px', fontWeight: '600',
+            opacity: gerandoTurmas && gerandoTurmas !== 'excel' ? 0.5 : 1,
+          }}>
+            <Download size={14} /> {gerandoTurmas === 'excel' ? 'Gerando...' : 'Excel'}
+          </button>
+        </div>
       </div>
 
       <div style={{ position: 'relative', marginBottom: '14px' }}>

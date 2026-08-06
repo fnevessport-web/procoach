@@ -501,15 +501,39 @@ export function useListaAlunosAtivos({ periodoInicio, periodoFim, empresa, modal
 // tinha em 15/07"), não um número do período do relatório como o resto. Turma sem nenhum
 // aluno ativo entra como "inativa": continua ocupando horário na grade e gerando aula toda
 // semana, mas não tem ninguém matriculado — a capacidade inteira dela vira vaga livre.
-export async function buscarVagasDisponiveis({ empresa, modalidades } = {}) {
-  const { data: turmas, error } = await supabase
-    .from('turmas')
-    .select(`
-      id, nome, horario_dia_semana, horario_inicio, modalidade_id,
-      modalidades(nome), niveis!nivel_id(nome), quadras!quadra_id(nome),
-      turmas_alunos(aluno_id, ativo, alunos(id, ativo))
-    `)
-    .eq('ativo', true)
+const SELECT_TURMAS_COM_ALUNOS = `
+  id, nome, horario_dia_semana, horario_inicio, modalidade_id, ativo,
+  modalidades(nome), niveis!nivel_id(nome), quadras!quadra_id(nome),
+  turmas_alunos(aluno_id, ativo, alunos(id, ativo))
+`
+
+function mapearTurmaParaDetalhe(t) {
+  const ativos = (t.turmas_alunos || []).filter(ta => ta.ativo && ta.alunos?.ativo !== false).length
+  const individual = t.niveis?.nome === 'Individual'
+  const capacidade = individual ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
+  return {
+    turmaId: t.id,
+    turma: t.nome,
+    modalidade: t.modalidades?.nome || '',
+    nivel: t.niveis?.nome || '',
+    diaSemana: DIAS_SEMANA_LABEL[t.horario_dia_semana] || t.horario_dia_semana || '',
+    horario: t.horario_inicio?.slice(0, 5) || '',
+    quadra: t.quadras?.nome || '',
+    ativo: t.ativo !== false,
+    capacidade,
+    ativos,
+    vagasLivres: Math.max(0, capacidade - ativos),
+    inativa: ativos === 0,
+  }
+}
+
+// Busca turmas + matrícula ativa cruas, já filtradas por empresa/modalidade — usada tanto
+// por buscarVagasDisponiveis (só turmas ativas) quanto por buscarTurmasCadastro (ativas E
+// desativadas, pro export de cadastro completo), pra não duplicar a query e o mapeamento.
+async function buscarTurmasComDetalhe({ empresa, modalidades, apenasAtivas = true } = {}) {
+  let query = supabase.from('turmas').select(SELECT_TURMAS_COM_ALUNOS)
+  if (apenasAtivas) query = query.eq('ativo', true)
+  const { data: turmas, error } = await query
   if (error) throw error
 
   const modalidadesEmEscopo = modalidades && modalidades.length > 0 ? modalidades : null
@@ -518,23 +542,21 @@ export async function buscarVagasDisponiveis({ empresa, modalidades } = {}) {
     .filter(t => !empresa || empresaDaTurma(t) === empresa)
     .filter(t => !modalidadesEmEscopo || modalidadesEmEscopo.includes(t.modalidades?.nome))
 
-  const detalhe = turmasFiltradas.map(t => {
-    const ativos = (t.turmas_alunos || []).filter(ta => ta.ativo && ta.alunos?.ativo !== false).length
-    const individual = t.niveis?.nome === 'Individual'
-    const capacidade = individual ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
-    return {
-      turmaId: t.id,
-      turma: t.nome,
-      modalidade: t.modalidades?.nome || '',
-      diaSemana: DIAS_SEMANA_LABEL[t.horario_dia_semana] || t.horario_dia_semana || '',
-      horario: t.horario_inicio?.slice(0, 5) || '',
-      quadra: t.quadras?.nome || '',
-      capacidade,
-      ativos,
-      vagasLivres: Math.max(0, capacidade - ativos),
-      inativa: ativos === 0,
-    }
-  })
+  return turmasFiltradas.map(mapearTurmaParaDetalhe)
+}
+
+// Turmas cadastradas — ativas E desativadas — com capacidade/ocupação de cada uma. Usada
+// pro export em CSV/Excel pedido pelo clube: cadastro completo, não só as com problema
+// (diferente de buscarVagasDisponiveis, que só olha turma ativa).
+export async function buscarTurmasCadastro({ empresa, modalidades } = {}) {
+  const detalhe = await buscarTurmasComDetalhe({ empresa, modalidades, apenasAtivas: false })
+  return detalhe.sort((a, b) =>
+    (a.diaSemana || '').localeCompare(b.diaSemana || '') || a.horario.localeCompare(b.horario)
+  )
+}
+
+export async function buscarVagasDisponiveis({ empresa, modalidades } = {}) {
+  const detalhe = await buscarTurmasComDetalhe({ empresa, modalidades, apenasAtivas: true })
 
   const turmasInativas = detalhe.filter(t => t.inativa).sort((a, b) => a.turma.localeCompare(b.turma, 'pt-BR'))
   const turmasComVaga = detalhe.filter(t => !t.inativa && t.vagasLivres > 0).sort((a, b) => b.vagasLivres - a.vagasLivres)
