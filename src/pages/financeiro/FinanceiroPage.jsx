@@ -563,6 +563,29 @@ export function FinanceiroPage() {
     },
     staleTime: 30000,
   })
+  // Boleto/NF de todos os professores do mês (para o indicador visual na lista principal) —
+  // antes só dava pra saber se tinha NF anexada abrindo o card de cada professor um por um;
+  // o gestor via "professor falou que anexou" e não achava, porque tinha que clicar em todo
+  // mundo pra descobrir quem realmente já tinha.
+  const { data: todosBoletos = [] } = useQuery({
+    queryKey: ['boletos_todos_fin', mes, anoSel, empresaId],
+    queryFn: async () => {
+      if (!empresaId) return []
+      const { data, error } = await supabase
+        .from('boletos_professor')
+        .select('professor_id, boleto_url, nf_url')
+        .eq('mes', mes).eq('ano', anoSel).eq('empresa', empresaId)
+      if (error) return []
+      return data || []
+    },
+    enabled: !!empresaId,
+    staleTime: 30000,
+  })
+  const boletosMapGeral = todosBoletos.reduce((acc, b) => {
+    acc[b.professor_id] = { temNF: !!b.nf_url, temBoleto: !!b.boleto_url }
+    return acc
+  }, {})
+
   // Extras desta empresa (a que está sendo visualizada agora), pra não somar no
   // total da Procópio um lançamento que é da Beach Arena e vice-versa.
   const todoExtrasDaEmpresa = todoExtras.filter(e => extraPertenceAEmpresa(e.empresa, e.professores, empresaId))
@@ -1517,6 +1540,7 @@ export function FinanceiroPage() {
               const pct = Math.round((totalComExtras / maxValorProf) * 100)
               const pago = pagamentosConfirmados.has(prof.id)
               const autorizado = liberacoes.has(prof.id)
+              const temNF = !!boletosMapGeral[prof.id]?.temNF
               return (
                 <button key={prof.id} onClick={() => navegarProfessor(prof)} style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
@@ -1524,8 +1548,11 @@ export function FinanceiroPage() {
                   textAlign: 'left', width: '100%',
                 }}>
                   <div style={{ position: 'relative', flexShrink: 0 }}>
+                    {/* Contorno da foto: verde = pagamento confirmado, saibro = NF já anexada,
+                        cinza (padrão do Avatar) = ainda sem NF — dá pra ver quem falta cobrar
+                        NF só olhando a lista, sem clicar professor por professor. */}
                     <Avatar src={prof.foto_url} nome={prof.nome} size={40}
-                      borderColor={pago ? 'var(--color-state-success)' : undefined} />
+                      borderColor={pago ? 'var(--color-state-success)' : temNF ? 'var(--color-action-primary)' : undefined} />
                     {pago && (
                       <div style={{
                         position: 'absolute', bottom: -1, right: -1,
