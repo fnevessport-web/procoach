@@ -16,8 +16,9 @@ export function AulasPage() {
   if (podeEditarAulas) return <AulasCoordenador />
   // Recepção: vê a grade igual todo mundo, mas só pode incluir aluno na lista de presença e
   // marcar presente/falta — sem nenhuma ação administrativa (editar turma, mover horário,
-  // excluir aula, substituir professor, confirmar/cancelar aula).
-  if (podeIncluirAlunoAula) return <AulasCoordenador somenteLeitura podeMarcarPresenca />
+  // excluir aula, substituir professor, confirmar/cancelar aula) — e só na aula que está
+  // rolando agora (restringirPresencaAoVivo), nunca em aula passada nem futura.
+  if (podeIncluirAlunoAula) return <AulasCoordenador somenteLeitura podeMarcarPresenca restringirPresencaAoVivo />
   // financeiro e auxiliar: só consulta, sem nenhum botão de ação
   return <AulasCoordenador somenteLeitura />
 }

@@ -142,7 +142,7 @@ function AppRouter() {
           <RouteGuard permitido={podeAcessarKPIs} homeRoute={homeRoute}><KPIsPage /></RouteGuard>
         } />
         <Route path="/relatorios-leitura" element={
-          <RouteGuard permitido={role === 'leitura'} homeRoute={homeRoute}><RelatoriosLeituraPage /></RouteGuard>
+          <RouteGuard permitido={role === 'leitura' || role === 'recepcao'} homeRoute={homeRoute}><RelatoriosLeituraPage /></RouteGuard>
         } />
         <Route path="/disponibilidade-turmas" element={
           <RouteGuard permitido={podeVerDisponibilidade} homeRoute={homeRoute}><DisponibilidadeTurmasPage /></RouteGuard>

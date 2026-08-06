@@ -124,6 +124,26 @@ function isAulaFutura(dataAula, horarioInicio) {
   return agora < inicioAula
 }
 
+function aulaJaTerminou(dataAula, horarioFim) {
+  const agora = new Date()
+  const hoje = format(agora, 'yyyy-MM-dd')
+  if (dataAula < hoje) return true
+  if (dataAula > hoje) return false
+  if (!horarioFim) return false
+  const [h, m] = horarioFim.split(':').map(Number)
+  const fimAula = new Date()
+  fimAula.setHours(h, m, 0, 0)
+  return agora > fimAula
+}
+
+// "Ao vivo": nem no futuro (mesma folga de 10min de isAulaFutura, pra dar tempo de abrir a
+// lista antes do horário cravado) nem já terminada. Usado só pra restringir a recepção
+// (restringirPresencaAoVivo) a mexer exclusivamente na aula que está rolando agora — não em
+// aula de ontem nem numa que só começa daqui a 3h.
+function aulaEstaAoVivo(aula) {
+  return !isAulaFutura(aula.data_aula, getHorario(aula)) && !aulaJaTerminou(aula.data_aula, getHorarioFim(aula))
+}
+
 // professorProprioId: modo "Minhas Aulas" do professor — mesmo layout/modal do gestor, mas só
 // mostra as próprias aulas e esconde ações de gestor (editar aula, excluir, editar turma, ação em
 // massa). O professor continua podendo confirmar status, discutir a aula e mexer nos alunos.
@@ -134,7 +154,7 @@ function isAulaFutura(dataAula, horarioInicio) {
 // chamava esse componente sem passar essa prop continua com o comportamento de sempre
 // (gestor/coordenador com tudo liberado, financeiro/auxiliar/leitura só consulta). Só o
 // role recepção passa isso explicitamente `true` com `somenteLeitura` também `true`.
-export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMarcarPresenca = !somenteLeitura, professorProprioId = null }) {
+export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMarcarPresenca = !somenteLeitura, professorProprioId = null, restringirPresencaAoVivo = false }) {
   const { modalidadeSelecionada, setOrigemAulas, user, setNavRecolhida } = useAppStore()
   const alturaVisivel = useVisualViewportHeight()
   const qc = useQueryClient()
@@ -1342,6 +1362,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   const aulaFutura = aula ? isAulaFutura(aula.data_aula, getHorario(aula)) : false
   const statusAtual = aula ? (aulaFutura ? 'futura' : (statusLocal[aula.id] || aula.status_aula || 'dada')) : 'dada'
   const isAvulsa = aula ? !aula.turma_id : false
+  // Recepção (restringirPresencaAoVivo) só mexe na aula que está rolando agora — nem futura
+  // nem já encerrada. Pra qualquer outro papel (podeMarcarPresenca sem essa restrição), o
+  // comportamento de sempre continua igual.
+  const podeMarcarPresencaAgora = podeMarcarPresenca && (!restringirPresencaAoVivo || (aula && aulaEstaAoVivo(aula)))
   // Professor titular daquela turma específica pode mexer no horário mesmo estando no modo
   // "Minhas Aulas" (professorProprioId) — gestor sempre pode, independente de titularidade.
   const ehTitularDaTurma = aula ? aula.turmas?.professor_titular_id === professorProprioId : false
@@ -1415,6 +1439,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
 
       {/* Botões filtro modalidade + ação em massa */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+        {/* Export da grade do dia (com nome de aluno) só pra quem edita a grade de verdade —
+            recepção/financeiro/auxiliar usam esse mesmo login em tablet compartilhado no
+            balcão, não deveriam levar embora a lista de quem está em cada aula. */}
+        {!somenteLeitura && (
         <button onClick={() => setModalExportarPDF(true)} style={{
           display: 'flex', alignItems: 'center', gap: '5px',
           padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border-light)', cursor: 'pointer',
@@ -1422,6 +1450,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
         }}>
           <Download size={12} /> PDF
         </button>
+        )}
         {/* Filtro modalidade — no modo do professor já filtra automático pelas modalidades dele */}
         {!professorProprioId && (
         <div style={{ position: 'relative' }}>
@@ -2377,6 +2406,18 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
               </div>
             )}
 
+            {podeMarcarPresenca && !podeMarcarPresencaAgora && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '10px',
+                backgroundColor: 'rgba(201,138,60,0.08)', border: '1px solid rgba(201,138,60,0.25)', marginBottom: '10px',
+              }}>
+                <AlertTriangle size={14} color="var(--color-state-warning)" style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
+                  {aulaFutura ? 'Essa aula ainda não começou' : 'Essa aula já terminou'} — só dá pra marcar presença/falta enquanto a aula está rolando.
+                </span>
+              </div>
+            )}
+
             <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Presenças ({alunosNaAula.length})
             </div>
@@ -2419,7 +2460,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                           </button>
                         )}
                       </div>
-                      {podeMarcarPresenca && (
+                      {podeMarcarPresencaAgora && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <button onClick={() => toggleAlertaNivel(aluno.aluno_id, aluno)} title="Alerta de nível" style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: temAlerta ? 'rgba(165,76,46,0.15)' : 'var(--color-surface-light-raised)', color: temAlerta ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)' }}>
                             <AlertTriangle size={12} />
@@ -2447,7 +2488,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                       </div>
                     )}
 
-                    {ehNovo && podeMarcarPresenca && (
+                    {ehNovo && podeMarcarPresencaAgora && (
                       <div style={{ marginBottom: '10px' }}>
                         <div style={{ fontSize: '11px', color: 'var(--color-action-primary)', fontWeight: '600', marginBottom: '6px' }}>
                           Novo aluno — como é a participação dele(a)?
@@ -2520,7 +2561,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                       </div>
                     )}
 
-                    {podeMarcarPresenca && (
+                    {podeMarcarPresencaAgora && (
                       <div style={{ display: 'flex', gap: '6px' }}>
                         {STATUS_PRESENCA.map(sp => (
                           <button key={sp.value} onClick={() => updatePresenca(aula.id, aluno.aluno_id, 'status_presenca', sp.value)} style={{
@@ -2538,7 +2579,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
               })}
             </div>
 
-            {podeMarcarPresenca && (adicionandoAluno === aula.id ? (
+            {podeMarcarPresencaAgora && (adicionandoAluno === aula.id ? (
               <div style={{ marginTop: '10px' }}>
                 <div style={{ position: 'relative', marginBottom: '8px' }}>
                   <input placeholder="Buscar aluno cadastrado..." value={buscaAdicionando}
@@ -2642,7 +2683,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
               </button>
             ))}
 
-            {podeMarcarPresenca && (
+            {podeMarcarPresencaAgora && (
               <button onClick={() => handleSalvarPresencas(aula.id)} disabled={salvarPresencas.isPending} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                 marginTop: '12px', width: '100%', padding: '12px', borderRadius: '10px', border: 'none',

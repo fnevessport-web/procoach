@@ -42,6 +42,11 @@ export function getNavItems(roleBruto) {
   if (permissoes.podeAcessarFinanceiro) items.push({ path: '/financeiro', icon: DollarSign, label: 'Financeiro' })
   if (permissoes.podeAcessarKPIs) items.push({ path: '/kpis', icon: FileBarChart, label: 'Relatório' })
   if (permissoes.podeVerDisponibilidade) items.push({ path: '/disponibilidade-turmas', icon: ClipboardCheck, label: 'Disponibilidade' })
+  // Recepção não tem podeAcessarKPIs (fica fora do relatório liberado direto pra
+  // gestor/coordenador) — mas usa o mesmo login genérico que outros funcionários do clube
+  // (zeladores etc.), então o Relatório Mensal só aparece atrás do PIN combinado com o
+  // gerente (RelatoriosLeituraPage, mesma trava do acesso "leitura").
+  if (role === 'recepcao') items.push({ path: '/relatorios-leitura', icon: FileBarChart, label: 'Relatórios' })
   items.push({ path: '/mensagens', icon: MessageCircle, label: 'Mensagens' })
   return items
 }
