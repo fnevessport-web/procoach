@@ -213,6 +213,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   // Rastreabilidade: quem incluiu cada aluno na aula (aluno.aula_id => bool) e histórico
   // completo da aula (audit_log), ambos abertos sob demanda pra não poluir a tela.
   const [origemAberta, setOrigemAberta] = useState(null)
+  // Edição rápida do nome do aluno direto na lista de presenças — corrigir um erro de
+  // digitação não deveria exigir ir até Cadastros > Alunos.
+  const [editandoNome, setEditandoNome] = useState(null) // aluno_id | null
+  const [nomeEditado, setNomeEditado] = useState('')
   const [historicoAula, setHistoricoAula] = useState(null) // { aulaId, carregando, itens } | null
   const [editandoNivelTurma, setEditandoNivelTurma] = useState(false)
   const [novoNivelId, setNovoNivelId] = useState('')
@@ -244,7 +248,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   })
   // Depois de cadastrar um aluno novo, pergunta se ele também entra em outra turma (ex:
   // matriculou 2x/semana) — evita repetir o fluxo inteiro de "Novo Aluno" pra cada dia.
-  const [promptOutraTurma, setPromptOutraTurma] = useState(null) // { alunoId, alunoNome } | null
+  const [promptOutraTurma, setPromptOutraTurma] = useState(null) // { alunoId, alunoNome, modalidadeId, modalidadeNome } | null
   const { data: todasTurmas } = useTurmas()
 
   const [modalMassa, setModalMassa] = useState(null)
@@ -1248,7 +1252,23 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       const listaAtual = [...Object.values(presencasLocal[aulaId] || {}), novaPresenca]
       setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '', tipo_participacao: 'mensalista' })
       await handleSalvarPresencas(aulaId, listaAtual)
-      setPromptOutraTurma({ alunoId: result.id, alunoNome: result.nome })
+      setPromptOutraTurma({
+        alunoId: result.id, alunoNome: result.nome,
+        modalidadeId: aulaModal?.turmas?.modalidade_id || null,
+        modalidadeNome: aulaModal?.turmas?.modalidades?.nome || null,
+      })
+    } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
+
+  async function handleSalvarNomeAluno(aulaId, alunoId) {
+    const nome = nomeEditado.trim()
+    if (!nome) return toast.error('Nome obrigatório', { style: toastStyle })
+    try {
+      await salvarAluno.mutateAsync({ id: alunoId, nome })
+      updatePresenca(aulaId, alunoId, 'nome', nome)
+      await refetchAlunos()
+      setEditandoNome(null)
+      toast.success('Nome atualizado!', { style: toastStyle })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
 
@@ -2434,33 +2454,61 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     border: ehNovo ? '1px solid rgba(165,76,46,0.5)' : isReposicao ? `1px solid rgba(61,107,122,0.3)` : isCortesia ? '1px solid rgba(201,138,60,0.3)' : temAlerta ? '1px solid rgba(165,76,46,0.25)' : '1px solid transparent',
                     backgroundColor: isReposicao ? 'rgba(61,107,122,0.05)' : isCortesia ? 'rgba(201,138,60,0.06)' : 'var(--color-surface-light-overlay)',
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
-                        <span style={{
-                          fontSize: '13px', fontWeight: isCortesia ? '700' : '500', color: isCortesia ? COR_CORTESIA : 'var(--color-text-light-primary)',
-                          backgroundColor: temAlerta ? 'rgba(165,76,46,0.12)' : 'transparent',
-                          borderRadius: '4px', padding: temAlerta ? '1px 6px' : '0',
-                          textDecoration: temAlerta ? 'underline' : 'none',
-                          textDecorationColor: 'var(--color-action-primary)', textDecorationStyle: 'dotted',
-                        }}>{aluno.nome}</span>
-                        {temAlerta && <AlertTriangle size={11} color="var(--color-state-warning)" />}
-                        {isReposicao && (
-                          <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(61,107,122,0.15)', color: COR_REPOSICAO, fontWeight: '600' }}>reposição</span>
-                        )}
-                        {isCortesia && (
-                          <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(201,138,60,0.15)', color: COR_CORTESIA, fontWeight: '600' }}>cortesia</span>
-                        )}
-                        {aluno.criado_por_nome && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '6px' }}>
+                      {editandoNome === aluno.aluno_id ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
+                          <input
+                            autoFocus
+                            value={nomeEditado}
+                            onChange={e => setNomeEditado(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') handleSalvarNomeAluno(aula.id, aluno.aluno_id)
+                              if (e.key === 'Escape') setEditandoNome(null)
+                            }}
+                            style={{ flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--color-action-primary)', fontSize: '13px', color: 'var(--color-text-light-primary)', backgroundColor: 'var(--color-surface-light-base)', outline: 'none', boxSizing: 'border-box' }}
+                          />
+                          <button onClick={() => handleSalvarNomeAluno(aula.id, aluno.aluno_id)} disabled={salvarAluno.isPending} title="Salvar nome" style={{ padding: '5px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(75,139,106,0.15)', color: 'var(--color-state-success)', display: 'flex', flexShrink: 0 }}>
+                            <Check size={12} />
+                          </button>
+                          <button onClick={() => setEditandoNome(null)} title="Cancelar" style={{ padding: '5px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-secondary)', display: 'flex', flexShrink: 0 }}>
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
+                          <span style={{
+                            fontSize: '13px', fontWeight: isCortesia ? '700' : '500', color: isCortesia ? COR_CORTESIA : 'var(--color-text-light-primary)',
+                            backgroundColor: temAlerta ? 'rgba(165,76,46,0.12)' : 'transparent',
+                            borderRadius: '4px', padding: temAlerta ? '1px 6px' : '0',
+                            textDecoration: temAlerta ? 'underline' : 'none',
+                            textDecorationColor: 'var(--color-action-primary)', textDecorationStyle: 'dotted',
+                          }}>{aluno.nome}</span>
+                          {temAlerta && <AlertTriangle size={11} color="var(--color-state-warning)" />}
+                          {isReposicao && (
+                            <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(61,107,122,0.15)', color: COR_REPOSICAO, fontWeight: '600' }}>reposição</span>
+                          )}
+                          {isCortesia && (
+                            <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(201,138,60,0.15)', color: COR_CORTESIA, fontWeight: '600' }}>cortesia</span>
+                          )}
+                          {aluno.criado_por_nome && (
+                            <button
+                              onClick={() => setOrigemAberta(prev => prev === aluno.aluno_id ? null : aluno.aluno_id)}
+                              title={`Incluído por ${aluno.criado_por_nome}`}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light-muted)', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                            >
+                              <Info size={11} />
+                            </button>
+                          )}
                           <button
-                            onClick={() => setOrigemAberta(prev => prev === aluno.aluno_id ? null : aluno.aluno_id)}
-                            title={`Incluído por ${aluno.criado_por_nome}`}
+                            onClick={() => { setEditandoNome(aluno.aluno_id); setNomeEditado(aluno.nome) }}
+                            title="Editar nome"
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light-muted)', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
                           >
-                            <Info size={11} />
+                            <Pencil size={11} />
                           </button>
-                        )}
-                      </div>
-                      {podeMarcarPresencaAgora && (
+                        </div>
+                      )}
+                      {podeMarcarPresencaAgora && editandoNome !== aluno.aluno_id && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <button onClick={() => toggleAlertaNivel(aluno.aluno_id, aluno)} title="Alerta de nível" style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: temAlerta ? 'rgba(165,76,46,0.15)' : 'var(--color-surface-light-raised)', color: temAlerta ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)' }}>
                             <AlertTriangle size={12} />
@@ -2701,6 +2749,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       {promptOutraTurma && (
         <ModalOutraTurma
           alunoNome={promptOutraTurma.alunoNome}
+          modalidadeId={promptOutraTurma.modalidadeId}
+          modalidadeNome={promptOutraTurma.modalidadeNome}
           todasTurmas={todasTurmas}
           onConfirmarTurma={handleAdicionarEmOutraTurma}
           onFechar={() => setPromptOutraTurma(null)}
@@ -2716,14 +2766,21 @@ const DIAS_LABEL_OUTRA_TURMA = { segunda: 'Segunda', terca: 'Terça', quarta: 'Q
 // Depois de cadastrar um aluno novo (ver handleCadastrarNovoAluno), pergunta se ele também
 // entra em outra turma (ex: matriculou 2x/semana) — sem isso, o coordenador tinha que repetir
 // o fluxo de "Novo Aluno" inteiro pra cada dia que o aluno frequenta.
-function ModalOutraTurma({ alunoNome, todasTurmas, onConfirmarTurma, onFechar }) {
+function ModalOutraTurma({ alunoNome, modalidadeId, modalidadeNome, todasTurmas, onConfirmarTurma, onFechar }) {
   const [fase, setFase] = useState('pergunta') // 'pergunta' | 'dia' | 'turma'
   const [diaEscolhido, setDiaEscolhido] = useState(null)
   const [confirmando, setConfirmando] = useState(false)
 
-  const diasComTurma = new Set((todasTurmas || []).map(t => t.horario_dia_semana))
+  // Só faz sentido sugerir turmas da mesma modalidade da aula de origem (ex: aluno de Padel
+  // não deveria ver horários de Tênis/Beach Tennis na lista). Se a aula de origem for avulsa
+  // (sem modalidade_id), cai de volta pra mostrar todas — melhor que esconder tudo.
+  const turmasDaModalidade = modalidadeId
+    ? (todasTurmas || []).filter(t => t.modalidade_id === modalidadeId)
+    : (todasTurmas || [])
+
+  const diasComTurma = new Set(turmasDaModalidade.map(t => t.horario_dia_semana))
   const turmasNoDia = diaEscolhido
-    ? (todasTurmas || [])
+    ? turmasDaModalidade
         .filter(t => t.horario_dia_semana === diaEscolhido)
         .sort((a, b) => (a.horario_inicio || '').localeCompare(b.horario_inicio || ''))
     : []
@@ -2739,7 +2796,7 @@ function ModalOutraTurma({ alunoNome, todasTurmas, onConfirmarTurma, onFechar })
       <Modal open onClose={onFechar} title="Incluir em outra turma?" size="sm">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', lineHeight: '1.5' }}>
-            Deseja incluir <b>{alunoNome}</b> em outra turma além dessa (ex: mais um dia da semana)?
+            Deseja incluir <b>{alunoNome}</b> em outra turma{modalidadeNome ? <> de <b>{modalidadeNome}</b></> : ''} além dessa (ex: mais um dia da semana)?
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={onFechar} style={{
@@ -2759,9 +2816,14 @@ function ModalOutraTurma({ alunoNome, todasTurmas, onConfirmarTurma, onFechar })
 
   if (fase === 'dia') {
     return (
-      <Modal open onClose={onFechar} title={`${alunoNome} — outra turma`} size="sm">
+      <Modal open onClose={onFechar} title={`${alunoNome} — outra turma${modalidadeNome ? ` de ${modalidadeNome}` : ''}`} size="sm">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Qual dia da semana?</div>
+          {diasComTurma.size === 0 && (
+            <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', textAlign: 'center', padding: '8px' }}>
+              Nenhuma turma cadastrada nessa modalidade
+            </div>
+          )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {DIAS_SEMANA_OUTRA_TURMA.filter(d => diasComTurma.has(d)).map(d => (
               <button key={d} onClick={() => { setDiaEscolhido(d); setFase('turma') }} style={{
