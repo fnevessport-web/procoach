@@ -4,6 +4,7 @@ import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown, Info, History, Repeat, CloudRain, Trash2, Save, User, MessageSquareText, DollarSign, Plus, Minus, CalendarDays, PartyPopper, StickyNote } from 'lucide-react'
 import { horarioParaMinutos } from '../../constants/modalidades'
+import { nomeCurto } from '../../lib/nomes'
 import { getFeriado } from '../../constants/feriados'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas, confirmarAulasElegiveis, gerarReposicoesPorCancelamento, useAvisarFalta } from '../../hooks/useAulas'
 import { useVisualViewportHeight } from '../../hooks/useVisualViewportHeight'
@@ -1925,7 +1926,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                           ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><AlertTriangle size={9} /> sem professor</span>
                           : <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                               {aulaCelula.eh_substituicao && <Repeat size={9} title="Substituição" style={{ flexShrink: 0 }} />}
-                              {aulaCelula.professores?.nome?.split(' ')[0]}
+                              {nomeCurto(aulaCelula.professores?.nome)}
                             </span>
                         }
                       </div>

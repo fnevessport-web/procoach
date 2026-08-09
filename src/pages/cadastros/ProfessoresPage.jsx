@@ -12,6 +12,7 @@ import useAppStore from '../../store/useAppStore'
 import toast from 'react-hot-toast'
 import { apenasDigitosCPF, mascararCPF, cpfParaEmailSintetico } from '../../lib/cpf'
 import { buscarCep } from '../../lib/cep'
+import { nomeCurto } from '../../lib/nomes'
 import { BANCOS, ESTADOS } from '../../constants/geografia'
 import { calcularValorAula } from '../../constants/modalidades'
 import { DashboardProfessor } from '../professor/DashboardProfessor'
@@ -1050,7 +1051,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: prof.ativo !== false ? 'var(--color-state-success)' : 'var(--color-text-light-muted)', flexShrink: 0 }} />
                 <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-light-primary)', lineHeight: 1.3 }}>
-                  {prof.apelido || prof.nome?.split(' ')[0]}
+                  {prof.apelido || nomeCurto(prof.nome)}
                 </span>
               </div>
               <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '4px', lineHeight: 1.4, wordBreak: 'break-word' }}>

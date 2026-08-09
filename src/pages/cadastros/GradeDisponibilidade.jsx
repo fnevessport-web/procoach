@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
+import { nomeCurto } from '../../lib/nomes'
 
 const DIAS_SEMANA = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
 const DIAS_LABEL  = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM']
@@ -13,10 +14,6 @@ const PALETA = [
   '#22d3ee', '#fb923c', '#84cc16', '#f87171', '#e879f9',
   '#34d399', '#60a5fa', '#fbbf24', '#c084fc', '#4ade80', '#818cf8',
 ]
-
-function primeiroNome(nome) {
-  return nome?.split(' ')[0] || nome
-}
 
 export function GradeDisponibilidade() {
   const { data: professores = [], isLoading: loadingProfs } = useQuery({
@@ -61,7 +58,7 @@ export function GradeDisponibilidade() {
     if (!prof) return
     const key = `${d.dia_semana}-${d.horario}`
     if (!dispMap[key]) dispMap[key] = []
-    dispMap[key].push({ id: prof.id, nome: primeiroNome(prof.nome), cor: prof.cor, status: d.status })
+    dispMap[key].push({ id: prof.id, nome: nomeCurto(prof.nome), cor: prof.cor, status: d.status })
   })
 
   // Ordena: disponivel primeiro, talvez depois
@@ -84,7 +81,7 @@ export function GradeDisponibilidade() {
           return (
             <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: cor, flexShrink: 0 }} />
-              <span style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>{p.nome.split(' ').slice(0, 2).join(' ')}</span>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>{nomeCurto(p.nome)}</span>
             </div>
           )
         })}

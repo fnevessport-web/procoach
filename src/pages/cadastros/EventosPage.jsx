@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Copy, Check, ChevronDown, ChevronUp, Trash2, UserPlus, Trophy } from 'lucide-react'
+import { Copy, Check, ChevronDown, ChevronUp, Trash2, UserPlus, Trophy, FileDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
+import { exportarInscricoesEventoPDF } from '../../lib/eventoPdf'
 
 const toastStyle = {
   background: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
@@ -261,6 +262,7 @@ function FormIncluirInscricao({ eventoId, inscricoes, onFechar }) {
 function CardEvento({ evento }) {
   const [aberto, setAberto] = useState(false)
   const [incluindoNovo, setIncluindoNovo] = useState(false)
+  const [exportando, setExportando] = useState(false)
   const { data: inscricoes } = useInscricoes(aberto ? evento.id : null)
   const { data: slots } = useSlots(aberto ? evento.id : null)
   const excluir = useExcluirInscricao(evento.id)
@@ -277,6 +279,23 @@ function CardEvento({ evento }) {
       toast.success('Inscrição excluída.', { style: toastStyle })
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
+    }
+  }
+
+  async function handleExportarPDF() {
+    setExportando(true)
+    try {
+      // Inscrições podem não ter carregado ainda se o card acabou de abrir — busca direto
+      // em vez de depender só do estado do useInscricoes, pra não exportar lista vazia.
+      const { data, error } = await supabase
+        .from('evento_inscricoes').select('*, evento_slots(horario, quadra)')
+        .eq('evento_id', evento.id).order('criado_em', { ascending: true })
+      if (error) throw error
+      await exportarInscricoesEventoPDF(evento, data || [])
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    } finally {
+      setExportando(false)
     }
   }
 
@@ -303,6 +322,14 @@ function CardEvento({ evento }) {
             <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>· {espera.length} na lista de espera</div>
           )}
           <div onClick={e => e.stopPropagation()}><LinkCopiavel link={link} /></div>
+          <button onClick={e => { e.stopPropagation(); handleExportarPDF() }} disabled={exportando} style={{
+            display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '8px',
+            border: '1px solid var(--color-border-light)', background: 'none',
+            color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer', flexShrink: 0,
+          }}>
+            <FileDown size={13} />
+            {exportando ? 'Gerando...' : 'Exportar PDF'}
+          </button>
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import useAppStore from '../../store/useAppStore'
 import { Loading } from '../../components/ui/Loading'
 import { FotoProfessor } from '../../components/ui/FotoProfessor'
 import { ICONES_MODALIDADES, LOGO_EMPRESA, EMPRESAS, horarioParaMinutos } from '../../constants/modalidades'
+import { nomeCurto } from '../../lib/nomes'
 import { AulasCoordenador } from '../aulas/AulasCoordenador'
 
 // Home dedicada ao role "leitura" (acesso somente-consulta do clube): uma única
@@ -248,7 +249,7 @@ export function HomeLeitura() {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
                   <FotoProfessor src={aula.professores?.foto_url} nome={aula.professores?.nome} />
                   <span style={{ fontSize: '9px', color: 'var(--color-text-dark-secondary)', maxWidth: '52px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {aula.professores?.nome?.split(' ')[0]}
+                    {nomeCurto(aula.professores?.nome)}
                   </span>
                 </div>
 
