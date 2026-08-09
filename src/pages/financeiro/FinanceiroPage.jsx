@@ -666,12 +666,13 @@ export function FinanceiroPage() {
   const totalOutros = outrosCustos.reduce((s, c) => s + Number(c.valor), 0)
   const totalCustos = totalProfessores + totalOutros
   const maxValorProf = Math.max(...allProfs.map(p => p.totalValor + (extrasMapGeral[p.id] || 0)), 1)
-  // boletos_professor agora é único por (professor, mês, ano, EMPRESA) — sem o filtro de
-  // empresa aqui, quem trabalha nas duas (ex: Fernando, Michel) tinha a NF/boleto de uma
-  // sobrescrevendo o da outra no mesmo mês, porque caía na mesma linha. Só mostra a NF da
-  // empresa que está sendo vista agora (empresaId) — quem cuida do financeiro de uma empresa
-  // não deve ver a NF da outra.
-  const boletoMes = boletos.find(b => b.mes === mes && b.ano === anoSel && b.empresa === empresaId)
+  // boletos_professor é único por (professor, mês, ano, EMPRESA) — quem trabalha nas duas
+  // (ex: Fernando, Michel) tem uma linha por empresa no mesmo mês. `boletoDoMes` busca a linha
+  // de uma empresa específica; pra quem está travado numa empresa só (empresaVinculada, ex.
+  // recepção), a seção de Boleto/NF abaixo só usa a da empresa vista agora (empresaId) — não
+  // deve ver nem anexar o documento da outra. Quem tem acesso às duas empresas (financeiro/
+  // coordenação) enxerga e anexa as duas de uma vez, sem precisar trocar de contexto.
+  const boletoDoMes = empresa => boletos.find(b => b.mes === mes && b.ano === anoSel && b.empresa === empresa)
   const ehProfessorMultiEmpresa = !!(professorSel?.trabalha_procopio && professorSel?.trabalha_beach)
   const totalAulasProf = aulasProf.length
   const valorUnitarioProf = empresaId === 'beach_arena' && professorSel?.valor_aula_beach
@@ -724,18 +725,20 @@ export function FinanceiroPage() {
   }
 
   // Gestor anexando direto por aqui — alguns professores têm dificuldade de subir o
-  // arquivo, então o gestor pode fazer por eles sem precisar ir em Cadastros.
-  async function handleUploadBoleto(e) {
+  // arquivo, então o gestor pode fazer por eles sem precisar ir em Cadastros. `empresaAlvo`
+  // (mesmo padrão de handleUploadNF) deixa anexar o boleto da OUTRA empresa sem sair da tela,
+  // pra quem trabalha nas duas.
+  async function handleUploadBoleto(e, empresaAlvo = empresaId) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file || !professorSel?.id) return
     try {
-      const path = `professores/${professorSel.id}/boleto_${empresaId}_${anoSel}_${mes}.pdf`
+      const path = `professores/${professorSel.id}/boleto_${empresaAlvo}_${anoSel}_${mes}.pdf`
       const { error: upErr } = await supabase.storage.from('uploads').upload(path, file, { upsert: true })
       if (upErr) throw upErr
       const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(path)
       await supabase.from('boletos_professor').upsert({
-        professor_id: professorSel.id, mes, ano: anoSel, empresa: empresaId, boleto_url: publicUrl, status: 'pendente',
+        professor_id: professorSel.id, mes, ano: anoSel, empresa: empresaAlvo, boleto_url: publicUrl, status: 'pendente',
       }, { onConflict: 'professor_id,mes,ano,empresa' })
       qc.invalidateQueries({ queryKey: ['boletos', professorSel.id] })
       toast.success('Boleto anexado!', { style: toastStyle })
@@ -991,6 +994,10 @@ export function FinanceiroPage() {
     const temPix = professorSel.tipo_pagamento === 'pix' || (professorSel.banco === 'Itaú' && professorSel.chave_pix)
     const temBoleto = professorSel.tipo_pagamento === 'boleto'
     const temDadosConta = !temBoleto && !professorSel.chave_pix && professorSel.banco && professorSel.conta
+    // Quem trabalha nas duas empresas E não está travado numa só (empresaVinculada, ex.
+    // recepção) vê e anexa Boleto/NF das duas de uma vez — sem isso, precisava trocar todo o
+    // contexto do app (menu Beach Arena → Procópio) só pra anexar o segundo documento.
+    const empresasParaExibir = ehProfessorMultiEmpresa && !empresaVinculada ? Object.values(EMPRESAS) : [EMPRESAS[empresaId]]
     const contaFormatada = `${professorSel.agencia ? `Ag ${professorSel.agencia} · ` : ''}Conta ${professorSel.conta}${professorSel.tipo_conta ? ` (${professorSel.tipo_conta === 'poupanca' ? 'Poupança' : 'Corrente'})` : ''}`
 
     // Agrupa aulas por dia
@@ -1227,86 +1234,94 @@ export function FinanceiroPage() {
           </div>
         )}
 
-        {/* Boleto (apenas para quem paga via boleto) */}
-        {temBoleto && (
-          <div style={{
+        {/* Boleto (apenas para quem paga via boleto) — o botão "Pago/Confirmado" só aparece
+            na empresa que está sendo vista agora (empresaId): é um controle sensível, com
+            liberação por PIN, então não duplica pra outra empresa só porque o anexo de
+            documento pode ser feito daqui — confirmar pagamento da outra empresa continua
+            exigindo trocar de contexto (menu Beach Arena → Procópio). */}
+        {temBoleto && empresasParaExibir.map(emp => {
+          const boletoEmp = boletoDoMes(emp.id)
+          const ehEmpresaAtual = emp.id === empresaId
+          return (
+            <div key={`boleto-${emp.id}`} style={{
+              backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px',
+              border: '1px solid rgba(61,107,122,0.2)', padding: '14px',
+              marginBottom: '14px',
+            }}>
+              <div style={{ fontSize: '10px', color: 'var(--color-state-info)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '10px' }}>
+                Boleto{empresasParaExibir.length > 1 ? ` — ${emp.nome}` : ''} — {MESES_ABREV[mesSel]}/{anoSel}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {boletoEmp?.boleto_url ? (
+                  <>
+                    <a href={boletoEmp.boleto_url} target="_blank" rel="noreferrer" style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                      padding: '10px', borderRadius: '10px',
+                      border: '1px solid rgba(61,107,122,0.3)', backgroundColor: 'rgba(61,107,122,0.06)',
+                      color: 'var(--color-state-info)', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
+                    }}>
+                      <FileText size={14} /> Ver boleto
+                    </a>
+                    <label style={{
+                      flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '10px', borderRadius: '10px', border: '1px solid var(--color-border-dark)', cursor: 'pointer', color: 'var(--color-text-dark-secondary)',
+                    }}>
+                      <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadBoleto(e, emp.id)} />
+                      <Upload size={14} />
+                    </label>
+                  </>
+                ) : (
+                  <label style={{
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    padding: '10px', borderRadius: '10px', border: '1px dashed var(--color-border-dark)',
+                    color: 'var(--color-text-dark-secondary)', fontSize: '12px', cursor: 'pointer',
+                  }}>
+                    <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadBoleto(e, emp.id)} />
+                    <Upload size={13} /> Anexar boleto
+                  </label>
+                )}
+                {ehEmpresaAtual && (!pagamentoConfirmado ? (
+                  <button onClick={handleConfirmarPagamento} disabled={confirmarPagamento.isPending} style={{
+                    flexShrink: 0, padding: '10px 14px', borderRadius: '10px', border: 'none',
+                    backgroundColor: pagamentoAutorizado ? 'var(--color-state-success)' : 'var(--color-border-dark)',
+                    color: pagamentoAutorizado ? 'white' : 'var(--color-text-dark-secondary)',
+                    fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                  }}>
+                    {pagamentoAutorizado ? <Check size={14} /> : <Lock size={14} />}
+                    Pago
+                  </button>
+                ) : (
+                  <button onClick={handleDesfazerPagamento} disabled={desfazerPagamento.isPending} style={{
+                    flexShrink: 0, padding: '10px 14px', borderRadius: '10px',
+                    backgroundColor: 'rgba(75,139,106,0.1)', border: '1px solid rgba(75,139,106,0.4)',
+                    fontSize: '12px', fontWeight: '700', color: 'var(--color-state-success)', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                  }}>
+                    <Check size={14} /> Confirmado
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+
+        {/* NF — uma por empresa vinculada quando quem está vendo tem acesso às duas
+            (empresasParaExibir); quem está travado numa empresa só (ex. recepção) continua
+            vendo (e anexando) só a NF dela, nunca a da outra. */}
+        {empresasParaExibir.map(emp => (
+          <div key={`nf-${emp.id}`} style={{
             backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px',
-            border: '1px solid rgba(61,107,122,0.2)', padding: '14px',
+            border: '1px solid rgba(165,76,46,0.15)', padding: '14px',
             marginBottom: '14px',
           }}>
-            <div style={{ fontSize: '10px', color: 'var(--color-state-info)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '10px' }}>
-              Boleto — {MESES_ABREV[mesSel]}/{anoSel}
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {boletoMes?.boleto_url ? (
-                <>
-                  <a href={boletoMes.boleto_url} target="_blank" rel="noreferrer" style={{
-                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                    padding: '10px', borderRadius: '10px',
-                    border: '1px solid rgba(61,107,122,0.3)', backgroundColor: 'rgba(61,107,122,0.06)',
-                    color: 'var(--color-state-info)', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
-                  }}>
-                    <FileText size={14} /> Ver boleto
-                  </a>
-                  <label style={{
-                    flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: '10px', borderRadius: '10px', border: '1px solid var(--color-border-dark)', cursor: 'pointer', color: 'var(--color-text-dark-secondary)',
-                  }}>
-                    <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadBoleto} />
-                    <Upload size={14} />
-                  </label>
-                </>
-              ) : (
-                <label style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                  padding: '10px', borderRadius: '10px', border: '1px dashed var(--color-border-dark)',
-                  color: 'var(--color-text-dark-secondary)', fontSize: '12px', cursor: 'pointer',
-                }}>
-                  <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleUploadBoleto} />
-                  <Upload size={13} /> Anexar boleto
-                </label>
-              )}
-              {!pagamentoConfirmado ? (
-                <button onClick={handleConfirmarPagamento} disabled={confirmarPagamento.isPending} style={{
-                  flexShrink: 0, padding: '10px 14px', borderRadius: '10px', border: 'none',
-                  backgroundColor: pagamentoAutorizado ? 'var(--color-state-success)' : 'var(--color-border-dark)',
-                  color: pagamentoAutorizado ? 'white' : 'var(--color-text-dark-secondary)',
-                  fontSize: '12px', fontWeight: '700', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '5px',
-                }}>
-                  {pagamentoAutorizado ? <Check size={14} /> : <Lock size={14} />}
-                  Pago
-                </button>
-              ) : (
-                <button onClick={handleDesfazerPagamento} disabled={desfazerPagamento.isPending} style={{
-                  flexShrink: 0, padding: '10px 14px', borderRadius: '10px',
-                  backgroundColor: 'rgba(75,139,106,0.1)', border: '1px solid rgba(75,139,106,0.4)',
-                  fontSize: '12px', fontWeight: '700', color: 'var(--color-state-success)', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '5px',
-                }}>
-                  <Check size={14} /> Confirmado
-                </button>
-              )}
-            </div>
+            <CampoNF
+              titulo={`NF${empresasParaExibir.length > 1 ? ` — ${emp.nome}` : ''} — ${MESES_ABREV[mesSel]}/${anoSel}`}
+              boleto={boletoDoMes(emp.id)}
+              onUpload={e => handleUploadNF(e, emp.id)}
+            />
           </div>
-        )}
-
-        {/* NF — sempre só a da empresa que está sendo vista agora (empresaId). Quem cuida do
-            financeiro da Beach Arena não deve ver (nem poder anexar) a NF da Procópio de um
-            colaborador que trabalha nas duas, e vice-versa — cada visão de empresa mostra só
-            o que é dela. Pra ver a NF da outra empresa, troca de contexto pela navegação
-            normal (ex: menu Beach Arena → Procópio), não pelas duas juntas nessa tela. */}
-        <div style={{
-          backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px',
-          border: '1px solid rgba(165,76,46,0.15)', padding: '14px',
-          marginBottom: '14px',
-        }}>
-          <CampoNF
-            titulo={`NF${ehProfessorMultiEmpresa ? ` — ${EMPRESAS[empresaId].nome}` : ''} — ${MESES_ABREV[mesSel]}/${anoSel}`}
-            boleto={boletoMes}
-            onUpload={e => handleUploadNF(e, empresaId)}
-          />
-        </div>
+        ))}
 
         {/* Resumo por dia */}
         <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
