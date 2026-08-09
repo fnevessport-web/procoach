@@ -18,6 +18,7 @@ import {
   useLiberacoesPagamento,
   useLiberar,
   useDesautorizar,
+  useRemoverAnexoBoleto,
 } from '../../hooks/useFinanceiro'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { calcularValorAula } from '../../constants/modalidades'
@@ -149,7 +150,7 @@ function PixButton({ chave }) {
 
 // Um campo de anexo/visualização de NF — usado 1x pra professor de empresa só, 2x (uma por
 // empresa) pra quem trabalha em ambas.
-function CampoNF({ titulo, boleto, onUpload }) {
+function CampoNF({ titulo, boleto, onUpload, onExcluir }) {
   return (
     <div>
       <div style={{ fontSize: '10px', color: 'var(--color-action-primary)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
@@ -173,6 +174,14 @@ function CampoNF({ titulo, boleto, onUpload }) {
             <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={onUpload} />
             <Upload size={14} />
           </label>
+          {onExcluir && (
+            <button onClick={onExcluir} title="Excluir Nota Fiscal" style={{
+              flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '10px', borderRadius: '10px', border: '1px solid rgba(180,71,47,0.3)', background: 'none', color: 'var(--color-state-danger)', cursor: 'pointer',
+            }}>
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
       ) : (
         <label style={{
@@ -655,6 +664,7 @@ export function FinanceiroPage() {
   const removerLancamento = useRemoverLancamento()
   const confirmarPagamento = useConfirmarPagamento()
   const desfazerPagamento = useDesfazerPagamento()
+  const removerAnexo = useRemoverAnexoBoleto()
   const { data: pagamentosConfirmados = new Set() } = usePagamentosConfirmados({ mes, ano: anoSel, empresa: empresaId })
   const { data: liberacoes = new Set() } = useLiberacoesPagamento({ mes, ano: anoSel })
   const desautorizar = useDesautorizar()
@@ -762,6 +772,17 @@ export function FinanceiroPage() {
       qc.invalidateQueries({ queryKey: ['boletos', professorSel.id] })
       toast.success('NF anexada!', { style: toastStyle })
     } catch (err) { toast.error('Erro ao anexar NF: ' + err.message, { style: toastStyle }) }
+  }
+
+  // Corrige anexo enviado no mês/empresa errada (ex: NF de julho subida na janela de agosto)
+  // sem precisar mexer direto no banco.
+  async function handleExcluirAnexo(tipo, empresaAlvo = empresaId) {
+    if (!professorSel?.id) return
+    try {
+      const campo = tipo === 'boleto' ? 'boleto_url' : 'nf_url'
+      await removerAnexo.mutateAsync({ professorId: professorSel.id, mes, ano: anoSel, empresa: empresaAlvo, campo })
+      toast.success(`${tipo === 'boleto' ? 'Boleto' : 'NF'} excluído(a).`, { style: toastStyle })
+    } catch (err) { toast.error('Erro ao excluir: ' + err.message, { style: toastStyle }) }
   }
 
   function navegarEmpresa(id) {
@@ -1269,6 +1290,12 @@ export function FinanceiroPage() {
                       <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadBoleto(e, emp.id)} />
                       <Upload size={14} />
                     </label>
+                    <button onClick={() => handleExcluirAnexo('boleto', emp.id)} title="Excluir boleto" style={{
+                      flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '10px', borderRadius: '10px', border: '1px solid rgba(180,71,47,0.3)', background: 'none', color: 'var(--color-state-danger)', cursor: 'pointer',
+                    }}>
+                      <Trash2 size={14} />
+                    </button>
                   </>
                 ) : (
                   <label style={{
@@ -1319,6 +1346,7 @@ export function FinanceiroPage() {
               titulo={`NF${empresasParaExibir.length > 1 ? ` — ${emp.nome}` : ''} — ${MESES_ABREV[mesSel]}/${anoSel}`}
               boleto={boletoDoMes(emp.id)}
               onUpload={e => handleUploadNF(e, emp.id)}
+              onExcluir={() => handleExcluirAnexo('nf', emp.id)}
             />
           </div>
         ))}

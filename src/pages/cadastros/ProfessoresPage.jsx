@@ -718,6 +718,19 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
     } catch (err) { alert('Erro upload NF: ' + err.message) }
   }
 
+  // Corrige anexo enviado no mês/empresa errada (ex: NF de julho subida na janela de agosto).
+  async function handleExcluirAnexo(tipo, mes, ano, empresa) {
+    if (!cardAberto?.id) return
+    try {
+      const campo = tipo === 'boleto' ? 'boleto_url' : 'nf_url'
+      const { error } = await supabase.from('boletos_professor')
+        .update({ [campo]: null })
+        .eq('professor_id', cardAberto.id).eq('mes', mes).eq('ano', ano).eq('empresa', empresa)
+      if (error) throw error
+      qc.invalidateQueries({ queryKey: ['boletos', cardAberto.id] })
+    } catch (err) { alert('Erro ao excluir: ' + err.message) }
+  }
+
   async function handleSalvarAvaliacao() {
     const total = novasNotas.nota_a + novasNotas.nota_b + novasNotas.nota_c + novasNotas.nota_d + novasNotas.nota_e
     if (total === 0) return alert('Preencha pelo menos uma nota')
@@ -1420,10 +1433,20 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                                 <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadBoleto(e, mesSelecionado.mes, mesSelecionado.ano, empresaAtual)} />
                                 <Upload size={11} />{boleto?.boleto_url ? 'Boleto ✓' : 'Boleto'}
                               </label>
+                              {boleto?.boleto_url && (
+                                <button onClick={() => handleExcluirAnexo('boleto', mesSelecionado.mes, mesSelecionado.ano, empresaAtual)} title="Excluir boleto" style={{ flexShrink: 0, padding: '7px', borderRadius: '8px', border: '1px solid rgba(180,71,47,0.3)', background: 'none', color: 'var(--color-state-danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Trash2 size={11} />
+                                </button>
+                              )}
                               <label style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', backgroundColor: boleto?.nf_url ? 'rgba(75,139,106,0.1)' : 'var(--color-surface-light-overlay)', color: boleto?.nf_url ? 'var(--color-state-success)' : 'var(--color-text-light-secondary)', outline: boleto?.nf_url ? '1px solid rgba(75,139,106,0.3)' : '1px dashed var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                 <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleUploadNF(e, mesSelecionado.mes, mesSelecionado.ano, empresaAtual)} />
                                 <FileText size={11} />{boleto?.nf_url ? 'NF ✓' : 'NF'}
                               </label>
+                              {boleto?.nf_url && (
+                                <button onClick={() => handleExcluirAnexo('nf', mesSelecionado.mes, mesSelecionado.ano, empresaAtual)} title="Excluir NF" style={{ flexShrink: 0, padding: '7px', borderRadius: '8px', border: '1px solid rgba(180,71,47,0.3)', background: 'none', color: 'var(--color-state-danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Trash2 size={11} />
+                                </button>
+                              )}
                             </div>
                           </>
                         )

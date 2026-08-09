@@ -1,16 +1,50 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Upload, FileText, ChevronDown } from 'lucide-react'
+import { Upload, FileText, ChevronDown, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import useAppStore from '../../store/useAppStore'
-import { useAulasAnoProfessor, useBoletosProfessor } from '../../hooks/useFinanceiro'
+import { useAulasAnoProfessor, useBoletosProfessor, useRemoverAnexoBoleto } from '../../hooks/useFinanceiro'
 import { Loading } from '../../components/ui/Loading'
+import { Modal } from '../../components/ui/Modal'
 
 const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
 const MESES_EXT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
 function fmtBRL(v) {
   return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+// Confirmação antes de anexar (evita o erro de subir a NF de um mês na janela de outro,
+// já que nada aqui impede o professor de estar no mês errado sem perceber) e antes de
+// excluir (ação sem volta, já que não guarda histórico do que foi removido).
+function ModalConfirmarAnexo({ acao, tipo, mesLabel, enviando, onConfirmar, onCancelar }) {
+  const rotulo = tipo === 'boleto' ? 'o Boleto' : 'a Nota Fiscal'
+  const ehExcluir = acao === 'excluir'
+  return (
+    <Modal open onClose={onCancelar} title={ehExcluir ? 'Excluir anexo' : 'Confirmar anexo'} size="sm">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.6' }}>
+          {ehExcluir ? (
+            <>Excluir {rotulo} de <b style={{ color: 'var(--color-action-primary)' }}>{mesLabel}</b> anexado(a)? Essa ação não pode ser desfeita.</>
+          ) : (
+            <>Você está anexando {rotulo} referente à prestação de serviço de{' '}
+              <b style={{ color: 'var(--color-action-primary)' }}>{mesLabel}</b>.</>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={onCancelar} style={{
+            flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid var(--border)',
+            background: 'none', color: 'var(--text-secondary)', fontSize: '13px', cursor: 'pointer',
+          }}>Cancelar</button>
+          <button onClick={onConfirmar} disabled={enviando} style={{
+            flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
+            background: ehExcluir ? 'var(--color-state-danger)' : 'var(--color-action-primary)',
+            color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+          }}>{enviando ? 'Enviando...' : ehExcluir ? 'Excluir' : 'Confirmar'}</button>
+        </div>
+      </div>
+    </Modal>
+  )
 }
 
 // Tela de autoatendimento do professor — só pagamentos (sem dados pessoais misturados,
@@ -27,7 +61,10 @@ export function MeuFinanceiroProfessor() {
   const [mesSel, setMesSel] = useState(hoje.getMonth() + 1)
   const [empresaSel, setEmpresaSel] = useState('procopio')
   const [enviando, setEnviando] = useState('')
+  const [excluindo, setExcluindo] = useState('')
   const [erro, setErro] = useState('')
+  const [dialogAnexo, setDialogAnexo] = useState(null) // { acao: 'anexar'|'excluir', tipo: 'boleto'|'nf', file? } | null
+  const removerAnexo = useRemoverAnexoBoleto()
 
   const { data: professor, isLoading: carregandoProfessor } = useQuery({
     queryKey: ['meu_financeiro_professor', professorId],
@@ -85,7 +122,34 @@ export function MeuFinanceiroProfessor() {
     }
   }
 
+  async function handleExcluir(tipo) {
+    setExcluindo(tipo)
+    setErro('')
+    try {
+      const campo = tipo === 'boleto' ? 'boleto_url' : 'nf_url'
+      await removerAnexo.mutateAsync({ professorId, mes: mesSel, ano: anoSel, empresa: empresaAtual, campo })
+    } catch (err) {
+      setErro(`Erro ao excluir ${tipo === 'boleto' ? 'boleto' : 'NF'}: ${err.message}`)
+    } finally {
+      setExcluindo('')
+    }
+  }
+
+  function selecionarArquivo(tipo, file) {
+    if (!file) return
+    setDialogAnexo({ acao: 'anexar', tipo, file })
+  }
+
+  async function confirmarDialogAnexo() {
+    if (!dialogAnexo) return
+    const { acao, tipo, file } = dialogAnexo
+    setDialogAnexo(null)
+    if (acao === 'anexar') await handleUpload(tipo, file)
+    else await handleExcluir(tipo)
+  }
+
   const anos = [hoje.getFullYear() - 1, hoje.getFullYear()]
+  const mesLabelSel = `${MESES_EXT[mesSel - 1].toUpperCase()}/${anoSel}`
 
   return (
     <div style={{ padding: '16px', maxWidth: '640px', margin: '0 auto', paddingBottom: '40px' }}>
@@ -168,29 +232,62 @@ export function MeuFinanceiroProfessor() {
 
           {/* Anexar Boleto / NF */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-            <label style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              padding: '12px', borderRadius: '12px', cursor: enviando ? 'wait' : 'pointer', fontSize: '13px', fontWeight: '600',
-              backgroundColor: boletoMesSel?.boleto_url ? 'rgba(75,139,106,0.12)' : 'var(--color-surface-dark-raised)',
-              color: boletoMesSel?.boleto_url ? 'var(--color-state-success)' : 'var(--color-text-dark-secondary)',
-              border: boletoMesSel?.boleto_url ? '1px solid rgba(75,139,106,0.35)' : '1px dashed var(--color-border-dark)',
-            }}>
-              <input type="file" accept=".pdf" style={{ display: 'none' }} disabled={!!enviando}
-                onChange={e => handleUpload('boleto', e.target.files?.[0])} />
-              <Upload size={14} />{enviando === 'boleto' ? 'Enviando...' : boletoMesSel?.boleto_url ? 'Boleto ✓' : 'Anexar boleto'}
-            </label>
-            <label style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              padding: '12px', borderRadius: '12px', cursor: enviando ? 'wait' : 'pointer', fontSize: '13px', fontWeight: '600',
-              backgroundColor: boletoMesSel?.nf_url ? 'rgba(75,139,106,0.12)' : 'var(--color-surface-dark-raised)',
-              color: boletoMesSel?.nf_url ? 'var(--color-state-success)' : 'var(--color-text-dark-secondary)',
-              border: boletoMesSel?.nf_url ? '1px solid rgba(75,139,106,0.35)' : '1px dashed var(--color-border-dark)',
-            }}>
-              <input type="file" accept=".pdf" style={{ display: 'none' }} disabled={!!enviando}
-                onChange={e => handleUpload('nf', e.target.files?.[0])} />
-              <FileText size={14} />{enviando === 'nf' ? 'Enviando...' : boletoMesSel?.nf_url ? 'NF ✓' : 'Anexar NF'}
-            </label>
+            <div style={{ flex: 1, display: 'flex', gap: '6px' }}>
+              <label style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                padding: '12px', borderRadius: '12px', cursor: enviando ? 'wait' : 'pointer', fontSize: '13px', fontWeight: '600',
+                backgroundColor: boletoMesSel?.boleto_url ? 'rgba(75,139,106,0.12)' : 'var(--color-surface-dark-raised)',
+                color: boletoMesSel?.boleto_url ? 'var(--color-state-success)' : 'var(--color-text-dark-secondary)',
+                border: boletoMesSel?.boleto_url ? '1px solid rgba(75,139,106,0.35)' : '1px dashed var(--color-border-dark)',
+              }}>
+                <input type="file" accept=".pdf" style={{ display: 'none' }} disabled={!!enviando}
+                  onChange={e => { selecionarArquivo('boleto', e.target.files?.[0]); e.target.value = '' }} />
+                <Upload size={14} />{enviando === 'boleto' ? 'Enviando...' : boletoMesSel?.boleto_url ? 'Boleto ✓' : 'Anexar boleto'}
+              </label>
+              {boletoMesSel?.boleto_url && (
+                <button onClick={() => setDialogAnexo({ acao: 'excluir', tipo: 'boleto' })} disabled={!!excluindo} title="Excluir boleto" style={{
+                  flexShrink: 0, padding: '12px', borderRadius: '12px', border: '1px solid rgba(180,71,47,0.3)',
+                  background: 'none', color: 'var(--color-state-danger)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+            <div style={{ flex: 1, display: 'flex', gap: '6px' }}>
+              <label style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                padding: '12px', borderRadius: '12px', cursor: enviando ? 'wait' : 'pointer', fontSize: '13px', fontWeight: '600',
+                backgroundColor: boletoMesSel?.nf_url ? 'rgba(75,139,106,0.12)' : 'var(--color-surface-dark-raised)',
+                color: boletoMesSel?.nf_url ? 'var(--color-state-success)' : 'var(--color-text-dark-secondary)',
+                border: boletoMesSel?.nf_url ? '1px solid rgba(75,139,106,0.35)' : '1px dashed var(--color-border-dark)',
+              }}>
+                <input type="file" accept=".pdf" style={{ display: 'none' }} disabled={!!enviando}
+                  onChange={e => { selecionarArquivo('nf', e.target.files?.[0]); e.target.value = '' }} />
+                <FileText size={14} />{enviando === 'nf' ? 'Enviando...' : boletoMesSel?.nf_url ? 'NF ✓' : 'Anexar NF'}
+              </label>
+              {boletoMesSel?.nf_url && (
+                <button onClick={() => setDialogAnexo({ acao: 'excluir', tipo: 'nf' })} disabled={!!excluindo} title="Excluir NF" style={{
+                  flexShrink: 0, padding: '12px', borderRadius: '12px', border: '1px solid rgba(180,71,47,0.3)',
+                  background: 'none', color: 'var(--color-state-danger)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
           </div>
+
+          {dialogAnexo && (
+            <ModalConfirmarAnexo
+              acao={dialogAnexo.acao}
+              tipo={dialogAnexo.tipo}
+              mesLabel={mesLabelSel}
+              enviando={dialogAnexo.acao === 'anexar' ? enviando === dialogAnexo.tipo : excluindo === dialogAnexo.tipo}
+              onConfirmar={confirmarDialogAnexo}
+              onCancelar={() => setDialogAnexo(null)}
+            />
+          )}
 
           {erro && (
             <div style={{ padding: '10px 12px', borderRadius: '10px', backgroundColor: 'rgba(180,71,47,0.15)', border: '1px solid rgba(180,71,47,0.4)', fontSize: '12px', color: 'var(--color-state-danger)', marginBottom: '14px' }}>

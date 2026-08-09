@@ -339,6 +339,24 @@ export function useBoletosProfessor(professorId) {
   })
 }
 
+// Remove só a URL do anexo (boleto_url ou nf_url) de uma linha de boletos_professor — não
+// apaga o arquivo do Storage (o path é fixo por mes/ano/empresa, então um novo upload
+// sobrescreve o antigo de qualquer forma), só desvincula o registro. Usado pra corrigir
+// anexo no mês errado (ex: NF de julho enviada por engano na janela de agosto).
+export function useRemoverAnexoBoleto() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ professorId, mes, ano, empresa, campo }) => {
+      const { error } = await supabase
+        .from('boletos_professor')
+        .update({ [campo]: null })
+        .eq('professor_id', professorId).eq('mes', mes).eq('ano', ano).eq('empresa', empresa)
+      if (error) throw error
+    },
+    onSuccess: (_, { professorId }) => qc.invalidateQueries({ queryKey: ['boletos', professorId] }),
+  })
+}
+
 // IDs de professores com pagamento confirmado no mês/ano (por empresa — ver nota em
 // useConfirmarPagamento sobre a constraint de boletos_professor incluir `empresa`).
 export function usePagamentosConfirmados({ mes, ano, empresa }) {
