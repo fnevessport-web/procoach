@@ -19,6 +19,7 @@ import {
   useLiberar,
   useDesautorizar,
   useRemoverAnexoBoleto,
+  dadosPagamentoEmpresa,
 } from '../../hooks/useFinanceiro'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { calcularValorAula } from '../../constants/modalidades'
@@ -1012,14 +1013,18 @@ export function FinanceiroPage() {
   // VIEW: detalhe do professor
   // ══════════════════════════════════════════════════════════════════════
   if (view === 'professor' && professorSel) {
-    const temPix = professorSel.tipo_pagamento === 'pix' || (professorSel.banco === 'Itaú' && professorSel.chave_pix)
-    const temBoleto = professorSel.tipo_pagamento === 'boleto'
-    const temDadosConta = !temBoleto && !professorSel.chave_pix && professorSel.banco && professorSel.conta
+    // Banco/PIX/boleto/titular são por empresa agora (ver dadosPagamentoEmpresa) — um
+    // colaborador pode receber Boleto na Procópio e PIX na Beach Arena, por exemplo. `pag`
+    // sempre reflete a empresa que está sendo vista agora (empresaId).
+    const pag = dadosPagamentoEmpresa(professorSel, empresaId)
+    const temPix = pag.tipo_pagamento === 'pix' || (pag.banco === 'Itaú' && pag.chave_pix)
+    const temBoleto = pag.tipo_pagamento === 'boleto'
+    const temDadosConta = !temBoleto && !pag.chave_pix && pag.banco && pag.conta
     // Quem trabalha nas duas empresas E não está travado numa só (empresaVinculada, ex.
     // recepção) vê e anexa Boleto/NF das duas de uma vez — sem isso, precisava trocar todo o
     // contexto do app (menu Beach Arena → Procópio) só pra anexar o segundo documento.
     const empresasParaExibir = ehProfessorMultiEmpresa && !empresaVinculada ? Object.values(EMPRESAS) : [EMPRESAS[empresaId]]
-    const contaFormatada = `${professorSel.agencia ? `Ag ${professorSel.agencia} · ` : ''}Conta ${professorSel.conta}${professorSel.tipo_conta ? ` (${professorSel.tipo_conta === 'poupanca' ? 'Poupança' : 'Corrente'})` : ''}`
+    const contaFormatada = `${pag.agencia ? `Ag ${pag.agencia} · ` : ''}Conta ${pag.conta}${pag.tipo_conta ? ` (${pag.tipo_conta === 'poupanca' ? 'Poupança' : 'Corrente'})` : ''}`
 
     // Agrupa aulas por dia
     const porDia = {}
@@ -1074,8 +1079,8 @@ export function FinanceiroPage() {
               {professorSel.nome}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
-              {professorSel.banco && (
-                <span style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)' }}>{professorSel.banco}</span>
+              {pag.banco && (
+                <span style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)' }}>{pag.banco}</span>
               )}
               {temBoleto && (
                 <span style={{ padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(61,107,122,0.15)', color: 'var(--color-state-info)', fontSize: '10px', fontWeight: '600' }}>Boleto</span>
@@ -1124,7 +1129,7 @@ export function FinanceiroPage() {
         </div>
 
         {/* PIX ITAÚ */}
-        {temPix && professorSel.chave_pix && (
+        {temPix && pag.chave_pix && (
           <div style={{
             backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px',
             border: '1px solid rgba(201,138,60,0.25)', padding: '14px',
@@ -1137,7 +1142,7 @@ export function FinanceiroPage() {
               <button
                 onClick={() => {
                   if (!pagamentoAutorizado) return
-                  navigator.clipboard.writeText(professorSel.chave_pix)
+                  navigator.clipboard.writeText(pag.chave_pix)
                   toast.success('PIX copiado!', { style: toastStyle })
                 }}
                 style={{
@@ -1153,7 +1158,7 @@ export function FinanceiroPage() {
                   : <Lock size={14} color="var(--color-text-dark-muted)" />
                 }
                 <span style={{ flex: 1, textAlign: 'left', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: pagamentoAutorizado ? 'normal' : '3px', color: pagamentoAutorizado ? 'var(--color-state-warning)' : 'var(--color-text-dark-muted)' }}>
-                  {pagamentoAutorizado ? professorSel.chave_pix : '●●●●●●●●●●●●'}
+                  {pagamentoAutorizado ? pag.chave_pix : '●●●●●●●●●●●●'}
                 </span>
               </button>
               {!pagamentoConfirmado ? (
@@ -1179,11 +1184,11 @@ export function FinanceiroPage() {
               )}
             </div>
             {/* Titular da conta */}
-            {(professorSel.nome_titular || professorSel.cpf_titular) && (
+            {(pag.nome_titular || pag.cpf_titular) && (
               <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--color-text-dark-muted)', paddingLeft: '2px' }}>
-                {professorSel.nome_titular && <span>{professorSel.nome_titular}</span>}
-                {professorSel.nome_titular && professorSel.cpf_titular && <span style={{ color: 'var(--color-text-dark-muted)', margin: '0 5px' }}>·</span>}
-                {professorSel.cpf_titular && <span>CPF {professorSel.cpf_titular}</span>}
+                {pag.nome_titular && <span>{pag.nome_titular}</span>}
+                {pag.nome_titular && pag.cpf_titular && <span style={{ color: 'var(--color-text-dark-muted)', margin: '0 5px' }}>·</span>}
+                {pag.cpf_titular && <span>CPF {pag.cpf_titular}</span>}
               </div>
             )}
           </div>
@@ -1197,7 +1202,7 @@ export function FinanceiroPage() {
             marginBottom: '14px',
           }}>
             <div style={{ fontSize: '10px', color: 'var(--color-state-warning)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
-              {professorSel.banco === 'Itaú' ? 'Transferência Itaú' : 'Dados Bancários'}
+              {pag.banco === 'Itaú' ? 'Transferência Itaú' : 'Dados Bancários'}
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button
@@ -1245,22 +1250,24 @@ export function FinanceiroPage() {
               )}
             </div>
             {/* Titular da conta */}
-            {(professorSel.nome_titular || professorSel.cpf_titular) && (
+            {(pag.nome_titular || pag.cpf_titular) && (
               <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--color-text-dark-muted)', paddingLeft: '2px' }}>
-                {professorSel.nome_titular && <span>{professorSel.nome_titular}</span>}
-                {professorSel.nome_titular && professorSel.cpf_titular && <span style={{ color: 'var(--color-text-dark-muted)', margin: '0 5px' }}>·</span>}
-                {professorSel.cpf_titular && <span>CPF {professorSel.cpf_titular}</span>}
+                {pag.nome_titular && <span>{pag.nome_titular}</span>}
+                {pag.nome_titular && pag.cpf_titular && <span style={{ color: 'var(--color-text-dark-muted)', margin: '0 5px' }}>·</span>}
+                {pag.cpf_titular && <span>CPF {pag.cpf_titular}</span>}
               </div>
             )}
           </div>
         )}
 
-        {/* Boleto (apenas para quem paga via boleto) — o botão "Pago/Confirmado" só aparece
-            na empresa que está sendo vista agora (empresaId): é um controle sensível, com
-            liberação por PIN, então não duplica pra outra empresa só porque o anexo de
-            documento pode ser feito daqui — confirmar pagamento da outra empresa continua
-            exigindo trocar de contexto (menu Beach Arena → Procópio). */}
-        {temBoleto && empresasParaExibir.map(emp => {
+        {/* Boleto (só pras empresas em que esse professor de fato recebe via boleto — ex:
+            Kelly recebe Boleto na Procópio e PIX na Beach Arena, então só aparece aqui pra
+            Procópio). O botão "Pago/Confirmado" só aparece na empresa que está sendo vista
+            agora (empresaId): é um controle sensível, com liberação por PIN, então não
+            duplica pra outra empresa só porque o anexo de documento pode ser feito daqui —
+            confirmar pagamento da outra empresa continua exigindo trocar de contexto (menu
+            Beach Arena → Procópio). */}
+        {empresasParaExibir.filter(emp => dadosPagamentoEmpresa(professorSel, emp.id).tipo_pagamento === 'boleto').map(emp => {
           const boletoEmp = boletoDoMes(emp.id)
           const ehEmpresaAtual = emp.id === empresaId
           return (

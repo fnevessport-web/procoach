@@ -83,6 +83,8 @@ const FORM_VAZIO = {
   bairro: '', cidade: '', estado: '', data_inicio: '',
   banco: '', agencia: '', conta: '', tipo_conta: 'corrente', tipo_pagamento: 'pix', chave_pix: '',
   nome_titular: '', cpf_titular: '', titular_proprio: false,
+  banco_beach: '', agencia_beach: '', conta_beach: '', tipo_conta_beach: 'corrente', tipo_pagamento_beach: 'pix', chave_pix_beach: '',
+  nome_titular_beach: '', cpf_titular_beach: '', titular_proprio_beach: false,
 }
 
 function StarRating({ value, onChange, disabled }) {
@@ -118,6 +120,89 @@ function PixCopiavel({ pix }) {
         {copiado ? 'Copiado!' : pix}
       </span>
     </button>
+  )
+}
+
+// Um bloco inteiro de dados bancários — usado 1x quando o professor trabalha numa empresa só,
+// 2x (Procópio + Beach Arena, campos com sufixo "_beach" pro segundo) quando trabalha nas duas,
+// já que forma de pagamento pode ser diferente em cada uma (ex: Boleto na Procópio, PIX na
+// Beach Arena, ou PIX de banco/chave diferente em cada uma). Mesma ideia de valor_aula/
+// valor_aula_beach, só que pros 8 campos de pagamento em vez de 1.
+function BlocoDadosBancarios({ sufixo, titulo, cor, form, set, cardAberto }) {
+  const campo = nome => `${nome}${sufixo}`
+  const v = nome => form[campo(nome)]
+  const upd = nome => e => set(campo(nome), e.target.value)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div style={{ fontSize: '10px', color: cor, textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>{titulo}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+        <div><div style={labelStyle}>Banco</div>
+          <select style={inputStyle} value={v('banco')} onChange={upd('banco')}>
+            <option value="">Selecione</option>
+            {BANCOS.map(b => <option key={b} value={b}>{b}</option>)}
+          </select></div>
+        <div><div style={labelStyle}>Tipo Pagamento</div>
+          <select style={inputStyle} value={v('tipo_pagamento')} onChange={upd('tipo_pagamento')}>
+            <option value="pix">PIX</option>
+            <option value="boleto">Boleto</option>
+          </select></div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+        <div><div style={labelStyle}>Agência</div><input style={inputStyle} placeholder="0000" value={v('agencia')} onChange={upd('agencia')} /></div>
+        <div><div style={labelStyle}>Conta</div><input style={inputStyle} placeholder="00000-0" value={v('conta')} onChange={upd('conta')} /></div>
+        <div><div style={labelStyle}>Tipo</div>
+          <select style={inputStyle} value={v('tipo_conta')} onChange={upd('tipo_conta')}>
+            <option value="corrente">Corrente</option>
+            <option value="poupanca">Poupança</option>
+          </select></div>
+      </div>
+      <div><div style={labelStyle}>Chave PIX</div><input style={inputStyle} placeholder="CPF, e-mail, telefone..." value={v('chave_pix')} onChange={upd('chave_pix')} /></div>
+      {cardAberto[campo('chave_pix')] && <PixCopiavel pix={cardAberto[campo('chave_pix')]} />}
+      {cardAberto[campo('banco')] === 'Itaú' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: 'rgba(201,138,60,0.08)', borderRadius: '8px', border: '1px solid rgba(201,138,60,0.2)' }}>
+            <Landmark size={15} color="var(--color-state-warning)" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: '12px', color: 'var(--color-state-warning)', fontWeight: '600' }}>Correntista Itaú — pagar via PIX</span>
+          </div>
+          {v('nome_titular') && (
+            <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '6px', paddingLeft: '2px' }}>{v('nome_titular')}</div>
+          )}
+        </div>
+      )}
+
+      {/* Dados do titular da conta */}
+      <div style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', border: '1px solid var(--color-border-light)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dados bancários do titular</div>
+        <button
+          type="button"
+          onClick={() => {
+            const novoVal = !v('titular_proprio')
+            set(campo('titular_proprio'), novoVal)
+            if (novoVal) {
+              set(campo('nome_titular'), cardAberto.nome || '')
+              set(campo('cpf_titular'), cardAberto.cpf || '')
+            }
+          }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '8px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+            background: v('titular_proprio') ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-raised)',
+            outline: v('titular_proprio') ? '1px solid rgba(165,76,46,0.4)' : '1px solid var(--color-border-light)',
+            color: v('titular_proprio') ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)', fontSize: '12px',
+          }}
+        >
+          <span style={{ fontSize: '14px' }}>{v('titular_proprio') ? '✓' : '○'}</span>
+          Titular é o próprio professor
+        </button>
+        <div><div style={labelStyle}>Nome completo do titular</div>
+          <input style={inputStyle} placeholder="Nome como está no banco..." value={v('nome_titular')} onChange={e => { set(campo('nome_titular'), e.target.value); set(campo('titular_proprio'), false) }} />
+        </div>
+        <div><div style={labelStyle}>CPF do titular</div>
+          <input style={inputStyle} placeholder="•••.•••.•••-••" inputMode="numeric" value={mascararCPF(v('cpf_titular'))} onChange={e => { set(campo('cpf_titular'), apenasDigitosCPF(e.target.value)); set(campo('titular_proprio'), false) }} />
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -492,6 +577,10 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       tipo_conta: prof.tipo_conta || 'corrente',
       tipo_pagamento: prof.tipo_pagamento || 'pix', chave_pix: prof.chave_pix || '',
       nome_titular: prof.nome_titular || '', cpf_titular: prof.cpf_titular || '', titular_proprio: false,
+      banco_beach: prof.banco_beach || '', agencia_beach: prof.agencia_beach || '', conta_beach: prof.conta_beach || '',
+      tipo_conta_beach: prof.tipo_conta_beach || 'corrente',
+      tipo_pagamento_beach: prof.tipo_pagamento_beach || 'pix', chave_pix_beach: prof.chave_pix_beach || '',
+      nome_titular_beach: prof.nome_titular_beach || '', cpf_titular_beach: prof.cpf_titular_beach || '', titular_proprio_beach: false,
       apelido: prof.apelido || '',
       tem_cref: prof.tem_cref || false,
       numero_cref: prof.numero_cref || '',
@@ -564,6 +653,10 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       tipo_conta: form.tipo_conta || 'corrente',
       tipo_pagamento: form.tipo_pagamento || 'pix', chave_pix: form.chave_pix || null,
       nome_titular: form.nome_titular || null, cpf_titular: form.cpf_titular || null,
+      banco_beach: form.banco_beach || null, agencia_beach: form.agencia_beach || null, conta_beach: form.conta_beach || null,
+      tipo_conta_beach: form.tipo_conta_beach || 'corrente',
+      tipo_pagamento_beach: form.tipo_pagamento_beach || 'pix', chave_pix_beach: form.chave_pix_beach || null,
+      nome_titular_beach: form.nome_titular_beach || null, cpf_titular_beach: form.cpf_titular_beach || null,
       apelido: form.apelido || null,
       tem_cref: form.tem_cref || false,
       numero_cref: form.numero_cref || null,
@@ -1712,74 +1805,20 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
             {/* ABA FINANCEIRO */}
             {aba === 'financeiro' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dados Bancários</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div><div style={labelStyle}>Banco</div>
-                    <select style={inputStyle} value={form.banco} onChange={e => set('banco', e.target.value)}>
-                      <option value="">Selecione</option>
-                      {BANCOS.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select></div>
-                  <div><div style={labelStyle}>Tipo Pagamento</div>
-                    <select style={inputStyle} value={form.tipo_pagamento} onChange={e => set('tipo_pagamento', e.target.value)}>
-                      <option value="pix">PIX</option>
-                      <option value="boleto">Boleto</option>
-                    </select></div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                  <div><div style={labelStyle}>Agência</div><input style={inputStyle} placeholder="0000" value={form.agencia} onChange={e => set('agencia', e.target.value)} /></div>
-                  <div><div style={labelStyle}>Conta</div><input style={inputStyle} placeholder="00000-0" value={form.conta} onChange={e => set('conta', e.target.value)} /></div>
-                  <div><div style={labelStyle}>Tipo</div>
-                    <select style={inputStyle} value={form.tipo_conta} onChange={e => set('tipo_conta', e.target.value)}>
-                      <option value="corrente">Corrente</option>
-                      <option value="poupanca">Poupança</option>
-                    </select></div>
-                </div>
-                <div><div style={labelStyle}>Chave PIX</div><input style={inputStyle} placeholder="CPF, e-mail, telefone..." value={form.chave_pix} onChange={e => set('chave_pix', e.target.value)} /></div>
-                {cardAberto.chave_pix && <PixCopiavel pix={cardAberto.chave_pix} />}
-                {cardAberto.banco === 'Itaú' && (
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: 'rgba(201,138,60,0.08)', borderRadius: '8px', border: '1px solid rgba(201,138,60,0.2)' }}>
-                      <Landmark size={15} color="var(--color-state-warning)" style={{ flexShrink: 0 }} />
-                      <span style={{ fontSize: '12px', color: 'var(--color-state-warning)', fontWeight: '600' }}>Correntista Itaú — pagar via PIX</span>
-                    </div>
-                    {form.nome_titular && (
-                      <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '6px', paddingLeft: '2px' }}>{form.nome_titular}</div>
-                    )}
-                  </div>
+                {form.trabalha_procopio && (
+                  <BlocoDadosBancarios
+                    sufixo="" cardAberto={cardAberto} form={form} set={set}
+                    titulo={form.trabalha_procopio && form.trabalha_beach ? 'Dados Bancários — Procópio' : 'Dados Bancários'}
+                    cor="var(--color-action-primary)"
+                  />
                 )}
-
-                {/* Dados do titular da conta */}
-                <div style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', border: '1px solid var(--color-border-light)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dados bancários do titular</div>
-                  {/* Checkbox mesmo professor */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const novoVal = !form.titular_proprio
-                      set('titular_proprio', novoVal)
-                      if (novoVal) {
-                        set('nome_titular', cardAberto.nome || '')
-                        set('cpf_titular', cardAberto.cpf || '')
-                      }
-                    }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '8px',
-                      padding: '8px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                      background: form.titular_proprio ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-raised)',
-                      outline: form.titular_proprio ? '1px solid rgba(165,76,46,0.4)' : '1px solid var(--color-border-light)',
-                      color: form.titular_proprio ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)', fontSize: '12px',
-                    }}
-                  >
-                    <span style={{ fontSize: '14px' }}>{form.titular_proprio ? '✓' : '○'}</span>
-                    Titular é o próprio professor
-                  </button>
-                  <div><div style={labelStyle}>Nome completo do titular</div>
-                    <input style={inputStyle} placeholder="Nome como está no banco..." value={form.nome_titular} onChange={e => { set('nome_titular', e.target.value); set('titular_proprio', false) }} />
-                  </div>
-                  <div><div style={labelStyle}>CPF do titular</div>
-                    <input style={inputStyle} placeholder="•••.•••.•••-••" inputMode="numeric" value={mascararCPF(form.cpf_titular)} onChange={e => { set('cpf_titular', apenasDigitosCPF(e.target.value)); set('titular_proprio', false) }} />
-                  </div>
-                </div>
+                {form.trabalha_beach && (
+                  <BlocoDadosBancarios
+                    sufixo="_beach" cardAberto={cardAberto} form={form} set={set}
+                    titulo={form.trabalha_procopio && form.trabalha_beach ? 'Dados Bancários — Beach Arena' : 'Dados Bancários'}
+                    cor="var(--color-state-info)"
+                  />
+                )}
                 {/* Empresa(s) onde atua */}
                 <div>
                   <div style={labelStyle}>Empresa(s) onde atua</div>

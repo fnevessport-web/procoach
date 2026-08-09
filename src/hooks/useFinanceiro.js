@@ -5,6 +5,21 @@ import { format } from 'date-fns'
 import { confirmarAulasElegiveis } from './useAulas'
 import { calcularValorAula } from '../constants/modalidades'
 
+const CAMPOS_PAGAMENTO = ['banco', 'tipo_pagamento', 'agencia', 'conta', 'tipo_conta', 'chave_pix', 'nome_titular', 'cpf_titular']
+
+// Dados de pagamento (banco/PIX/boleto/titular) de um professor pra uma empresa específica —
+// mesma ideia de valor_aula/valor_aula_beach (ver calcularValorAula em constants/modalidades.js):
+// os campos sem sufixo são os da Procópio, os "_beach" são os da Beach Arena. Cai pros campos
+// sem sufixo quando os "_beach" estão vazios, pra colaborador cadastrado só na Beach Arena antes
+// dessa separação existir continuar funcionando sem precisar reeditar o cadastro.
+export function dadosPagamentoEmpresa(professor, empresa) {
+  if (empresa !== 'beach_arena') {
+    return Object.fromEntries(CAMPOS_PAGAMENTO.map(c => [c, professor?.[c] ?? null]))
+  }
+  const temDadosBeach = CAMPOS_PAGAMENTO.some(c => professor?.[`${c}_beach`])
+  return Object.fromEntries(CAMPOS_PAGAMENTO.map(c => [c, (temDadosBeach ? professor?.[`${c}_beach`] : professor?.[c]) ?? null]))
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Autorização de pagamento pelo coordenador
 // SQL para criar a tabela no Supabase:
@@ -205,7 +220,7 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
           id, professor_executou_id, turma_id, observacoes, data_aula,
           turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome)),
           presencas(tipo_participacao),
-          professores!professor_executou_id(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular)
+          professores!professor_executou_id(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular, chave_pix_beach, banco_beach, agencia_beach, conta_beach, tipo_conta_beach, tipo_pagamento_beach, nome_titular_beach, cpf_titular_beach)
         `)
         .gte('data_aula', dataInicio)
         .lte('data_aula', dataFim)
