@@ -679,12 +679,9 @@ export function FinanceiroPage() {
   const maxValorProf = Math.max(...allProfs.map(p => p.totalValor + (extrasMapGeral[p.id] || 0)), 1)
   // boletos_professor é único por (professor, mês, ano, EMPRESA) — quem trabalha nas duas
   // (ex: Fernando, Michel) tem uma linha por empresa no mesmo mês. `boletoDoMes` busca a linha
-  // de uma empresa específica; pra quem está travado numa empresa só (empresaVinculada, ex.
-  // recepção), a seção de Boleto/NF abaixo só usa a da empresa vista agora (empresaId) — não
-  // deve ver nem anexar o documento da outra. Quem tem acesso às duas empresas (financeiro/
-  // coordenação) enxerga e anexa as duas de uma vez, sem precisar trocar de contexto.
+  // de uma empresa específica; a seção de Boleto/NF abaixo só usa a da empresa vista agora
+  // (empresaId), nunca mistura com a outra.
   const boletoDoMes = empresa => boletos.find(b => b.mes === mes && b.ano === anoSel && b.empresa === empresa)
-  const ehProfessorMultiEmpresa = !!(professorSel?.trabalha_procopio && professorSel?.trabalha_beach)
   const totalAulasProf = aulasProf.length
   const valorUnitarioProf = empresaId === 'beach_arena' && professorSel?.valor_aula_beach
     ? Number(professorSel.valor_aula_beach)
@@ -1020,10 +1017,10 @@ export function FinanceiroPage() {
     const temPix = pag.tipo_pagamento === 'pix' || (pag.banco === 'Itaú' && pag.chave_pix)
     const temBoleto = pag.tipo_pagamento === 'boleto'
     const temDadosConta = !temBoleto && !pag.chave_pix && pag.banco && pag.conta
-    // Quem trabalha nas duas empresas E não está travado numa só (empresaVinculada, ex.
-    // recepção) vê e anexa Boleto/NF das duas de uma vez — sem isso, precisava trocar todo o
-    // contexto do app (menu Beach Arena → Procópio) só pra anexar o segundo documento.
-    const empresasParaExibir = ehProfessorMultiEmpresa && !empresaVinculada ? Object.values(EMPRESAS) : [EMPRESAS[empresaId]]
+    // Boleto/NF mostram só a empresa que está sendo vista agora (empresaId) — ao entrar em
+    // Beach Arena só aparece o documento da Beach Arena, ao entrar em Procópio só o da Procópio,
+    // mesmo pra quem trabalha nas duas.
+    const empresasParaExibir = [EMPRESAS[empresaId]]
     const contaFormatada = `${pag.agencia ? `Ag ${pag.agencia} · ` : ''}Conta ${pag.conta}${pag.tipo_conta ? ` (${pag.tipo_conta === 'poupanca' ? 'Poupança' : 'Corrente'})` : ''}`
 
     // Agrupa aulas por dia
@@ -1260,13 +1257,8 @@ export function FinanceiroPage() {
           </div>
         )}
 
-        {/* Boleto (só pras empresas em que esse professor de fato recebe via boleto — ex:
-            Kelly recebe Boleto na Procópio e PIX na Beach Arena, então só aparece aqui pra
-            Procópio). O botão "Pago/Confirmado" só aparece na empresa que está sendo vista
-            agora (empresaId): é um controle sensível, com liberação por PIN, então não
-            duplica pra outra empresa só porque o anexo de documento pode ser feito daqui —
-            confirmar pagamento da outra empresa continua exigindo trocar de contexto (menu
-            Beach Arena → Procópio). */}
+        {/* Boleto (só aparece se esse professor de fato recebe via boleto na empresa vista
+            agora — ex: Kelly recebe Boleto na Procópio e PIX na Beach Arena). */}
         {empresasParaExibir.filter(emp => dadosPagamentoEmpresa(professorSel, emp.id).tipo_pagamento === 'boleto').map(emp => {
           const boletoEmp = boletoDoMes(emp.id)
           const ehEmpresaAtual = emp.id === empresaId
@@ -1340,9 +1332,7 @@ export function FinanceiroPage() {
           )
         })}
 
-        {/* NF — uma por empresa vinculada quando quem está vendo tem acesso às duas
-            (empresasParaExibir); quem está travado numa empresa só (ex. recepção) continua
-            vendo (e anexando) só a NF dela, nunca a da outra. */}
+        {/* NF — só a da empresa vista agora (empresaId), nunca a da outra. */}
         {empresasParaExibir.map(emp => (
           <div key={`nf-${emp.id}`} style={{
             backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px',
