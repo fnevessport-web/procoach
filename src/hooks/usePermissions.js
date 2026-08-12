@@ -127,6 +127,31 @@ const PERMISSOES_POR_ROLE = {
     podeIncluirAlunoAula: true,
     homeRoute: '/aulas',
   },
+  // Auxiliar de quadra — contratado só pra tocar a Agenda no dia a dia (chamada/falta dos
+  // alunos): edição igual ao coordenador (turma, horário, incluir aluno, presença/falta),
+  // mas nunca exclui nada sozinho — excluir aula ou remover aluno pede o PIN combinado com a
+  // coordenação (ver precisaPinParaExcluir em AulasCoordenador.jsx). Vê Disponibilidade, mas
+  // nada de Cadastros (dados pessoais de aluno/professor), Financeiro nem Relatórios/KPIs.
+  // Diferente do role "auxiliar" (fallback de segurança + tablet do balcão, só leitura) —
+  // não reaproveita ele pra não afrouxar essa proteção.
+  auxiliar_quadra: {
+    podeAcessarCadastros: false,
+    podeEditarCadastros: false,
+    podeCadastrarAluno: false,
+    podeVerTodosSalarios: false,
+    podeAcessarFinanceiro: false,
+    podeEditarFinanceiro: false,
+    podeAcessarKPIs: false,
+    podeEditarAulas: true,
+    podeEditarPropriaAula: false,
+    podeVerInboxGeral: false,
+    podeVerSino: false,
+    podeVerDisponibilidade: true,
+    podeEditarAvaliacaoTecnica: false,
+    podeIncluirAlunoAula: true,
+    precisaPinParaExcluir: true,
+    homeRoute: '/aulas',
+  },
 }
 
 export function resolverRole(roleBruto) {

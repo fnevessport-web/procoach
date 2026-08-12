@@ -63,6 +63,10 @@ const NIVEIS_ALUNO = [
 const COR_REPOSICAO = 'var(--color-state-info)'
 const COR_CORTESIA = 'var(--color-state-warning)'
 
+// PIN combinado com a coordenação pra liberar exclusão (aula ou aluno) pro role
+// auxiliar_quadra (precisaPinParaExcluir) — fixo no código, não configurável pela tela.
+const PIN_EXCLUSAO_AGENDA = '1511'
+
 const toastStyle = {
   background: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
   border: '1px solid rgba(165,76,46,0.3)',
@@ -155,7 +159,10 @@ function aulaEstaAoVivo(aula) {
 // chamava esse componente sem passar essa prop continua com o comportamento de sempre
 // (gestor/coordenador com tudo liberado, financeiro/auxiliar/leitura só consulta). Só o
 // role recepção passa isso explicitamente `true` com `somenteLeitura` também `true`.
-export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMarcarPresenca = !somenteLeitura, professorProprioId = null, restringirPresencaAoVivo = false }) {
+// precisaPinParaExcluir: edição liberada igual coordenador, mas excluir aula ou remover
+// aluno pede o PIN combinado com a coordenação antes de executar (ver PIN_EXCLUSAO_AGENDA
+// abaixo) — só o role auxiliar_quadra passa isso `true`.
+export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMarcarPresenca = !somenteLeitura, professorProprioId = null, restringirPresencaAoVivo = false, precisaPinParaExcluir = false }) {
   const { modalidadeSelecionada, setOrigemAulas, user, setNavRecolhida } = useAppStore()
   const alturaVisivel = useVisualViewportHeight()
   const qc = useQueryClient()
@@ -211,6 +218,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   const [alertaNivel, setAlertaNivel] = useState({})
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(null)
+  // Exclusão travada por PIN (só quando precisaPinParaExcluir): { executar } guarda a ação
+  // de excluir (aula ou aluno) já decidida, esperando o PIN pra rodar de verdade.
+  const [pinExclusaoPendente, setPinExclusaoPendente] = useState(null)
+  const [pinExclusaoDigitado, setPinExclusaoDigitado] = useState('')
+  const [erroPinExclusao, setErroPinExclusao] = useState('')
   // Rastreabilidade: quem incluiu cada aluno na aula (aluno.aula_id => bool) e histórico
   // completo da aula (audit_log), ambos abertos sob demanda pra não poluir a tela.
   const [origemAberta, setOrigemAberta] = useState(null)
@@ -643,13 +655,25 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
 
   // Mensalista é matrícula duradoura — pergunta se é só dessa aula ou de todas as futuras
   // dessa turma antes de remover. Avulso/cortesia/reposição (ou aula sem turma) some direto.
-  function iniciarRemocaoAluno(aula, alunoId) {
+  function executarRemocaoAluno(aula, alunoId) {
     const presenca = presencasLocal[aula.id]?.[alunoId]
     if (aula.turma_id && presenca?.tipo_participacao === 'mensalista') {
       setConfirmandoRemocao({ aulaId: aula.id, turmaId: aula.turma_id, dataAula: aula.data_aula, alunoId, nome: presenca.nome })
     } else {
       removerAlunoDaListaLocal(aula.id, alunoId)
     }
+  }
+
+  // Ponto de entrada do botão "Remover" — quem precisa de PIN (precisaPinParaExcluir) só
+  // executa a remoção de verdade depois de confirmar o PIN combinado com a coordenação.
+  function iniciarRemocaoAluno(aula, alunoId) {
+    if (precisaPinParaExcluir) {
+      setPinExclusaoPendente({ executar: () => executarRemocaoAluno(aula, alunoId) })
+      setPinExclusaoDigitado('')
+      setErroPinExclusao('')
+      return
+    }
+    executarRemocaoAluno(aula, alunoId)
   }
 
   async function handleRemoverSomenteEstaAula() {
@@ -1229,6 +1253,18 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       toast.success('Aula excluída!', { style: toastStyle })
       fecharModal()
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
+
+  // Ponto de entrada do botão "Excluir aula" — quem precisa de PIN (precisaPinParaExcluir)
+  // só executa a exclusão de verdade depois de confirmar o PIN combinado com a coordenação.
+  function pedirExclusaoAula(aulaId) {
+    if (precisaPinParaExcluir) {
+      setPinExclusaoPendente({ executar: () => handleExcluirAula(aulaId) })
+      setPinExclusaoDigitado('')
+      setErroPinExclusao('')
+      return
+    }
+    handleExcluirAula(aulaId)
   }
 
   // Cadastra o aluno e já grava a presença na aula no mesmo clique — antes disso o fluxo
@@ -2310,7 +2346,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     ) : (
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '6px 10px', borderRadius: '8px', backgroundColor: 'rgba(180,71,47,0.08)', border: '1px solid rgba(180,71,47,0.3)' }}>
                         <span style={{ fontSize: '11px', color: 'var(--color-state-danger)' }}>Confirmar?</span>
-                        <button onClick={() => handleExcluirAula(aula.id)} style={{ padding: '3px 8px', borderRadius: '6px', border: 'none', backgroundColor: 'var(--color-state-danger)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Sim</button>
+                        <button onClick={() => pedirExclusaoAula(aula.id)} style={{ padding: '3px 8px', borderRadius: '6px', border: 'none', backgroundColor: 'var(--color-state-danger)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Sim</button>
                         <button onClick={() => setConfirmandoExclusao(false)} style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '11px', cursor: 'pointer' }}>Não</button>
                       </div>
                     )}
@@ -2336,7 +2372,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                 ) : (
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '6px 10px', borderRadius: '8px', backgroundColor: 'rgba(180,71,47,0.08)', border: '1px solid rgba(180,71,47,0.3)' }}>
                     <span style={{ fontSize: '11px', color: 'var(--color-state-danger)' }}>Confirmar?</span>
-                    <button onClick={() => handleExcluirAula(aula.id)} style={{ padding: '3px 8px', borderRadius: '6px', border: 'none', backgroundColor: 'var(--color-state-danger)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Sim</button>
+                    <button onClick={() => pedirExclusaoAula(aula.id)} style={{ padding: '3px 8px', borderRadius: '6px', border: 'none', backgroundColor: 'var(--color-state-danger)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Sim</button>
                     <button onClick={() => setConfirmandoExclusao(false)} style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '11px', cursor: 'pointer' }}>Não</button>
                   </div>
                 )}
@@ -2756,6 +2792,51 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
           onConfirmarTurma={handleAdicionarEmOutraTurma}
           onFechar={() => setPromptOutraTurma(null)}
         />
+      )}
+
+      {pinExclusaoPendente && (
+        <Modal open onClose={() => setPinExclusaoPendente(null)} title="PIN da coordenação" size="sm">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+              Excluir precisa do PIN combinado com a coordenação.
+            </div>
+            <input
+              type="password" inputMode="numeric" autoFocus
+              value={pinExclusaoDigitado}
+              onChange={e => { setPinExclusaoDigitado(e.target.value.replace(/\D/g, '')); setErroPinExclusao('') }}
+              onKeyDown={e => {
+                if (e.key !== 'Enter') return
+                if (pinExclusaoDigitado !== PIN_EXCLUSAO_AGENDA) { setErroPinExclusao('PIN incorreto'); return }
+                pinExclusaoPendente.executar()
+                setPinExclusaoPendente(null)
+              }}
+              placeholder="PIN"
+              style={{
+                width: '100%', padding: '12px 14px', borderRadius: '10px', textAlign: 'center',
+                letterSpacing: '4px', fontSize: '16px', boxSizing: 'border-box',
+                backgroundColor: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none',
+              }}
+            />
+            {erroPinExclusao && <div style={{ fontSize: '12px', color: 'var(--color-state-danger)' }}>{erroPinExclusao}</div>}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => setPinExclusaoPendente(null)} style={{
+                flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid var(--border)',
+                background: 'none', color: 'var(--text-secondary)', fontSize: '13px', cursor: 'pointer',
+              }}>Cancelar</button>
+              <button
+                onClick={() => {
+                  if (pinExclusaoDigitado !== PIN_EXCLUSAO_AGENDA) { setErroPinExclusao('PIN incorreto'); return }
+                  pinExclusaoPendente.executar()
+                  setPinExclusaoPendente(null)
+                }}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
+                  background: 'var(--color-state-danger)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                }}
+              >Confirmar exclusão</button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )

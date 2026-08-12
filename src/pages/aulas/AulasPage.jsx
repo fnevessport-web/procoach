@@ -5,7 +5,7 @@ import { AulasCoordenador } from './AulasCoordenador'
 import { AulasAdmin } from './AulasAdmin'
 
 export function AulasPage() {
-  const { role, podeEditarAulas, podeIncluirAlunoAula } = usePermissions()
+  const { role, podeEditarAulas, podeIncluirAlunoAula, precisaPinParaExcluir } = usePermissions()
   const location = useLocation()
 
   // "Ver grade completa" no dashboard do professor: mostra todos os professores/quadras, só leitura
@@ -13,7 +13,9 @@ export function AulasPage() {
 
   if (role === 'professor') return <AulasProfessor />
   if (role === 'gestor') return <AulasAdmin />
-  if (podeEditarAulas) return <AulasCoordenador />
+  // Auxiliar de quadra: mesma edição total do coordenador, mas excluir aula ou remover
+  // aluno pede o PIN combinado com a coordenação (precisaPinParaExcluir).
+  if (podeEditarAulas) return <AulasCoordenador precisaPinParaExcluir={precisaPinParaExcluir} />
   // Recepção: vê a grade igual todo mundo, mas só pode incluir aluno na lista de presença e
   // marcar presente/falta — sem nenhuma ação administrativa (editar turma, mover horário,
   // excluir aula, substituir professor, confirmar/cancelar aula) — e só na aula que está

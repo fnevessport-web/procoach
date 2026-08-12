@@ -65,13 +65,14 @@ const TIPOS_COLABORADOR = [
   { value: 'gestor', label: 'Gestor', funcao: 'gerente' },
   { value: 'financeiro', label: 'Financeiro', funcao: 'financeiro' },
   { value: 'auxiliar', label: 'Auxiliar', funcao: 'auxiliar' },
+  { value: 'auxiliar_quadra', label: 'Auxiliar de Quadra', funcao: 'auxiliar_quadra' },
 ]
 
 // Mesmo mapeamento funcao -> role usado no cadastro do zero (TIPOS_COLABORADOR), mas pra
 // quando o colaborador já existe (cardAberto.funcao) e só está ganhando acesso agora — usado
 // em handleCriarAcesso pra a API criar o perfil com o role certo em vez de cair no default
 // 'professor' dela (bug que já fez financeiro/gerente virar professor no perfis_usuario).
-const FUNCAO_PARA_ROLE = { professor: 'professor', gerente: 'gestor', financeiro: 'financeiro', auxiliar: 'auxiliar', coordenador: 'coordenador' }
+const FUNCAO_PARA_ROLE = { professor: 'professor', gerente: 'gestor', financeiro: 'financeiro', auxiliar: 'auxiliar', coordenador: 'coordenador', auxiliar_quadra: 'auxiliar_quadra' }
 
 const FORM_VAZIO = {
   id: null, nome: '', email: '', telefone: '', instagram: '', apelido: '',
@@ -991,6 +992,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 { key: 'professor', label: 'Professores' },
                 { key: 'gerente', label: 'Gerentes' },
                 { key: 'auxiliar', label: 'Auxiliares' },
+                { key: 'auxiliar_quadra', label: 'Auxiliares de Quadra' },
                 { key: 'coordenador', label: 'Coordenadores' },
               ].map(f => (
                 <button key={f.key} onClick={() => { setFiltroFuncao(f.key); setFiltroAberto(false) }} style={{
@@ -1637,7 +1639,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                       <option value="professor">Professor</option>
                       <option value="gerente">Gerente</option>
                       <option value="financeiro">Financeiro</option>
-                      <option value="auxiliar">Auxiliar de Quadra</option>
+                      <option value="auxiliar">Auxiliar</option>
+                      <option value="auxiliar_quadra">Auxiliar de Quadra</option>
                       <option value="coordenador">Coordenador</option>
                     </select></div>
                 </div>

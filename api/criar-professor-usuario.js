@@ -51,7 +51,7 @@ export default async function handler(req, res) {
   // qualquer outro valor vindo do corpo da requisição. Se vier um role desconhecido/ausente,
   // rejeita em vez de cair silenciosamente pra 'professor' (isso já causou colaborador
   // financeiro/gestor virando professor no perfis_usuario por engano).
-  const ROLES_VALIDOS = { professor: 'professor', gestor: 'admin', financeiro: 'financeiro', auxiliar: 'auxiliar', coordenador: 'coordenador' }
+  const ROLES_VALIDOS = { professor: 'professor', gestor: 'admin', financeiro: 'financeiro', auxiliar: 'auxiliar', coordenador: 'coordenador', auxiliar_quadra: 'auxiliar_quadra' }
   const roleFinal = ROLES_VALIDOS[role]
   if (!roleFinal) {
     return res.status(400).json({ error: 'Role inválido' })
