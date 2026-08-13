@@ -57,7 +57,10 @@ function formataNota(n) {
 // outras modalidades entrarem depois, ver pcScore.js). Recebe a lista completa de
 // avaliações da modalidade (mais antiga primeiro, mesmo formato de useAvaliacoesModalidade)
 // + as presenças já buscadas pelo card, pra não duplicar consulta.
-export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, avaliacoes, presencas, definicoesDimensoes }) {
+// exportarPdfFn/brandingParams: só usados pelo modo Particular (CadastroParticular.jsx), que
+// não pode gerar o PDF Beyond/Procópio — default preserva 100% do comportamento de hoje pra
+// todo call site do clube (AlunoCard.jsx etc.), que não passa essas props.
+export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, avaliacoes, presencas, definicoesDimensoes, exportarPdfFn, brandingParams }) {
   const navigate = useNavigate()
   const { podeEditarAvaliacaoTecnica } = usePermissions()
   const [exportando, setExportando] = useState(false)
@@ -164,7 +167,8 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
   async function handleExportarPDF() {
     setExportando(true)
     try {
-      const resultado = await exportarEvolucaoTecnicaPDF({
+      const fn = exportarPdfFn || exportarEvolucaoTecnicaPDF
+      const resultado = await fn({
         alunoNome: aluno.nome,
         fotoUrl: aluno.foto_url,
         modalidadeNome,
@@ -180,7 +184,7 @@ export function EvolucaoTecnicaTenis({ aluno, modalidadeId, modalidadeNome, aval
         conquistas: conquistasDesbloqueadas.map(c => ({ nome: c.nome, icone: c.icone })),
         historicoMensal,
         niveisPcScore: NIVEIS_PC_SCORE.map(n => ({ ...n, cor: hexParaRgb(n.cor) })),
-      }, { empresa: MODALIDADE_EMPRESA[modalidadeNome] || 'procopio' })
+      }, brandingParams || { empresa: MODALIDADE_EMPRESA[modalidadeNome] || 'procopio' })
       setPdfPronto(resultado)
     } catch (err) {
       toast.error('Erro ao gerar PDF: ' + err.message, { style: toastStyle })

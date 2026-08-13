@@ -154,24 +154,25 @@ const PERMISSOES_POR_ROLE = {
   },
   // Profissional autônomo assinante (empresas.tipo === 'particular') — dono da própria
   // agenda/prática, isolado do clube (ver App.jsx: rotas do modo Particular nem importam as
-  // telas de clube). Fase 1 só entrega Dashboard + Agenda; Cadastros/Financeiro/KPIs/
-  // Avaliação/Disponibilidade ficam false até essas telas existirem de verdade nas próximas
-  // fases — enquanto isso, RouteGuard bloqueia essas rotas de graça (mesmo mecanismo já usado
-  // pros outros roles restritos), então não tem como acessar telas de clube nem por URL direta.
+  // telas de clube). Cadastros/Avaliação liberados (CadastroParticular.jsx); Financeiro/KPIs
+  // ficam false até essas telas existirem de verdade (Fase 3+) — enquanto isso, RouteGuard
+  // bloqueia essas rotas de graça (mesmo mecanismo já usado pros outros roles restritos),
+  // então não tem como acessar telas de clube nem por URL direta.
   dono_particular: {
-    podeAcessarCadastros: false,
-    podeEditarCadastros: false,
-    podeCadastrarAluno: false,
+    podeAcessarCadastros: true, // só desbloqueia CadastroParticular.jsx — a rota /cadastros
+    // do modo Particular (App.jsx, bloco isParticular) nunca importa a CadastrosPage do clube.
+    podeEditarCadastros: true,
+    podeCadastrarAluno: true,
     podeVerTodosSalarios: false,
-    podeAcessarFinanceiro: false,
+    podeAcessarFinanceiro: false, // Fase 3+
     podeEditarFinanceiro: false,
-    podeAcessarKPIs: false,
+    podeAcessarKPIs: false, // Fase 3+
     podeEditarAulas: true,
     podeEditarPropriaAula: true,
     podeVerInboxGeral: false,
     podeVerSino: false,
     podeVerDisponibilidade: false,
-    podeEditarAvaliacaoTecnica: false,
+    podeEditarAvaliacaoTecnica: true, // é o único "dono" da própria avaliação, sem coordenação acima
     podeIncluirAlunoAula: false,
     homeRoute: '/',
   },

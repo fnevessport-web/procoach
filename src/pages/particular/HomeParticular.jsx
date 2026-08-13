@@ -1,44 +1,102 @@
 import { useNavigate } from 'react-router-dom'
+import { format, addDays } from 'date-fns'
 import { CalendarDays } from 'lucide-react'
 import useAppStore from '../../store/useAppStore'
+import { useAulas } from '../../hooks/useAulas'
+import { Loading } from '../../components/ui/Loading'
 
-// Home do modo Particular (profissional autônomo assinante) — Fase 1 é só um stub: saudação +
-// atalho pra Agenda. Sem nenhum widget de clube (nada de Ranking/Financeiro/Pontuação Beyond
-// aqui, mesmo que existam componentes prontos pra isso — essa página não pode importar nada de
-// src/pages/home/HomePage.jsx nem de outras telas de clube). Financeiro/indicadores reais
-// (aulas hoje/amanhã, inadimplência etc.) ficam pra Fase 2+, quando existir cadastro de aluno.
+function labelAula(aula) {
+  return aula.turmas?.nome || aula.contratantes?.nome || aula.presencas?.[0]?.alunos?.nome || 'Aula avulsa'
+}
+function horarioAula(aula) {
+  return aula.turmas?.horario_inicio?.slice(0, 5) || aula.horario?.slice(0, 5) || '—'
+}
+
+function ordenar(lista) {
+  return [...lista].sort((a, b) => horarioAula(a).localeCompare(horarioAula(b)))
+}
+
+function SecaoAulas({ titulo, aulas, carregando }) {
+  return (
+    <div style={{
+      backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '16px',
+      border: '1px solid rgba(165,76,46,0.2)', padding: '18px', marginBottom: '14px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>
+          {titulo}
+        </div>
+        <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{aulas.length}</div>
+      </div>
+      {carregando ? <Loading text="Carregando..." /> : aulas.length === 0 ? (
+        <div style={{ fontSize: '12px', color: 'var(--color-text-dark-muted)', textAlign: 'center', padding: '8px 0' }}>
+          Nenhuma aula agendada.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {ordenar(aulas).map(a => (
+            <div key={a.id} style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '9px 12px', borderRadius: '10px', backgroundColor: 'var(--color-surface-dark-overlay)',
+            }}>
+              <div style={{
+                width: '40px', flexShrink: 0, fontSize: '11px', fontWeight: '700',
+                color: 'var(--color-action-primary)', textAlign: 'center',
+              }}>{horarioAula(a)}</div>
+              <div style={{ fontSize: '13px', color: 'var(--color-text-dark-primary)', fontWeight: '600' }}>{labelAula(a)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Home do modo Particular (profissional autônomo assinante). Fase 2: "aulas hoje"/"aulas
+// amanhã" de verdade, sem indicador de "ao vivo" (pedido explícito) e sem nenhum widget de
+// clube — nada de Ranking/Financeiro/Pontuação Beyond aqui, mesmo que existam componentes
+// prontos pra isso; essa página não importa nada de src/pages/home/HomePage.jsx.
 export function HomeParticular() {
   const navigate = useNavigate()
-  const { perfil } = useAppStore()
+  const { perfil, empresaSelecionada } = useAppStore()
+  const empresaId = empresaSelecionada?.id
+
+  const hoje = format(new Date(), 'yyyy-MM-dd')
+  const amanha = format(addDays(new Date(), 1), 'yyyy-MM-dd')
+  const { data: aulasHoje = [], isLoading: carregandoHoje } = useAulas({ empresaId, data: hoje })
+  const { data: aulasAmanha = [], isLoading: carregandoAmanha } = useAulas({ empresaId, data: amanha })
 
   return (
     <div className="fade-in">
       <h1 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-dark-primary)', margin: '0 0 6px' }}>
         Olá, {perfil?.nome?.split(' ')[0] || 'professor'}
       </h1>
-      <p style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)', margin: '0 0 24px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)', margin: '0 0 20px' }}>
         Sua prática particular no ProCoach.
       </p>
+
+      <SecaoAulas titulo="Aulas hoje" aulas={aulasHoje} carregando={carregandoHoje} />
+      <SecaoAulas titulo="Aulas amanhã" aulas={aulasAmanha} carregando={carregandoAmanha} />
 
       <button
         onClick={() => navigate('/aulas')}
         style={{
           display: 'flex', alignItems: 'center', gap: '14px',
-          width: '100%', padding: '20px', borderRadius: '16px',
+          width: '100%', padding: '16px', borderRadius: '16px',
           backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid rgba(165,76,46,0.25)',
           cursor: 'pointer', textAlign: 'left',
         }}
       >
         <div style={{
-          width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0,
+          width: '40px', height: '40px', borderRadius: '11px', flexShrink: 0,
           backgroundColor: 'rgba(165,76,46,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <CalendarDays size={22} color="var(--color-action-primary)" />
+          <CalendarDays size={20} color="var(--color-action-primary)" />
         </div>
         <div>
-          <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>Agenda</div>
-          <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>
-            Ver e organizar sua semana de aulas
+          <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>Ver Agenda completa</div>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>
+            Organizar sua semana de aulas
           </div>
         </div>
       </button>

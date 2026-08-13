@@ -39,6 +39,7 @@ import { ComoFuncionaAPontuacaoPage } from './pages/legal/ComoFuncionaAPontuacao
 import { ComoFuncionaORankingPage } from './pages/legal/ComoFuncionaORankingPage'
 import { HomeParticular } from './pages/particular/HomeParticular'
 import { AgendaParticular } from './pages/particular/AgendaParticular'
+import { CadastroParticular } from './pages/particular/CadastroParticular'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -102,6 +103,12 @@ function AppRouter() {
           <>
             <Route path="/" element={<HomeParticular />} />
             <Route path="/aulas" element={<AgendaParticular />} />
+            <Route path="/cadastros" element={<CadastroParticular />} />
+            {/* AvaliarAluno é o mesmo componente do clube (src/pages/professor/AvaliarAluno.jsx)
+                — seguro de reaproveitar aqui porque CadastroParticular sempre navega já com
+                alunoId/modalidadeId em location.state, então a busca de aluno do clube (sem
+                escopo de empresa) nunca chega a renderizar numa sessão Particular. */}
+            <Route path="/avaliar-aluno" element={<AvaliarAluno />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : (

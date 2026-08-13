@@ -7,6 +7,8 @@ import toast from 'react-hot-toast'
 import useAppStore from '../../store/useAppStore'
 import { useTurmas, useSalvarTurma } from '../../hooks/useTurmas'
 import { useAulas, useGerarAulas } from '../../hooks/useAulas'
+import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
+import { useContratantes, useCriarContratante } from '../../hooks/useContratantes'
 import { useHorariosAgenda, useCriarHorarioAgenda, useExcluirHorarioAgenda } from '../../hooks/useHorariosAgenda'
 import { useBloqueiosAgenda, useCriarBloqueioAgenda, useRemoverBloqueioAgenda } from '../../hooks/useBloqueiosAgenda'
 import { Modal } from '../../components/ui/Modal'
@@ -24,6 +26,10 @@ const inputStyle = {
   width: '100%', padding: '10px 14px', borderRadius: '10px',
   backgroundColor: 'var(--surface)', border: '1px solid var(--border)',
   color: 'var(--text-primary)', fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+}
+const labelStyle = {
+  fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase',
+  letterSpacing: '0.5px', marginBottom: '4px',
 }
 
 // Agenda semanal do modo Particular — 7 colunas (seg-dom) em vez do dia único com colunas por
@@ -45,16 +51,19 @@ export function AgendaParticular() {
   const { data: turmas = [] } = useTurmas(null, empresaId)
   const { data: aulasSemana = [], isLoading: loadingAulas } = useAulas({ empresaId, dataInicio, dataFim })
   const { data: bloqueios = [] } = useBloqueiosAgenda(empresaId, dataInicio, dataFim)
+  const { data: contratantes = [] } = useContratantes(empresaId)
+  const { data: alunos = [] } = useAlunos(null, empresaId)
 
   const salvarTurma = useSalvarTurma()
   const gerarAulas = useGerarAulas()
+  const salvarAluno = useSalvarAluno()
+  const criarContratante = useCriarContratante()
   const criarHorario = useCriarHorarioAgenda()
   const excluirHorario = useExcluirHorarioAgenda()
   const criarBloqueio = useCriarBloqueioAgenda()
   const removerBloqueio = useRemoverBloqueioAgenda()
 
   const turmasPosicionadas = turmas.filter(t => t.horario_dia_semana && t.horario_inicio)
-  const turmasSemHorario = turmas.filter(t => !t.horario_dia_semana)
 
   // Garante que toda turma já posicionada tem aula gerada na semana visível — sem cron, gera
   // sob demanda ao navegar (mesmo padrão de uso do useGerarAulas que já existe pro clube).
@@ -78,9 +87,15 @@ export function AgendaParticular() {
   function celulaDoTipo(dataStr, horarioStr) {
     const bloqueio = bloqueios.find(b => b.data === dataStr && b.horario?.slice(0, 5) === horarioStr)
     if (bloqueio) return { tipo: 'bloqueio', bloqueio }
-    const aula = aulasSemana.find(a => a.data_aula === dataStr && a.turmas?.horario_inicio?.slice(0, 5) === horarioStr)
+    // Mensal usa o horário da turma; avulsa (sem turma) usa o horário gravado na própria aula.
+    const aula = aulasSemana.find(a => a.data_aula === dataStr &&
+      (a.turmas?.horario_inicio?.slice(0, 5) === horarioStr || a.horario?.slice(0, 5) === horarioStr))
     if (aula) return { tipo: 'aula', aula }
     return { tipo: 'vazia' }
+  }
+
+  function labelAula(aula) {
+    return aula.turmas?.nome || aula.contratantes?.nome || aula.presencas?.[0]?.alunos?.nome || 'Aula avulsa'
   }
 
   if (loadingHorarios || loadingAulas) return <Loading text="Carregando agenda..." />
@@ -151,7 +166,7 @@ export function AgendaParticular() {
                         color: 'var(--color-action-primary)', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
                         textAlign: 'left',
                       }}>
-                        {cel.aula.turmas?.nome || 'Aula'}
+                        {labelAula(cel.aula)}
                       </button>
                     )
                   }
@@ -172,19 +187,34 @@ export function AgendaParticular() {
         <ModalCelulaVazia
           dataStr={celulaVazia.dataStr}
           horario={celulaVazia.horario}
-          empresaId={empresaId}
-          turmasSemHorario={turmasSemHorario}
+          contratantes={contratantes}
+          alunos={alunos}
           onFechar={() => setCelulaVazia(null)}
-          onPosicionarExistente={async (turma) => {
-            const diaSemana = DIAS_SEMANA[new Date(celulaVazia.dataStr + 'T12:00').getDay()]
-            await salvarTurma.mutateAsync({ id: turma.id, horario_dia_semana: diaSemana, horario_inicio: celulaVazia.horario })
-            await gerarAulas.mutateAsync({ turmaId: turma.id, dataInicio, dataFim })
-            toast.success('Turma posicionada na agenda!')
+          onCriarContratante={async (dados) => criarContratante.mutateAsync({ empresaId, ...dados })}
+          onCriarAluno={async (dados) => salvarAluno.mutateAsync({ empresa_id: empresaId, ...dados })}
+          onCriarAvulsa={async ({ contratanteId, alunoId }) => {
+            const { data: aula, error } = await supabase.from('aulas').insert({
+              turma_id: null, empresa_id: empresaId, data_aula: celulaVazia.dataStr,
+              horario: celulaVazia.horario, professor_executou_id: null,
+              status_aula: 'dada', paga_professor: false, contratante_id: contratanteId || null,
+            }).select().single()
+            if (error) throw error
+            if (alunoId) {
+              await supabase.from('presencas').insert({
+                aula_id: aula.id, aluno_id: alunoId, presente: false,
+                status_presenca: 'presente', tipo_participacao: 'avulso',
+              })
+            }
+            qc.invalidateQueries({ queryKey: ['aulas'] })
+            toast.success('Aula avulsa criada!')
             setCelulaVazia(null)
           }}
-          onCriarNova={async (nome) => {
+          onCriarMensal={async ({ nome, contratanteId, alunoId }) => {
             const diaSemana = DIAS_SEMANA[new Date(celulaVazia.dataStr + 'T12:00').getDay()]
-            const turmaId = await salvarTurma.mutateAsync({ nome, empresa_id: empresaId, horario_dia_semana: diaSemana, horario_inicio: celulaVazia.horario })
+            const turmaId = await salvarTurma.mutateAsync({
+              nome, empresa_id: empresaId, horario_dia_semana: diaSemana, horario_inicio: celulaVazia.horario,
+              contratante_id: contratanteId || null, alunos_ids: alunoId ? [alunoId] : [],
+            })
             await gerarAulas.mutateAsync({ turmaId, dataInicio, dataFim })
             toast.success('Turma criada e posicionada!')
             setCelulaVazia(null)
@@ -244,9 +274,91 @@ export function AgendaParticular() {
   )
 }
 
-function ModalCelulaVazia({ dataStr, horario, turmasSemHorario, onFechar, onPosicionarExistente, onCriarNova, onCongelar }) {
-  const [aba, setAba] = useState('nova') // 'nova' | 'existente' | 'congelar'
-  const [nome, setNome] = useState('')
+// Contratante + (se contratante.tipo === 'aluno') aluno — compartilhado entre as abas Avulsa e
+// Mensal. Cada um tem seu próprio "+ novo" inline, pra nunca precisar sair do fluxo de agendar
+// só pra ir cadastrar um contratante/aluno primeiro.
+function SeletorContratanteAluno({ contratantes, alunos, contratanteId, setContratanteId, alunoId, setAlunoId, onCriarContratante, onCriarAluno }) {
+  const [novoContratante, setNovoContratante] = useState(null) // { nome } | null
+  const [novoAluno, setNovoAluno] = useState(null) // { nome } | null
+  const [salvandoContratante, setSalvandoContratante] = useState(false)
+  const [salvandoAluno, setSalvandoAluno] = useState(false)
+
+  const contratanteSel = contratantes.find(c => c.id === contratanteId)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div>
+        <div style={labelStyle}>Contratante</div>
+        {novoContratante ? (
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <input style={inputStyle} placeholder="Nome (ex: Beyond, Clube Pinheiros)" value={novoContratante.nome}
+              onChange={e => setNovoContratante({ nome: e.target.value })} autoFocus />
+            <button disabled={!novoContratante.nome.trim() || salvandoContratante} onClick={async () => {
+              setSalvandoContratante(true)
+              try {
+                const c = await onCriarContratante({ nome: novoContratante.nome.trim(), tipo: 'terceiro', tipoCobranca: null })
+                setContratanteId(c.id)
+                setNovoContratante(null)
+              } catch (err) { toast.error(err.message) } finally { setSalvandoContratante(false) }
+            }} style={{ flexShrink: 0, padding: '10px 14px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
+              {salvandoContratante ? '...' : 'Salvar'}
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <select style={inputStyle} value={contratanteId || ''} onChange={e => { setContratanteId(e.target.value); setAlunoId('') }}>
+              <option value="" disabled>Selecione</option>
+              {contratantes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+            <button onClick={() => setNovoContratante({ nome: '' })} title="Novo contratante" style={{
+              flexShrink: 0, padding: '10px', borderRadius: '10px', border: '1px solid var(--border)', background: 'none',
+              color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center',
+            }}><Plus size={14} /></button>
+          </div>
+        )}
+      </div>
+
+      {contratanteSel?.tipo === 'aluno' && (
+        <div>
+          <div style={labelStyle}>Aluno</div>
+          {novoAluno ? (
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <input style={inputStyle} placeholder="Nome do aluno" value={novoAluno.nome}
+                onChange={e => setNovoAluno({ nome: e.target.value })} autoFocus />
+              <button disabled={!novoAluno.nome.trim() || salvandoAluno} onClick={async () => {
+                setSalvandoAluno(true)
+                try {
+                  const a = await onCriarAluno({ nome: novoAluno.nome.trim(), tipo_cobranca: 'por_aula' })
+                  setAlunoId(a.id)
+                  setNovoAluno(null)
+                } catch (err) { toast.error(err.message) } finally { setSalvandoAluno(false) }
+              }} style={{ flexShrink: 0, padding: '10px 14px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
+                {salvandoAluno ? '...' : 'Salvar'}
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <select style={inputStyle} value={alunoId || ''} onChange={e => setAlunoId(e.target.value)}>
+                <option value="" disabled>Selecione</option>
+                {alunos.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+              </select>
+              <button onClick={() => setNovoAluno({ nome: '' })} title="Novo aluno" style={{
+                flexShrink: 0, padding: '10px', borderRadius: '10px', border: '1px solid var(--border)', background: 'none',
+                color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center',
+              }}><Plus size={14} /></button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ModalCelulaVazia({ dataStr, horario, contratantes, alunos, onFechar, onCriarContratante, onCriarAluno, onCriarAvulsa, onCriarMensal, onCongelar }) {
+  const [aba, setAba] = useState('avulsa') // 'avulsa' | 'mensal' | 'congelar'
+  const [contratanteId, setContratanteId] = useState(() => contratantes.find(c => c.nome === 'Particular')?.id || '')
+  const [alunoId, setAlunoId] = useState('')
+  const [nomeTurma, setNomeTurma] = useState('')
   const [motivo, setMotivo] = useState('')
   const [salvando, setSalvando] = useState(false)
 
@@ -255,10 +367,12 @@ function ModalCelulaVazia({ dataStr, horario, turmasSemHorario, onFechar, onPosi
     try { await fn() } catch (err) { toast.error(err.message) } finally { setSalvando(false) }
   }
 
+  const alunoEscolhido = alunos.find(a => a.id === alunoId)
+
   return (
     <Modal open onClose={onFechar} title={`${format(new Date(dataStr + 'T12:00'), "dd/MM", { locale: ptBR })} · ${horario}`} size="sm">
       <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', backgroundColor: 'var(--surface)', borderRadius: '10px', padding: '4px' }}>
-        {[{ key: 'nova', label: 'Nova turma' }, { key: 'existente', label: 'Já cadastrada' }, { key: 'congelar', label: 'Congelar' }].map(t => (
+        {[{ key: 'avulsa', label: 'Avulsa' }, { key: 'mensal', label: 'Mensal' }, { key: 'congelar', label: 'Congelar' }].map(t => (
           <button key={t.key} onClick={() => setAba(t.key)} style={{
             flex: 1, padding: '8px', borderRadius: '7px', border: 'none', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
             background: aba === t.key ? 'var(--color-action-primary)' : 'transparent',
@@ -267,28 +381,31 @@ function ModalCelulaVazia({ dataStr, horario, turmasSemHorario, onFechar, onPosi
         ))}
       </div>
 
-      {aba === 'nova' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <input style={inputStyle} placeholder="Nome (ex: nome do aluno)" value={nome} onChange={e => setNome(e.target.value)} autoFocus />
-          <button disabled={!nome.trim() || salvando} onClick={() => rodar(() => onCriarNova(nome.trim()))} style={{
-            padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white',
-            fontSize: '13px', fontWeight: '600', cursor: 'pointer', opacity: !nome.trim() ? 0.5 : 1,
-          }}>{salvando ? 'Salvando...' : 'Criar e posicionar aqui'}</button>
-        </div>
-      )}
-
-      {aba === 'existente' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
-          {turmasSemHorario.length === 0 ? (
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', padding: '16px 0' }}>
-              Nenhuma turma sem horário definido ainda.
+      {(aba === 'avulsa' || aba === 'mensal') && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {aba === 'mensal' && (
+            <div>
+              <div style={labelStyle}>Nome da turma (opcional — usa o nome do aluno se vazio)</div>
+              <input style={inputStyle} placeholder="Ex: nome do aluno" value={nomeTurma} onChange={e => setNomeTurma(e.target.value)} />
             </div>
-          ) : turmasSemHorario.map(t => (
-            <button key={t.id} disabled={salvando} onClick={() => rodar(() => onPosicionarExistente(t))} style={{
-              padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface)',
-              color: 'var(--text-primary)', fontSize: '13px', textAlign: 'left', cursor: 'pointer',
-            }}>{t.nome}</button>
-          ))}
+          )}
+          <SeletorContratanteAluno
+            contratantes={contratantes} alunos={alunos}
+            contratanteId={contratanteId} setContratanteId={setContratanteId}
+            alunoId={alunoId} setAlunoId={setAlunoId}
+            onCriarContratante={onCriarContratante} onCriarAluno={onCriarAluno}
+          />
+          <button
+            disabled={!contratanteId || salvando}
+            onClick={() => rodar(() => aba === 'avulsa'
+              ? onCriarAvulsa({ contratanteId, alunoId: alunoId || null })
+              : onCriarMensal({ nome: nomeTurma.trim() || alunoEscolhido?.nome || 'Aula', contratanteId, alunoId: alunoId || null })
+            )}
+            style={{
+              padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white',
+              fontSize: '13px', fontWeight: '600', cursor: 'pointer', opacity: !contratanteId ? 0.5 : 1,
+            }}
+          >{salvando ? 'Salvando...' : aba === 'avulsa' ? 'Criar aula avulsa' : 'Criar e posicionar aqui'}</button>
         </div>
       )}
 
@@ -311,10 +428,10 @@ function ModalAula({ aula, onFechar, onSalvar }) {
   const [salvando, setSalvando] = useState(false)
 
   return (
-    <Modal open onClose={onFechar} title={aula.turmas?.nome || 'Aula'} size="sm">
+    <Modal open onClose={onFechar} title={aula.turmas?.nome || aula.contratantes?.nome || aula.presencas?.[0]?.alunos?.nome || 'Aula avulsa'} size="sm">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-          {format(new Date(aula.data_aula + 'T12:00'), "dd/MM 'às' ", { locale: ptBR })}{aula.turmas?.horario_inicio?.slice(0, 5)}
+          {format(new Date(aula.data_aula + 'T12:00'), "dd/MM 'às' ", { locale: ptBR })}{aula.turmas?.horario_inicio?.slice(0, 5) || aula.horario?.slice(0, 5)}
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
           {STATUS_OPCOES.map(o => (

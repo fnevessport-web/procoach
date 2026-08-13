@@ -25,7 +25,8 @@ export function useAulas({ data, dataInicio, dataFim, professorId, modalidadeId,
           turmas(nome, horario_inicio, horario_fim, horario_dia_semana, professor_titular_id, modalidade_id, quadras(nome), modalidades(nome, icone_emoji, cor_hex), turmas_alunos(id, ativo)),
           professores!professor_executou_id(id, nome, foto_url),
           prof_titular:professores!professor_titular_id(id, nome),
-          presencas(id, aluno_id, presente, status_presenca, tipo_participacao, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof, criado_por, criado_por_nome, criado_em, alunos(id, nome, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof))
+          presencas(id, aluno_id, presente, status_presenca, tipo_participacao, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof, criado_por, criado_por_nome, criado_em, alunos(id, nome, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof)),
+          contratantes(id, nome, tipo)
         `)
         .order('data_aula', { ascending: false })
 
@@ -677,6 +678,8 @@ export function useGerarAulas() {
             empresa_id: turma.empresa_id || null, // propaga o escopo da turma pra aula gerada —
             // sem isso, a aula nasceria empresa_id null (bucket do clube) mesmo vindo de uma
             // turma Particular, furando o isolamento entre tenants.
+            contratante_id: turma.contratante_id || null, // mesmo motivo do empresa_id acima —
+            // aula gerada "sabe" quem fatura sem precisar de join pra turmas em toda leitura.
             professor_executou_id: professorOverrideId || turma.professores?.id || turma.professor_titular_id,
             data_aula: format(new Date(d), 'yyyy-MM-dd'),
             status: 'pendente',

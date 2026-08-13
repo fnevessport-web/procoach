@@ -20,6 +20,7 @@ export function getNavItems(roleBruto) {
     return [
       { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
       { path: '/aulas', icon: CalendarDays, label: 'Agenda' },
+      { path: '/cadastros', icon: Users, label: 'Cadastro' },
     ]
   }
 

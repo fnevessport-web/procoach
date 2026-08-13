@@ -8,9 +8,11 @@ import { buscarProfessoresDoAlunoNaModalidade } from './useProfessoresDoAluno'
 import { criarAlerta } from './useAlertas'
 import { verificarEAtualizarConquistas } from './useConquistas'
 
-export function useAlunos(modalidadeId = null) {
+// empresaId: escopo do tenant (null = alunos do clube, comportamento de hoje — nenhum
+// chamador existente precisa passar nada). Mesmo idioma defensivo de useTurmas/useAulas.
+export function useAlunos(modalidadeId = null, empresaId = null) {
   return useQuery({
-    queryKey: ['alunos', modalidadeId],
+    queryKey: ['alunos', modalidadeId, empresaId],
     queryFn: async () => {
       let q = supabase
         .from('alunos')
@@ -19,6 +21,7 @@ export function useAlunos(modalidadeId = null) {
         .order('nome')
 
       if (modalidadeId) q = q.eq('modalidade_id', modalidadeId)
+      q = empresaId ? q.eq('empresa_id', empresaId) : q.is('empresa_id', null)
 
       const { data, error } = await q
       if (error) throw error
