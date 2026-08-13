@@ -1,6 +1,19 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 
+const DIAS_TODOS = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
+
+// Rede de segurança: se a tabela ainda não existir (migração não rodou) ou vier vazia por
+// qualquer motivo, a grade cai nesse mesmo horário 06h-21h que já era hardcoded antes — nunca
+// mais fica sem NENHUMA linha pra desenhar (é exatamente isso que já aconteceu uma vez: migração
+// não rodada a tempo do deploy fez a grade inteira sumir, mesmo com todas as aulas intactas).
+const HORARIOS_FALLBACK = Array.from({ length: 16 }, (_, i) => ({
+  id: `fallback-${i}`,
+  horario: `${String(6 + i).padStart(2, '0')}:00:00`,
+  dias_semana: DIAS_TODOS,
+  ativo: true,
+}))
+
 // Grade de horários do clube (Cadastro > Horários) — substitui os arrays de horário fixos que
 // existiam hardcoded no JS. Cada linha tem os dias da semana em que aparece na grade (ex: um
 // horário só de fim de semana), pra dar controle de verdade sem precisar mexer em código.
@@ -13,7 +26,7 @@ export function useHorariosGrade() {
         .select('*')
         .eq('ativo', true)
         .order('horario')
-      if (error) throw error
+      if (error || !data?.length) return HORARIOS_FALLBACK
       return data
     },
     staleTime: 1000 * 60 * 10,
