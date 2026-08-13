@@ -14,6 +14,7 @@ import { useQuadras } from '../../hooks/useQuadras'
 import { useNiveis } from '../../hooks/useNiveis'
 import { useModalidades } from '../../hooks/useModalidades'
 import { useTurmas } from '../../hooks/useTurmas'
+import { useHorariosGrade } from '../../hooks/useHorariosGrade'
 import { QUADRAS_EMPRESA } from '../../hooks/useFinanceiro'
 import { useAbrirConversaDaAula } from '../../hooks/useMensagens'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -25,6 +26,10 @@ import { logAudit } from '../../lib/audit'
 import { criarAlerta } from '../../hooks/useAlertas'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+
+// index 0 = domingo (Date.getDay()) — usado pra filtrar a grade de horários (Cadastro >
+// Horários) pelos dias em que cada um está marcado como disponível.
+const DIAS_SEMANA_POR_INDICE = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado']
 
 const STATUS_AULA = [
   { value: 'dada', label: 'Confirmada', icone: Check, paga: true },
@@ -263,6 +268,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   // matriculou 2x/semana) — evita repetir o fluxo inteiro de "Novo Aluno" pra cada dia.
   const [promptOutraTurma, setPromptOutraTurma] = useState(null) // { alunoId, alunoNome, modalidadeId, modalidadeNome } | null
   const { data: todasTurmas } = useTurmas()
+  const { data: horariosGradeCadastrados } = useHorariosGrade()
 
   const [modalMassa, setModalMassa] = useState(null)
   const [acaoMassa, setAcaoMassa] = useState(null)
@@ -403,7 +409,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   const dataObj = new Date(data + 'T12:00:00')
   const label = format(dataObj, "EEEE, d 'de' MMMM", { locale: ptBR })
   const isHoje = data === format(new Date(), 'yyyy-MM-dd')
-  const horarios = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
+  // Lista completa (sem filtrar por dia) — usada no seletor de "mover horário" de uma aula
+  // avulsa, onde faz sentido poder escolher qualquer horário cadastrado independente do dia.
+  const horarios = (horariosGradeCadastrados || []).map(h => h.horario.slice(0, 5))
   const isFuturo = isAulaFutura(data)
 
   function navData(dir) {
@@ -1394,7 +1402,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       .filter(Boolean)
   )]
 
-  const horariosGrade = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
+  // Só os horários marcados (Cadastro > Horários) pro dia da semana sendo exibido agora.
+  const diaSemanaExibido = DIAS_SEMANA_POR_INDICE[new Date(data + 'T12:00').getDay()]
+  const horariosGrade = (horariosGradeCadastrados || [])
+    .filter(h => h.dias_semana?.includes(diaSemanaExibido))
+    .map(h => h.horario.slice(0, 5))
 
   // Turmas sem aluno matriculado não contam nas estatísticas do dia (só aparecem cinza na grade)
   const aulasAtivas = aulasFiltradas.filter(turmaAtiva)

@@ -2,14 +2,15 @@ import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { format, addDays, addMonths, startOfMonth, getDaysInMonth, getDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Plus, Calendar, UserPlus, X, ChevronRight, ChevronLeft, Copy, Check, CheckCircle2, Zap, Lightbulb, AlertTriangle, User } from 'lucide-react'
+import { Plus, Calendar, UserPlus, X, ChevronRight, ChevronLeft, Copy, Check, CheckCircle2, Zap, Lightbulb, AlertTriangle, User, School } from 'lucide-react'
 import { useAulas, useGerarAulas, useRelatorioReposicoes } from '../../hooks/useAulas'
-import { useTurmas } from '../../hooks/useTurmas'
+import { useTurmas, useSalvarTurma } from '../../hooks/useTurmas'
 import { useProfessores } from '../../hooks/useProfessores'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useQuadras } from '../../hooks/useQuadras'
 import { useNiveis } from '../../hooks/useNiveis'
 import { useModalidades } from '../../hooks/useModalidades'
+import { useHorariosGrade } from '../../hooks/useHorariosGrade'
 import { Modal } from '../../components/ui/Modal'
 import { Input, Select } from '../../components/ui/Input'
 import { Loading, EmptyState } from '../../components/ui/Loading'
@@ -34,6 +35,20 @@ const NIVEIS_ALUNO = [
   'Kids Iniciante', 'Kids Intermediário', 'Kids Avançado',
 ]
 
+// index 0 = domingo (Date.getDay()) — usado pra descobrir o dia da semana a partir da data
+// clicada na grade, na hora de posicionar/criar uma turma direto no atalho.
+const DIAS_SEMANA_POR_INDICE = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado']
+const LABEL_DIA_SEMANA = {
+  segunda: 'Segunda-feira', terca: 'Terça-feira', quarta: 'Quarta-feira', quinta: 'Quinta-feira',
+  sexta: 'Sexta-feira', sabado: 'Sábado', domingo: 'Domingo',
+}
+
+function calcularFimAula(inicio) {
+  const [h, m] = inicio.split(':').map(Number)
+  const total = h * 60 + m + 50
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
 const inputInline = {
   width: '100%', padding: '8px 12px', borderRadius: '8px',
   backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)',
@@ -51,6 +66,9 @@ export function AulasAdmin() {
   const [tab, setTab] = useState('hoje')
   const [modalGerar, setModalGerar] = useState(null)
   const [atalho, setAtalho] = useState(null)
+  // Turma que acabou de ser posicionada/criada via atalho — usada pra pré-selecionar em
+  // ModalGerarAulas assim que ele abre em seguida, sem precisar procurar ela na lista de novo.
+  const [turmaRecemPosicionada, setTurmaRecemPosicionada] = useState(null)
   const { data: _relatorioAtual } = useRelatorioReposicoes()
   const totalReposicoes = (_relatorioAtual || []).filter(a => a.pendentes.length > 0).length
 
@@ -73,6 +91,7 @@ export function AulasAdmin() {
   function fecharTudo() {
     setModalGerar(null)
     setAtalho(null)
+    setTurmaRecemPosicionada(null)
   }
 
   return (
@@ -188,6 +207,30 @@ export function AulasAdmin() {
             </div>
             <ChevronRight size={16} color="var(--color-text-light-secondary)" />
           </button>
+          <button onClick={() => setModalGerar('posicionar_atalho')} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px', borderRadius: '12px', border: 'none',
+            backgroundColor: 'var(--color-surface-light-overlay)', outline: '1px solid var(--color-border-light)',
+            cursor: 'pointer', textAlign: 'left', width: '100%',
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}><School size={13} /> Posicionar turma existente</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Uma turma cadastrada sem dia/horário ainda</div>
+            </div>
+            <ChevronRight size={16} color="var(--color-text-light-secondary)" />
+          </button>
+          <button onClick={() => setModalGerar('criar_turma_atalho')} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px', borderRadius: '12px', border: 'none',
+            backgroundColor: 'var(--color-surface-light-overlay)', outline: '1px solid var(--color-border-light)',
+            cursor: 'pointer', textAlign: 'left', width: '100%',
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}><Plus size={13} /> Criar turma nova aqui</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Nível, professor e alunos — quadra/dia/horário já vêm daqui</div>
+            </div>
+            <ChevronRight size={16} color="var(--color-text-light-secondary)" />
+          </button>
           <button onClick={() => setModalGerar('mensal')} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '16px', borderRadius: '12px', border: 'none',
@@ -204,7 +247,19 @@ export function AulasAdmin() {
       </Modal>
 
       <ModalCopiarGrade open={modalGerar === 'copiar'} onClose={fecharTudo} />
-      <ModalGerarAulas open={modalGerar === 'mensal'} onClose={fecharTudo} />
+      <ModalGerarAulas open={modalGerar === 'mensal'} onClose={fecharTudo} turmaIdInicial={turmaRecemPosicionada} />
+      <ModalPosicionarTurma
+        open={modalGerar === 'posicionar_atalho'}
+        onClose={fecharTudo}
+        atalho={atalho}
+        onPosicionado={(turmaId) => { setTurmaRecemPosicionada(turmaId); setModalGerar('mensal') }}
+      />
+      <ModalCriarTurmaAqui
+        open={modalGerar === 'criar_turma_atalho'}
+        onClose={fecharTudo}
+        atalho={atalho}
+        onCriada={(turmaId) => { setTurmaRecemPosicionada(turmaId); setModalGerar('mensal') }}
+      />
       <ModalAulaAvulsa
         open={modalGerar === 'avulsa' || modalGerar === 'avulsa_atalho'}
         onClose={fecharTudo}
@@ -825,7 +880,10 @@ function ModalReposicao({ aluno, onClose }) {
     )
 }
 
-function ModalGerarAulas({ open, onClose }) {
+// turmaIdInicial: quando vem de "Posicionar turma existente"/"Criar turma nova aqui" no atalho
+// da grade, a turma já foi acabada de posicionar — abre esse modal com ela já escolhida, só
+// falta confirmar o período.
+function ModalGerarAulas({ open, onClose, turmaIdInicial = null }) {
   const { data: turmas } = useTurmas()
   const gerar = useGerarAulas()
   const [form, setForm] = useState({
@@ -836,6 +894,17 @@ function ModalGerarAulas({ open, onClose }) {
   const [resultado, setResultado] = useState(null)
   const turmaSelecionada = turmas?.find(t => t.id === form.turma_id)
   const { professores } = useProfessores(turmaSelecionada?.modalidade_id)
+
+  // Aplica turmaIdInicial só uma vez por abertura (não briga com o usuário se ele trocar a
+  // turma manualmente depois) — mesmo padrão de "sincronizar de um valor externo durante o
+  // render" já usado em AulasCoordenador.jsx.
+  const [turmaIdInicialAplicado, setTurmaIdInicialAplicado] = useState(null)
+  if (open && turmaIdInicial && turmaIdInicial !== turmaIdInicialAplicado) {
+    setTurmaIdInicialAplicado(turmaIdInicial)
+    const turma = turmas?.find(t => t.id === turmaIdInicial)
+    setForm(f => ({ ...f, turma_id: turmaIdInicial, professor_id: turma?.professor_titular_id || f.professor_id }))
+  }
+  if (!open && turmaIdInicialAplicado) setTurmaIdInicialAplicado(null)
 
   function handleTurmaChange(turma_id) {
     const turma = turmas?.find(t => t.id === turma_id)
@@ -898,6 +967,161 @@ function ModalGerarAulas({ open, onClose }) {
   )
 }
 
+// "Posicionar turma existente" — turma já cadastrada em Cadastros > Turmas (só modalidade/
+// nível/quadra/professor, sem dia/horário ainda) ganha o dia/horário/quadra do clique na grade.
+function ModalPosicionarTurma({ open, onClose, atalho, onPosicionado }) {
+  const { data: todasTurmas } = useTurmas()
+  const { data: todasQuadras } = useQuadras(null)
+  const salvarTurma = useSalvarTurma()
+  const [turmaId, setTurmaId] = useState('')
+  const [salvando, setSalvando] = useState(false)
+
+  const turmasNaoPosicionadas = todasTurmas?.filter(t => !t.horario_dia_semana) || []
+  const quadraId = atalho?.quadraNome ? todasQuadras?.find(q => q.nome === atalho.quadraNome)?.id || '' : ''
+  const diaSemana = atalho?.data ? DIAS_SEMANA_POR_INDICE[new Date(atalho.data + 'T12:00').getDay()] : ''
+
+  async function handleConfirmar() {
+    if (!turmaId) return toast.error('Escolha uma turma', { style: toastStyle })
+    setSalvando(true)
+    try {
+      const turma = todasTurmas.find(t => t.id === turmaId)
+      const quadraNome = todasQuadras?.find(q => q.id === quadraId)?.nome || ''
+      const nome = [LABEL_DIA_SEMANA[diaSemana], atalho.horario, quadraNome, turma?.niveis?.nome].filter(Boolean).join(' · ')
+      await salvarTurma.mutateAsync({
+        id: turmaId, quadra_id: quadraId, horario_dia_semana: diaSemana,
+        horario_inicio: atalho.horario, horario_fim: calcularFimAula(atalho.horario), nome,
+      })
+      toast.success('Turma posicionada!', { style: toastStyle })
+      onPosicionado(turmaId)
+    } catch (err) { toast.error(err.message, { style: toastStyle }) }
+    finally { setSalvando(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Posicionar turma existente" size="sm">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ padding: '10px 12px', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', border: '1px solid rgba(165,76,46,0.2)', fontSize: '13px', color: 'var(--color-text-light-primary)', fontWeight: '600' }}>
+          {atalho?.quadraNome} · {atalho?.horario} · {LABEL_DIA_SEMANA[diaSemana]}
+        </div>
+        <Select label="Turma" value={turmaId} onChange={e => setTurmaId(e.target.value)}>
+          <option value="">Selecione...</option>
+          {turmasNaoPosicionadas.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+        </Select>
+        {turmasNaoPosicionadas.length === 0 && (
+          <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
+            Nenhuma turma sem dia/horário ainda — cadastre uma em Cadastros &gt; Turmas, ou use "Criar turma nova aqui".
+          </div>
+        )}
+        <button onClick={handleConfirmar} disabled={!turmaId || salvando} style={{
+          width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
+          background: 'var(--color-action-primary)', color: 'white', fontSize: '14px', fontWeight: '600',
+          cursor: !turmaId ? 'not-allowed' : 'pointer', opacity: !turmaId ? 0.6 : 1,
+        }}>{salvando ? 'Salvando...' : 'Posicionar aqui'}</button>
+      </div>
+    </Modal>
+  )
+}
+
+// "Criar turma nova aqui" — cria a turma já com quadra/dia/horário do clique na grade, só
+// pedindo modalidade (pra escopar nível/professor/aluno), nível, professor e alunos.
+function ModalCriarTurmaAqui({ open, onClose, atalho, onCriada }) {
+  const { data: todasQuadras } = useQuadras(null)
+  const { data: modalidades } = useModalidades()
+  const salvarTurma = useSalvarTurma()
+  const [modalidadeId, setModalidadeId] = useState('')
+  const { data: niveis } = useNiveis(modalidadeId || null)
+  const { professores } = useProfessores(modalidadeId || null)
+  const { data: todosAlunos } = useAlunos(modalidadeId || null)
+  const [nivelId, setNivelId] = useState('')
+  const [professorId, setProfessorId] = useState('')
+  const [alunosIds, setAlunosIds] = useState([])
+  const [buscaAluno, setBuscaAluno] = useState('')
+  const [salvando, setSalvando] = useState(false)
+
+  const quadraId = atalho?.quadraNome ? todasQuadras?.find(q => q.nome === atalho.quadraNome)?.id || '' : ''
+  const diaSemana = atalho?.data ? DIAS_SEMANA_POR_INDICE[new Date(atalho.data + 'T12:00').getDay()] : ''
+
+  function toggleAluno(id) {
+    setAlunosIds(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id])
+  }
+
+  async function handleConfirmar() {
+    if (!nivelId) return toast.error('Escolha o nível', { style: toastStyle })
+    setSalvando(true)
+    try {
+      const quadraNome = todasQuadras?.find(q => q.id === quadraId)?.nome || ''
+      const nivelNome = niveis?.find(n => n.id === nivelId)?.nome || ''
+      const nome = [LABEL_DIA_SEMANA[diaSemana], atalho.horario, quadraNome, nivelNome].filter(Boolean).join(' · ')
+      const turmaId = await salvarTurma.mutateAsync({
+        modalidade_id: modalidadeId || null, nivel_id: nivelId, quadra_id: quadraId,
+        professor_titular_id: professorId || null,
+        horario_dia_semana: diaSemana, horario_inicio: atalho.horario, horario_fim: calcularFimAula(atalho.horario),
+        nome, alunos_ids: alunosIds,
+      })
+      toast.success('Turma criada!', { style: toastStyle })
+      onCriada(turmaId)
+    } catch (err) { toast.error(err.message, { style: toastStyle }) }
+    finally { setSalvando(false) }
+  }
+
+  const alunosBusca = buscaAluno.length >= 1
+    ? todosAlunos?.filter(a => a.nome.toLowerCase().includes(buscaAluno.toLowerCase()))
+    : todosAlunos
+
+  return (
+    <Modal open={open} onClose={onClose} title="Criar turma nova aqui" size="sm">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ padding: '10px 12px', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', border: '1px solid rgba(165,76,46,0.2)', fontSize: '13px', color: 'var(--color-text-light-primary)', fontWeight: '600' }}>
+          {atalho?.quadraNome} · {atalho?.horario} · {LABEL_DIA_SEMANA[diaSemana]}
+        </div>
+        <Select label="Modalidade" value={modalidadeId} onChange={e => { setModalidadeId(e.target.value); setNivelId(''); setProfessorId('') }}>
+          <option value="">Selecione...</option>
+          {modalidades?.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+        </Select>
+        <Select label="Nível" value={nivelId} onChange={e => setNivelId(e.target.value)}>
+          <option value="">Selecione...</option>
+          {niveis?.map(n => <option key={n.id} value={n.id}>{n.nome}</option>)}
+        </Select>
+        <Select label="Professor Titular (opcional)" value={professorId} onChange={e => setProfessorId(e.target.value)}>
+          <option value="">Sem professor definido ainda</option>
+          {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+        </Select>
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '8px' }}>
+            Alunos ({alunosIds.length} selecionados)
+          </div>
+          <input
+            placeholder="Digite o nome do aluno..."
+            value={buscaAluno}
+            onChange={e => setBuscaAluno(e.target.value)}
+            style={{ ...inputInline, marginBottom: '8px' }}
+          />
+          <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {alunosBusca?.map(aluno => (
+              <button key={aluno.id} onClick={() => toggleAluno(aluno.id)} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '9px 12px', borderRadius: '10px', border: 'none',
+                background: alunosIds.includes(aluno.id) ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-overlay)',
+                outline: alunosIds.includes(aluno.id) ? '1px solid rgba(165,76,46,0.4)' : '1px solid var(--color-border-light)',
+                color: alunosIds.includes(aluno.id) ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)',
+                cursor: 'pointer', textAlign: 'left', width: '100%', boxSizing: 'border-box',
+              }}>
+                <span style={{ fontSize: '13px' }}>{aluno.nome}</span>
+                <span>{alunosIds.includes(aluno.id) ? '✓' : '+'}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <button onClick={handleConfirmar} disabled={!nivelId || salvando} style={{
+          width: '100%', padding: '12px', borderRadius: '10px', border: 'none',
+          background: 'var(--color-action-primary)', color: 'white', fontSize: '14px', fontWeight: '600',
+          cursor: !nivelId ? 'not-allowed' : 'pointer', opacity: !nivelId ? 0.6 : 1,
+        }}>{salvando ? 'Criando...' : 'Criar turma'}</button>
+      </div>
+    </Modal>
+  )
+}
+
 function ModalAulaAvulsa({ open, onClose, atalho }) {
   const qc = useQueryClient()
   const { data: modalidades } = useModalidades()
@@ -943,7 +1167,8 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
     menor_idade: false, nome_responsavel: '', modalidades_ids: [],
   })
 
-  const horarios = Array.from({ length: 18 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
+  const { data: horariosGradeCadastrados } = useHorariosGrade()
+  const horarios = (horariosGradeCadastrados || []).map(h => h.horario.slice(0, 5))
 
   const alunosFiltrados = buscaAluno.length >= 1
     ? todosAlunos?.filter(a =>

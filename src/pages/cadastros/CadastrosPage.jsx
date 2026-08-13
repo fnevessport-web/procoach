@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Users, BookOpen, Grid3X3, Target, GraduationCap, CalendarDays, Trophy } from 'lucide-react'
+import { Users, BookOpen, Grid3X3, Target, GraduationCap, CalendarDays, Trophy, Dumbbell, Clock } from 'lucide-react'
 import ProfessoresPage from './ProfessoresPage'
 import { AlunosPage } from './AlunosPage'
 import { TurmasPage } from './TurmasPage'
 import { NiveisPage } from './NiveisPage'
 import { QuadrasPage } from './QuadrasPage'
+import { ModalidadesPage } from './ModalidadesPage'
+import { HorariosPage } from './HorariosPage'
 import { GradeDisponibilidade } from './GradeDisponibilidade'
 import { EventosPage } from './EventosPage'
 
@@ -12,8 +14,10 @@ const ABAS = [
   { id: 'professores', label: 'Professores', icon: Users, component: ProfessoresPage },
   { id: 'alunos', label: 'Alunos', icon: GraduationCap, component: AlunosPage },
   { id: 'turmas', label: 'Turmas', icon: BookOpen, component: TurmasPage },
+  { id: 'modalidades', label: 'Modalidades', icon: Dumbbell, component: ModalidadesPage },
   { id: 'niveis', label: 'Níveis', icon: Target, component: NiveisPage },
   { id: 'quadras', label: 'Quadras', icon: Grid3X3, component: QuadrasPage },
+  { id: 'horarios', label: 'Horários', icon: Clock, component: HorariosPage },
   { id: 'grade', label: 'Grade', icon: CalendarDays, component: GradeDisponibilidade },
   { id: 'eventos', label: 'Eventos', icon: Trophy, component: EventosPage },
 ]

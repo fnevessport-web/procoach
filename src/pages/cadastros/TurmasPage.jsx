@@ -24,21 +24,9 @@ const diasSemana = [
   { value: 'domingo', label: 'Domingo' },
 ]
 
-const horarios = Array.from({ length: 16 }, (_, i) => {
-  const h = String(6 + i).padStart(2, '0')
-  return `${h}:00`
-})
-
-function calcularFim(inicio) {
-  const [h, m] = inicio.split(':').map(Number)
-  const total = h * 60 + m + 50
-  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
-}
-
 function formInicial() {
   return {
-    modalidade_id: '', horario_dia_semana: '',
-    horario_inicio: '', nivel_id: '', quadra_id: '', professor_titular_id: ''
+    modalidade_id: '', nivel_id: '', quadra_id: '', professor_titular_id: ''
   }
 }
 
@@ -79,8 +67,6 @@ export function TurmasPage({ onIrParaProfessores }) {
     setEditando(turma)
     setForm({
       modalidade_id: turma.modalidade_id || '',
-      horario_dia_semana: turma.horario_dia_semana || '',
-      horario_inicio: turma.horario_inicio?.slice(0, 5) || '',
       nivel_id: turma.nivel_id || '',
       quadra_id: turma.quadra_id || '',
       professor_titular_id: turma.professor_titular_id || '',
@@ -98,17 +84,20 @@ export function TurmasPage({ onIrParaProfessores }) {
   }
 
   async function handleSalvar() {
-    const diaLabel = diasSemana.find(d => d.value === form.horario_dia_semana)?.label || ''
+    // Dia/horário não são mais editados aqui — turma nasce "não posicionada" e ganha isso ao
+    // ser posicionada na grade (ver AulasAdmin.jsx). Editando uma turma que já está posicionada,
+    // o nome continua incluindo o dia/horário dela (lidos de `editando`, não do form) — só nível
+    // e quadra podem mudar por aqui, sem apagar o posicionamento já feito.
+    const diaLabel = diasSemana.find(d => d.value === editando?.horario_dia_semana)?.label || ''
+    const horarioInicio = editando?.horario_inicio?.slice(0, 5) || ''
     const quadraNome = quadras?.find(q => q.id === form.quadra_id)?.nome || ''
     const nivelNome = niveis?.find(n => n.id === form.nivel_id)?.nome || ''
-    const nome = [diaLabel, form.horario_inicio, quadraNome, nivelNome].filter(Boolean).join(' · ')
-    const horario_fim = form.horario_inicio ? calcularFim(form.horario_inicio) : null
+    const nome = [diaLabel, horarioInicio, quadraNome, nivelNome].filter(Boolean).join(' · ')
     try {
       await salvar.mutateAsync({
         id: editando?.id,
         ...form,
         nome,
-        horario_fim,
         alunos_ids: alunosSelecionados
       })
       toast.success(editando ? 'Turma atualizada!' : 'Turma criada!')
@@ -217,15 +206,14 @@ export function TurmasPage({ onIrParaProfessores }) {
             {modalidades?.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </Select>
 
-          <Select label="Dia da Semana" value={form.horario_dia_semana} onChange={e => update('horario_dia_semana', e.target.value)}>
-            <option value="">Selecione...</option>
-            {diasSemana.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-          </Select>
-
-          <Select label="Horário" value={form.horario_inicio} onChange={e => update('horario_inicio', e.target.value)}>
-            <option value="">Selecione...</option>
-            {horarios.map(h => <option key={h} value={h}>{h}</option>)}
-          </Select>
+          {editando?.horario_dia_semana && (
+            <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Clock size={13} />
+              Posicionada em {diasSemana.find(d => d.value === editando.horario_dia_semana)?.label}
+              {editando.horario_inicio && ` · ${editando.horario_inicio.slice(0, 5)}`}
+              {' '}— pra mudar o dia/horário, reposicione na grade de Aulas.
+            </div>
+          )}
 
           <Select label="Nível" value={form.nivel_id} onChange={e => update('nivel_id', e.target.value)}>
             <option value="">Selecione...</option>
