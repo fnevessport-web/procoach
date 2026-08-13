@@ -152,6 +152,29 @@ const PERMISSOES_POR_ROLE = {
     precisaPinParaExcluir: true,
     homeRoute: '/aulas',
   },
+  // Profissional autônomo assinante (empresas.tipo === 'particular') — dono da própria
+  // agenda/prática, isolado do clube (ver App.jsx: rotas do modo Particular nem importam as
+  // telas de clube). Fase 1 só entrega Dashboard + Agenda; Cadastros/Financeiro/KPIs/
+  // Avaliação/Disponibilidade ficam false até essas telas existirem de verdade nas próximas
+  // fases — enquanto isso, RouteGuard bloqueia essas rotas de graça (mesmo mecanismo já usado
+  // pros outros roles restritos), então não tem como acessar telas de clube nem por URL direta.
+  dono_particular: {
+    podeAcessarCadastros: false,
+    podeEditarCadastros: false,
+    podeCadastrarAluno: false,
+    podeVerTodosSalarios: false,
+    podeAcessarFinanceiro: false,
+    podeEditarFinanceiro: false,
+    podeAcessarKPIs: false,
+    podeEditarAulas: true,
+    podeEditarPropriaAula: true,
+    podeVerInboxGeral: false,
+    podeVerSino: false,
+    podeVerDisponibilidade: false,
+    podeEditarAvaliacaoTecnica: false,
+    podeIncluirAlunoAula: false,
+    homeRoute: '/',
+  },
 }
 
 export function resolverRole(roleBruto) {

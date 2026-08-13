@@ -5,7 +5,7 @@ const useAppStore = create((set) => ({
   perfil: null,
   modalidadeSelecionada: null,
   origemAulas: null,
-  empresaSelecionada: null, // { id, nome, logoUrl, role } — empresa (tenant) ativa na sessão
+  empresaSelecionada: null, // { id, nome, logoUrl, tipo, role } — empresa (tenant) ativa na sessão. tipo: 'clube' | 'particular'
   sessaoRecuperacao: false, // true quando a sessão veio de um link de "esqueci/resetar senha" — força troca mesmo se primeiro_acesso já for false
   navRecolhida: false, // true enquanto um modal de tela cheia (ex: cadastrar aluno) está aberto — recolhe o rodapé de navegação numa abinha, liberando espaço vertical
 

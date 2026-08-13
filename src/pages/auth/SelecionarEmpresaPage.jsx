@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth'
 const LABEL_ROLE = {
   admin: 'Gestor', gestor: 'Gestor', financeiro: 'Financeiro',
   coordenador: 'Coordenador', professor: 'Professor', auxiliar: 'Auxiliar',
-  auxiliar_quadra: 'Auxiliar de Quadra',
+  auxiliar_quadra: 'Auxiliar de Quadra', dono_particular: 'Particular',
 }
 
 export function SelecionarEmpresaPage({ empresas, onSelecionar }) {

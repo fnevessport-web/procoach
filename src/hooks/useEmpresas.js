@@ -11,12 +11,12 @@ export function useMinhasEmpresas(userId) {
       // "sem conceito de empresa ainda" em vez de quebrar o app
       const { data, error } = await supabase
         .from('usuario_empresas')
-        .select('id, role, empresas(id, nome, logo_url)')
+        .select('id, role, empresas(id, nome, logo_url, tipo)')
         .eq('user_id', userId)
       if (error) return []
       return (data || [])
         .filter(v => v.empresas)
-        .map(v => ({ id: v.empresas.id, nome: v.empresas.nome, logoUrl: v.empresas.logo_url, role: v.role }))
+        .map(v => ({ id: v.empresas.id, nome: v.empresas.nome, logoUrl: v.empresas.logo_url, tipo: v.empresas.tipo, role: v.role }))
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,

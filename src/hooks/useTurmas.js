@@ -48,9 +48,12 @@ async function notificarMudancasDeMatricula({ turmaId, professorTitularId, nomeT
   }
 }
 
-export function useTurmas(modalidadeId = null) {
+// empresaId: escopo do tenant (null = turmas do clube, comportamento de hoje — todo chamador
+// existente continua igual sem precisar passar nada; um empresa_id de tenant Particular só
+// aparece se for explicitamente pedido, nunca por acidente).
+export function useTurmas(modalidadeId = null, empresaId = null) {
   return useQuery({
-    queryKey: ['turmas', modalidadeId],
+    queryKey: ['turmas', modalidadeId, empresaId],
     queryFn: async () => {
       let q = supabase
         .from('turmas')
@@ -66,6 +69,7 @@ export function useTurmas(modalidadeId = null) {
         .order('nome')
 
       if (modalidadeId) q = q.eq('modalidade_id', modalidadeId)
+      q = empresaId ? q.eq('empresa_id', empresaId) : q.is('empresa_id', null)
 
       const { data, error } = await q
       if (error) throw error

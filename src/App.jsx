@@ -37,6 +37,8 @@ import { EventoInscricaoPage } from './pages/eventos/EventoInscricaoPage'
 import { PoliticaPrivacidadePage } from './pages/legal/PoliticaPrivacidadePage'
 import { ComoFuncionaAPontuacaoPage } from './pages/legal/ComoFuncionaAPontuacaoPage'
 import { ComoFuncionaORankingPage } from './pages/legal/ComoFuncionaORankingPage'
+import { HomeParticular } from './pages/particular/HomeParticular'
+import { AgendaParticular } from './pages/particular/AgendaParticular'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,71 +88,85 @@ function AppRouter() {
   }
 
   const { role, homeRoute, podeAcessarCadastros, podeAcessarFinanceiro, podeAcessarKPIs, podeVerDisponibilidade } = permissoes
+  // Conta Particular (profissional autônomo assinante) — universo de rotas totalmente à parte
+  // do clube, nunca importa AulasPage/AulasCoordenador nem nenhuma outra tela de Procópio/Beach
+  // Arena/Beyond. Ver src/pages/particular/.
+  const isParticular = empresaSelecionada?.tipo === 'particular'
 
   return (
     <AppLayout>
-      <ModalTurmaAtivada />
+      {!isParticular && <ModalTurmaAtivada />}
       <InstallBanner />
       <Routes>
-        <Route path="/" element={
-          homeRoute !== '/' ? <Navigate to={homeRoute} replace /> : role === 'leitura' ? <HomeLeitura /> : <HomePage />
-        } />
-        <Route path="/modalidade/:nomeModalidade" element={
-          <RouteGuard permitido={homeRoute === '/'} homeRoute={homeRoute}><ModalidadePage /></RouteGuard>
-        } />
-        <Route path="/aulas" element={<AulasPage />} />
-        <Route path="/dashboard-professor" element={
-          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><DashboardProfessor /></RouteGuard>
-        } />
-        <Route path="/meu-perfil" element={
-          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MeuPerfilProfessor /></RouteGuard>
-        } />
-        <Route path="/meu-financeiro" element={
-          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MeuFinanceiroProfessor /></RouteGuard>
-        } />
-        <Route path="/meus-alunos" element={
-          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MeusAlunosProfessor /></RouteGuard>
-        } />
-        <Route path="/avaliar-aluno" element={
-          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><AvaliarAluno /></RouteGuard>
-        } />
-        <Route path="/mensagens" element={
-          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MensagensPage /></RouteGuard>
-        } />
-        <Route path="/ranking" element={
-          <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><RankingPage /></RouteGuard>
-        } />
-        <Route path="/cadastros" element={
-          <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
-        } />
-        <Route path="/cadastros/professores" element={
-          <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
-        } />
-        <Route path="/cadastros/alunos" element={
-          <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
-        } />
-        <Route path="/cadastros/alunos/:id" element={
-          <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><AlunoCardPage /></RouteGuard>
-        } />
-        <Route path="/cadastros/turmas" element={
-          <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
-        } />
-        <Route path="/agenda-aluno" element={
-          <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><AgendaAluno /></RouteGuard>
-        } />
-        <Route path="/kpis" element={
-          <RouteGuard permitido={podeAcessarKPIs} homeRoute={homeRoute}><KPIsPage /></RouteGuard>
-        } />
-        <Route path="/relatorios-leitura" element={
-          <RouteGuard permitido={role === 'leitura' || role === 'recepcao'} homeRoute={homeRoute}><RelatoriosLeituraPage /></RouteGuard>
-        } />
-        <Route path="/disponibilidade-turmas" element={
-          <RouteGuard permitido={podeVerDisponibilidade} homeRoute={homeRoute}><DisponibilidadeTurmasPage /></RouteGuard>
-        } />
-        <Route path="/financeiro" element={
-          <RouteGuard permitido={podeAcessarFinanceiro} homeRoute={homeRoute}><FinanceiroPage /></RouteGuard>
-        } />
-        <Route path="*" element={<Navigate to={homeRoute} replace />} />
+        {isParticular ? (
+          <>
+            <Route path="/" element={<HomeParticular />} />
+            <Route path="/aulas" element={<AgendaParticular />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </>
+        ) : (
+          <>
+            <Route path="/" element={
+              homeRoute !== '/' ? <Navigate to={homeRoute} replace /> : role === 'leitura' ? <HomeLeitura /> : <HomePage />
+            } />
+            <Route path="/modalidade/:nomeModalidade" element={
+              <RouteGuard permitido={homeRoute === '/'} homeRoute={homeRoute}><ModalidadePage /></RouteGuard>
+            } />
+            <Route path="/aulas" element={<AulasPage />} />
+            <Route path="/dashboard-professor" element={
+              <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><DashboardProfessor /></RouteGuard>
+            } />
+            <Route path="/meu-perfil" element={
+              <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MeuPerfilProfessor /></RouteGuard>
+            } />
+            <Route path="/meu-financeiro" element={
+              <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MeuFinanceiroProfessor /></RouteGuard>
+            } />
+            <Route path="/meus-alunos" element={
+              <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MeusAlunosProfessor /></RouteGuard>
+            } />
+            <Route path="/avaliar-aluno" element={
+              <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><AvaliarAluno /></RouteGuard>
+            } />
+            <Route path="/mensagens" element={
+              <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><MensagensPage /></RouteGuard>
+            } />
+            <Route path="/ranking" element={
+              <RouteGuard permitido={role !== 'leitura'} homeRoute={homeRoute}><RankingPage /></RouteGuard>
+            } />
+            <Route path="/cadastros" element={
+              <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
+            } />
+            <Route path="/cadastros/professores" element={
+              <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
+            } />
+            <Route path="/cadastros/alunos" element={
+              <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
+            } />
+            <Route path="/cadastros/alunos/:id" element={
+              <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><AlunoCardPage /></RouteGuard>
+            } />
+            <Route path="/cadastros/turmas" element={
+              <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
+            } />
+            <Route path="/agenda-aluno" element={
+              <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><AgendaAluno /></RouteGuard>
+            } />
+            <Route path="/kpis" element={
+              <RouteGuard permitido={podeAcessarKPIs} homeRoute={homeRoute}><KPIsPage /></RouteGuard>
+            } />
+            <Route path="/relatorios-leitura" element={
+              <RouteGuard permitido={role === 'leitura' || role === 'recepcao'} homeRoute={homeRoute}><RelatoriosLeituraPage /></RouteGuard>
+            } />
+            <Route path="/disponibilidade-turmas" element={
+              <RouteGuard permitido={podeVerDisponibilidade} homeRoute={homeRoute}><DisponibilidadeTurmasPage /></RouteGuard>
+            } />
+            <Route path="/financeiro" element={
+              <RouteGuard permitido={podeAcessarFinanceiro} homeRoute={homeRoute}><FinanceiroPage /></RouteGuard>
+            } />
+            <Route path="*" element={<Navigate to={homeRoute} replace />} />
+          </>
+        )}
       </Routes>
     </AppLayout>
   )

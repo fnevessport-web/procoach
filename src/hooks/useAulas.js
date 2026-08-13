@@ -10,9 +10,13 @@ import { getFeriado } from '../constants/feriados'
 // no futuro não precisa de migração nenhuma.
 const MOTIVOS_FORCA_MAIOR = ['Chuva']
 
-export function useAulas({ data, professorId, modalidadeId, status } = {}) {
+// empresaId: escopo do tenant (null = aulas do clube, comportamento de hoje — nenhum chamador
+// existente precisa passar nada). dataInicio/dataFim: busca por intervalo (ex: a semana inteira
+// da Agenda Particular) em vez de um único dia — usar em vez de `data` quando precisar de mais
+// de uma data de uma vez.
+export function useAulas({ data, dataInicio, dataFim, professorId, modalidadeId, status, empresaId } = {}) {
   return useQuery({
-    queryKey: ['aulas', data, professorId, modalidadeId, status],
+    queryKey: ['aulas', data, dataInicio, dataFim, professorId, modalidadeId, status, empresaId],
     queryFn: async () => {
       let q = supabase
         .from('aulas')
@@ -26,8 +30,11 @@ export function useAulas({ data, professorId, modalidadeId, status } = {}) {
         .order('data_aula', { ascending: false })
 
       if (data) q = q.eq('data_aula', data)
+      if (dataInicio) q = q.gte('data_aula', dataInicio)
+      if (dataFim) q = q.lte('data_aula', dataFim)
       if (professorId) q = q.eq('professor_executou_id', professorId)
       if (status) q = q.eq('status', status)
+      q = empresaId ? q.eq('empresa_id', empresaId) : q.is('empresa_id', null)
 
       const { data: aulas, error } = await q
       if (error) throw error
@@ -667,6 +674,9 @@ export function useGerarAulas() {
         if (d.getDay() === diaSemanaNum) {
           aulasParaInserir.push({
             turma_id: turmaId,
+            empresa_id: turma.empresa_id || null, // propaga o escopo da turma pra aula gerada —
+            // sem isso, a aula nasceria empresa_id null (bucket do clube) mesmo vindo de uma
+            // turma Particular, furando o isolamento entre tenants.
             professor_executou_id: professorOverrideId || turma.professores?.id || turma.professor_titular_id,
             data_aula: format(new Date(d), 'yyyy-MM-dd'),
             status: 'pendente',
