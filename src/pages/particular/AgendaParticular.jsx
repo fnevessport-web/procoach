@@ -16,6 +16,9 @@ import { Loading } from '../../components/ui/Loading'
 import { supabase } from '../../lib/supabase'
 
 const DIAS_SEMANA = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'] // index = Date.getDay()
+// Rótulo curto do cabeçalho da grade — fixo na mão em vez de format(d,'EEE',{locale:ptBR}),
+// que nessa versão do date-fns devolve o nome por extenso mesmo pedindo abreviado.
+const LABEL_DIA_CURTO = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
 const STATUS_OPCOES = [
   { value: 'dada', label: 'Dada' },
   { value: 'nao_dada', label: 'Sem Aula' },
@@ -129,9 +132,9 @@ export function AgendaParticular() {
         <div style={{ display: 'grid', gridTemplateColumns: `56px repeat(7, minmax(96px, 1fr))`, minWidth: '760px' }}>
           <div />
           {dias.map(d => (
-            <div key={d.toISOString()} style={{ textAlign: 'center', padding: '6px 4px', fontSize: '11px', fontWeight: '700', color: 'var(--color-text-light-secondary)', textTransform: 'capitalize' }}>
-              {format(d, 'EEE', { locale: ptBR })}<br />
-              <span style={{ fontSize: '13px', color: 'var(--color-text-light-primary)' }}>{format(d, 'dd/MM')}</span>
+            <div key={d.toISOString()} style={{ textAlign: 'center', padding: '8px 4px', borderRadius: '8px', backgroundColor: format(d, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') ? 'rgba(165,76,46,0.08)' : 'transparent' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-action-primary)', letterSpacing: '0.5px' }}>{LABEL_DIA_CURTO[d.getDay()]}</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginTop: '2px' }}>{format(d, 'dd/MM')}</div>
             </div>
           ))}
 
