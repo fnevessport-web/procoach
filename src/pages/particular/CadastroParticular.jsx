@@ -70,7 +70,7 @@ export function CadastroParticular() {
 // Aba Alunos
 // ──────────────────────────────────────────────────────────────────────
 
-const FORM_ALUNO_VAZIO = { nome: '', telefone: '', tipo_cobranca: 'por_aula', valor_aula: '', valor_fixo: '', direito_reposicao: true }
+const FORM_ALUNO_VAZIO = { nome: '', telefone: '', tipo_cobranca: 'por_aula', valor_aula: '', valor_fixo: '', direito_reposicao: true, dia_vencimento: '' }
 
 function AbaAlunos({ empresaId }) {
   const { data: alunos = [], isLoading } = useAlunos(null, empresaId)
@@ -91,6 +91,7 @@ function AbaAlunos({ empresaId }) {
         valor_aula: form.tipo_cobranca === 'por_aula' ? Number(form.valor_aula) || null : null,
         valor_fixo: form.tipo_cobranca === 'fixo' ? Number(form.valor_fixo) || null : null,
         direito_reposicao: form.direito_reposicao,
+        dia_vencimento: form.dia_vencimento ? Number(form.dia_vencimento) : null,
       })
       toast.success('Aluno cadastrado!')
       setForm(null)
@@ -159,6 +160,9 @@ function AbaAlunos({ empresaId }) {
               <input type="number" style={inputStyle}
                 value={form.tipo_cobranca === 'fixo' ? form.valor_fixo : form.valor_aula}
                 onChange={e => setForm(f => ({ ...f, [form.tipo_cobranca === 'fixo' ? 'valor_fixo' : 'valor_aula']: e.target.value }))} /></div>
+            <div><div style={labelStyle}>Dia de vencimento (opcional)</div>
+              <input type="number" min="1" max="31" style={inputStyle}
+                value={form.dia_vencimento} onChange={e => setForm(f => ({ ...f, dia_vencimento: e.target.value }))} /></div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-primary)', cursor: 'pointer' }}>
               <input type="checkbox" checked={form.direito_reposicao} onChange={e => setForm(f => ({ ...f, direito_reposicao: e.target.checked }))} />
               Direito a reposição
@@ -203,6 +207,7 @@ function FichaAluno({ aluno, modalidadeId, onFechar }) {
           <div><b>Telefone:</b> {aluno.telefone || '—'}</div>
           <div><b>Cobrança:</b> {aluno.tipo_cobranca === 'fixo' ? `Fixo · R$ ${Number(aluno.valor_fixo || 0).toFixed(2)}` : `Por aula · R$ ${Number(aluno.valor_aula || 0).toFixed(2)}`}</div>
           <div><b>Reposição:</b> {aluno.direito_reposicao ? 'Com direito' : 'Sem direito'}</div>
+          <div><b>Vencimento:</b> {aluno.dia_vencimento ? `Dia ${aluno.dia_vencimento}` : '—'}</div>
         </div>
       )}
 

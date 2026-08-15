@@ -13,14 +13,15 @@ export function getNavItems(roleBruto) {
     ]
   }
 
-  // Profissional autônomo assinante — só Dashboard + Agenda nesta fase (Cadastros/Financeiro/
-  // Relatórios ainda não existem pro modo Particular). Branch dedicado pra não cair no genérico
-  // abaixo, que empurra Ranking/Mensagens incondicionalmente — coisas de clube.
+  // Profissional autônomo assinante — Dashboard + Agenda + Cadastro + Financeiro. Branch
+  // dedicado pra não cair no genérico abaixo, que empurra Ranking/Mensagens incondicionalmente
+  // — coisas de clube que não existem no modo Particular.
   if (role === 'dono_particular') {
     return [
       { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
       { path: '/aulas', icon: CalendarDays, label: 'Agenda' },
       { path: '/cadastros', icon: Users, label: 'Cadastro' },
+      { path: '/financeiro', icon: DollarSign, label: 'Financeiro' },
     ]
   }
 
