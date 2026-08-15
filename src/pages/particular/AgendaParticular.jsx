@@ -10,6 +10,7 @@ import { useAulas, useGerarAulas, useSalvarPresencas, useReposicoesDoAluno, reso
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useContratantes, useCriarContratante } from '../../hooks/useContratantes'
 import { useHorariosAgenda, useCriarHorarioAgenda, useExcluirHorarioAgenda } from '../../hooks/useHorariosAgenda'
+import { useColaboradores } from '../../hooks/useColaboradoresParticular'
 import { useBloqueiosAgenda, useCriarBloqueioAgenda, useRemoverBloqueioAgenda } from '../../hooks/useBloqueiosAgenda'
 import { Modal } from '../../components/ui/Modal'
 import { Loading } from '../../components/ui/Loading'
@@ -56,6 +57,7 @@ export function AgendaParticular() {
   const { data: bloqueios = [] } = useBloqueiosAgenda(empresaId, dataInicio, dataFim)
   const { data: contratantes = [] } = useContratantes(empresaId)
   const { data: alunos = [] } = useAlunos(null, empresaId)
+  const { data: colaboradores = [] } = useColaboradores(empresaId)
 
   const salvarTurma = useSalvarTurma()
   const gerarAulas = useGerarAulas()
@@ -254,12 +256,15 @@ export function AgendaParticular() {
         <ModalAula
           aula={aulaAberta}
           alunos={alunos}
+          colaboradores={colaboradores}
           onFechar={() => setAulaAberta(null)}
-          onSalvar={async (statusAula, observacoes, presencasEdit) => {
+          onSalvar={async (statusAula, observacoes, presencasEdit, substitutoId, valorSubstituto) => {
             await supabase.from('aulas').update({
               status_aula: statusAula,
               paga_professor: statusAula === 'dada',
               observacoes: observacoes || null,
+              professor_executou_id: substitutoId || null,
+              valor_substituto: substitutoId ? (valorSubstituto || null) : null,
               atualizado_em: new Date().toISOString(),
             }).eq('id', aulaAberta.id)
             if (presencasEdit.length > 0) {
@@ -443,7 +448,7 @@ function ModalCelulaVazia({ dataStr, horario, contratantes, alunos, onFechar, on
   )
 }
 
-function ModalAula({ aula, alunos, onFechar, onSalvar }) {
+function ModalAula({ aula, alunos, colaboradores, onFechar, onSalvar }) {
   const [status, setStatus] = useState(aula.status_aula || 'dada')
   const [observacoes, setObservacoes] = useState(aula.observacoes || '')
   const [presencasEdit, setPresencasEdit] = useState(() =>
@@ -452,7 +457,15 @@ function ModalAula({ aula, alunos, onFechar, onSalvar }) {
       status_presenca: p.status_presenca || 'presente',
     }))
   )
+  const [substitutoId, setSubstitutoId] = useState(aula.professor_executou_id || '')
+  const [valorSubstituto, setValorSubstituto] = useState(aula.valor_substituto ?? '')
   const [salvando, setSalvando] = useState(false)
+
+  function escolherSubstituto(id) {
+    setSubstitutoId(id)
+    const colaborador = colaboradores?.find(c => c.id === id)
+    setValorSubstituto(colaborador?.valor_aula_combinado ?? '')
+  }
 
   function marcar(alunoId, statusPresenca) {
     setPresencasEdit(lista => lista.map(p => p.aluno_id === alunoId ? { ...p, status_presenca: statusPresenca } : p))
@@ -507,6 +520,22 @@ function ModalAula({ aula, alunos, onFechar, onSalvar }) {
           </div>
         )}
 
+        {colaboradores?.length > 0 && (
+          <div>
+            <div style={labelStyle}>Substituto (opcional)</div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <select style={inputStyle} value={substitutoId} onChange={e => escolherSubstituto(e.target.value)}>
+                <option value="">Nenhum — dei a aula</option>
+                {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+              {substitutoId && (
+                <input type="number" style={{ ...inputStyle, width: '110px', flexShrink: 0 }} placeholder="Valor (R$)"
+                  value={valorSubstituto} onChange={e => setValorSubstituto(e.target.value)} />
+              )}
+            </div>
+          </div>
+        )}
+
         <textarea
           style={{ ...inputStyle, minHeight: '70px', resize: 'vertical', fontFamily: 'inherit' }}
           placeholder="Observação (opcional)"
@@ -515,7 +544,11 @@ function ModalAula({ aula, alunos, onFechar, onSalvar }) {
         />
         <button
           disabled={salvando}
-          onClick={async () => { setSalvando(true); await onSalvar(status, observacoes.trim(), presencasEdit); setSalvando(false) }}
+          onClick={async () => {
+            setSalvando(true)
+            await onSalvar(status, observacoes.trim(), presencasEdit, substitutoId || null, valorSubstituto ? Number(valorSubstituto) : null)
+            setSalvando(false)
+          }}
           style={{ padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
         >{salvando ? 'Salvando...' : 'Salvar'}</button>
       </div>

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { GraduationCap, Handshake, Plus, Star } from 'lucide-react'
+import { GraduationCap, Handshake, UserCog, Plus, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
 import useAppStore from '../../store/useAppStore'
 import { useAlunos, useSalvarAluno, useDimensoesModalidade, useAvaliacoesModalidade, useHistoricoPresencaModalidade } from '../../hooks/useAlunos'
 import { useContratantes, useCriarContratante, useExcluirContratante } from '../../hooks/useContratantes'
+import { useColaboradores, useCriarColaborador, useExcluirColaborador } from '../../hooks/useColaboradoresParticular'
 import { useModalidadeTenisId } from '../../hooks/useModalidadeTenisId'
 import { Modal } from '../../components/ui/Modal'
 import { Loading } from '../../components/ui/Loading'
@@ -24,6 +25,7 @@ const labelStyle = {
 const ABAS = [
   { id: 'alunos', label: 'Alunos', icon: GraduationCap },
   { id: 'contratantes', label: 'Contratantes', icon: Handshake },
+  { id: 'colaboradores', label: 'Colaboradores', icon: UserCog },
 ]
 
 export function CadastroParticular() {
@@ -60,7 +62,9 @@ export function CadastroParticular() {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {abaAtiva === 'alunos' ? <AbaAlunos empresaId={empresaId} /> : <AbaContratantes empresaId={empresaId} />}
+        {abaAtiva === 'alunos' && <AbaAlunos empresaId={empresaId} />}
+        {abaAtiva === 'contratantes' && <AbaContratantes empresaId={empresaId} />}
+        {abaAtiva === 'colaboradores' && <AbaColaboradores empresaId={empresaId} />}
       </div>
     </div>
   )
@@ -337,6 +341,87 @@ function AbaContratantes({ empresaId }) {
               <input type="number" style={inputStyle}
                 value={form.tipo_cobranca === 'fixo' ? form.valor_fixo : form.valor_hora_aula}
                 onChange={e => setForm(f => ({ ...f, [form.tipo_cobranca === 'fixo' ? 'valor_fixo' : 'valor_hora_aula']: e.target.value }))} /></div>
+            <button onClick={handleSalvar} disabled={criar.isPending} style={{
+              padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)',
+              color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+            }}>{criar.isPending ? 'Salvando...' : 'Cadastrar'}</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Aba Colaboradores (professor substituto)
+// ──────────────────────────────────────────────────────────────────────
+
+const FORM_COLABORADOR_VAZIO = { nome: '', telefone: '', valor_aula_combinado: '' }
+
+function AbaColaboradores({ empresaId }) {
+  const { data: colaboradores = [], isLoading } = useColaboradores(empresaId)
+  const criar = useCriarColaborador()
+  const excluir = useExcluirColaborador()
+  const [form, setForm] = useState(null)
+
+  async function handleSalvar() {
+    if (!form.nome.trim()) return toast.error('Preencha o nome')
+    try {
+      await criar.mutateAsync({
+        empresaId, nome: form.nome.trim(), telefone: form.telefone || null,
+        valorAulaCombinado: Number(form.valor_aula_combinado) || null,
+      })
+      toast.success('Colaborador cadastrado!')
+      setForm(null)
+    } catch (err) { toast.error(err.message) }
+  }
+
+  if (isLoading) return <Loading />
+
+  return (
+    <div>
+      <button onClick={() => setForm(FORM_COLABORADOR_VAZIO)} style={{
+        display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px',
+        padding: '9px 14px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+        background: 'var(--color-action-primary)', color: 'white', fontSize: '13px', fontWeight: '600',
+      }}>
+        <Plus size={14} /> Novo colaborador
+      </button>
+
+      {colaboradores.length === 0 ? (
+        <div style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)', textAlign: 'center', padding: '24px' }}>
+          Nenhum colaborador cadastrado ainda. Cadastre aqui quem cobre suas aulas quando você não pode dar.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {colaboradores.map(c => (
+            <div key={c.id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border-light)',
+              background: 'var(--color-surface-light-raised)',
+            }}>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)' }}>{c.nome}</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '2px' }}>
+                  {c.valor_aula_combinado ? `R$ ${Number(c.valor_aula_combinado).toFixed(2)}/aula (padrão)` : 'Sem valor padrão definido'}
+                </div>
+              </div>
+              <button onClick={() => excluir.mutate(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-state-danger)', fontSize: '11px' }}>Remover</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {form && (
+        <Modal open onClose={() => setForm(null)} title="Novo colaborador" size="sm">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div><div style={labelStyle}>Nome</div>
+              <input style={inputStyle} value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} autoFocus /></div>
+            <div><div style={labelStyle}>Telefone</div>
+              <input style={inputStyle} value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} /></div>
+            <div><div style={labelStyle}>Valor combinado por aula (R$, opcional)</div>
+              <input type="number" style={inputStyle} value={form.valor_aula_combinado}
+                onChange={e => setForm(f => ({ ...f, valor_aula_combinado: e.target.value }))} /></div>
             <button onClick={handleSalvar} disabled={criar.isPending} style={{
               padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)',
               color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
