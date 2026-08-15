@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import useAppStore from '../../store/useAppStore'
 import { useTurmas, useSalvarTurma } from '../../hooks/useTurmas'
-import { useAulas, useGerarAulas } from '../../hooks/useAulas'
+import { useAulas, useGerarAulas, useSalvarPresencas, useReposicoesDoAluno, resolverReposicaoFIFO } from '../../hooks/useAulas'
 import { useAlunos, useSalvarAluno } from '../../hooks/useAlunos'
 import { useContratantes, useCriarContratante } from '../../hooks/useContratantes'
 import { useHorariosAgenda, useCriarHorarioAgenda, useExcluirHorarioAgenda } from '../../hooks/useHorariosAgenda'
@@ -65,6 +65,7 @@ export function AgendaParticular() {
   const excluirHorario = useExcluirHorarioAgenda()
   const criarBloqueio = useCriarBloqueioAgenda()
   const removerBloqueio = useRemoverBloqueioAgenda()
+  const salvarPresencas = useSalvarPresencas()
 
   const turmasPosicionadas = turmas.filter(t => t.horario_dia_semana && t.horario_inicio)
 
@@ -195,7 +196,7 @@ export function AgendaParticular() {
           onFechar={() => setCelulaVazia(null)}
           onCriarContratante={async (dados) => criarContratante.mutateAsync({ empresaId, ...dados })}
           onCriarAluno={async (dados) => salvarAluno.mutateAsync({ empresa_id: empresaId, ...dados })}
-          onCriarAvulsa={async ({ contratanteId, alunoId }) => {
+          onCriarAvulsa={async ({ contratanteId, alunoId, isReposicao }) => {
             const { data: aula, error } = await supabase.from('aulas').insert({
               turma_id: null, empresa_id: empresaId, data_aula: celulaVazia.dataStr,
               horario: celulaVazia.horario, professor_executou_id: null,
@@ -205,11 +206,14 @@ export function AgendaParticular() {
             if (alunoId) {
               await supabase.from('presencas').insert({
                 aula_id: aula.id, aluno_id: alunoId, presente: false,
-                status_presenca: 'presente', tipo_participacao: 'avulso',
+                status_presenca: 'presente', tipo_participacao: isReposicao ? 'reposicao' : 'avulso',
               })
+              if (isReposicao) await resolverReposicaoFIFO({ alunoId, aulaDestinoId: aula.id })
             }
             qc.invalidateQueries({ queryKey: ['aulas'] })
-            toast.success('Aula avulsa criada!')
+            qc.invalidateQueries({ queryKey: ['relatorio_repos'] })
+            qc.invalidateQueries({ queryKey: ['reposicoes_aluno'] })
+            toast.success(isReposicao ? 'Aula avulsa criada e reposição consumida!' : 'Aula avulsa criada!')
             setCelulaVazia(null)
           }}
           onCriarMensal={async ({ nome, contratanteId, alunoId }) => {
@@ -249,15 +253,20 @@ export function AgendaParticular() {
       {aulaAberta && (
         <ModalAula
           aula={aulaAberta}
+          alunos={alunos}
           onFechar={() => setAulaAberta(null)}
-          onSalvar={async (statusAula, observacoes) => {
+          onSalvar={async (statusAula, observacoes, presencasEdit) => {
             await supabase.from('aulas').update({
               status_aula: statusAula,
               paga_professor: statusAula === 'dada',
               observacoes: observacoes || null,
               atualizado_em: new Date().toISOString(),
             }).eq('id', aulaAberta.id)
-            qc.invalidateQueries({ queryKey: ['aulas'] })
+            if (presencasEdit.length > 0) {
+              await salvarPresencas.mutateAsync({ aulaId: aulaAberta.id, presencas: presencasEdit })
+            } else {
+              qc.invalidateQueries({ queryKey: ['aulas'] })
+            }
             toast.success('Aula atualizada!')
             setAulaAberta(null)
           }}
@@ -363,7 +372,10 @@ function ModalCelulaVazia({ dataStr, horario, contratantes, alunos, onFechar, on
   const [alunoId, setAlunoId] = useState('')
   const [nomeTurma, setNomeTurma] = useState('')
   const [motivo, setMotivo] = useState('')
+  const [isReposicao, setIsReposicao] = useState(false)
   const [salvando, setSalvando] = useState(false)
+  const { data: reposicoesAluno = [] } = useReposicoesDoAluno(aba === 'avulsa' ? alunoId : null)
+  const reposicoesPendentes = reposicoesAluno.filter(r => r.status === 'pendente')
 
   async function rodar(fn) {
     setSalvando(true)
@@ -395,13 +407,19 @@ function ModalCelulaVazia({ dataStr, horario, contratantes, alunos, onFechar, on
           <SeletorContratanteAluno
             contratantes={contratantes} alunos={alunos}
             contratanteId={contratanteId} setContratanteId={setContratanteId}
-            alunoId={alunoId} setAlunoId={setAlunoId}
+            alunoId={alunoId} setAlunoId={id => { setAlunoId(id); setIsReposicao(false) }}
             onCriarContratante={onCriarContratante} onCriarAluno={onCriarAluno}
           />
+          {aba === 'avulsa' && alunoId && reposicoesPendentes.length > 0 && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-primary)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={isReposicao} onChange={e => setIsReposicao(e.target.checked)} />
+              Usar reposição pendente ({reposicoesPendentes.length} {reposicoesPendentes.length === 1 ? 'disponível' : 'disponíveis'})
+            </label>
+          )}
           <button
             disabled={!contratanteId || salvando}
             onClick={() => rodar(() => aba === 'avulsa'
-              ? onCriarAvulsa({ contratanteId, alunoId: alunoId || null })
+              ? onCriarAvulsa({ contratanteId, alunoId: alunoId || null, isReposicao })
               : onCriarMensal({ nome: nomeTurma.trim() || alunoEscolhido?.nome || 'Aula', contratanteId, alunoId: alunoId || null })
             )}
             style={{
@@ -425,10 +443,20 @@ function ModalCelulaVazia({ dataStr, horario, contratantes, alunos, onFechar, on
   )
 }
 
-function ModalAula({ aula, onFechar, onSalvar }) {
+function ModalAula({ aula, alunos, onFechar, onSalvar }) {
   const [status, setStatus] = useState(aula.status_aula || 'dada')
   const [observacoes, setObservacoes] = useState(aula.observacoes || '')
+  const [presencasEdit, setPresencasEdit] = useState(() =>
+    (aula.presencas || []).map(p => ({
+      aluno_id: p.aluno_id, nome: p.alunos?.nome || 'Aluno', tipo_participacao: p.tipo_participacao,
+      status_presenca: p.status_presenca || 'presente',
+    }))
+  )
   const [salvando, setSalvando] = useState(false)
+
+  function marcar(alunoId, statusPresenca) {
+    setPresencasEdit(lista => lista.map(p => p.aluno_id === alunoId ? { ...p, status_presenca: statusPresenca } : p))
+  }
 
   return (
     <Modal open onClose={onFechar} title={aula.turmas?.nome || aula.contratantes?.nome || aula.presencas?.[0]?.alunos?.nome || 'Aula avulsa'} size="sm">
@@ -446,6 +474,39 @@ function ModalAula({ aula, onFechar, onSalvar }) {
             }}>{o.label}</button>
           ))}
         </div>
+
+        {presencasEdit.length > 0 && (
+          <div>
+            <div style={labelStyle}>Presença</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {presencasEdit.map(p => {
+                const alunoCad = alunos?.find(a => a.id === p.aluno_id)
+                const faltouStatus = alunoCad?.direito_reposicao ? 'falta_justificada' : 'falta'
+                const faltou = p.status_presenca === 'falta_justificada' || p.status_presenca === 'falta'
+                return (
+                  <div key={p.aluno_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{p.nome}</span>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button onClick={() => marcar(p.aluno_id, 'presente')} style={{
+                        padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+                        border: `1px solid ${!faltou ? 'var(--color-state-success)' : 'var(--border)'}`,
+                        background: !faltou ? 'rgba(75,139,106,0.12)' : 'var(--surface)',
+                        color: !faltou ? 'var(--color-state-success)' : 'var(--text-secondary)',
+                      }}>Presente</button>
+                      <button onClick={() => marcar(p.aluno_id, faltouStatus)} style={{
+                        padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+                        border: `1px solid ${faltou ? 'var(--color-state-danger)' : 'var(--border)'}`,
+                        background: faltou ? 'rgba(180,71,47,0.12)' : 'var(--surface)',
+                        color: faltou ? 'var(--color-state-danger)' : 'var(--text-secondary)',
+                      }}>Faltou</button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         <textarea
           style={{ ...inputStyle, minHeight: '70px', resize: 'vertical', fontFamily: 'inherit' }}
           placeholder="Observação (opcional)"
@@ -454,7 +515,7 @@ function ModalAula({ aula, onFechar, onSalvar }) {
         />
         <button
           disabled={salvando}
-          onClick={async () => { setSalvando(true); await onSalvar(status, observacoes.trim()); setSalvando(false) }}
+          onClick={async () => { setSalvando(true); await onSalvar(status, observacoes.trim(), presencasEdit); setSalvando(false) }}
           style={{ padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
         >{salvando ? 'Salvando...' : 'Salvar'}</button>
       </div>

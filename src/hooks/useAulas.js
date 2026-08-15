@@ -109,7 +109,7 @@ async function resolverModalidadeIdDaAula(aula) {
 // mais antiga do aluno, nunca deixa escolher qual. Idempotente: se aula_reposicao_id já aponta
 // pra essa aula de destino, não mexe de novo (evita consumir uma 2a falta ao salvar a mesma
 // aula várias vezes).
-async function resolverReposicaoFIFO({ alunoId, aulaDestinoId }) {
+export async function resolverReposicaoFIFO({ alunoId, aulaDestinoId }) {
   const { data: jaResolvida } = await supabase
     .from('reposicoes')
     .select('id')
