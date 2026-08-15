@@ -22,6 +22,7 @@ export function getNavItems(roleBruto) {
       { path: '/aulas', icon: CalendarDays, label: 'Agenda' },
       { path: '/cadastros', icon: Users, label: 'Cadastro' },
       { path: '/financeiro', icon: DollarSign, label: 'Financeiro' },
+      { path: '/kpis', icon: FileBarChart, label: 'Relatórios' },
     ]
   }
 

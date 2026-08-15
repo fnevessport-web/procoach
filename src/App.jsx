@@ -41,6 +41,7 @@ import { HomeParticular } from './pages/particular/HomeParticular'
 import { AgendaParticular } from './pages/particular/AgendaParticular'
 import { CadastroParticular } from './pages/particular/CadastroParticular'
 import { FinanceiroParticular } from './pages/particular/FinanceiroParticular'
+import { RelatoriosParticular } from './pages/particular/RelatoriosParticular'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -106,6 +107,7 @@ function AppRouter() {
             <Route path="/aulas" element={<AgendaParticular />} />
             <Route path="/cadastros" element={<CadastroParticular />} />
             <Route path="/financeiro" element={<FinanceiroParticular />} />
+            <Route path="/kpis" element={<RelatoriosParticular />} />
             {/* AvaliarAluno é o mesmo componente do clube (src/pages/professor/AvaliarAluno.jsx)
                 — seguro de reaproveitar aqui porque CadastroParticular sempre navega já com
                 alunoId/modalidadeId em location.state, então a busca de aluno do clube (sem

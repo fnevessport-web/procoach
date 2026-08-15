@@ -139,7 +139,7 @@ export function FinanceiroParticular() {
   )
 }
 
-function SeletorMes({ dataRef, setDataRef }) {
+export function SeletorMes({ dataRef, setDataRef }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
       <button onClick={() => setDataRef(d => subMonths(d, 1))} style={botaoNavStyle}><ChevronLeft size={16} /></button>
