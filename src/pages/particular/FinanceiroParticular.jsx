@@ -173,7 +173,7 @@ function CardStat({ label, valor, cor }) {
 // algo tão pequeno — rótulo direto quando o segmento é largo o bastante, legenda sempre visível
 // (skill dataviz: ≥2 séries sempre com legenda), cores reservadas de status (nunca reusadas em
 // outro contexto), gap de 2px entre segmentos.
-function BarraAdimplencia({ pagos, pendentes }) {
+export function BarraAdimplencia({ pagos, pendentes }) {
   const total = pagos + pendentes || 1
   const pctPago = (pagos / total) * 100
   const pctPendente = 100 - pctPago
