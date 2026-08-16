@@ -36,6 +36,21 @@ const labelStyle = {
   letterSpacing: '0.5px', marginBottom: '4px',
 }
 
+// Mesma regra de isAulaFutura em AulasCoordenador.jsx (não exportada de lá) — "futura" é sobre
+// data/horário real, independente do status_aula gravado (que nasce sempre 'dada' até alguém
+// confirmar o resultado depois que a aula acontece).
+function isAulaFutura(dataAula, horarioInicio) {
+  const agora = new Date()
+  const hoje = format(agora, 'yyyy-MM-dd')
+  if (dataAula > hoje) return true
+  if (dataAula < hoje) return false
+  if (!horarioInicio) return false
+  const [h, m] = horarioInicio.split(':').map(Number)
+  const inicioAula = new Date()
+  inicioAula.setHours(h, m - 10, 0, 0)
+  return agora < inicioAula
+}
+
 // Agenda semanal do modo Particular — 7 colunas (seg-dom) em vez do dia único com colunas por
 // quadra que a grade do clube usa (AulasCoordenador.jsx), porque aqui só existe UMA "coluna" de
 // atividade (a do próprio profissional), sem quadra nenhuma. Não importa nada de
@@ -132,10 +147,13 @@ export function AgendaParticular() {
       </div>
 
       <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: `56px repeat(7, minmax(96px, 1fr))`, minWidth: '760px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `52px repeat(7, minmax(112px, 1fr))`, minWidth: '840px' }}>
           <div />
           {dias.map(d => (
-            <div key={d.toISOString()} style={{ textAlign: 'center', padding: '8px 4px', borderRadius: '8px', backgroundColor: format(d, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') ? 'rgba(165,76,46,0.08)' : 'transparent' }}>
+            <div key={d.toISOString()} style={{
+              textAlign: 'center', padding: '8px 4px', borderRadius: '10px', marginBottom: '4px',
+              backgroundColor: format(d, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-overlay)',
+            }}>
               <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-action-primary)', letterSpacing: '0.5px' }}>{LABEL_DIA_CURTO[d.getDay()]}</div>
               <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginTop: '2px' }}>{format(d, 'dd/MM')}</div>
             </div>
@@ -145,7 +163,11 @@ export function AgendaParticular() {
             const horarioStr = h.horario.slice(0, 5)
             return (
               <div key={h.id} style={{ display: 'contents' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px', fontSize: '11px', color: 'var(--color-text-light-muted)' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '2px 4px 2px 0',
+                  fontSize: '10px', fontWeight: '600', color: 'var(--color-text-light-secondary)',
+                  backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '8px', minHeight: '60px',
+                }}>
                   {horarioStr}
                 </div>
                 {dias.map(d => {
@@ -154,33 +176,63 @@ export function AgendaParticular() {
                   if (cel.tipo === 'bloqueio') {
                     return (
                       <button key={dataStr} onClick={() => setBloqueioAberto(cel.bloqueio)} style={{
-                        margin: '2px', padding: '8px 6px', borderRadius: '8px', minHeight: '44px',
-                        border: '1px dashed var(--color-border-light)', background: 'rgba(122,122,122,0.08)',
-                        color: 'var(--color-text-light-muted)', fontSize: '10px', cursor: 'pointer',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px',
+                        margin: '2px', padding: '6px', borderRadius: '10px', minHeight: '60px', width: '100%', boxSizing: 'border-box',
+                        border: '1px dashed var(--color-border-light)', background: 'var(--color-surface-light-overlay)',
+                        color: 'var(--color-text-light-secondary)', fontSize: '9px', cursor: 'pointer',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px',
                       }}>
-                        <Lock size={11} />
-                        {cel.bloqueio.motivo || 'Bloqueado'}
+                        <Lock size={12} />
+                        <span style={{ textAlign: 'center', lineHeight: '1.2' }}>{cel.bloqueio.motivo || 'Bloqueado'}</span>
                       </button>
                     )
                   }
                   if (cel.tipo === 'aula') {
+                    const aula = cel.aula
+                    const horarioAulaStr = aula.turmas?.horario_inicio?.slice(0, 5) || aula.horario?.slice(0, 5) || horarioStr
+                    const futura = isAulaFutura(aula.data_aula, horarioAulaStr)
+                    const st = aula.status_aula || 'dada'
+                    const isAv = !aula.turma_id
+                    const dotColor = futura ? 'var(--color-action-primary)'
+                      : st === 'dada' ? 'var(--color-state-success)'
+                      : st === 'nao_dada' ? 'var(--color-state-warning)'
+                      : 'var(--color-state-danger)'
+                    const borderColor = futura ? 'rgba(165,76,46,0.35)' : 'var(--color-border-light-subtle)'
+                    const bgColor = futura ? 'var(--color-surface-light-base)' : 'var(--color-surface-light-overlay)'
+                    const statusLabel = futura ? 'agendada' : st === 'dada' ? 'dada' : st === 'nao_dada' ? 'sem aula' : 'cancelada'
                     return (
-                      <button key={dataStr} onClick={() => setAulaAberta(cel.aula)} style={{
-                        margin: '2px', padding: '8px 6px', borderRadius: '8px', minHeight: '44px',
-                        border: '1px solid rgba(165,76,46,0.3)', background: 'rgba(165,76,46,0.08)',
-                        color: 'var(--color-action-primary)', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
-                        textAlign: 'left',
+                      <button key={dataStr} onClick={() => setAulaAberta(aula)} style={{
+                        margin: '2px', padding: '7px 8px', borderRadius: '10px', minHeight: '60px', width: '100%', boxSizing: 'border-box',
+                        border: `1px solid ${borderColor}`, background: bgColor, cursor: 'pointer', textAlign: 'left',
+                        display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '3px',
                       }}>
-                        {labelAula(cel.aula)}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+                          <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', backgroundColor: 'rgba(165,76,46,0.12)', color: 'var(--color-action-primary)', fontWeight: '600' }}>
+                            {isAv ? 'avulsa' : 'mensal'}
+                          </span>
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dotColor, flexShrink: 0 }} />
+                        </div>
+                        <div style={{
+                          fontSize: '11px', fontWeight: '700', color: 'var(--color-text-light-primary)', lineHeight: '1.25',
+                          overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                        }}>
+                          {labelAula(aula)}
+                        </div>
+                        <div style={{ fontSize: '9px', color: 'var(--color-text-light-muted)' }}>{statusLabel}</div>
                       </button>
                     )
                   }
                   return (
                     <button key={dataStr} onClick={() => setCelulaVazia({ dataStr, horario: horarioStr })} style={{
-                      margin: '2px', padding: '8px 6px', borderRadius: '8px', minHeight: '44px',
-                      border: '1px dashed var(--color-border-light)', background: 'none', cursor: 'pointer',
-                    }} />
+                      margin: '2px', borderRadius: '10px', minHeight: '60px', width: '100%', boxSizing: 'border-box',
+                      border: '1px solid var(--color-border-light-subtle)', background: 'var(--color-surface-light-overlay)',
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'border-color 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(165,76,46,0.35)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-light-subtle)' }}
+                    >
+                      <span style={{ fontSize: '18px', color: 'var(--color-border-light)', lineHeight: 1 }}>+</span>
+                    </button>
                   )
                 })}
               </div>
