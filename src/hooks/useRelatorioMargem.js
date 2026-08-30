@@ -90,11 +90,11 @@ export async function buscarRelatorioMargem({ dataInicio, dataFim }) {
     r.receitaTotal += l.receita
     r.custoTotal += l.custoProfessor
     r.margemTotal += l.margem
-    if (l.margem > 0.005) r.aulasSuperavit++
-    else if (l.margem < -0.005) r.aulasDeficit++
+    if (l.margem > 0.005) { r.aulasSuperavit++; r.margemPositiva += l.margem }
+    else if (l.margem < -0.005) { r.aulasDeficit++; r.margemNegativa += l.margem }
     else r.aulasNeutras++
     return r
-  }, { totalAulas: 0, aulasSuperavit: 0, aulasDeficit: 0, aulasNeutras: 0, receitaTotal: 0, custoTotal: 0, margemTotal: 0 })
+  }, { totalAulas: 0, aulasSuperavit: 0, aulasDeficit: 0, aulasNeutras: 0, receitaTotal: 0, custoTotal: 0, margemTotal: 0, margemPositiva: 0, margemNegativa: 0 })
 
   const porDiaMap = {}
   linhas.forEach(l => {
