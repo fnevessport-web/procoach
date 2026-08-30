@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, endOfMonth, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash, Search, Ban } from 'lucide-react'
+import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash, Search, Ban, Download } from 'lucide-react'
 import {
   useCustoProfessores,
   useAulasProfessorFinanceiro,
@@ -24,6 +24,8 @@ import {
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { calcularValorAula, aulaComTodosAusentes, calcularMargensTenis } from '../../constants/modalidades'
 import { useEmpresaVinculada } from '../../hooks/useProfessores'
+import { buscarRelatorioMargem } from '../../hooks/useRelatorioMargem'
+import { exportarRelatorioMargemPDF } from '../../lib/relatorioMargemPdf'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
 import toast from 'react-hot-toast'
@@ -533,6 +535,7 @@ export function FinanceiroPage() {
   const [buscaProf, setBuscaProf] = useState('')
   const [filtroValorAula, setFiltroValorAula] = useState(null) // null = todas; ou um valor específico (120, 100, ...)
   const [filtroSoFalta100, setFiltroSoFalta100] = useState(false) // true = só aulas com 100% de falta na turma
+  const [exportandoMargem, setExportandoMargem] = useState(false)
 
   // Form: receita
   const [valorReceitaInput, setValorReceitaInput] = useState('')
@@ -939,6 +942,25 @@ export function FinanceiroPage() {
       await removerLancamento.mutateAsync(id)
       toast.success('Removido!', { style: toastStyle })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
+
+  // Relatório de Margem (Tênis/Procópio) — documento interno separado do relatório que vai
+  // pra Beyond (relatorioPdf.js, intocado). Busca sob demanda em vez de hook de query porque
+  // só roda quando o gestor pede, com o período que já está selecionado na tela.
+  async function handleExportarMargem() {
+    setExportandoMargem(true)
+    try {
+      const dados = await buscarRelatorioMargem({ dataInicio, dataFim: dataFimEfetivo })
+      if (dados.resumo.totalAulas === 0) {
+        toast.error('Nenhuma aula de Tênis encontrada nesse período.', { style: toastStyle })
+        return
+      }
+      await exportarRelatorioMargemPDF(dados, { periodo: { inicio: dataInicio, fim: dataFimEfetivo } })
+    } catch (err) {
+      toast.error('Erro ao gerar relatório: ' + err.message, { style: toastStyle })
+    } finally {
+      setExportandoMargem(false)
+    }
   }
 
   // ── Filtro de mês (barra horizontal compacta) ──────────────────────
@@ -1571,6 +1593,22 @@ export function FinanceiroPage() {
 
       {/* Filtro mês */}
       <FiltroMes />
+
+      {/* Relatório de Margem — só Tênis/Procópio (única unidade com tabela de mensalidade
+          confirmada, ver calcularDetalheMargensTenis). Documento interno separado do
+          relatório que vai pra Beyond — nunca mistura com aquele. */}
+      {empresaId === 'procopio' && (
+        <button onClick={handleExportarMargem} disabled={exportandoMargem} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+          width: '100%', padding: '12px', borderRadius: '12px', marginBottom: '14px',
+          border: '1px solid rgba(180,71,47,0.3)', backgroundColor: 'rgba(180,71,47,0.08)',
+          color: 'var(--color-state-danger)', fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+          opacity: exportandoMargem ? 0.6 : 1,
+        }}>
+          <Download size={15} />
+          {exportandoMargem ? 'Gerando...' : 'Relatório de Margem — Tênis (uso interno)'}
+        </button>
+      )}
 
       {/* ── RECEITA ───────────────────────────────────────────────── */}
       <div style={{

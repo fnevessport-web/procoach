@@ -215,15 +215,21 @@ function receitaAula(aula, contagemMes) {
   return qtdMensalistas * valorFracaoMensalista + qtdAvulsos * valorAvulso
 }
 
-// Margem líquida dessa aula pro clube: receita − 10% de repasse − custo do professor
-// (custo já usa calcularValorAula, então já reflete a regra do R$100/grupo-1-aluno).
-// null quando a aula está fora do escopo (não é Tênis) — quem chama trata como "sem dado".
-export function margemAula(aula, professor, empresa, contagemMes) {
+// Detalhamento completo da conta (receita/repasse/custo/margem) dessa aula específica —
+// null quando a aula está fora do escopo (não é Tênis), quem chama trata como "sem dado".
+export function detalharMargemAula(aula, professor, empresa, contagemMes) {
   const receita = receitaAula(aula, contagemMes)
   if (receita == null) return null
   const repasseClube = receita * PCT_REPASSE_CLUBE
   const custoProfessor = calcularValorAula(aula, professor, empresa)
-  return receita - repasseClube - custoProfessor
+  return { receita, repasseClube, custoProfessor, margem: receita - repasseClube - custoProfessor }
+}
+
+// Margem líquida dessa aula pro clube: receita − 10% de repasse − custo do professor
+// (custo já usa calcularValorAula, então já reflete a regra do R$100/grupo-1-aluno).
+// null quando a aula está fora do escopo (não é Tênis) — quem chama trata como "sem dado".
+export function margemAula(aula, professor, empresa, contagemMes) {
+  return detalharMargemAula(aula, professor, empresa, contagemMes)?.margem ?? null
 }
 
 // Calcula a margem de uma lista de aulas de uma vez, agrupando o divisor mensal por
@@ -252,6 +258,30 @@ export function calcularMargensTenis(aulas, professor, empresa) {
     total += margem
   })
   return { porAula, total }
+}
+
+// Mesma ideia de calcularMargensTenis, mas devolvendo o detalhamento completo (receita,
+// repasse, custo, margem) por aula em vez de só a margem — usado pelo Relatório de Margem
+// (uso interno), que precisa mostrar receita e custo separados, não só o líquido.
+export function calcularDetalheMargensTenis(aulas, professor, empresa) {
+  const contagemPorMes = {}
+  function contagemDoMes(dataStr) {
+    const mesKey = dataStr.slice(0, 7)
+    if (!contagemPorMes[mesKey]) {
+      const [ano, mes] = mesKey.split('-').map(Number)
+      const ultimoDia = new Date(ano, mes, 0).getDate()
+      contagemPorMes[mesKey] = contarOcorrenciasPorDiaSemana(`${mesKey}-01`, `${mesKey}-${String(ultimoDia).padStart(2, '0')}`)
+    }
+    return contagemPorMes[mesKey]
+  }
+  const porAula = {}
+  ;(aulas || []).forEach(aula => {
+    if (!aula.data_aula) return
+    const detalhe = detalharMargemAula(aula, professor, empresa, contagemDoMes(aula.data_aula))
+    if (detalhe == null) return
+    porAula[aula.id] = detalhe
+  })
+  return porAula
 }
 
 // Quantas vezes cada dia da semana ocorre dentro do período — é o denominador da
