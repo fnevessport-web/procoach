@@ -1645,21 +1645,10 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                     </select></div>
                 </div>
 
-                {form.funcao !== 'professor' && (
-                  form.trabalha_procopio && form.trabalha_beach ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <div><div style={labelStyle}>Salário Fixo Procópio (R$)</div>
-                        <input type="number" style={inputStyle} placeholder="0,00" value={form.salario_fixo_procopio || ''} onChange={e => set('salario_fixo_procopio', e.target.value)} /></div>
-                      <div><div style={labelStyle}>Salário Fixo Beach Arena (R$)</div>
-                        <input type="number" style={inputStyle} placeholder="0,00" value={form.salario_fixo_beach || ''} onChange={e => set('salario_fixo_beach', e.target.value)} /></div>
-                    </div>
-                  ) : (
-                    <div><div style={labelStyle}>Salário Fixo (R$)</div>
-                      <input type="number" style={inputStyle} placeholder="0,00"
-                        value={(form.trabalha_beach ? form.salario_fixo_beach : form.salario_fixo_procopio) || ''}
-                        onChange={e => set(form.trabalha_beach ? 'salario_fixo_beach' : 'salario_fixo_procopio', e.target.value)} /></div>
-                  )
-                )}
+                {/* Remuneração fica na aba Financeiro agora (Salário Fixo pra quem não é
+                    professor, Valor por Aula pra quem é) — antes esse campo ficava aqui e
+                    o gestor procurava na aba Financeiro sem achar, arriscando confundir com
+                    o campo de valor por aula lá (que é por AULA, não por mês). */}
 
                 <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>CREF</div>
                 <button onClick={() => set('tem_cref', !form.tem_cref)} style={{
@@ -1840,21 +1829,43 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   </div>
                 </div>
 
-                {/* Valores por empresa */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {form.trabalha_procopio && (
-                    <div>
-                      <div style={{ ...labelStyle, color: 'var(--color-action-primary)' }}>Valor por Aula — Procopio (R$)</div>
-                      <input type="number" style={inputStyle} placeholder="0,00" value={form.valor_aula} onChange={e => set('valor_aula', e.target.value)} />
+                {/* Remuneração: por aula pra professor (o valor varia por aula dada, ver
+                    calcularValorAula); salário fixo mensal pra qualquer outra função (gerente,
+                    financeiro, auxiliar, auxiliar de quadra, coordenador) — esses não dão aula,
+                    então não faz sentido mostrar "valor por aula" pra eles (risco real: alguém
+                    lançar o salário de R$1.500/mês nesse campo e o sistema entender R$1.500
+                    POR AULA). O Financeiro gera automaticamente o lançamento "Salário fixo" todo
+                    mês pra quem tem esse valor preenchido aqui — não precisa lançar na mão. */}
+                {form.funcao === 'professor' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {form.trabalha_procopio && (
+                      <div>
+                        <div style={{ ...labelStyle, color: 'var(--color-action-primary)' }}>Valor por Aula — Procopio (R$)</div>
+                        <input type="number" style={inputStyle} placeholder="0,00" value={form.valor_aula} onChange={e => set('valor_aula', e.target.value)} />
+                      </div>
+                    )}
+                    {form.trabalha_beach && (
+                      <div>
+                        <div style={{ ...labelStyle, color: 'var(--color-state-info)' }}>Valor por Aula — Beach Arena (R$)</div>
+                        <input type="number" style={inputStyle} placeholder="0,00" value={form.valor_aula_beach} onChange={e => set('valor_aula_beach', e.target.value)} />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  form.trabalha_procopio && form.trabalha_beach ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div><div style={{ ...labelStyle, color: 'var(--color-action-primary)' }}>Salário Fixo — Procópio (R$/mês)</div>
+                        <input type="number" style={inputStyle} placeholder="0,00" value={form.salario_fixo_procopio || ''} onChange={e => set('salario_fixo_procopio', e.target.value)} /></div>
+                      <div><div style={{ ...labelStyle, color: 'var(--color-state-info)' }}>Salário Fixo — Beach Arena (R$/mês)</div>
+                        <input type="number" style={inputStyle} placeholder="0,00" value={form.salario_fixo_beach || ''} onChange={e => set('salario_fixo_beach', e.target.value)} /></div>
                     </div>
-                  )}
-                  {form.trabalha_beach && (
-                    <div>
-                      <div style={{ ...labelStyle, color: 'var(--color-state-info)' }}>Valor por Aula — Beach Arena (R$)</div>
-                      <input type="number" style={inputStyle} placeholder="0,00" value={form.valor_aula_beach} onChange={e => set('valor_aula_beach', e.target.value)} />
-                    </div>
-                  )}
-                </div>
+                  ) : (
+                    <div><div style={labelStyle}>Salário Fixo (R$/mês)</div>
+                      <input type="number" style={inputStyle} placeholder="0,00"
+                        value={(form.trabalha_beach ? form.salario_fixo_beach : form.salario_fixo_procopio) || ''}
+                        onChange={e => set(form.trabalha_beach ? 'salario_fixo_beach' : 'salario_fixo_procopio', e.target.value)} /></div>
+                  )
+                )}
                 {/* Status ativo/inativo */}
                 <div>
                   <div style={labelStyle}>Status do Colaborador</div>

@@ -3,7 +3,7 @@ import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import {
   TrendingUp, TrendingDown, Download, Search, CalendarDays, CheckCircle2, CloudRain,
   Ban, LineChart, PartyPopper, Users, ThumbsUp, ThumbsDown, FileText, BrainCircuit,
-  BarChart3, LandPlot, Trophy,
+  BarChart3, LandPlot, Trophy, AlertTriangle,
 } from 'lucide-react'
 import { useRelatorioMensal, useListaAlunosAtivos, buscarRelatorioCompleto, buscarListaAlunosAtivos, buscarTurmasCadastro, gerarInsights } from '../../hooks/useRelatorioMensal'
 import { exportarListaAlunosCSV, exportarListaAlunosExcel, exportarTurmasCSV, exportarTurmasExcel } from '../../lib/relatorioExport'
@@ -20,6 +20,9 @@ import toast from 'react-hot-toast'
 // Beyond/Procópio de sempre (intocado) — só esta TELA entrou no redesign.
 const toastStyle = { background: 'var(--color-surface-dark-raised)', color: 'var(--color-text-dark-primary)', border: '1px solid var(--color-border-dark)' }
 const COR_UNIDADE = { procopio: 'var(--color-action-primary)', beach_arena: 'var(--color-state-info)' }
+function fmtBRL(v) {
+  return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
 const inputBuscaStyle = {
   width: '100%', padding: '10px 14px 10px 36px', borderRadius: '10px',
   backgroundColor: 'var(--color-surface-dark-overlay)', border: '1px solid var(--color-border-dark)',
@@ -463,6 +466,45 @@ export function KPIsPage() {
               <ComparativoLinha label="Taxa de presença" atual={`${rel.taxaPresenca}%`} anterior={`${rel.comparativo.taxaPresencaAnterior}%`} variacao={rel.comparativo.variacaoTaxaPresenca} />
               <ComparativoLinha label="Alunos únicos" atual={rel.alunosUnicos} anterior={rel.comparativo.alunosUnicosAnterior} variacao={rel.comparativo.variacaoAlunosUnicos} />
             </div>
+          )}
+
+          {/* Custo com aulas pagas sem nenhum aluno presente — turma com 100% de falta
+              (se só 1 faltou mas outro veio, não conta; a aula rolou). Soma todos os
+              professores das unidades/modalidades em escopo, pra medir de forma global
+              quanto do custo de professor virou dinheiro pago sem ninguém atendido. */}
+          {rel.aulasSemComparecimento.qtd > 0 && (
+            <>
+              <SectionTitle>Custo com aulas sem comparecimento</SectionTitle>
+              <div style={{
+                padding: '16px', borderRadius: '16px', backgroundColor: 'var(--color-surface-dark-raised)',
+                border: '1px solid rgba(180,71,47,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertTriangle size={16} color="var(--color-state-danger)" />
+                  <span style={{ fontSize: '13px', color: 'var(--color-text-dark-primary)' }}>
+                    {rel.aulasSemComparecimento.qtd} aula{rel.aulasSemComparecimento.qtd !== 1 ? 's' : ''} com 100% de falta, mesmo assim paga{rel.aulasSemComparecimento.qtd !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-state-danger)' }}>
+                  {fmtBRL(rel.aulasSemComparecimento.valor)}
+                </span>
+              </div>
+
+              {rel.aulasSemComparecimento.porProfessor.length > 0 && (
+                <Bloco icon={AlertTriangle} titulo="Por professor">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {rel.aulasSemComparecimento.porProfessor.map(p => (
+                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', gap: '8px' }}>
+                        <span style={{ color: 'var(--color-text-dark-primary)' }}>{p.nome}</span>
+                        <span style={{ color: 'var(--color-state-danger)', flexShrink: 0 }}>
+                          {p.qtd} aula{p.qtd !== 1 ? 's' : ''} — {fmtBRL(p.valor)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </Bloco>
+              )}
+            </>
           )}
 
           {/* Ranking de professores */}

@@ -117,11 +117,27 @@ export function valorCheioProfessor(professor, empresa) {
     : valorBase
 }
 
-// Quantos alunos "pagantes" (não-cortesia) estão na lista de presença dessa aula —
-// cortesia nunca é cobrada do cliente, então não pode contar pra decidir se a turma
-// em grupo "lotou" ou ficou só com 1 aluno.
+// Quantos alunos "pagantes" (não-cortesia, não-reposição) estão na lista de presença
+// dessa aula — cortesia nunca é cobrada do cliente, e reposição é aluno de outra turma
+// cobrindo aula perdida (também não gera cobrança extra nessa aula), então nenhum dos
+// dois pode contar pra decidir se a turma em grupo "lotou" ou ficou só com 1 aluno de
+// verdade. Sem esse filtro, uma turma com 1 mensalista + 1 reposição contava como "2
+// alunos" e pagava o valor cheio ao professor em vez do R$100 fixo — foi a causa dos
+// professores pagos a mais em fechamentos passados.
 export function qtdAlunosPagantes(aula) {
-  return (aula.presencas || []).filter(p => p.tipo_participacao !== 'cortesia').length
+  return (aula.presencas || []).filter(p => p.tipo_participacao !== 'cortesia' && p.tipo_participacao !== 'reposicao').length
+}
+
+// Aula "zerada": tinha presença registrada (alguém previsto pra estar lá — mensalista,
+// avulso, reposição ou cortesia) mas NENHUM compareceu, e mesmo assim o professor é pago
+// normalmente (falta de aluno não é falta do professor). Conta qualquer tipo de
+// participação, não só pagante — aqui o que importa é se alguém de fato apareceu, não
+// quem seria cobrado por isso. Se só 1 dos vários faltou mas outro veio, não conta (a
+// aula rolou). Aula sem NENHUMA presença registrada (turma que nunca teve ninguém
+// marcado) fica de fora — isso é "aulasSemAluno" (outra métrica, ver useRelatorioMensal.js).
+export function aulaComTodosAusentes(aula) {
+  const presencas = aula.presencas || []
+  return presencas.length > 0 && presencas.every(p => p.status_presenca !== 'presente')
 }
 
 // Valor que o professor recebe por essa aula específica — normalmente o valor cheio

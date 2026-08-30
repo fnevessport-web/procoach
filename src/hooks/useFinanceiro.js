@@ -271,7 +271,7 @@ export function useAulasProfessorFinanceiro({ professorId, professor, empresa, d
         .select(`
           id, data_aula, turma_id, observacoes, status_aula,
           turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome)),
-          presencas(tipo_participacao)
+          presencas(tipo_participacao, status_presenca)
         `)
         .eq('professor_executou_id', professorId)
         .gte('data_aula', dataInicio)

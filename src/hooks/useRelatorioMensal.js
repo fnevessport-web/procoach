@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
-import { getQuadraNome, getModalidadeDaAula, construirHeatmapOcupacao, MODALIDADE_EMPRESA, VAGAS_GRUPO, VAGAS_INDIVIDUAL } from '../constants/modalidades'
+import { getQuadraNome, getModalidadeDaAula, construirHeatmapOcupacao, calcularValorAula, aulaComTodosAusentes, MODALIDADE_EMPRESA, VAGAS_GRUPO, VAGAS_INDIVIDUAL } from '../constants/modalidades'
 import { QUADRAS_EMPRESA } from './useFinanceiro'
 import { getFeriado } from '../constants/feriados'
 
 const SELECT_AULAS = `
-  id, data_aula, status_aula, motivo_cancelamento, turma_id, observacoes, professor_executou_id,
-  professores!professor_executou_id(nome),
+  id, data_aula, status_aula, motivo_cancelamento, turma_id, observacoes, professor_executou_id, paga_professor,
+  professores!professor_executou_id(nome, valor_aula, valor_hora_aula, valor_aula_beach),
   turmas(nome, quadra_id, quadras(nome), modalidade_id, modalidades(nome), horario_inicio, nivel_id, niveis(nome)),
   presencas(id, aluno_id, status_presenca, tipo_participacao, alunos(nome))
 `
@@ -113,6 +113,29 @@ function agregar(aulas) {
   })
   const rankingProfessores = Object.values(profMap).sort((a, b) => b.total - a.total)
 
+  // Aulas pagas ao professor onde NENHUM aluno da turma compareceu (100% de falta) — se só
+  // 1 faltou mas outro veio, não conta (a aula rolou de verdade). Serve pra medir quanto do
+  // que se paga em professor vira custo puro, sem nenhum aluno atendido. Só entram aulas
+  // com paga_professor=true (mesmo critério de custo usado no Financeiro).
+  const aulasSemComparecimentoLista = aulasDadas.filter(a => a.paga_professor && aulaComTodosAusentes(a))
+  const profFaltaMap = {}
+  let valorSemComparecimento = 0
+  aulasSemComparecimentoLista.forEach(a => {
+    const id = a.professor_executou_id
+    if (!id) return
+    const empresa = empresaDaAula(a)
+    const valor = calcularValorAula(a, a.professores, empresa)
+    valorSemComparecimento += valor
+    if (!profFaltaMap[id]) profFaltaMap[id] = { id, nome: a.professores?.nome || 'Sem professor', qtd: 0, valor: 0 }
+    profFaltaMap[id].qtd++
+    profFaltaMap[id].valor += valor
+  })
+  const aulasSemComparecimento = {
+    qtd: aulasSemComparecimentoLista.length,
+    valor: valorSemComparecimento,
+    porProfessor: Object.values(profFaltaMap).sort((a, b) => b.valor - a.valor),
+  }
+
   return {
     aulasProgramadas,
     aulasDadas: aulasDadas.length,
@@ -131,6 +154,7 @@ function agregar(aulas) {
     porEmpresa,
     aulasEmFeriado: aulasEmFeriado.length,
     rankingProfessores,
+    aulasSemComparecimento,
   }
 }
 

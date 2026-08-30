@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, endOfMonth, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash, Search } from 'lucide-react'
+import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash, Search, Ban } from 'lucide-react'
 import {
   useCustoProfessores,
   useAulasProfessorFinanceiro,
@@ -22,7 +22,7 @@ import {
   dadosPagamentoEmpresa,
 } from '../../hooks/useFinanceiro'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
-import { calcularValorAula } from '../../constants/modalidades'
+import { calcularValorAula, aulaComTodosAusentes } from '../../constants/modalidades'
 import { useEmpresaVinculada } from '../../hooks/useProfessores'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
@@ -506,6 +506,8 @@ export function FinanceiroPage() {
   const [pinModal, setPinModal] = useState(null)   // { professorId, initialMode }
   const [detalhesDia, setDetalhesDia] = useState(null) // { dataStr, aulas }
   const [buscaProf, setBuscaProf] = useState('')
+  const [filtroValorAula, setFiltroValorAula] = useState(null) // null = todas; ou um valor específico (120, 100, ...)
+  const [filtroSoFalta100, setFiltroSoFalta100] = useState(false) // true = só aulas com 100% de falta na turma
 
   // Form: receita
   const [valorReceitaInput, setValorReceitaInput] = useState('')
@@ -805,6 +807,8 @@ export function FinanceiroPage() {
 
   function navegarProfessor(prof) {
     setProfessorSel(prof)
+    setFiltroValorAula(null)
+    setFiltroSoFalta100(false)
     setView('professor')
   }
 
@@ -1023,9 +1027,33 @@ export function FinanceiroPage() {
     const empresasParaExibir = [EMPRESAS[empresaId]]
     const contaFormatada = `${pag.agencia ? `Ag ${pag.agencia} · ` : ''}Conta ${pag.conta}${pag.tipo_conta ? ` (${pag.tipo_conta === 'poupanca' ? 'Poupança' : 'Corrente'})` : ''}`
 
-    // Agrupa aulas por dia
-    const porDia = {}
+    // Quebra por valor pago (ex.: R$120 valor cheio x R$100 turma-grupo-1-aluno) —
+    // conta quantas aulas caíram em cada valor pra auditoria do fechamento. Agrupa pelo
+    // valor de fato calculado (a.valor), não hardcoded, pra funcionar com qualquer
+    // valor_aula configurado no cadastro do professor.
+    const valoresMap = {}
     aulasProf.forEach(a => {
+      const v = a.valor ?? valorUnitarioProf
+      valoresMap[v] = (valoresMap[v] || 0) + 1
+    })
+    const breakdownValores = Object.entries(valoresMap)
+      .map(([valor, qtd]) => ({ valor: Number(valor), qtd }))
+      .sort((a, b) => b.valor - a.valor)
+
+    // Aulas em que NENHUM aluno da turma compareceu (100% de falta) e mesmo assim o
+    // professor foi pago — se só 1 faltou mas outro veio, a aula não entra aqui. Serve pra
+    // auditar quanto tá sendo pago por aulas onde o professor efetivamente não deu aula
+    // pra ninguém.
+    const aulasSemComparecimento = aulasProf.filter(aulaComTodosAusentes)
+    const valorSemComparecimento = aulasSemComparecimento.reduce((s, a) => s + (a.valor ?? valorUnitarioProf), 0)
+
+    // Agrupa aulas por dia — respeitando os filtros selecionados acima (servem só pra essa
+    // lista de auditoria; o Total a pagar continua somando tudo, filtrado ou não).
+    const aulasParaLista = aulasProf
+      .filter(a => filtroValorAula == null || (a.valor ?? valorUnitarioProf) === filtroValorAula)
+      .filter(a => !filtroSoFalta100 || aulaComTodosAusentes(a))
+    const porDia = {}
+    aulasParaLista.forEach(a => {
       if (!porDia[a.data_aula]) porDia[a.data_aula] = []
       porDia[a.data_aula].push(a)
     })
@@ -1124,6 +1152,57 @@ export function FinanceiroPage() {
             )}
           </div>
         </div>
+
+        {/* Filtro por valor da aula — auditoria de quantas aulas caíram em cada valor
+            (ex.: R$120 valor cheio x R$100 turma em grupo com só 1 aluno pagante).
+            Só aparece quando há mais de um valor no período, senão é ruído. */}
+        {breakdownValores.length > 1 && (
+          <div style={{
+            display: 'flex', gap: '6px', flexWrap: 'wrap',
+            marginBottom: '8px',
+          }}>
+            <button onClick={() => setFiltroValorAula(null)} style={{
+              padding: '7px 12px', borderRadius: '9px', cursor: 'pointer',
+              border: filtroValorAula == null ? 'none' : '1px solid var(--color-border-dark)',
+              background: filtroValorAula == null ? 'var(--color-action-primary)' : 'var(--color-surface-dark-raised)',
+              color: filtroValorAula == null ? 'white' : 'var(--color-text-dark-secondary)',
+              fontSize: '11px', fontWeight: '700',
+            }}>
+              Todas ({aulasProf.length})
+            </button>
+            {breakdownValores.map(({ valor, qtd }) => {
+              const ativo = filtroValorAula === valor
+              return (
+                <button key={valor} onClick={() => setFiltroValorAula(ativo ? null : valor)} style={{
+                  padding: '7px 12px', borderRadius: '9px', cursor: 'pointer',
+                  border: ativo ? 'none' : '1px solid var(--color-border-dark)',
+                  background: ativo ? 'var(--color-action-primary)' : 'var(--color-surface-dark-raised)',
+                  color: ativo ? 'white' : 'var(--color-text-dark-secondary)',
+                  fontSize: '11px', fontWeight: '700',
+                }}>
+                  {fmtBRL(valor)} ({qtd})
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Filtro: aulas onde 100% da turma faltou e mesmo assim o professor foi pago.
+            Só aparece quando existe pelo menos 1 caso, senão vira ruído em todo professor. */}
+        {aulasSemComparecimento.length > 0 && (
+          <button onClick={() => setFiltroSoFalta100(v => !v)} style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '9px 12px', borderRadius: '9px', cursor: 'pointer', width: '100%',
+            marginBottom: '14px', boxSizing: 'border-box', textAlign: 'left',
+            border: filtroSoFalta100 ? '1px solid rgba(180,71,47,0.5)' : '1px solid rgba(180,71,47,0.25)',
+            background: filtroSoFalta100 ? 'var(--color-state-danger)' : 'rgba(180,71,47,0.08)',
+          }}>
+            <Ban size={13} color={filtroSoFalta100 ? 'white' : 'var(--color-state-danger)'} />
+            <span style={{ fontSize: '11px', fontWeight: '700', color: filtroSoFalta100 ? 'white' : 'var(--color-state-danger)', flex: 1 }}>
+              {aulasSemComparecimento.length} aula{aulasSemComparecimento.length !== 1 ? 's' : ''} com 100% de falta — {fmtBRL(valorSemComparecimento)} pago{valorSemComparecimento !== 1 ? 's' : ''} sem ninguém comparecer
+            </span>
+          </button>
+        )}
 
         {/* PIX ITAÚ */}
         {temPix && pag.chave_pix && (
@@ -1351,6 +1430,8 @@ export function FinanceiroPage() {
         {/* Resumo por dia */}
         <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           Aulas no período
+          {filtroValorAula != null ? ` — filtrado por ${fmtBRL(filtroValorAula)}` : ''}
+          {filtroSoFalta100 ? ' — só 100% de falta' : ''}
         </div>
 
         {/* PIN modal */}
@@ -1381,7 +1462,7 @@ export function FinanceiroPage() {
 
         {loadingAulasProf ? <Loading /> : diasOrdenados.length === 0 ? (
           <div style={{ fontSize: '13px', color: 'var(--color-text-dark-secondary)', textAlign: 'center', padding: '24px' }}>
-            Nenhuma aula encontrada
+            {filtroValorAula != null || filtroSoFalta100 ? 'Nenhuma aula encontrada com esse filtro' : 'Nenhuma aula encontrada'}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
