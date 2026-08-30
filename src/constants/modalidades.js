@@ -152,6 +152,108 @@ export function calcularValorAula(aula, professor, empresa) {
   return valorCheio
 }
 
+// ──────────────────────────────────────────────────────────────────────
+// Margem por aula (receita da mensalidade − repasse ao clube − custo do professor)
+//
+// Uso interno do coordenador só — visão de "quanto essa aula rendeu de verdade",
+// nunca exposta ao professor (nem no painel dele, nem no financeiro dele). Escopo
+// deliberadamente restrito a Tênis/Procópio (única unidade com esses valores de
+// mensalidade confirmados); Beach Arena e outras modalidades não entram aqui —
+// margemAula() retorna null nesses casos, e quem chama trata null como "sem dado".
+//
+// Mensalista paga um plano MENSAL fixo (419/683/1049), não por aula — o valor de
+// cada aula específica é o plano dividido pela quantidade de aulas daquele "combo
+// de dias" no mês (ex.: plano 2x/semana em turma de segunda vale 683 ÷ (nº de
+// segundas + nº de quartas no mês), porque é assim que o aluno escolheu os 2 dias
+// fixos dele). Avulso paga por aula à parte (não é fração de mês, é valor cheio
+// direto). Reposição e cortesia não geram receita nova nessa aula (reposição já
+// foi paga na aula original perdida; cortesia é de graça).
+export const VALOR_MENSALIDADE_GRUPO_1X = 419
+export const VALOR_MENSALIDADE_GRUPO_2X = 683
+export const VALOR_MENSALIDADE_INDIVIDUAL = 1049
+export const VALOR_AVULSO_INDIVIDUAL = 320
+export const VALOR_AVULSO_GRUPO = 150
+export const PCT_REPASSE_CLUBE = 0.10
+
+// Segunda+quarta e terça+quinta são os dois "combos" de plano 2x/semana; sexta e
+// sábado (e qualquer outro dia solto) são 1x/semana isolado — mesma classificação
+// pro valor do plano e pro divisor de quantas aulas esse combo teve no mês.
+function combo2xDoDia(diaSemana) {
+  if (diaSemana === 'segunda' || diaSemana === 'quarta') return ['segunda', 'quarta']
+  if (diaSemana === 'terca' || diaSemana === 'quinta') return ['terca', 'quinta']
+  return null
+}
+
+function valorPlanoMensal(individual, diaSemana) {
+  if (individual) return VALOR_MENSALIDADE_INDIVIDUAL
+  return combo2xDoDia(diaSemana) ? VALOR_MENSALIDADE_GRUPO_2X : VALOR_MENSALIDADE_GRUPO_1X
+}
+
+// Quantas aulas desse "combo de dias" caem no mês — pra individual é só o próprio
+// dia (sempre tratado como 1x/semana, mesmo que o mesmo aluno tenha outro horário
+// individual em outro dia, ver instrução do coordenador).
+function divisorMensalidade(individual, diaSemana, contagemMes) {
+  if (individual) return contagemMes[diaSemana] || 1
+  const combo = combo2xDoDia(diaSemana)
+  if (combo) return combo.reduce((s, d) => s + (contagemMes[d] || 0), 0) || 1
+  return contagemMes[diaSemana] || 1
+}
+
+// Receita bruta dessa aula específica (antes do repasse ao clube) — soma a fração
+// do plano mensal de cada mensalista presente na lista + o valor cheio de cada
+// avulso. `contagemMes` é o resultado de contarOcorrenciasPorDiaSemana pro mês
+// (calendário inteiro, não o período filtrado na tela) em que a aula caiu.
+function receitaAula(aula, contagemMes) {
+  if (getModalidadeDaAula(aula) !== 'Tênis') return null
+  const individual = isAulaIndividual(aula)
+  const diaSemana = diaSemanaDaData(aula.data_aula)
+  const presencas = aula.presencas || []
+  const qtdMensalistas = presencas.filter(p => p.tipo_participacao === 'mensalista').length
+  const qtdAvulsos = presencas.filter(p => p.tipo_participacao === 'avulso').length
+  const valorFracaoMensalista = valorPlanoMensal(individual, diaSemana) / divisorMensalidade(individual, diaSemana, contagemMes)
+  const valorAvulso = individual ? VALOR_AVULSO_INDIVIDUAL : VALOR_AVULSO_GRUPO
+  return qtdMensalistas * valorFracaoMensalista + qtdAvulsos * valorAvulso
+}
+
+// Margem líquida dessa aula pro clube: receita − 10% de repasse − custo do professor
+// (custo já usa calcularValorAula, então já reflete a regra do R$100/grupo-1-aluno).
+// null quando a aula está fora do escopo (não é Tênis) — quem chama trata como "sem dado".
+export function margemAula(aula, professor, empresa, contagemMes) {
+  const receita = receitaAula(aula, contagemMes)
+  if (receita == null) return null
+  const repasseClube = receita * PCT_REPASSE_CLUBE
+  const custoProfessor = calcularValorAula(aula, professor, empresa)
+  return receita - repasseClube - custoProfessor
+}
+
+// Calcula a margem de uma lista de aulas de uma vez, agrupando o divisor mensal por
+// mês-calendário de cada aula (uma lista pode cobrir vários meses, ex.: histórico
+// completo do professor) — evita recalcular contarOcorrenciasPorDiaSemana repetido
+// pra aulas do mesmo mês. Retorna o total somado e a margem individual por aula
+// (por id), pra quem chama poder mostrar tanto o resumo quanto o detalhe por aula.
+export function calcularMargensTenis(aulas, professor, empresa) {
+  const contagemPorMes = {}
+  function contagemDoMes(dataStr) {
+    const mesKey = dataStr.slice(0, 7)
+    if (!contagemPorMes[mesKey]) {
+      const [ano, mes] = mesKey.split('-').map(Number)
+      const ultimoDia = new Date(ano, mes, 0).getDate()
+      contagemPorMes[mesKey] = contarOcorrenciasPorDiaSemana(`${mesKey}-01`, `${mesKey}-${String(ultimoDia).padStart(2, '0')}`)
+    }
+    return contagemPorMes[mesKey]
+  }
+  const porAula = {}
+  let total = 0
+  ;(aulas || []).forEach(aula => {
+    if (!aula.data_aula) return
+    const margem = margemAula(aula, professor, empresa, contagemDoMes(aula.data_aula))
+    if (margem == null) return
+    porAula[aula.id] = margem
+    total += margem
+  })
+  return { porAula, total }
+}
+
 // Quantas vezes cada dia da semana ocorre dentro do período — é o denominador da
 // média (ex.: "somar as 5 segundas-feiras e dividir por 5"). Usar sempre o fim do
 // período até "hoje" (não o fim do mês) quando o mês ainda está em andamento deixa

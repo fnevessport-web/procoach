@@ -22,7 +22,7 @@ import {
   dadosPagamentoEmpresa,
 } from '../../hooks/useFinanceiro'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
-import { calcularValorAula, aulaComTodosAusentes } from '../../constants/modalidades'
+import { calcularValorAula, aulaComTodosAusentes, calcularMargensTenis } from '../../constants/modalidades'
 import { useEmpresaVinculada } from '../../hooks/useProfessores'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
@@ -387,10 +387,15 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
         if (!mapa[p.aula_id]) mapa[p.aula_id] = []
         mapa[p.aula_id].push({ ...p, nomeAluno: alunoNomes[p.aluno_id] || null })
       })
-      return lista.map(a => ({
+      const aulasComPresenca = lista.map(a => ({ ...a, presencas: mapa[a.id] || [] }))
+      // Margem líquida por aula (receita da mensalidade − repasse 10% clube − custo do
+      // professor) — só pra visão do coordenador, nunca aparece pro professor. Restrito a
+      // Tênis/Procópio (calcularMargensTenis retorna undefined pra aula fora desse escopo).
+      const { porAula: margemPorAula } = professor ? calcularMargensTenis(aulasComPresenca, professor, empresaId) : { porAula: {} }
+      return aulasComPresenca.map(a => ({
         ...a,
-        presencas: mapa[a.id] || [],
-        valor: professor ? calcularValorAula({ ...a, presencas: mapa[a.id] || [] }, professor, empresaId) : valorUnitario,
+        valor: professor ? calcularValorAula(a, professor, empresaId) : valorUnitario,
+        margem: margemPorAula[a.id],
       }))
     },
     enabled: !!professorId && !!dataStr,
@@ -407,6 +412,8 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
 
   const contagem = aulas.length || totalAulas
   const totalDia = aulas.length ? aulas.reduce((s, a) => s + (a.valor ?? valorUnitario), 0) : contagem * valorUnitario
+  const aulasComMargem = aulas.filter(a => a.margem != null)
+  const margemDia = aulasComMargem.reduce((s, a) => s + a.margem, 0)
 
   return createPortal((
     <div style={{ position: 'fixed', inset: 0, zIndex: 900, backgroundColor: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
@@ -447,6 +454,16 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{fmtBRL(a.valor ?? valorUnitario)}</div>
+                    {/* Margem líquida da aula (receita da mensalidade − repasse clube − custo
+                        professor) — só visão do coordenador, o professor nunca vê isso em
+                        lugar nenhum. Tom minimalista de propósito (fonte pequena, cor âmbar
+                        neutra) pra não virar um selo de "boa/má aula" gritante — é só um
+                        número de apoio pra decisão de precificação. */}
+                    {a.margem != null && (
+                      <div style={{ fontSize: '9px', color: 'var(--color-state-warning)', marginTop: '1px', opacity: 0.85 }}>
+                        margem {a.margem >= 0 ? '+' : '−'}{fmtBRL(Math.abs(a.margem))}
+                      </div>
+                    )}
                     {presencas.length > 0 && (
                       <div style={{ fontSize: '10px', marginTop: '2px' }}>
                         <span style={{ color: 'var(--color-state-success)' }}>✓{presentes}</span>{' '}
@@ -478,6 +495,14 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
           <span style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)' }}>Total do dia</span>
           <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{fmtBRL(totalDia)}</span>
         </div>
+        {aulasComMargem.length > 0 && (
+          <div style={{ marginTop: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '10px', color: 'var(--color-text-dark-muted)' }}>Margem do dia (só Tênis)</span>
+            <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--color-state-warning)', opacity: 0.85 }}>
+              {margemDia >= 0 ? '+' : '−'}{fmtBRL(Math.abs(margemDia))}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   ), document.body)
@@ -694,6 +719,10 @@ export function FinanceiroPage() {
   const temAulaComDesconto = aulasProf.some(a => a.valor != null && a.valor !== valorUnitarioProf)
   const totalExtrasProf = extrasProfDaEmpresa.reduce((s, e) => s + Number(e.valor || 0), 0)
   const totalPagarProf = somaAulasProf + totalExtrasProf
+  // Margem líquida (só Tênis/Procópio) das aulas desse professor no período — visão do
+  // coordenador, nunca exposta ao professor. Ver calcularMargensTenis em modalidades.js.
+  const { porAula: margemPorAulaProf, total: margemTotalProf } = calcularMargensTenis(aulasProf, professorSel, empresaId)
+  const temAulaComMargem = Object.keys(margemPorAulaProf).length > 0
   const pagamentoConfirmado = professorSel ? pagamentosConfirmados.has(professorSel.id) : false
   const pagamentoAutorizado = professorSel ? liberacoes.has(professorSel.id) : false
 
@@ -1151,6 +1180,14 @@ export function FinanceiroPage() {
               </span>
             )}
           </div>
+          {/* Margem líquida (receita da mensalidade − 10% clube − custo do professor), só
+              pra aulas de Tênis/Procópio — visão exclusiva do coordenador, o professor não
+              tem acesso a esse número em lugar nenhum do app. */}
+          {temAulaComMargem && (
+            <div style={{ fontSize: '10px', color: 'var(--color-state-warning)', opacity: 0.85, marginTop: '6px' }}>
+              margem do período (só Tênis): {margemTotalProf >= 0 ? '+' : '−'}{fmtBRL(Math.abs(margemTotalProf))}
+            </div>
+          )}
         </div>
 
         {/* Filtro por valor da aula — auditoria de quantas aulas caíram em cada valor
