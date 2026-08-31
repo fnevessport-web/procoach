@@ -670,10 +670,16 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
         const { data } = await supabase.from('professores').update(payload).eq('id', form.id).select('*, modalidades(nome)').single()
         setCardAberto(data)
         qc.invalidateQueries({ queryKey: ['professores'] })
+        // FinanceiroPage.jsx lê o Salário Fixo numa query própria ('colaboradores_salario_fixo',
+        // staleTime de 5min) pra gerar o lançamento automático do mês — sem invalidar aqui, quem
+        // salvasse o campo e fosse direto pro Financeiro via SPA (sem dar F5) via cache velho e o
+        // colaborador não aparecia até o cache expirar sozinho.
+        qc.invalidateQueries({ queryKey: ['colaboradores_salario_fixo'] })
         setCardAberto(null)
       } else {
         await supabase.from('professores').insert(payload)
         qc.invalidateQueries({ queryKey: ['professores'] })
+        qc.invalidateQueries({ queryKey: ['colaboradores_salario_fixo'] })
         setModalCriar(false)
         setForm(FORM_VAZIO)
       }
