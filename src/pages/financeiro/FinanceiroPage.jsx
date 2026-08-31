@@ -679,13 +679,20 @@ export function FinanceiroPage() {
     })
     if (faltando.length === 0) return
     ;(async () => {
-      await supabase.from('pagamentos_extras').insert(faltando.map(c => ({
+      const { error } = await supabase.from('pagamentos_extras').insert(faltando.map(c => ({
         professor_id: c.id,
         data_pagamento: dataInicio,
         descricao: 'Salário fixo',
         valor: empresaId === 'beach_arena' ? c.salario_fixo_beach : c.salario_fixo_procopio,
         mes, ano: anoSel, empresa: empresaId,
       })))
+      // Sem checar erro aqui, uma falha (RLS, rede, etc) passava batido — o lançamento
+      // simplesmente nunca aparecia e ninguém sabia por quê. Já aconteceu com os 3
+      // primeiros auxiliares de quadra cadastrados: tiveram que ser lançados na mão.
+      if (error) {
+        toast.error('Não consegui gerar o Salário fixo automático: ' + error.message, { style: toastStyle, duration: 6000 })
+        return
+      }
       qc.invalidateQueries({ queryKey: ['pagamentos_extras_todos_fin', mes, anoSel] })
       qc.invalidateQueries({ queryKey: ['pagamentos_extras_fin'] })
     })()
