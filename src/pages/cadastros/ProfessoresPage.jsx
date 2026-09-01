@@ -10,6 +10,7 @@ import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { useEmpresaVinculada } from '../../hooks/useProfessores'
 import { usePesquisaSatisfacao, useRespostasPesquisa } from '../../hooks/usePesquisaSatisfacao'
 import { PERGUNTAS_PESQUISA_SATISFACAO } from '../../constants/pesquisaSatisfacao'
+import { exportarPesquisaSatisfacaoPDF } from '../../lib/pesquisaSatisfacaoPdf'
 import useAppStore from '../../store/useAppStore'
 import toast from 'react-hot-toast'
 import { apenasDigitosCPF, mascararCPF, cpfParaEmailSintetico } from '../../lib/cpf'
@@ -133,11 +134,12 @@ function PixCopiavel({ pix }) {
 // aba a aparecer editando o front. O link é reutilizável de propósito — o professor pode
 // responder quantas vezes quiser, cada envio vira uma linha nova aqui embaixo, nenhuma
 // resposta anterior é sobrescrita ou apagada.
-function AbaPesquisaSatisfacao({ pesquisa, carregando, respostas, carregandoRespostas }) {
+function AbaPesquisaSatisfacao({ professorNome, pesquisa, carregando, respostas, carregandoRespostas }) {
   if (carregando) return <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--color-text-light-muted)', padding: '20px' }}>Carregando...</div>
   if (!pesquisa) return <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--color-text-light-muted)', padding: '20px' }}>Não foi possível carregar a pesquisa.</div>
 
   const link = `${window.location.origin}/pesquisa/${pesquisa.token}`
+  const mensagemWhats = `Oi ${professorNome}! Preparamos uma pesquisa rápida e confidencial pra entender como está sua experiência na ProCoach — leva menos de 2 minutos e só a coordenação vê suas respostas.\n\n${link}`
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -146,8 +148,24 @@ function AbaPesquisaSatisfacao({ pesquisa, carregando, respostas, carregandoResp
         <PixCopiavel pix={link} />
       </div>
 
-      <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-        {respostas.length === 0 ? 'Nenhuma resposta ainda' : `${respostas.length} resposta${respostas.length > 1 ? 's' : ''} recebida${respostas.length > 1 ? 's' : ''}`}
+      <div>
+        <div style={labelStyle}>Mensagem pronta pro WhatsApp (com o link já dentro)</div>
+        <PixCopiavel pix={mensagemWhats} />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          {respostas.length === 0 ? 'Nenhuma resposta ainda' : `${respostas.length} resposta${respostas.length > 1 ? 's' : ''} recebida${respostas.length > 1 ? 's' : ''}`}
+        </div>
+        {respostas.length > 0 && (
+          <button onClick={() => exportarPesquisaSatisfacaoPDF(professorNome, respostas)} style={{
+            display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 10px', borderRadius: '8px',
+            border: '1px solid rgba(165,76,46,0.3)', backgroundColor: 'rgba(165,76,46,0.08)',
+            color: 'var(--color-action-primary)', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+          }}>
+            <FileText size={12} /> Exportar PDF
+          </button>
+        )}
       </div>
 
       {carregandoRespostas ? (
@@ -2164,6 +2182,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 leitura pública anônima do nome/status, nunca das respostas). */}
             {aba === 'pesquisa' && (
               <AbaPesquisaSatisfacao
+                professorNome={cardAberto.nome}
                 pesquisa={pesquisaSatisfacao}
                 carregando={carregandoPesquisa}
                 respostas={respostasPesquisa}
