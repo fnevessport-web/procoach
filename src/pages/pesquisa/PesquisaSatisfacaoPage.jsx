@@ -34,18 +34,18 @@ export function PesquisaSatisfacaoPage() {
   const [loading, setLoading] = useState(true)
   const [enviando, setEnviando] = useState(false)
   const [enviado, setEnviado] = useState(false)
-  const [jaRespondeuAntes, setJaRespondeuAntes] = useState(false)
 
   useEffect(() => {
     async function carregar() {
       // Acesso público (sem login) só via RPC — mesmo padrão de buscar_professor_por_token
       // (disponibilidade). Nunca lê pesquisas_satisfacao/professores direto: RLS daquela
-      // tabela é travada só pro gestor (ver 028_pesquisa_satisfacao.sql).
+      // tabela é travada só pro gestor (ver 028/029_pesquisa_*.sql). O link é reutilizável
+      // de propósito — cada envio vira uma resposta nova, nunca sobrescreve a anterior,
+      // então não existe "já respondeu" aqui: o formulário sempre abre em branco.
       const { data, error } = await supabase.rpc('buscar_professor_por_token_pesquisa', { p_token: token })
       const prof = data?.[0]
       if (error || !prof) { setLoading(false); return }
       setProfessor(prof)
-      setJaRespondeuAntes(!!prof.ja_respondeu)
       setLoading(false)
     }
     carregar()
@@ -92,13 +92,11 @@ export function PesquisaSatisfacaoPage() {
     </div>
   )
 
-  if (enviado || jaRespondeuAntes) return (
+  if (enviado) return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ textAlign: 'center' }}>
         <CheckCircle2 size={48} color="var(--color-state-success)" style={{ marginBottom: '16px' }} />
-        <div style={{ color: 'var(--color-text-light-primary)', fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>
-          {enviado ? 'Respostas enviadas!' : 'Você já respondeu essa pesquisa'}
-        </div>
+        <div style={{ color: 'var(--color-text-light-primary)', fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Respostas enviadas!</div>
         <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '13px' }}>Obrigado, {professor.nome}! Sua opinião é confidencial e só a coordenação tem acesso.</div>
       </div>
     </div>

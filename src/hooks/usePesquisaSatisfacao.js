@@ -1,11 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 
-// Lê a pesquisa de satisfação de um professor (link + status + respostas). RLS da
-// tabela pesquisas_satisfacao só libera pra role 'admin' (ver 028_pesquisa_satisfacao.sql)
-// — qualquer outro role recebe lista vazia, nunca erro, então nem precisa checar role aqui
-// antes de chamar (a segurança de verdade é no banco; a checagem de role no componente é
-// só pra nem mostrar a aba).
+// Link fixo do professor (token) — 1 por pessoa, criado automaticamente na primeira vez
+// que o gestor abre a aba. O mesmo link pode ser respondido várias vezes (nunca trava,
+// nunca mostra "já respondida") — cada envio vira uma linha em pesquisa_respostas (ver
+// useRespostasPesquisa), sem sobrescrever os anteriores. RLS de pesquisas_satisfacao só
+// libera pra role 'admin' (ver 028/029_pesquisa_*.sql) — qualquer outro role recebe lista
+// vazia, nunca erro, então nem precisa checar role aqui antes de chamar (a segurança de
+// verdade é no banco; a checagem de role no componente é só pra nem mostrar a aba).
 export function usePesquisaSatisfacao(professorId, opcoes = {}) {
   return useQuery({
     queryKey: ['pesquisa_satisfacao', professorId],
@@ -33,16 +35,20 @@ export function usePesquisaSatisfacao(professorId, opcoes = {}) {
   })
 }
 
-export function useReabrirPesquisa() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (professorId) => {
-      const { error } = await supabase
-        .from('pesquisas_satisfacao')
-        .update({ respostas: null, respondido_em: null })
-        .eq('professor_id', professorId)
+// Todas as respostas já enviadas por esse link, mais recente primeiro — o professor pode
+// responder quantas vezes quiser, cada envio fica registrado à parte (nenhum some).
+export function useRespostasPesquisa(pesquisaId, opcoes = {}) {
+  return useQuery({
+    queryKey: ['pesquisa_respostas', pesquisaId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pesquisa_respostas')
+        .select('*')
+        .eq('pesquisa_id', pesquisaId)
+        .order('respondido_em', { ascending: false })
       if (error) throw error
+      return data || []
     },
-    onSuccess: (_, professorId) => qc.invalidateQueries({ queryKey: ['pesquisa_satisfacao', professorId] }),
+    enabled: !!pesquisaId && (opcoes.enabled ?? true),
   })
 }

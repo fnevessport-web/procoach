@@ -8,7 +8,7 @@ import { ptBR } from 'date-fns/locale'
 import { usePermissions } from '../../hooks/usePermissions'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { useEmpresaVinculada } from '../../hooks/useProfessores'
-import { usePesquisaSatisfacao, useReabrirPesquisa } from '../../hooks/usePesquisaSatisfacao'
+import { usePesquisaSatisfacao, useRespostasPesquisa } from '../../hooks/usePesquisaSatisfacao'
 import { PERGUNTAS_PESQUISA_SATISFACAO } from '../../constants/pesquisaSatisfacao'
 import useAppStore from '../../store/useAppStore'
 import toast from 'react-hot-toast'
@@ -126,63 +126,55 @@ function PixCopiavel({ pix }) {
   )
 }
 
-// Link + respostas da Pesquisa de Satisfação — só renderizada quando role === 'gestor'
-// (ver filtro das abas), mas o RLS de pesquisas_satisfacao (028_pesquisa_satisfacao.sql)
-// é quem garante isso de verdade: qualquer outro papel recebe linha vazia do banco, não
-// dado nenhum, mesmo que alguém force essa aba a aparecer editando o front.
-function AbaPesquisaSatisfacao({ pesquisa, carregando, onReabrir, reabrindo }) {
+// Link + histórico de respostas da Pesquisa de Satisfação — só renderizada quando
+// role === 'gestor' (ver filtro das abas), mas o RLS de pesquisas_satisfacao/
+// pesquisa_respostas (028/029_pesquisa_*.sql) é quem garante isso de verdade: qualquer
+// outro papel recebe lista vazia do banco, não dado nenhum, mesmo que alguém force essa
+// aba a aparecer editando o front. O link é reutilizável de propósito — o professor pode
+// responder quantas vezes quiser, cada envio vira uma linha nova aqui embaixo, nenhuma
+// resposta anterior é sobrescrita ou apagada.
+function AbaPesquisaSatisfacao({ pesquisa, carregando, respostas, carregandoRespostas }) {
   if (carregando) return <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--color-text-light-muted)', padding: '20px' }}>Carregando...</div>
   if (!pesquisa) return <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--color-text-light-muted)', padding: '20px' }}>Não foi possível carregar a pesquisa.</div>
 
   const link = `${window.location.origin}/pesquisa/${pesquisa.token}`
-  const respondida = !!pesquisa.respondido_em
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
       <div>
-        <div style={labelStyle}>Link individual — envie só pra essa pessoa</div>
+        <div style={labelStyle}>Link individual — envie só pra essa pessoa (pode reenviar, o link não expira nem trava)</div>
         <PixCopiavel pix={link} />
       </div>
 
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '10px',
-        backgroundColor: respondida ? 'rgba(75,139,106,0.1)' : 'var(--color-surface-light-overlay)',
-        border: `1px solid ${respondida ? 'rgba(75,139,106,0.3)' : 'var(--color-border-light)'}`,
-      }}>
-        {respondida ? <Check size={14} color="var(--color-state-success)" /> : <Lock size={14} color="var(--color-text-light-muted)" />}
-        <span style={{ fontSize: '12px', color: respondida ? 'var(--color-state-success)' : 'var(--color-text-light-secondary)' }}>
-          {respondida
-            ? `Respondida em ${format(new Date(pesquisa.respondido_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
-            : 'Aguardando resposta'}
-        </span>
+      <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        {respostas.length === 0 ? 'Nenhuma resposta ainda' : `${respostas.length} resposta${respostas.length > 1 ? 's' : ''} recebida${respostas.length > 1 ? 's' : ''}`}
       </div>
 
-      {respondida && (
-        <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {PERGUNTAS_PESQUISA_SATISFACAO.map(p => {
-              const resposta = pesquisa.respostas?.[p.id]
-              return (
-                <div key={p.id} style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', padding: '10px 12px', border: '1px solid var(--color-border-light-subtle)' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginBottom: '6px' }}>{p.texto}</div>
-                  {p.tipo === 'estrelas' ? (
-                    <StarRating value={Number(resposta) || 0} disabled />
-                  ) : (
-                    <div style={{ fontSize: '13px', color: 'var(--color-text-light-primary)' }}>{resposta || <em style={{ color: 'var(--color-text-light-muted)' }}>Sem resposta</em>}</div>
-                  )}
-                </div>
-              )
-            })}
+      {carregandoRespostas ? (
+        <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--color-text-light-muted)', padding: '12px' }}>Carregando respostas...</div>
+      ) : respostas.map((r, i) => (
+        <div key={r.id} style={{ border: '1px solid var(--color-border-light)', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Check size={13} color="var(--color-state-success)" />
+            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-state-success)' }}>
+              {i === 0 ? 'Mais recente' : `Resposta ${respostas.length - i}`} — {format(new Date(r.respondido_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+            </span>
           </div>
-          <button onClick={onReabrir} disabled={reabrindo} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px',
-            borderRadius: '10px', border: '1px solid var(--color-border-light)', background: 'none',
-            color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer',
-          }}>
-            <RotateCcw size={13} /> {reabrindo ? 'Reabrindo...' : 'Reabrir pesquisa (apaga as respostas atuais)'}
-          </button>
-        </>
-      )}
+          {PERGUNTAS_PESQUISA_SATISFACAO.map(p => {
+            const resposta = r.respostas?.[p.id]
+            return (
+              <div key={p.id} style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', padding: '10px 12px', border: '1px solid var(--color-border-light-subtle)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginBottom: '6px' }}>{p.texto}</div>
+                {p.tipo === 'estrelas' ? (
+                  <StarRating value={Number(resposta) || 0} disabled />
+                ) : (
+                  <div style={{ fontSize: '13px', color: 'var(--color-text-light-primary)' }}>{resposta || <em style={{ color: 'var(--color-text-light-muted)' }}>Sem resposta</em>}</div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ))}
     </div>
   )
 }
@@ -465,7 +457,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   })
 
   const { data: pesquisaSatisfacao, isLoading: carregandoPesquisa } = usePesquisaSatisfacao(cardAberto?.id, { enabled: role === 'gestor' })
-  const reabrirPesquisa = useReabrirPesquisa()
+  const { data: respostasPesquisa = [], isLoading: carregandoRespostas } = useRespostasPesquisa(pesquisaSatisfacao?.id, { enabled: role === 'gestor' })
 
   const { data: historicoProf = [] } = useQuery({
     queryKey: ['audit_log_professor', cardAberto?.cpf],
@@ -2174,8 +2166,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
               <AbaPesquisaSatisfacao
                 pesquisa={pesquisaSatisfacao}
                 carregando={carregandoPesquisa}
-                onReabrir={() => reabrirPesquisa.mutate(cardAberto.id)}
-                reabrindo={reabrirPesquisa.isPending}
+                respostas={respostasPesquisa}
+                carregandoRespostas={carregandoRespostas}
               />
             )}
           </div>
