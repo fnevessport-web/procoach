@@ -9,7 +9,7 @@ import { usePermissions } from '../../hooks/usePermissions'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { useEmpresaVinculada } from '../../hooks/useProfessores'
 import { usePesquisaSatisfacao, useRespostasPesquisa } from '../../hooks/usePesquisaSatisfacao'
-import { PERGUNTAS_PESQUISA_SATISFACAO } from '../../constants/pesquisaSatisfacao'
+import { PERGUNTAS_PESQUISA_SATISFACAO, USER_ID_DONO_PESQUISA } from '../../constants/pesquisaSatisfacao'
 import { exportarPesquisaSatisfacaoPDF } from '../../lib/pesquisaSatisfacaoPdf'
 import useAppStore from '../../store/useAppStore'
 import toast from 'react-hot-toast'
@@ -128,12 +128,12 @@ function PixCopiavel({ pix }) {
 }
 
 // Link + histórico de respostas da Pesquisa de Satisfação — só renderizada quando
-// role === 'gestor' (ver filtro das abas), mas o RLS de pesquisas_satisfacao/
-// pesquisa_respostas (028/029_pesquisa_*.sql) é quem garante isso de verdade: qualquer
-// outro papel recebe lista vazia do banco, não dado nenhum, mesmo que alguém force essa
-// aba a aparecer editando o front. O link é reutilizável de propósito — o professor pode
-// responder quantas vezes quiser, cada envio vira uma linha nova aqui embaixo, nenhuma
-// resposta anterior é sobrescrita ou apagada.
+// ehDonoPesquisa (ver filtro das abas), mas o RLS de pesquisas_satisfacao/
+// pesquisa_respostas (030_pesquisa_restringe_dono.sql) é quem garante isso de verdade:
+// travada num user_id específico (USER_ID_DONO_PESQUISA), nem outros gestores recebem
+// dado nenhum, mesmo que alguém force essa aba a aparecer editando o front. O link é
+// reutilizável de propósito — o professor pode responder quantas vezes quiser, cada envio
+// vira uma linha nova aqui embaixo, nenhuma resposta anterior é sobrescrita ou apagada.
 function AbaPesquisaSatisfacao({ professorNome, pesquisa, carregando, respostas, carregandoRespostas }) {
   if (carregando) return <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--color-text-light-muted)', padding: '20px' }}>Carregando...</div>
   if (!pesquisa) return <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--color-text-light-muted)', padding: '20px' }}>Não foi possível carregar a pesquisa.</div>
@@ -474,8 +474,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
     },
   })
 
-  const { data: pesquisaSatisfacao, isLoading: carregandoPesquisa } = usePesquisaSatisfacao(cardAberto?.id, { enabled: role === 'gestor' })
-  const { data: respostasPesquisa = [], isLoading: carregandoRespostas } = useRespostasPesquisa(pesquisaSatisfacao?.id, { enabled: role === 'gestor' })
+  const ehDonoPesquisa = perfil?.user_id === USER_ID_DONO_PESQUISA
+  const { data: pesquisaSatisfacao, isLoading: carregandoPesquisa } = usePesquisaSatisfacao(cardAberto?.id, { enabled: ehDonoPesquisa })
+  const { data: respostasPesquisa = [], isLoading: carregandoRespostas } = useRespostasPesquisa(pesquisaSatisfacao?.id, { enabled: ehDonoPesquisa })
 
   const { data: historicoProf = [] } = useQuery({
     queryKey: ['audit_log_professor', cardAberto?.cpf],
@@ -1693,10 +1694,11 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 { key: 'disponibilidade', label: 'Grade' },
                 { key: 'historico', label: 'Histórico', somenteGestor: true },
                 // Pesquisa de satisfação: mais restrito que "somenteGestor" (que também
-                // libera financeiro/coordenador) — o requisito aqui foi "só EU" (o dono),
-                // então trava em role === 'gestor' direto, não em podeVerTodosSalarios.
+                // libera financeiro/coordenador, e hoje uma segunda conta gestor além do
+                // dono) — o requisito aqui foi "só EU", então trava num user_id específico
+                // (USER_ID_DONO_PESQUISA), não no role.
                 { key: 'pesquisa', label: 'Pesquisa', somenteDono: true },
-              ].filter(a => (!a.somenteGestor || podeVerTodosSalarios) && (!a.somenteDono || role === 'gestor') && (!a.somenteProfessor || cardAberto.funcao === 'professor')).map(a => (
+              ].filter(a => (!a.somenteGestor || podeVerTodosSalarios) && (!a.somenteDono || ehDonoPesquisa) && (!a.somenteProfessor || cardAberto.funcao === 'professor')).map(a => (
                 <button key={a.key} onClick={() => setAba(a.key)} style={{ flex: 1, padding: '8px', borderRadius: '7px', border: 'none', fontSize: '12px', fontWeight: '500', cursor: 'pointer', background: aba === a.key ? 'var(--color-action-primary)' : 'transparent', color: aba === a.key ? 'white' : 'var(--color-text-light-secondary)' }}>{a.label}</button>
               ))}
             </div>
