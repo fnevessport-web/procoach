@@ -132,6 +132,40 @@ function Avatar({ src, nome, size = 44, borderColor }) {
   )
 }
 
+// Campo de data por digitação (DD/MM/AAAA), sem calendário nenhum — o <input type="date">
+// nativo abre o seletor do próprio navegador, que no Chrome fecha sozinho ao trocar de mês
+// e é ruim de navegar quando o ciclo não é mês cheio (ex.: 21/07 a 20/08). `value`/`onChange`
+// continuam em yyyy-MM-dd (mesmo formato usado no resto da tela), só a exibição/digitação
+// que vira DD/MM/AAAA.
+function CampoDataTexto({ value, onChange, style }) {
+  function paraExibicao(iso) {
+    if (!iso) return ''
+    const [a, m, d] = iso.split('-')
+    return `${d}/${m}/${a}`
+  }
+  const [texto, setTexto] = useState(paraExibicao(value))
+  useEffect(() => { setTexto(paraExibicao(value)) }, [value])
+
+  function handleChange(e) {
+    const digitos = e.target.value.replace(/\D/g, '').slice(0, 8)
+    let formatado = digitos
+    if (digitos.length > 4) formatado = `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`
+    else if (digitos.length > 2) formatado = `${digitos.slice(0, 2)}/${digitos.slice(2)}`
+    setTexto(formatado)
+    if (digitos.length === 8) {
+      const dia = digitos.slice(0, 2), mesDigitado = digitos.slice(2, 4), ano = digitos.slice(4, 8)
+      onChange(`${ano}-${mesDigitado}-${dia}`)
+    }
+  }
+
+  return (
+    <input
+      type="text" inputMode="numeric" placeholder="DD/MM/AAAA" maxLength={10}
+      value={texto} onChange={handleChange} style={style}
+    />
+  )
+}
+
 function PixButton({ chave }) {
   const [copiado, setCopiado] = useState(false)
   function copiar() {
@@ -1056,12 +1090,10 @@ export function FinanceiroPage() {
         </div>
         <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
           <span style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', flexShrink: 0 }}>De</span>
-          <input type="date" value={dataInicio}
-            onChange={e => setDataInicio(e.target.value)}
+          <CampoDataTexto value={dataInicio} onChange={setDataInicio}
             style={{ ...inputStyle, padding: '6px 10px', fontSize: '12px', flex: 1 }} />
           <span style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', flexShrink: 0 }}>Até</span>
-          <input type="date" value={dataFim}
-            onChange={e => setDataFim(e.target.value)}
+          <CampoDataTexto value={dataFim} onChange={setDataFim}
             style={{ ...inputStyle, padding: '6px 10px', fontSize: '12px', flex: 1 }} />
         </div>
       </div>
