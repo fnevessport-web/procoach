@@ -10,6 +10,15 @@ const toastStyle = {
   borderRadius: '10px', fontSize: '13px',
 }
 
+// Mesma paleta de COR_SALVIA/COR_LARANJA/COR_VINHO/COR_MARINHO (CORES_CHIP) do cabeçalho
+// do relatório mensal (relatorioPdf.js) — replicado aqui em CSS pra ficar visualmente
+// idêntico, já que o PDF é gerado com jsPDF (não dá pra reaproveitar o código, só a
+// paleta/estrutura).
+const CORES_CHIP = ['#A3BFAE', '#C1652F', '#6B1B27', '#1B293D']
+const COR_CREME = '#F1EFEA'
+const COR_TINTA = '#1A1818'
+const COR_TEXTO_SUAVE = '#6E6A64'
+
 function EstrelasInput({ value, onChange }) {
   return (
     <div style={{ display: 'flex', gap: '6px' }}>
@@ -52,27 +61,49 @@ function NpsInput({ value, onChange }) {
   )
 }
 
+// Cabeçalho idêntico ao do relatório mensal (relatorioPdf.js: desenharLockupLogos +
+// CORES_CHIP): logo Beyond + linha fina + logo da unidade, título, subtítulo em itálico,
+// tarja de 4 cores embaixo. Sem nenhum dado do professor — esse cabeçalho é igual pra
+// qualquer link.
+function CabecalhoRelatorio() {
+  return (
+    <div style={{ backgroundColor: COR_CREME }}>
+      <div style={{ maxWidth: '560px', margin: '0 auto', padding: '20px 20px 16px', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
+          <img src="/images/logobeyond_preto.png" alt="Beyond" style={{ height: '34px', objectFit: 'contain' }} />
+          <div style={{ width: '1px', height: '26px', backgroundColor: 'rgba(26,24,24,0.25)' }} />
+          <img src="/images/logoprocopio_preto.png" alt="Procópio" style={{ height: '34px', objectFit: 'contain' }} />
+        </div>
+        <div style={{ fontSize: '16px', fontWeight: '700', color: COR_TINTA }}>PESQUISA DE SATISFAÇÃO</div>
+        <div style={{ fontSize: '11px', fontStyle: 'italic', color: COR_TEXTO_SUAVE, marginTop: '2px' }}>PROCÓPIO</div>
+      </div>
+      <div style={{ display: 'flex' }}>
+        {CORES_CHIP.map((cor, i) => (
+          <div key={i} style={{ flex: 1, height: '4px', backgroundColor: cor }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function PesquisaSatisfacaoPage() {
   const token = window.location.pathname.split('/').pop()
-  const [professor, setProfessor] = useState(null)
+  const [linkValido, setLinkValido] = useState(null) // null = ainda carregando
   const [respostas, setRespostas] = useState({})
-  const [loading, setLoading] = useState(true)
   const [enviando, setEnviando] = useState(false)
   const [enviado, setEnviado] = useState(false)
 
   useEffect(() => {
     async function carregar() {
       // Acesso público (sem login) só via RPC — mesmo padrão de buscar_professor_por_token
-      // (disponibilidade). Nunca lê pesquisas_satisfacao/professores direto: RLS daquela
-      // tabela é travada num user_id específico (ver 030_pesquisa_restringe_dono.sql). O
+      // (disponibilidade). A RPC não devolve nome nem qualquer outro dado do professor —
+      // só confirma se o token existe (ver 031_pesquisa_remove_nome.sql) — pra essa
+      // informação nunca aparecer nem na tela nem numa resposta de rede inspecionável. O
       // link é reutilizável de propósito — cada envio vira uma resposta nova, nunca
       // sobrescreve a anterior, então não existe "já respondeu" aqui: o formulário sempre
       // abre em branco.
       const { data, error } = await supabase.rpc('buscar_professor_por_token_pesquisa', { p_token: token })
-      const prof = data?.[0]
-      if (error || !prof) { setLoading(false); return }
-      setProfessor(prof)
-      setLoading(false)
+      setLinkValido(!error && data === true)
     }
     carregar()
   }, [token])
@@ -102,26 +133,25 @@ export function PesquisaSatisfacaoPage() {
     }
   }
 
-  // Banner com a identidade Beyond/Procópio já usada no relatório mensal (mesma arte,
-  // recortada só na parte de cima — logos + rede — pra não mostrar o texto "RELATÓRIO"
-  // que fica colado embaixo daquela imagem, que não faz sentido aqui).
-  const banner = (
-    <div style={{
-      height: '180px', backgroundImage: "url('/images/capa-relatorio-procopio.jpg')",
-      backgroundSize: 'cover', backgroundPosition: 'top center', backgroundColor: 'var(--color-brand-verde-court)',
-    }} />
-  )
+  // height + overflowY (não minHeight) é o que de fato permite rolar aqui — página pública
+  // fica fora do AppLayout, então não herda o scroll do .app-main; sem isso o conteúdo que
+  // passa de 100vh simplesmente fica cortado, sem scroll nenhum (mesmo ajuste já usado em
+  // DisponibilidadePage.jsx).
+  const containerStyle = {
+    height: '100vh', backgroundColor: 'var(--color-surface-light-base)', boxSizing: 'border-box',
+    overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
+  }
 
-  if (loading) return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)' }}>
-      {banner}
+  if (linkValido === null) return (
+    <div style={containerStyle}>
+      <CabecalhoRelatorio />
       <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--color-text-light-secondary)', fontSize: '14px' }}>Carregando...</div>
     </div>
   )
 
-  if (!professor) return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)' }}>
-      {banner}
+  if (!linkValido) return (
+    <div style={containerStyle}>
+      <CabecalhoRelatorio />
       <div style={{ padding: '40px 24px', textAlign: 'center' }}>
         <XCircle size={40} color="var(--color-state-danger)" style={{ marginBottom: '16px' }} />
         <div style={{ color: 'var(--color-text-light-primary)', fontSize: '16px', fontWeight: '600' }}>Link inválido</div>
@@ -131,27 +161,22 @@ export function PesquisaSatisfacaoPage() {
   )
 
   if (enviado) return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)' }}>
-      {banner}
+    <div style={containerStyle}>
+      <CabecalhoRelatorio />
       <div style={{ padding: '40px 24px', textAlign: 'center' }}>
         <CheckCircle2 size={48} color="var(--color-state-success)" style={{ marginBottom: '16px' }} />
         <div style={{ color: 'var(--color-text-light-primary)', fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Respostas enviadas!</div>
-        <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '13px' }}>Obrigado, {professor.nome}! Sua resposta foi registrada.</div>
+        <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '13px' }}>Obrigado! Sua resposta foi registrada.</div>
       </div>
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)', boxSizing: 'border-box' }}>
-      {banner}
+    <div style={containerStyle}>
+      <CabecalhoRelatorio />
       <div style={{ maxWidth: '560px', margin: '0 auto', padding: '20px 16px' }}>
-        <div style={{ marginBottom: '28px' }}>
-          <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}>
-            Pesquisa de Satisfação — Olá, {professor.nome}!
-          </div>
-          <div style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.5' }}>
-            {TEXTO_INTRO_PESQUISA}
-          </div>
+        <div style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.5', marginBottom: '28px' }}>
+          {TEXTO_INTRO_PESQUISA}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
