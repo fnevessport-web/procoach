@@ -1062,7 +1062,7 @@ export function FinanceiroPage() {
       const linhasClube = await parseArquivoClube(file)
       const dados = await cruzarComClube({ linhasClube, dataInicio, dataFim: dataFimEfetivo })
       await exportarCruzamentoClubePDF(dados, { periodo: { inicio: dataInicio, fim: dataFimEfetivo } })
-      toast.success(`${dados.totalBateram} de ${dados.totalClube} linhas bateram (${dados.totalSemCorrespondencia} pra revisar).`, { style: toastStyle, duration: 5000 })
+      toast.success(`${dados.totalBateram} bateram, ${dados.totalProvaveis} prováveis, ${dados.totalSemCorrespondencia} sem correspondência (de ${dados.totalClube}). Estimativa perdida: ${dados.valorEstimadoPerdido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`, { style: toastStyle, duration: 6000 })
     } catch (err) {
       toast.error('Erro ao cruzar: ' + err.message, { style: toastStyle })
     } finally {

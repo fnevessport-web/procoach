@@ -1,18 +1,29 @@
 import { supabase } from '../lib/supabase'
-import { getModalidadeDaAula, getQuadraNome } from '../constants/modalidades'
+import { getModalidadeDaAula, getQuadraNome, MODALIDADE_EMPRESA } from '../constants/modalidades'
 import { QUADRAS_EMPRESA } from './useFinanceiro'
 
 // Cruzamento automático — lê o relatório de pagantes que o clube manda (planilha
 // Nome/Modalidade/Nivel/Turma/ValorProporcional/Data) e bate contra os alunos que
-// realmente têm presença marcada em aula no ProCoach no mesmo período. O que sobra sem
-// bater é o sinal de "quanto estamos deixando de receber" (ou de rastrear direito).
+// realmente têm presença marcada em aula no ProCoach no mesmo período. Separado por
+// empresa (Procópio/Beach Arena), com dois sentidos de conferência:
+//  - linhas do clube sem correspondência no ProCoach (pode ser erro de grafia, ou aluno
+//    que o clube cobra mas a gente não tem registrado);
+//  - alunos nossos sem correspondência no clube (o sinal mais direto de "deixando de
+//    receber" — a gente dá aula, o clube não tá cobrando por ela).
 //
 // Validado contra um arquivo real antes de escrever este código (ver conversa) — 3 coisas
 // que só apareceram testando com dado de verdade, não dava pra adivinhar:
-//  1. O nome do clube quase nunca bate 100% com o nosso — falta nome do meio, sobrenome
-//     abreviado, pequena troca de letra (ex.: "Simeoni" vs "Simeone"). Comparar string
-//     exata dava ~57% de acerto; comparando por PRIMEIRO + ÚLTIMO nome (ignorando os do
-//     meio) sobe pra ~69%, e cobre a esmagadora maioria dessas variações.
+//  1. O nome do clube quase nunca bate 100% com o nosso. Duas variações diferentes:
+//     (a) nome do meio faltando/sobrenome composto abreviado (ex.: "Adrienne Simeoni Lima
+//         Borges" vs "Adrienne Simeone Lima Borges") — resolvido comparando só primeiro +
+//         último nome, ignorando os do meio;
+//     (b) erro de digitação DENTRO do primeiro ou último nome (ex.: cadastrada como "Laura
+//         Shimizzu" no ProCoach, o clube manda "Laura Emy Shimizu" — sobrenome com uma
+//         letra a mais) — isso o comparador de (a) sozinho não pega, porque compara o
+//         token inteiro. Por isso tem uma segunda passada por distância de edição
+//         (Levenshtein) nos nomes que não bateram exato, tolerando 1-2 letras de diferença.
+//     Correspondência por distância de edição nunca é 100% garantida — por isso fica numa
+//     categoria própria ("prováveis", pra revisar), não junto com "bateram" exato.
 //  2. A coluna "Data" da planilha do clube é hora de PROCESSAMENTO da cobrança, não data de
 //     aula — por isso o cruzamento é por (nome, modalidade, horário), não por dia calendário.
 //  3. "Saibro" no relatório do clube = "Tênis" no ProCoach (nome do piso vs nome do esporte).
@@ -35,11 +46,43 @@ function semAcento(s) {
 function normalizar(s) {
   return semAcento(s).toUpperCase().replace(/\s+/g, ' ')
 }
-// Primeiro + último nome, ignorando os do meio — ver nota (1) acima.
+// Primeiro + último nome, ignorando os do meio — ver nota (1a) acima.
 function chaveNome(nomeNorm) {
   const partes = nomeNorm.split(' ').filter(Boolean)
   if (partes.length <= 1) return partes[0] || ''
   return `${partes[0]} ${partes.at(-1)}`
+}
+
+// Distância de edição clássica (quantas trocas/inclusões/remoções de letra pra virar uma
+// string na outra) — usada só na segunda passada, pra pegar erro de digitação tipo
+// "Shimizu"/"Shimizzu" que a comparação exata de token não resolve. Implementação simples
+// O(n·m); nomes de aluno são curtos, sem problema de performance mesmo com centenas de linha.
+function distanciaEdicao(a, b) {
+  const m = a.length, n = b.length
+  if (m === 0) return n
+  if (n === 0) return m
+  const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)])
+  for (let j = 0; j <= n; j++) dp[0][j] = j
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+    }
+  }
+  return dp[m][n]
+}
+// Tolerância proporcional ao tamanho do nome — 1 letra de diferença num nome de 4 letras é
+// bem mais significativo que numa string de 12.
+function nomesParecidos(chaveA, chaveB) {
+  if (chaveA === chaveB) return true
+  const [primA, ...restoA] = chaveA.split(' ')
+  const [primB, ...restoB] = chaveB.split(' ')
+  const ultA = restoA.at(-1) || primA, ultB = restoB.at(-1) || primB
+  const tolerancia = (s) => (s.length >= 8 ? 2 : 1)
+  const primeiroBate = primA === primB || distanciaEdicao(primA, primB) <= tolerancia(primA)
+  const ultimoBate = ultA === ultB || distanciaEdicao(ultA, ultB) <= tolerancia(ultA)
+  return primeiroBate && ultimoBate
 }
 
 // "2X SEMANA - SEG E QUA - 18H" / "1X SEMANA - SÁB - 10H" -> { freq, dias[], hora }
@@ -96,11 +139,15 @@ async function buscarTodasAsAulas(construirQuery) {
   return todas
 }
 
-const TODAS_QUADRAS = [...QUADRAS_EMPRESA.procopio, ...QUADRAS_EMPRESA.beach_arena]
+function empresaDaQuadra(quadra) {
+  if (QUADRAS_EMPRESA.procopio.includes(quadra)) return 'procopio'
+  if (QUADRAS_EMPRESA.beach_arena.includes(quadra)) return 'beach_arena'
+  return null
+}
 
-// Nosso lado: combos únicos (chaveNome, modalidade, horário) com presença de verdade no
-// período — cobre as duas unidades, já que o relatório do clube mistura Procópio e Beach
-// Arena numa planilha só.
+// Nosso lado: combos únicos (chaveNome, modalidade, horário, empresa) com presença de
+// verdade no período — array (não Map), porque a lista reversa (nossos sem correspondência
+// no clube) precisa poder listar cada combo individualmente, não só checar existência.
 async function buscarNossosCombos({ dataInicio, dataFim }) {
   const aulas = await buscarTodasAsAulas(() => supabase
     .from('aulas')
@@ -113,69 +160,153 @@ async function buscarNossosCombos({ dataInicio, dataFim }) {
     .lte('data_aula', dataFim)
     .eq('status_aula', 'dada'))
 
-  const filtradas = (aulas || []).filter(a => {
+  const combosMap = new Map()
+  ;(aulas || []).forEach(a => {
     const quadra = a.turma_id ? (a.turmas?.quadras?.nome || '') : getQuadraNome(a)
-    return TODAS_QUADRAS.includes(quadra)
-  })
-
-  const combos = new Map()
-  filtradas.forEach(a => {
+    const empresa = empresaDaQuadra(quadra)
+    if (!empresa) return
     const modalidade = getModalidadeDaAula(a)
     const horario = a.turma_id ? (a.turmas?.horario_inicio?.slice(0, 5) || '') : ''
     ;(a.presencas || [])
       .filter(p => p.tipo_participacao !== 'cortesia' && p.alunos?.nome)
       .forEach(p => {
-        const chave = `${chaveNome(normalizar(p.alunos.nome))}|${modalidade}|${horario}`
-        if (!combos.has(chave)) combos.set(chave, { nome: p.alunos.nome, modalidade, horario, count: 0 })
-        combos.get(chave).count++
+        const nomeNorm = normalizar(p.alunos.nome)
+        const chave = `${chaveNome(nomeNorm)}|${modalidade}|${horario}|${empresa}`
+        if (!combosMap.has(chave)) {
+          combosMap.set(chave, { nome: p.alunos.nome, chaveNome: chaveNome(nomeNorm), modalidade, horario, empresa, count: 0, matched: false })
+        }
+        combosMap.get(chave).count++
       })
   })
-  return combos
+  return [...combosMap.values()]
 }
 
 // Junta os dois lados. `linhasClube` vem de parseArquivoClube; período deve ser o mesmo
-// ciclo de pagamento do clube (o mesmo já usado no Confronto de Alunos em Aula).
+// ciclo de pagamento do clube (o mesmo já usado no Confronto de Alunos em Aula). Retorna
+// os resultados já separados por empresa.
 export async function cruzarComClube({ linhasClube, dataInicio, dataFim }) {
   const nossosCombos = await buscarNossosCombos({ dataInicio, dataFim })
-  const nomesNossos = new Set([...nossosCombos.values()].map(c => chaveNome(normalizar(c.nome))))
+
+  // Índice exato pra passada 1 (rápida); passada 2 (fuzzy) varre só quem sobrou, filtrando
+  // por modalidade+horário pra não comparar nome contra nome de aula totalmente diferente.
+  const indiceExato = new Map()
+  nossosCombos.forEach(c => indiceExato.set(`${c.chaveNome}|${c.modalidade}|${c.horario}`, c))
 
   const bateram = []
+  const provaveis = []
   const semCorrespondencia = []
+
   linhasClube.forEach(l => {
+    // Empresa é fixa por modalidade no ProCoach (Tênis/Padel/Squash/Pickleball = Procópio,
+    // Beach Tennis/Futevôlei/Vôlei de Praia = Beach Arena) — dá pra saber de qual unidade é
+    // a linha mesmo quando ela não bate com nenhum combo nosso.
+    const empresaDaLinha = MODALIDADE_EMPRESA[l.modalidade] || null
     if (!l.turmaParsed) {
-      semCorrespondencia.push({ ...l, motivo: 'Não entendi o formato da coluna Turma' })
+      semCorrespondencia.push({ ...l, empresa: empresaDaLinha, motivo: 'Não entendi o formato da coluna Turma' })
       return
     }
-    const chave = `${l.chaveNome}|${l.modalidade}|${l.turmaParsed.hora}`
-    if (nossosCombos.has(chave)) {
-      bateram.push(l)
-    } else {
-      const motivo = nomesNossos.has(l.chaveNome)
-        ? 'Aluno existe, mas sem presença nesse horário/modalidade no período'
-        : 'Nome não encontrado em nenhuma presença do período'
-      semCorrespondencia.push({ ...l, motivo })
+    const chaveExata = `${l.chaveNome}|${l.modalidade}|${l.turmaParsed.hora}`
+    const comboExato = indiceExato.get(chaveExata)
+    if (comboExato) {
+      comboExato.matched = true
+      bateram.push({ ...l, empresa: comboExato.empresa })
+      return
     }
+    // Passada 2: mesmo modalidade+horário, nome parecido (tolera erro de digitação)
+    const candidato = nossosCombos.find(c => !c.matched && c.modalidade === l.modalidade && c.horario === l.turmaParsed.hora && nomesParecidos(c.chaveNome, l.chaveNome))
+    if (candidato) {
+      candidato.matched = true
+      provaveis.push({ ...l, empresa: candidato.empresa, nomeProcoach: candidato.nome })
+      return
+    }
+    const existeEmOutroLugar = nossosCombos.some(c => nomesParecidos(c.chaveNome, l.chaveNome))
+    semCorrespondencia.push({
+      ...l,
+      empresa: empresaDaLinha,
+      motivo: existeEmOutroLugar
+        ? 'Aluno existe, mas sem presença nesse horário/modalidade no período'
+        : 'Nome não encontrado em nenhuma presença do período',
+    })
   })
 
-  const valorSemCorrespondencia = semCorrespondencia.reduce((s, l) => s + l.valor, 0)
+  // Sentido reverso: nossos combos que nenhuma linha do clube bateu (exato ou provável) —
+  // o sinal de "aula que demos e o clube não cobrou por ela". Validado com dado real: ~25%
+  // desses casos têm o MESMO nome do aluno em outra linha do clube (modalidade/horário
+  // diferente) — geralmente é turma/horário cadastrado errado no ProCoach, não aluno
+  // realmente fora da lista do clube. Por isso a lista é dividida em duas categorias, não
+  // uma coisa só, senão o valor "perdido" fica inflado com falso-positivo.
+  const nossosSemCorrespondencia = nossosCombos.filter(c => !c.matched).map(c => ({
+    ...c,
+    apareceEmOutraTurmaDoClube: linhasClube.some(l => l.chaveNome === c.chaveNome),
+  }))
 
-  const porModalidadeMap = {}
+  // Valor médio pago pelo clube por modalidade (a partir do próprio arquivo dele) — usado
+  // só pra estimar quanto uma aula "nossa sem correspondência" provavelmente valeria, já
+  // que não temos o valor real que o clube cobraria por ela. Estimativa, não fato.
+  const valorMedioPorModalidade = {}
+  const somaPorModalidade = {}
   linhasClube.forEach(l => {
-    if (!porModalidadeMap[l.modalidade]) porModalidadeMap[l.modalidade] = { modalidade: l.modalidade, total: 0, semCorrespondencia: 0 }
-    porModalidadeMap[l.modalidade].total++
+    if (!somaPorModalidade[l.modalidade]) somaPorModalidade[l.modalidade] = { soma: 0, qtd: 0 }
+    somaPorModalidade[l.modalidade].soma += l.valor
+    somaPorModalidade[l.modalidade].qtd++
   })
-  semCorrespondencia.forEach(l => {
-    if (porModalidadeMap[l.modalidade]) porModalidadeMap[l.modalidade].semCorrespondencia++
-  })
-  const porModalidade = Object.values(porModalidadeMap).sort((a, b) => b.semCorrespondencia - a.semCorrespondencia)
+  Object.entries(somaPorModalidade).forEach(([mod, { soma, qtd }]) => { valorMedioPorModalidade[mod] = qtd > 0 ? soma / qtd : 0 })
+
+  const nossosSemCorrespondenciaComValor = nossosSemCorrespondencia.map(c => ({
+    ...c,
+    valorEstimado: valorMedioPorModalidade[c.modalidade] || 0,
+  }))
+  // Só entra na estimativa de receita perdida quem NÃO aparece em nenhum outro lugar da
+  // lista do clube — é o sinal forte. Quem aparece em outra turma/horário fica de fora da
+  // soma (é caso de revisar cadastro, não de somar como receita perdida).
+  const valorEstimadoPerdido = nossosSemCorrespondenciaComValor
+    .filter(c => !c.apareceEmOutraTurmaDoClube)
+    .reduce((s, c) => s + c.valorEstimado, 0)
+
+  // ---------- Separa tudo por empresa ----------
+  function porEmpresa(empresa) {
+    const bateramEmp = bateram.filter(l => l.empresa === empresa)
+    const provaveisEmp = provaveis.filter(l => l.empresa === empresa)
+    const semCorrespondenciaEmp = semCorrespondencia.filter(l => l.empresa === empresa)
+    const todasLinhasEmpresa = [...bateramEmp, ...provaveisEmp, ...semCorrespondenciaEmp]
+    const nossosSemCorrespondenciaEmpresa = nossosSemCorrespondenciaComValor.filter(c => c.empresa === empresa)
+
+    const porModalidadeMap = {}
+    todasLinhasEmpresa.forEach(l => {
+      if (!porModalidadeMap[l.modalidade]) porModalidadeMap[l.modalidade] = { modalidade: l.modalidade, total: 0, semCorrespondencia: 0 }
+      porModalidadeMap[l.modalidade].total++
+    })
+    semCorrespondenciaEmp.forEach(l => { if (porModalidadeMap[l.modalidade]) porModalidadeMap[l.modalidade].semCorrespondencia++ })
+
+    return {
+      empresa,
+      totalLinhasClube: todasLinhasEmpresa.length,
+      totalBateram: bateramEmp.length,
+      totalProvaveis: provaveisEmp.length,
+      totalSemCorrespondencia: semCorrespondenciaEmp.length,
+      valorSemCorrespondencia: semCorrespondenciaEmp.reduce((s, l) => s + l.valor, 0),
+      semCorrespondencia: semCorrespondenciaEmp,
+      provaveis: provaveisEmp,
+      porModalidade: Object.values(porModalidadeMap).sort((a, b) => b.total - a.total),
+      nossosSemCorrespondencia: nossosSemCorrespondenciaEmpresa,
+      valorEstimadoPerdido: nossosSemCorrespondenciaEmpresa
+        .filter(c => !c.apareceEmOutraTurmaDoClube)
+        .reduce((s, c) => s + c.valorEstimado, 0),
+    }
+  }
 
   return {
     totalClube: linhasClube.length,
     totalBateram: bateram.length,
+    totalProvaveis: provaveis.length,
     totalSemCorrespondencia: semCorrespondencia.length,
-    valorSemCorrespondencia,
+    valorSemCorrespondencia: semCorrespondencia.reduce((s, l) => s + l.valor, 0),
     bateram,
+    provaveis,
     semCorrespondencia,
-    porModalidade,
+    nossosSemCorrespondencia: nossosSemCorrespondenciaComValor,
+    valorEstimadoPerdido,
+    procopio: porEmpresa('procopio'),
+    beachArena: porEmpresa('beach_arena'),
   }
 }

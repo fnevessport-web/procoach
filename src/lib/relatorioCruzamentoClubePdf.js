@@ -1,22 +1,32 @@
 import { format } from 'date-fns'
 
 // Relatório de Cruzamento com o Clube — uso interno. Mostra o que NÃO bateu entre o
-// relatório de pagantes do clube e a presença de verdade no ProCoach, pra dar noção de
-// quanto está sendo deixado de receber (ou, no mínimo, o que precisa de revisão manual —
-// ver `motivo` de cada linha em useCruzamentoClube.js).
+// relatório de pagantes do clube e a presença de verdade no ProCoach, separado por unidade
+// (Procópio / Beach Arena), nos dois sentidos:
+//  - linhas do clube sem correspondência no ProCoach (aluno que o clube cobra, mas a gente
+//    não confirma presença — pode ser erro de grafia de nome, precisa revisar);
+//  - alunos nossos sem correspondência no clube (o sinal mais direto de receita perdida —
+//    demos aula, o clube não cobrou por ela; valor é ESTIMADO pela média que o clube paga
+//    naquela modalidade, não é o valor real dela).
 
 const COR_TINTA = [30, 43, 36]
 const COR_SAIBRO = [165, 76, 46]
+const COR_MARINHO = [61, 107, 122]
 const COR_TEXTO_SUAVE = [120, 120, 115]
 const COR_BRANCO = [255, 255, 255]
 const COR_LINHA = [225, 220, 210]
+const COR_SUCESSO = [75, 139, 106]
+const COR_PERIGO = [180, 71, 47]
+const COR_AVISO = [201, 138, 60]
+
+const NOME_EMPRESA = { procopio: 'Procópio', beach_arena: 'Beach Arena' }
 
 function fmtBRL(v) {
   return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 export async function exportarCruzamentoClubePDF(dados, { periodo }) {
-  const { totalClube, totalBateram, totalSemCorrespondencia, valorSemCorrespondencia, semCorrespondencia, porModalidade } = dados
+  const { totalClube, totalBateram, totalProvaveis, totalSemCorrespondencia, valorEstimadoPerdido, procopio, beachArena } = dados
   const { jsPDF } = await import('jspdf')
   const { autoTable } = await import('jspdf-autotable')
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
@@ -38,101 +48,204 @@ export async function exportarCruzamentoClubePDF(dados, { periodo }) {
     }
   }
 
+  let cursorY = margem
+  function garantirEspaco(altura) {
+    if (cursorY + altura > pageHeight - 40) { doc.addPage(); cursorY = margem }
+  }
+
+  // ---------- Cabeçalho ----------
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(16)
   doc.setTextColor(...COR_TINTA)
-  doc.text('CRUZAMENTO COM RELATÓRIO DO CLUBE', margem, 40)
+  doc.text('CRUZAMENTO COM RELATÓRIO DO CLUBE', margem, cursorY + 4)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(...COR_TEXTO_SUAVE)
-  doc.text(`Período: ${periodoLabel}`, pageWidth - margem, 32, { align: 'right' })
-  doc.text(`Gerado em ${geradoEm}`, pageWidth - margem, 43, { align: 'right' })
+  doc.text(`Período: ${periodoLabel}`, pageWidth - margem, cursorY - 4, { align: 'right' })
+  doc.text(`Gerado em ${geradoEm}`, pageWidth - margem, cursorY + 7, { align: 'right' })
+  cursorY += 30
 
-  let cursorY = 66
-
+  // ---------- Resumo geral (as duas unidades) ----------
   const pctBateram = totalClube > 0 ? Math.round((totalBateram / totalClube) * 100) : 0
-  const cards = [
+  const cardsGerais = [
     { label: 'Linhas do clube', valor: String(totalClube), cor: COR_TINTA },
-    { label: 'Bateram', valor: `${totalBateram} (${pctBateram}%)`, cor: [75, 139, 106] },
-    { label: 'Sem correspondência', valor: String(totalSemCorrespondencia), cor: [180, 71, 47] },
-    { label: 'Valor sem correspondência', valor: fmtBRL(valorSemCorrespondencia), cor: [180, 71, 47] },
+    { label: 'Bateram', valor: `${totalBateram} (${pctBateram}%)`, cor: COR_SUCESSO },
+    { label: 'Prováveis (revisar)', valor: String(totalProvaveis), cor: COR_AVISO },
+    { label: 'Sem correspondência', valor: String(totalSemCorrespondencia), cor: COR_PERIGO },
   ]
   const cardW = (larguraUtil - 24) / 4
-  cards.forEach((c, i) => {
+  cardsGerais.forEach((c, i) => {
     const x = margem + i * (cardW + 8)
     doc.setDrawColor(...COR_LINHA)
     doc.setLineWidth(0.6)
-    doc.roundedRect(x, cursorY, cardW, 46, 4, 4)
+    doc.roundedRect(x, cursorY, cardW, 44, 4, 4)
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(11)
     doc.setTextColor(...c.cor)
-    doc.text(c.valor, x + cardW / 2, cursorY + 22, { align: 'center' })
+    doc.text(c.valor, x + cardW / 2, cursorY + 21, { align: 'center' })
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7)
     doc.setTextColor(...COR_TEXTO_SUAVE)
-    doc.text(c.label, x + cardW / 2, cursorY + 36, { align: 'center' })
+    doc.text(c.label, x + cardW / 2, cursorY + 35, { align: 'center' })
   })
-  cursorY += 60
+  cursorY += 56
+
+  doc.setFillColor(...COR_PERIGO)
+  doc.roundedRect(margem, cursorY, larguraUtil, 26, 3, 3, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.setTextColor(...COR_BRANCO)
+  doc.text(`Estimativa de receita não capturada (as 2 unidades): ${fmtBRL(valorEstimadoPerdido)}`, pageWidth / 2, cursorY + 17, { align: 'center' })
+  cursorY += 38
 
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
-  doc.setTextColor(...COR_TINTA)
+  doc.setFontSize(7.5)
+  doc.setTextColor(...COR_TEXTO_SUAVE)
   const aviso = doc.splitTextToSize(
-    '"Sem correspondência" não é necessariamente prejuízo confirmado — parte é diferença de grafia de nome entre os dois sistemas que precisa de revisão manual (ver coluna "Motivo" na tabela). Cruzamento por nome (primeiro + último) + modalidade + horário — não por data exata, já que a coluna Data do clube é hora de processamento da cobrança, não da aula.',
+    'Cruzamento por primeiro+último nome (ignora nome do meio) e, quando não bate exato, por semelhança de grafia (tolera pequeno erro de digitação) + modalidade + horário — não por data exata, já que a coluna Data do clube é hora de processamento da cobrança, não da aula. "Sem correspondência" e "prováveis" precisam de revisão manual antes de qualquer conclusão financeira. O valor estimado de receita não capturada usa a média que o clube paga naquela modalidade — é aproximação, não o valor real daquele aluno específico.',
     larguraUtil
   )
   doc.text(aviso, margem, cursorY)
-  cursorY += aviso.length * 11 + 16
+  cursorY += aviso.length * 10 + 16
 
-  // ---------- Por modalidade ----------
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
-  doc.text('Por modalidade', margem, cursorY)
-  cursorY += 8
-  autoTable(doc, {
-    startY: cursorY,
-    head: [['Modalidade', 'Linhas no clube', 'Sem correspondência', '% sem correspondência']],
-    body: porModalidade.map(m => [
-      m.modalidade, String(m.total), String(m.semCorrespondencia),
-      `${m.total > 0 ? Math.round((m.semCorrespondencia / m.total) * 100) : 0}%`,
-    ]),
-    theme: 'plain',
-    styles: { fontSize: 8, cellPadding: 5, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
-    headStyles: { fillColor: COR_TINTA, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 7.5 },
-    alternateRowStyles: { fillColor: [249, 247, 243] },
-    columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' } },
-    margin: { left: margem, right: margem },
-  })
-  cursorY = doc.lastAutoTable.finalY + 20
+  function secaoEmpresa(dadosEmpresa) {
+    const corEmpresa = dadosEmpresa.empresa === 'procopio' ? COR_SAIBRO : COR_MARINHO
+    garantirEspaco(60)
+    doc.setFillColor(...corEmpresa)
+    doc.roundedRect(margem, cursorY, larguraUtil, 24, 4, 4, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(12)
+    doc.setTextColor(...COR_BRANCO)
+    doc.text(NOME_EMPRESA[dadosEmpresa.empresa].toUpperCase(), margem + 12, cursorY + 16)
+    cursorY += 34
 
-  // ---------- Detalhe: sem correspondência ----------
-  if (cursorY > pageHeight - 140) { doc.addPage(); cursorY = margem }
-  doc.setFillColor(...COR_SAIBRO)
-  doc.roundedRect(margem, cursorY, larguraUtil, 20, 3, 3, 'F')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9.5)
-  doc.setTextColor(...COR_BRANCO)
-  doc.text('Linhas do clube sem correspondência confirmada no ProCoach', margem + 10, cursorY + 14)
-  cursorY += 26
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    doc.setTextColor(...COR_TINTA)
+    const pct = dadosEmpresa.totalLinhasClube > 0 ? Math.round((dadosEmpresa.totalBateram / dadosEmpresa.totalLinhasClube) * 100) : 0
+    doc.text(
+      `${dadosEmpresa.totalLinhasClube} linhas do clube  ·  ${dadosEmpresa.totalBateram} bateram (${pct}%)  ·  ${dadosEmpresa.totalProvaveis} prováveis  ·  ${dadosEmpresa.totalSemCorrespondencia} sem correspondência`,
+      margem, cursorY
+    )
+    cursorY += 10
+    doc.setTextColor(...COR_PERIGO)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`Estimativa de receita não capturada aqui: ${fmtBRL(dadosEmpresa.valorEstimadoPerdido)}`, margem, cursorY + 10)
+    cursorY += 24
 
-  autoTable(doc, {
-    startY: cursorY,
-    head: [['Nome (clube)', 'Modalidade', 'Turma', 'Valor', 'Motivo']],
-    body: semCorrespondencia.map(l => [l.nome, l.modalidadeClube, l.turmaTexto, fmtBRL(l.valor), l.motivo]),
-    theme: 'plain',
-    styles: { fontSize: 7, cellPadding: 4, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
-    headStyles: { fillColor: [240, 236, 228], textColor: COR_TINTA, fontStyle: 'bold', fontSize: 7 },
-    alternateRowStyles: { fillColor: [249, 247, 243] },
-    columnStyles: { 3: { cellWidth: 55, halign: 'right' }, 4: { cellWidth: 130 } },
-    margin: { left: margem, right: margem },
-    didParseCell: (d) => {
-      if (d.section === 'body' && d.column.index === 4) {
-        const motivo = semCorrespondencia[d.row.index]?.motivo
-        if (motivo?.startsWith('Nome não')) d.cell.styles.textColor = [180, 71, 47]
-        else d.cell.styles.textColor = [201, 138, 60]
-      }
-    },
-  })
+    if (dadosEmpresa.porModalidade.length > 0) {
+      garantirEspaco(30 + dadosEmpresa.porModalidade.length * 18)
+      autoTable(doc, {
+        startY: cursorY,
+        head: [['Modalidade', 'Linhas no clube', 'Sem correspondência']],
+        body: dadosEmpresa.porModalidade.map(m => [m.modalidade, String(m.total), String(m.semCorrespondencia)]),
+        theme: 'plain',
+        styles: { fontSize: 7.5, cellPadding: 4, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
+        headStyles: { fillColor: COR_TINTA, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 7 },
+        alternateRowStyles: { fillColor: [249, 247, 243] },
+        columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' } },
+        margin: { left: margem, right: margem },
+      })
+      cursorY = doc.lastAutoTable.finalY + 16
+    }
+
+    const semSinalForte = dadosEmpresa.nossosSemCorrespondencia.filter(c => !c.apareceEmOutraTurmaDoClube)
+    const semSinalRevisar = dadosEmpresa.nossosSemCorrespondencia.filter(c => c.apareceEmOutraTurmaDoClube)
+
+    if (semSinalForte.length > 0) {
+      garantirEspaco(40)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9.5)
+      doc.setTextColor(...COR_PERIGO)
+      doc.text('Alunos nossos que não constam em nenhuma linha do clube (receita não capturada)', margem, cursorY)
+      cursorY += 8
+      autoTable(doc, {
+        startY: cursorY,
+        head: [['Aluno (ProCoach)', 'Modalidade', 'Horário', 'Valor estimado']],
+        body: semSinalForte
+          .sort((a, b) => b.valorEstimado - a.valorEstimado)
+          .map(c => [c.nome, c.modalidade, c.horario, fmtBRL(c.valorEstimado)]),
+        theme: 'plain',
+        styles: { fontSize: 7, cellPadding: 4, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
+        headStyles: { fillColor: COR_PERIGO, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 7 },
+        alternateRowStyles: { fillColor: [249, 247, 243] },
+        columnStyles: { 3: { halign: 'right' } },
+        margin: { left: margem, right: margem },
+      })
+      cursorY = doc.lastAutoTable.finalY + 16
+    }
+
+    if (semSinalRevisar.length > 0) {
+      garantirEspaco(40)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9.5)
+      doc.setTextColor(...COR_AVISO)
+      const tituloRevisar = doc.splitTextToSize(
+        'Nome aparece em outra turma do clube (revisar cadastro — provável turma/horário errado, não somado como receita perdida)',
+        larguraUtil
+      )
+      doc.text(tituloRevisar, margem, cursorY)
+      cursorY += tituloRevisar.length * 11
+      autoTable(doc, {
+        startY: cursorY,
+        head: [['Aluno (ProCoach)', 'Modalidade', 'Horário cadastrado']],
+        body: semSinalRevisar.map(c => [c.nome, c.modalidade, c.horario]),
+        theme: 'plain',
+        styles: { fontSize: 7, cellPadding: 4, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
+        headStyles: { fillColor: COR_AVISO, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 7 },
+        alternateRowStyles: { fillColor: [249, 247, 243] },
+        margin: { left: margem, right: margem },
+      })
+      cursorY = doc.lastAutoTable.finalY + 16
+    }
+
+    if (dadosEmpresa.semCorrespondencia.length > 0) {
+      garantirEspaco(40)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9.5)
+      doc.setTextColor(...COR_AVISO)
+      doc.text('Linhas do clube sem correspondência confirmada no ProCoach (revisar)', margem, cursorY)
+      cursorY += 8
+      autoTable(doc, {
+        startY: cursorY,
+        head: [['Nome (clube)', 'Modalidade', 'Turma', 'Valor', 'Motivo']],
+        body: dadosEmpresa.semCorrespondencia.map(l => [l.nome, l.modalidadeClube, l.turmaTexto, fmtBRL(l.valor), l.motivo]),
+        theme: 'plain',
+        styles: { fontSize: 6.5, cellPadding: 3.5, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
+        headStyles: { fillColor: [240, 236, 228], textColor: COR_TINTA, fontStyle: 'bold', fontSize: 6.5 },
+        alternateRowStyles: { fillColor: [249, 247, 243] },
+        columnStyles: { 3: { cellWidth: 50, halign: 'right' }, 4: { cellWidth: 120 } },
+        margin: { left: margem, right: margem },
+      })
+      cursorY = doc.lastAutoTable.finalY + 16
+    }
+
+    if (dadosEmpresa.provaveis && dadosEmpresa.provaveis.length > 0) {
+      garantirEspaco(40)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9.5)
+      doc.setTextColor(...COR_AVISO)
+      doc.text('Prováveis — nome parecido, mas não idêntico (confirmar)', margem, cursorY)
+      cursorY += 8
+      autoTable(doc, {
+        startY: cursorY,
+        head: [['Nome (clube)', 'Nome (ProCoach)', 'Modalidade', 'Turma']],
+        body: dadosEmpresa.provaveis.map(l => [l.nome, l.nomeProcoach, l.modalidadeClube, l.turmaTexto]),
+        theme: 'plain',
+        styles: { fontSize: 7, cellPadding: 4, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
+        headStyles: { fillColor: COR_AVISO, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 7 },
+        alternateRowStyles: { fillColor: [249, 247, 243] },
+        margin: { left: margem, right: margem },
+      })
+      cursorY = doc.lastAutoTable.finalY + 16
+    }
+    cursorY += 10
+  }
+
+  secaoEmpresa(procopio)
+  doc.addPage()
+  cursorY = margem
+  secaoEmpresa(beachArena)
 
   rodape()
   doc.save(`cruzamento-clube-${periodo.inicio}-a-${periodo.fim}.pdf`)
