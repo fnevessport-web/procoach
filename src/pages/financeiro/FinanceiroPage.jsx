@@ -28,10 +28,11 @@ import { buscarRelatorioMargem } from '../../hooks/useRelatorioMargem'
 import { exportarRelatorioMargemPDF } from '../../lib/relatorioMargemPdf'
 import { buscarConfrontoAlunos, MODALIDADES_PROCOPIO } from '../../hooks/useRelatorioConfrontoAlunos'
 import { exportarConfrontoAlunosPDF } from '../../lib/relatorioConfrontoAlunosPdf'
-import { parseArquivoClube, cruzarComClube } from '../../hooks/useCruzamentoClube'
+import { parseArquivoClube, cruzarComClube, nomeProprioPortugues } from '../../hooks/useCruzamentoClube'
 import { exportarCruzamentoClubePDF } from '../../lib/relatorioCruzamentoClubePdf'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
+import { Modal } from '../../components/ui/Modal'
 import toast from 'react-hot-toast'
 
 // ──────────────────────────────────────────────────────────────────────
@@ -577,6 +578,8 @@ export function FinanceiroPage() {
   const [exportandoConfronto, setExportandoConfronto] = useState(false)
   const [modalidadesConfronto, setModalidadesConfronto] = useState(MODALIDADES_PROCOPIO)
   const [cruzandoClube, setCruzandoClube] = useState(false)
+  const [revisaoNomes, setRevisaoNomes] = useState(null) // null = modal fechado; array = lista de "prováveis" pra confirmar/corrigir
+  const [aplicandoCorrecoesNomes, setAplicandoCorrecoesNomes] = useState(false)
 
   // Form: receita
   const [valorReceitaInput, setValorReceitaInput] = useState('')
@@ -1063,10 +1066,46 @@ export function FinanceiroPage() {
       const dados = await cruzarComClube({ linhasClube, dataInicio, dataFim: dataFimEfetivo })
       await exportarCruzamentoClubePDF(dados, { periodo: { inicio: dataInicio, fim: dataFimEfetivo } })
       toast.success(`${dados.totalBateram} bateram, ${dados.totalProvaveis} prováveis, ${dados.totalSemCorrespondencia} sem correspondência (de ${dados.totalClube}). Estimativa perdida: ${dados.valorEstimadoPerdido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`, { style: toastStyle, duration: 6000 })
+
+      // "Prováveis" = mesma pessoa, grafia diferente entre as duas planilhas — junta pra
+      // sugerir a correção do cadastro (dedupe por nomeProcoach, já que o mesmo aluno pode
+      // aparecer em mais de uma modalidade/turma; ignora quando a versão corrigida já é
+      // igual ao nome atual, sem nada de fato pra mudar).
+      const vistos = new Set()
+      const revisao = dados.provaveis
+        .map(p => ({ nomeProcoach: p.nomeProcoach, nomeCorrigido: nomeProprioPortugues(p.nome) }))
+        .filter(p => p.nomeCorrigido !== p.nomeProcoach)
+        .filter(p => (vistos.has(p.nomeProcoach) ? false : (vistos.add(p.nomeProcoach), true)))
+        .map(p => ({ ...p, selecionado: true }))
+      if (revisao.length > 0) setRevisaoNomes(revisao)
     } catch (err) {
       toast.error('Erro ao cruzar: ' + err.message, { style: toastStyle })
     } finally {
       setCruzandoClube(false)
+    }
+  }
+
+  async function handleAplicarCorrecoesNomes() {
+    const selecionados = revisaoNomes.filter(r => r.selecionado)
+    if (selecionados.length === 0) { setRevisaoNomes(null); return }
+    setAplicandoCorrecoesNomes(true)
+    try {
+      let aplicados = 0, ambiguos = 0
+      for (const item of selecionados) {
+        const { data: existentes, error: errBusca } = await supabase.from('alunos').select('id').eq('nome', item.nomeProcoach)
+        if (errBusca) throw errBusca
+        if (!existentes || existentes.length !== 1) { ambiguos++; continue }
+        const { error: errUpdate } = await supabase.from('alunos').update({ nome: item.nomeCorrigido }).eq('id', existentes[0].id)
+        if (errUpdate) throw errUpdate
+        aplicados++
+      }
+      toast.success(`${aplicados} nome${aplicados === 1 ? '' : 's'} atualizado${aplicados === 1 ? '' : 's'}${ambiguos > 0 ? ` · ${ambiguos} pulado(s) por nome ambíguo/duplicado` : ''}.`, { style: toastStyle, duration: 6000 })
+      qc.invalidateQueries({ queryKey: ['alunos'] })
+      setRevisaoNomes(null)
+    } catch (err) {
+      toast.error('Erro ao atualizar cadastro: ' + err.message, { style: toastStyle })
+    } finally {
+      setAplicandoCorrecoesNomes(false)
     }
   }
 
@@ -2141,6 +2180,57 @@ export function FinanceiroPage() {
           </div>
         </div>
       )}
+
+      {/* Revisão de nomes "prováveis" — aluno confirmado como a mesma pessoa que consta na
+          planilha do clube, só com grafia diferente. Sugere a grafia do clube (convertida de
+          CAIXA ALTA pra Título) como correção de cadastro, sempre com confirmação manual —
+          nunca aplica sozinho. Só atualiza quando o nome atual bate com exatamente 1 aluno
+          (evita mexer em cadastro errado se dois alunos comparilham o mesmo nome). */}
+      <Modal open={!!revisaoNomes} onClose={() => setRevisaoNomes(null)} title="Corrigir grafia do nome no cadastro?" size="lg">
+        {revisaoNomes && (
+          <>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: 0, marginBottom: '16px' }}>
+              Estes alunos foram confirmados como a mesma pessoa que consta na planilha do clube
+              (nome com pequena diferença de grafia). Selecione quem quer atualizar no cadastro do
+              ProCoach com a grafia usada pelo clube — útil pra próximas conferências baterem exato.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+              {revisaoNomes.map((item, i) => (
+                <label key={item.nomeProcoach} style={{
+                  display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
+                  borderRadius: '10px', border: '1px solid var(--border)', cursor: 'pointer',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={item.selecionado}
+                    onChange={() => setRevisaoNomes(prev => prev.map((p, j) => j === i ? { ...p, selecionado: !p.selecionado } : p))}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '13px' }}>
+                    <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>{item.nomeProcoach}</span>
+                    <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{item.nomeCorrigido}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setRevisaoNomes(null)} style={{
+                flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border)',
+                backgroundColor: 'transparent', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+              }}>
+                Agora não
+              </button>
+              <button onClick={handleAplicarCorrecoesNomes} disabled={aplicandoCorrecoesNomes} style={{
+                flex: 1, padding: '12px', borderRadius: '12px', border: 'none',
+                backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)',
+                fontSize: '13px', fontWeight: '700', cursor: aplicandoCorrecoesNomes ? 'not-allowed' : 'pointer',
+                opacity: aplicandoCorrecoesNomes ? 0.6 : 1,
+              }}>
+                {aplicandoCorrecoesNomes ? 'Atualizando...' : `Atualizar ${revisaoNomes.filter(r => r.selecionado).length} cadastro(s)`}
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
     </div>
   )
 }

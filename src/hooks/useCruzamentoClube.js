@@ -43,6 +43,24 @@ export const MAPA_MODALIDADE_CLUBE = {
 
 const MAPA_DIA_CLUBE = { seg: 'segunda', ter: 'terca', qua: 'quarta', qui: 'quinta', sex: 'sexta', sab: 'sabado', dom: 'domingo' }
 
+// Nome do clube vem em CAIXA ALTA ("LAURA EMY SHIMIZU") — usado pra sugerir a grafia
+// corrigida no cadastro do ProCoach quando o coordenador confirma que é a mesma pessoa
+// (ver "prováveis" em cruzarComClube). Preposição minúscula só quando não é a primeira
+// palavra (evita "De Castro" no começo do nome); apóstrofo/hífen preserva capitalização
+// dos dois lados (ex.: "D'ANGELO" -> "D'Angelo").
+const PREPOSICOES_MINUSCULAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e'])
+export function nomeProprioPortugues(nomeCaixaAlta) {
+  return String(nomeCaixaAlta || '')
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map((palavra, i) => {
+      if (i > 0 && PREPOSICOES_MINUSCULAS.has(palavra)) return palavra
+      return palavra.split(/([-'’])/).map(seg => (seg === '-' || seg === "'" || seg === '’') ? seg : seg.charAt(0).toUpperCase() + seg.slice(1)).join('')
+    })
+    .join(' ')
+}
+
 function semAcento(s) {
   return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
