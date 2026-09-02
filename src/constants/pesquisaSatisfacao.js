@@ -10,7 +10,7 @@ export const USER_ID_DONO_PESQUISA = 'a44110f0-cb53-4555-a6b2-2dfe13f03192'
 // (fica na aba dele, dá pra exportar PDF com o nome), então prometer anonimato seria
 // enganoso. "Não precisa colocar seu nome" é literalmente verdade (não tem campo de nome
 // no formulário) sem prometer o que o sistema não entrega.
-export const TEXTO_INTRO_PESQUISA = 'Esta é uma pesquisa de satisfação feita pra nos ajudar a crescer juntos. Você não precisa colocar seu nome — queremos sua visão real, inclusive críticas construtivas e sugestões, que são as mais úteis. Nada aqui será usado contra ninguém; o objetivo é melhorar o ambiente e a operação pra todos. Seja franco, é isso que faz valer a pena.'
+export const TEXTO_INTRO_PESQUISA = 'Esta é uma pesquisa de satisfação feita pra nos ajudar a crescer juntos. Você não precisa colocar seu nome — queremos sua visão real, inclusive críticas construtivas e sugestões, que são as mais úteis. Nada aqui será usado contra ninguém; o objetivo é melhorar o ambiente e a operação pra todos. Nas perguntas com estrelas, 1 estrela é a nota mais baixa e 5 estrelas é a nota mais alta. Seja franco, é isso que faz valer a pena.'
 
 // Perguntas da Pesquisa de Satisfação dos professores — usadas tanto na página pública
 // (/pesquisa/:token, onde o professor responde) quanto na aba "Pesquisa" do cadastro
