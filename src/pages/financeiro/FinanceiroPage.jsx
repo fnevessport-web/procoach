@@ -30,7 +30,7 @@ import { buscarConfrontoAlunos, MODALIDADES_PROCOPIO } from '../../hooks/useRela
 import { exportarConfrontoAlunosPDF } from '../../lib/relatorioConfrontoAlunosPdf'
 import { parseArquivoClube, cruzarComClube, nomeProprioPortugues } from '../../hooks/useCruzamentoClube'
 import { exportarCruzamentoClubePDF } from '../../lib/relatorioCruzamentoClubePdf'
-import { exportarAlunosSemClubePDF } from '../../lib/relatorioAlunosSemClubePdf'
+import { exportarAlunosSemClubeParaClubePDF, exportarAlunosSemClubeParaDonoPDF } from '../../lib/relatorioAlunosSemClubePdf'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
@@ -1140,13 +1140,18 @@ export function FinanceiroPage() {
     setSelecaoAlunos(linhas)
   }
 
-  async function handleExportarSelecaoAlunos() {
+  // `destino`: 'clube' gera a versão sem valor (pra mandar pro clube verificar a cobrança);
+  // 'dono' gera a versão com nível/turma + valor estimado (uso interno, pro dono). O modal
+  // fica aberto depois de exportar — dá pra gerar as duas versões da mesma seleção sem
+  // precisar marcar tudo de novo.
+  async function handleExportarSelecaoAlunos(destino) {
     const selecionados = selecaoAlunos.filter(s => s.selecionado)
     if (selecionados.length === 0) return
     setExportandoSelecaoAlunos(true)
     try {
-      await exportarAlunosSemClubePDF(selecionados, { periodo: ultimoCruzamento.periodo })
-      setSelecaoAlunos(null)
+      const exportar = destino === 'dono' ? exportarAlunosSemClubeParaDonoPDF : exportarAlunosSemClubeParaClubePDF
+      await exportar(selecionados, { periodo: ultimoCruzamento.periodo })
+      toast.success(destino === 'dono' ? 'PDF com estimativa de valores gerado.' : 'PDF pro clube gerado (sem valores).', { style: toastStyle })
     } catch (err) {
       toast.error('Erro ao exportar: ' + err.message, { style: toastStyle })
     } finally {
@@ -2379,19 +2384,27 @@ export function FinanceiroPage() {
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setSelecaoAlunos(null)} style={{
-                flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border)',
+                padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border)',
                 backgroundColor: 'transparent', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
               }}>
-                Cancelar
+                Fechar
               </button>
-              <button onClick={handleExportarSelecaoAlunos} disabled={exportandoSelecaoAlunos || selecaoAlunos.filter(s => s.selecionado).length === 0} style={{
+              <button onClick={() => handleExportarSelecaoAlunos('clube')} disabled={exportandoSelecaoAlunos || selecaoAlunos.filter(s => s.selecionado).length === 0} style={{
+                flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border)',
+                backgroundColor: 'transparent', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '700',
+                cursor: (exportandoSelecaoAlunos || selecaoAlunos.filter(s => s.selecionado).length === 0) ? 'not-allowed' : 'pointer',
+                opacity: (exportandoSelecaoAlunos || selecaoAlunos.filter(s => s.selecionado).length === 0) ? 0.6 : 1,
+              }}>
+                {exportandoSelecaoAlunos ? 'Gerando...' : `PDF pro clube (${selecaoAlunos.filter(s => s.selecionado).length})`}
+              </button>
+              <button onClick={() => handleExportarSelecaoAlunos('dono')} disabled={exportandoSelecaoAlunos || selecaoAlunos.filter(s => s.selecionado).length === 0} style={{
                 flex: 1, padding: '12px', borderRadius: '12px', border: 'none',
                 backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)',
                 fontSize: '13px', fontWeight: '700',
                 cursor: (exportandoSelecaoAlunos || selecaoAlunos.filter(s => s.selecionado).length === 0) ? 'not-allowed' : 'pointer',
                 opacity: (exportandoSelecaoAlunos || selecaoAlunos.filter(s => s.selecionado).length === 0) ? 0.6 : 1,
               }}>
-                {exportandoSelecaoAlunos ? 'Gerando...' : `Exportar PDF (${selecaoAlunos.filter(s => s.selecionado).length})`}
+                {exportandoSelecaoAlunos ? 'Gerando...' : `PDF c/ valores (${selecaoAlunos.filter(s => s.selecionado).length})`}
               </button>
             </div>
           </>
