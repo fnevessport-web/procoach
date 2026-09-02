@@ -69,10 +69,10 @@ function CabecalhoRelatorio() {
   return (
     <div style={{ backgroundColor: COR_CREME }}>
       <div style={{ maxWidth: '560px', margin: '0 auto', padding: '20px 20px 16px', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
-          <img src="/images/logobeyond_preto.png" alt="Beyond" style={{ height: '34px', objectFit: 'contain' }} />
-          <div style={{ width: '1px', height: '26px', backgroundColor: 'rgba(26,24,24,0.25)' }} />
-          <img src="/images/logoprocopio_preto.png" alt="Procópio" style={{ height: '34px', objectFit: 'contain' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+          <img src="/images/logobeyond_preto.png" alt="Beyond" style={{ height: '58px', objectFit: 'contain' }} />
+          <div style={{ width: '1px', height: '44px', backgroundColor: 'rgba(26,24,24,0.25)' }} />
+          <img src="/images/logoprocopio_preto.png" alt="Procópio" style={{ height: '58px', objectFit: 'contain' }} />
         </div>
         <div style={{ fontSize: '16px', fontWeight: '700', color: COR_TINTA }}>PESQUISA DE SATISFAÇÃO</div>
         <div style={{ fontSize: '11px', fontStyle: 'italic', color: COR_TEXTO_SUAVE, marginTop: '2px' }}>PROCÓPIO</div>
@@ -112,13 +112,16 @@ export function PesquisaSatisfacaoPage() {
     setRespostas(prev => ({ ...prev, [id]: valor }))
   }
 
-  const faltamObrigatorias = PERGUNTAS_PESQUISA_SATISFACAO
-    .filter(p => p.tipo === 'estrelas' || p.tipo === 'nps')
-    .some(p => respostas[p.id] == null)
+  // Todas as perguntas são obrigatórias agora, inclusive as de texto livre — pra estrela/nps
+  // basta ter um valor selecionado, pra texto precisa ter algo digitado (não só espaços).
+  const faltamObrigatorias = PERGUNTAS_PESQUISA_SATISFACAO.some(p => {
+    if (p.tipo === 'texto') return !String(respostas[p.id] || '').trim()
+    return respostas[p.id] == null
+  })
 
   async function handleEnviar() {
     if (faltamObrigatorias) {
-      toast.error('Responda todas as perguntas de nota antes de enviar.', { style: toastStyle })
+      toast.error('Responda todas as perguntas antes de enviar.', { style: toastStyle })
       return
     }
     setEnviando(true)
@@ -189,14 +192,14 @@ export function PesquisaSatisfacaoPage() {
               {p.tipo === 'nps' && <NpsInput value={respostas[p.id]} onChange={v => setResposta(p.id, v)} />}
               {p.tipo === 'texto' && (
                 <textarea
-                  rows={3}
+                  rows={6}
                   value={respostas[p.id] || ''}
                   onChange={e => setResposta(p.id, e.target.value)}
-                  placeholder="Opcional"
+                  placeholder="Escreva sua resposta..."
                   style={{
-                    width: '100%', padding: '10px 12px', borderRadius: '10px', boxSizing: 'border-box',
+                    width: '100%', minHeight: '140px', padding: '12px 14px', borderRadius: '10px', boxSizing: 'border-box',
                     border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-overlay)',
-                    color: 'var(--color-text-light-primary)', fontSize: '13px', resize: 'vertical', fontFamily: 'inherit',
+                    color: 'var(--color-text-light-primary)', fontSize: '14px', lineHeight: '1.5', resize: 'vertical', fontFamily: 'inherit',
                   }}
                 />
               )}
