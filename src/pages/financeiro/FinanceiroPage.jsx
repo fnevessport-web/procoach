@@ -917,6 +917,16 @@ export function FinanceiroPage() {
     finally { setUploadingReceita(false) }
   }
 
+  // Remove só o anexo (arquivo_url/arquivo_nome) do lançamento de receita — não mexe no
+  // valor já digitado, só desanexa o arquivo errado pra poder subir o certo.
+  async function handleExcluirAnexoReceita() {
+    if (!receitaRecord?.id) return
+    try {
+      await salvarLancamento.mutateAsync({ id: receitaRecord.id, arquivo_url: null, arquivo_nome: null })
+      toast.success('Anexo removido.', { style: toastStyle })
+    } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
+
   async function handleUploadNFCusto(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -1755,13 +1765,21 @@ export function FinanceiroPage() {
           color: 'var(--color-text-dark-secondary)', fontSize: '12px', marginBottom: '10px', boxSizing: 'border-box',
         }}>
           <Upload size={14} />
-          {uploadingReceita ? 'Enviando...' : receitaRecord?.arquivo_nome ? receitaRecord.arquivo_nome : 'Anexar relatório do clube'}
+          {uploadingReceita ? 'Enviando...' : receitaRecord?.arquivo_nome ? receitaRecord.arquivo_nome : 'Anexar relatório de repasse (receita)'}
           {receitaRecord?.arquivo_url && (
-            <a href={receitaRecord.arquivo_url} target="_blank" rel="noreferrer"
-              onClick={e => e.stopPropagation()}
-              style={{ marginLeft: 'auto', color: 'var(--color-text-dark-secondary)' }}>
-              <ExternalLink size={13} />
-            </a>
+            <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <a href={receitaRecord.arquivo_url} target="_blank" rel="noreferrer"
+                onClick={e => e.stopPropagation()}
+                style={{ color: 'var(--color-text-dark-secondary)', display: 'flex' }}>
+                <ExternalLink size={13} />
+              </a>
+              <span
+                onClick={e => { e.stopPropagation(); handleExcluirAnexoReceita() }}
+                title="Excluir anexo"
+                style={{ color: 'var(--color-state-danger)', display: 'flex', cursor: 'pointer' }}>
+                <Trash2 size={13} />
+              </span>
+            </span>
           )}
         </button>
 
