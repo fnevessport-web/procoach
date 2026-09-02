@@ -30,6 +30,7 @@ import { buscarConfrontoAlunos, MODALIDADES_PROCOPIO } from '../../hooks/useRela
 import { exportarConfrontoAlunosPDF } from '../../lib/relatorioConfrontoAlunosPdf'
 import { parseArquivoClube, cruzarComClube, nomeProprioPortugues } from '../../hooks/useCruzamentoClube'
 import { exportarCruzamentoClubePDF } from '../../lib/relatorioCruzamentoClubePdf'
+import { exportarAlunosSemClubePDF } from '../../lib/relatorioAlunosSemClubePdf'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
@@ -580,6 +581,10 @@ export function FinanceiroPage() {
   const [cruzandoClube, setCruzandoClube] = useState(false)
   const [revisaoNomes, setRevisaoNomes] = useState(null) // null = modal fechado; array = lista de "prováveis" pra confirmar/corrigir
   const [aplicandoCorrecoesNomes, setAplicandoCorrecoesNomes] = useState(false)
+  const [ultimoCruzamento, setUltimoCruzamento] = useState(null) // { dados, periodo } do último cruzamento rodado — reaproveitado pra tela de seleção
+  const [selecaoAlunos, setSelecaoAlunos] = useState(null) // null = tela fechada; array = lista pra selecionar/exportar
+  const [buscaSelecaoAlunos, setBuscaSelecaoAlunos] = useState('')
+  const [exportandoSelecaoAlunos, setExportandoSelecaoAlunos] = useState(false)
 
   // Form: receita
   const [valorReceitaInput, setValorReceitaInput] = useState('')
@@ -1066,6 +1071,7 @@ export function FinanceiroPage() {
       const dados = await cruzarComClube({ linhasClube, dataInicio, dataFim: dataFimEfetivo })
       await exportarCruzamentoClubePDF(dados, { periodo: { inicio: dataInicio, fim: dataFimEfetivo } })
       toast.success(`${dados.totalBateram} bateram, ${dados.totalProvaveis} prováveis, ${dados.totalSemCorrespondencia} sem correspondência (de ${dados.totalClube}). Estimativa perdida: ${dados.valorEstimadoPerdido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`, { style: toastStyle, duration: 6000 })
+      setUltimoCruzamento({ dados, periodo: { inicio: dataInicio, fim: dataFimEfetivo } })
 
       // "Prováveis" = mesma pessoa, grafia diferente entre as duas planilhas — junta pra
       // sugerir a correção do cadastro (dedupe por nomeProcoach, já que o mesmo aluno pode
@@ -1106,6 +1112,44 @@ export function FinanceiroPage() {
       toast.error('Erro ao atualizar cadastro: ' + err.message, { style: toastStyle })
     } finally {
       setAplicandoCorrecoesNomes(false)
+    }
+  }
+
+  // Tela de seleção — reaproveita o último cruzamento rodado (ultimoCruzamento) pra montar a
+  // lista de "alunos com aula dada mas fora da planilha de pagamento do clube", já juntando
+  // as duas categorias que a lib separa internamente (nossosSemCorrespondencia): quem não
+  // consta em lugar nenhum ("forte") e quem consta em outra turma/horário ("revisar" — pode
+  // ser erro de cadastro nosso, mas o coordenador decide caso a caso, por isso aparece
+  // desmarcado por padrão em vez de escondido). Tudo aberto pra seleção manual porque só o
+  // coordenador sabe quais são cortesia não marcada ou nome que já sabe estar errado.
+  function handleAbrirSelecaoAlunos() {
+    if (!ultimoCruzamento) return
+    const { procopio, beachArena } = ultimoCruzamento.dados
+    const linhas = [...procopio.nossosSemCorrespondencia, ...beachArena.nossosSemCorrespondencia]
+      .map((c, i) => ({
+        id: `${c.chaveNome}|${c.modalidade}|${c.horario}|${c.empresa}|${i}`,
+        nome: c.nome, empresa: c.empresa, modalidade: c.modalidade,
+        diasSemanaLabel: c.diasSemanaLabel, horario: c.horario,
+        presencas: c.presencas, faltas: c.faltas,
+        categoria: c.apareceEmOutraTurmaDoClube ? 'revisar' : 'forte',
+        selecionado: !c.apareceEmOutraTurmaDoClube,
+      }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+    setBuscaSelecaoAlunos('')
+    setSelecaoAlunos(linhas)
+  }
+
+  async function handleExportarSelecaoAlunos() {
+    const selecionados = selecaoAlunos.filter(s => s.selecionado)
+    if (selecionados.length === 0) return
+    setExportandoSelecaoAlunos(true)
+    try {
+      await exportarAlunosSemClubePDF(selecionados, { periodo: ultimoCruzamento.periodo })
+      setSelecaoAlunos(null)
+    } catch (err) {
+      toast.error('Erro ao exportar: ' + err.message, { style: toastStyle })
+    } finally {
+      setExportandoSelecaoAlunos(false)
     }
   }
 
@@ -1711,6 +1755,10 @@ export function FinanceiroPage() {
     )
   }
 
+  const listaFiltradaSelecaoAlunos = selecaoAlunos
+    ? selecaoAlunos.filter(s => s.nome.toLowerCase().includes(buscaSelecaoAlunos.toLowerCase()))
+    : []
+
   // ══════════════════════════════════════════════════════════════════════
   // VIEW: financeiro da empresa
   // ══════════════════════════════════════════════════════════════════════
@@ -1804,6 +1852,18 @@ export function FinanceiroPage() {
             <Upload size={15} />
             {cruzandoClube ? 'Cruzando...' : 'Anexar relatório do clube (.xlsx) e cruzar automático'}
           </label>
+
+          {ultimoCruzamento && (
+            <button onClick={handleAbrirSelecaoAlunos} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              width: '100%', padding: '12px', borderRadius: '12px', marginTop: '8px',
+              border: '1px solid rgba(201,138,60,0.35)', backgroundColor: 'rgba(201,138,60,0.08)',
+              color: 'var(--color-state-warning)', fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+            }}>
+              <FileText size={15} />
+              Selecionar alunos sem cobrança do clube (pra enviar)
+            </button>
+          )}
         </div>
       )}
 
@@ -2226,6 +2286,99 @@ export function FinanceiroPage() {
                 opacity: aplicandoCorrecoesNomes ? 0.6 : 1,
               }}>
                 {aplicandoCorrecoesNomes ? 'Atualizando...' : `Atualizar ${revisaoNomes.filter(r => r.selecionado).length} cadastro(s)`}
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      {/* Tela de seleção — alunos com aula dada no período mas fora da planilha de pagamento
+          do clube. Nada é exportado sem passar por aqui: o coordenador é quem sabe qual nome
+          é cortesia não marcada ou está errado no cadastro, então tudo fica selecionável
+          manualmente (nenhuma seleção automática além do padrão inicial). */}
+      <Modal open={!!selecaoAlunos} onClose={() => setSelecaoAlunos(null)} title="Selecionar alunos p/ enviar ao clube" size="xl">
+        {selecaoAlunos && (
+          <>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: 0, marginBottom: '12px' }}>
+              Alunos com aula dada no período que não constam na planilha de pagamento do clube.
+              Desmarque quem for cortesia não marcada como tal, nome que já sabe estar errado, ou
+              qualquer um que não queira incluir no envio.
+            </p>
+            <input
+              type="text"
+              placeholder="Buscar por nome..."
+              value={buscaSelecaoAlunos}
+              onChange={e => setBuscaSelecaoAlunos(e.target.value)}
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)',
+                backgroundColor: 'var(--surface)', color: 'var(--text-primary)', fontSize: '13px',
+                marginBottom: '10px', boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setSelecaoAlunos(prev => prev.map(s => listaFiltradaSelecaoAlunos.some(v => v.id === s.id) ? { ...s, selecionado: true } : s))}
+                  style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'transparent', color: 'var(--text-secondary)', fontSize: '12px', cursor: 'pointer' }}
+                >
+                  Marcar visíveis
+                </button>
+                <button
+                  onClick={() => setSelecaoAlunos(prev => prev.map(s => listaFiltradaSelecaoAlunos.some(v => v.id === s.id) ? { ...s, selecionado: false } : s))}
+                  style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'transparent', color: 'var(--text-secondary)', fontSize: '12px', cursor: 'pointer' }}
+                >
+                  Desmarcar visíveis
+                </button>
+              </div>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                {selecaoAlunos.filter(s => s.selecionado).length} de {selecaoAlunos.length} selecionados
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '360px', overflowY: 'auto', marginBottom: '16px' }}>
+              {listaFiltradaSelecaoAlunos.map(item => (
+                <label key={item.id} style={{
+                  display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 10px',
+                  borderRadius: '10px', border: '1px solid var(--border)', cursor: 'pointer',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={item.selecionado}
+                    onChange={() => setSelecaoAlunos(prev => prev.map(s => s.id === item.id ? { ...s, selecionado: !s.selecionado } : s))}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{item.nome}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      {item.modalidade} · {item.diasSemanaLabel} · {item.horario} · {item.presencas}p/{item.faltas}f
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '999px', flexShrink: 0,
+                    color: item.categoria === 'forte' ? 'var(--color-state-danger)' : 'var(--color-state-warning)',
+                    backgroundColor: item.categoria === 'forte' ? 'rgba(180,71,47,0.12)' : 'rgba(201,138,60,0.12)',
+                  }}>
+                    {item.categoria === 'forte' ? 'não consta' : 'outra turma'}
+                  </span>
+                </label>
+              ))}
+              {listaFiltradaSelecaoAlunos.length === 0 && (
+                <div style={{ fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>Nenhum nome encontrado.</div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setSelecaoAlunos(null)} style={{
+                flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border)',
+                backgroundColor: 'transparent', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+              }}>
+                Cancelar
+              </button>
+              <button onClick={handleExportarSelecaoAlunos} disabled={exportandoSelecaoAlunos || selecaoAlunos.filter(s => s.selecionado).length === 0} style={{
+                flex: 1, padding: '12px', borderRadius: '12px', border: 'none',
+                backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)',
+                fontSize: '13px', fontWeight: '700',
+                cursor: (exportandoSelecaoAlunos || selecaoAlunos.filter(s => s.selecionado).length === 0) ? 'not-allowed' : 'pointer',
+                opacity: (exportandoSelecaoAlunos || selecaoAlunos.filter(s => s.selecionado).length === 0) ? 0.6 : 1,
+              }}>
+                {exportandoSelecaoAlunos ? 'Gerando...' : `Exportar PDF (${selecaoAlunos.filter(s => s.selecionado).length})`}
               </button>
             </div>
           </>
