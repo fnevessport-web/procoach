@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { XCircle, CheckCircle2, Send, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { PERGUNTAS_PESQUISA_SATISFACAO } from '../../constants/pesquisaSatisfacao'
+import { PERGUNTAS_PESQUISA_SATISFACAO, TEXTO_INTRO_PESQUISA } from '../../constants/pesquisaSatisfacao'
 import toast from 'react-hot-toast'
 
 const toastStyle = {
@@ -27,6 +27,31 @@ function EstrelasInput({ value, onChange }) {
   )
 }
 
+function NpsInput({ value, onChange }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(11, 1fr)', gap: '4px' }}>
+      {Array.from({ length: 11 }, (_, n) => n).map(n => {
+        const ativo = value === n
+        return (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onChange(n)}
+            style={{
+              padding: '8px 0', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+              border: ativo ? 'none' : '1px solid var(--color-border-light)',
+              background: ativo ? 'var(--color-action-primary)' : 'var(--color-surface-light-overlay)',
+              color: ativo ? 'white' : 'var(--color-text-light-secondary)',
+            }}
+          >
+            {n}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function PesquisaSatisfacaoPage() {
   const token = window.location.pathname.split('/').pop()
   const [professor, setProfessor] = useState(null)
@@ -39,9 +64,10 @@ export function PesquisaSatisfacaoPage() {
     async function carregar() {
       // Acesso público (sem login) só via RPC — mesmo padrão de buscar_professor_por_token
       // (disponibilidade). Nunca lê pesquisas_satisfacao/professores direto: RLS daquela
-      // tabela é travada só pro gestor (ver 028/029_pesquisa_*.sql). O link é reutilizável
-      // de propósito — cada envio vira uma resposta nova, nunca sobrescreve a anterior,
-      // então não existe "já respondeu" aqui: o formulário sempre abre em branco.
+      // tabela é travada num user_id específico (ver 030_pesquisa_restringe_dono.sql). O
+      // link é reutilizável de propósito — cada envio vira uma resposta nova, nunca
+      // sobrescreve a anterior, então não existe "já respondeu" aqui: o formulário sempre
+      // abre em branco.
       const { data, error } = await supabase.rpc('buscar_professor_por_token_pesquisa', { p_token: token })
       const prof = data?.[0]
       if (error || !prof) { setLoading(false); return }
@@ -56,8 +82,8 @@ export function PesquisaSatisfacaoPage() {
   }
 
   const faltamObrigatorias = PERGUNTAS_PESQUISA_SATISFACAO
-    .filter(p => p.tipo === 'estrelas')
-    .some(p => !respostas[p.id])
+    .filter(p => p.tipo === 'estrelas' || p.tipo === 'nps')
+    .some(p => respostas[p.id] == null)
 
   async function handleEnviar() {
     if (faltamObrigatorias) {
@@ -76,15 +102,27 @@ export function PesquisaSatisfacaoPage() {
     }
   }
 
+  // Banner com a identidade Beyond/Procópio já usada no relatório mensal (mesma arte,
+  // recortada só na parte de cima — logos + rede — pra não mostrar o texto "RELATÓRIO"
+  // que fica colado embaixo daquela imagem, que não faz sentido aqui).
+  const banner = (
+    <div style={{
+      height: '180px', backgroundImage: "url('/images/capa-relatorio-procopio.jpg')",
+      backgroundSize: 'cover', backgroundPosition: 'top center', backgroundColor: 'var(--color-brand-verde-court)',
+    }} />
+  )
+
   if (loading) return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '14px' }}>Carregando...</div>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)' }}>
+      {banner}
+      <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--color-text-light-secondary)', fontSize: '14px' }}>Carregando...</div>
     </div>
   )
 
   if (!professor) return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div style={{ textAlign: 'center' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)' }}>
+      {banner}
+      <div style={{ padding: '40px 24px', textAlign: 'center' }}>
         <XCircle size={40} color="var(--color-state-danger)" style={{ marginBottom: '16px' }} />
         <div style={{ color: 'var(--color-text-light-primary)', fontSize: '16px', fontWeight: '600' }}>Link inválido</div>
         <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '13px', marginTop: '8px' }}>Este link de pesquisa não existe ou expirou.</div>
@@ -93,30 +131,26 @@ export function PesquisaSatisfacaoPage() {
   )
 
   if (enviado) return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div style={{ textAlign: 'center' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)' }}>
+      {banner}
+      <div style={{ padding: '40px 24px', textAlign: 'center' }}>
         <CheckCircle2 size={48} color="var(--color-state-success)" style={{ marginBottom: '16px' }} />
         <div style={{ color: 'var(--color-text-light-primary)', fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Respostas enviadas!</div>
-        <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '13px' }}>Obrigado, {professor.nome}! Sua opinião é confidencial e só a coordenação tem acesso.</div>
+        <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '13px' }}>Obrigado, {professor.nome}! Sua resposta foi registrada.</div>
       </div>
     </div>
   )
 
   return (
-    <div style={{
-      minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)', padding: '20px 16px', boxSizing: 'border-box',
-    }}>
-      <div style={{ maxWidth: '560px', margin: '0 auto' }}>
-        <div style={{ fontSize: '22px', fontWeight: '800', color: 'var(--color-action-primary)', marginBottom: '24px' }}>
-          ▶ PRO COACH
-        </div>
-
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface-light-base)', boxSizing: 'border-box' }}>
+      {banner}
+      <div style={{ maxWidth: '560px', margin: '0 auto', padding: '20px 16px' }}>
         <div style={{ marginBottom: '28px' }}>
           <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}>
-            Olá, {professor.nome}!
+            Pesquisa de Satisfação — Olá, {professor.nome}!
           </div>
           <div style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)', lineHeight: '1.5' }}>
-            Sua opinião é confidencial — só a coordenação vê suas respostas, ninguém mais na equipe. Responda com sinceridade.
+            {TEXTO_INTRO_PESQUISA}
           </div>
         </div>
 
@@ -126,9 +160,9 @@ export function PesquisaSatisfacaoPage() {
               <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '10px' }}>
                 {p.texto}
               </div>
-              {p.tipo === 'estrelas' ? (
-                <EstrelasInput value={respostas[p.id] || 0} onChange={v => setResposta(p.id, v)} />
-              ) : (
+              {p.tipo === 'estrelas' && <EstrelasInput value={respostas[p.id] || 0} onChange={v => setResposta(p.id, v)} />}
+              {p.tipo === 'nps' && <NpsInput value={respostas[p.id]} onChange={v => setResposta(p.id, v)} />}
+              {p.tipo === 'texto' && (
                 <textarea
                   rows={3}
                   value={respostas[p.id] || ''}

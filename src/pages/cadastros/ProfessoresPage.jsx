@@ -183,9 +183,13 @@ function AbaPesquisaSatisfacao({ professorNome, pesquisa, carregando, respostas,
             return (
               <div key={p.id} style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', padding: '10px 12px', border: '1px solid var(--color-border-light-subtle)' }}>
                 <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginBottom: '6px' }}>{p.texto}</div>
-                {p.tipo === 'estrelas' ? (
-                  <StarRating value={Number(resposta) || 0} disabled />
-                ) : (
+                {p.tipo === 'estrelas' && <StarRating value={Number(resposta) || 0} disabled />}
+                {p.tipo === 'nps' && (
+                  <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-action-primary)' }}>
+                    {resposta != null ? `${resposta}/10` : <span style={{ fontSize: '13px', fontWeight: '400', color: 'var(--color-text-light-muted)' }}><em>Sem resposta</em></span>}
+                  </div>
+                )}
+                {p.tipo === 'texto' && (
                   <div style={{ fontSize: '13px', color: 'var(--color-text-light-primary)' }}>{resposta || <em style={{ color: 'var(--color-text-light-muted)' }}>Sem resposta</em>}</div>
                 )}
               </div>

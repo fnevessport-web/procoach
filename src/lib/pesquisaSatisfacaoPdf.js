@@ -74,7 +74,9 @@ export async function exportarPesquisaSatisfacaoPDF(professorNome, respostas) {
 
     PERGUNTAS_PESQUISA_SATISFACAO.forEach(p => {
       const resposta = r.respostas?.[p.id]
-      const textoResposta = p.tipo === 'estrelas' ? `${Number(resposta) || 0}/5` : (resposta || 'Sem resposta')
+      const textoResposta = p.tipo === 'estrelas' ? `${Number(resposta) || 0}/5`
+        : p.tipo === 'nps' ? (resposta != null ? `${resposta}/10` : 'Sem resposta')
+        : (resposta || 'Sem resposta')
 
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(9)
