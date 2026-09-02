@@ -26,6 +26,8 @@ import { calcularValorAula, aulaComTodosAusentes, calcularMargensTenis } from '.
 import { useEmpresaVinculada } from '../../hooks/useProfessores'
 import { buscarRelatorioMargem } from '../../hooks/useRelatorioMargem'
 import { exportarRelatorioMargemPDF } from '../../lib/relatorioMargemPdf'
+import { buscarConfrontoAlunos } from '../../hooks/useRelatorioConfrontoAlunos'
+import { exportarConfrontoAlunosPDF } from '../../lib/relatorioConfrontoAlunosPdf'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
 import toast from 'react-hot-toast'
@@ -536,6 +538,7 @@ export function FinanceiroPage() {
   const [filtroValorAula, setFiltroValorAula] = useState(null) // null = todas; ou um valor específico (120, 100, ...)
   const [filtroSoFalta100, setFiltroSoFalta100] = useState(false) // true = só aulas com 100% de falta na turma
   const [exportandoMargem, setExportandoMargem] = useState(false)
+  const [exportandoConfronto, setExportandoConfronto] = useState(false)
 
   // Form: receita
   const [valorReceitaInput, setValorReceitaInput] = useState('')
@@ -967,6 +970,26 @@ export function FinanceiroPage() {
       toast.error('Erro ao gerar relatório: ' + err.message, { style: toastStyle })
     } finally {
       setExportandoMargem(false)
+    }
+  }
+
+  // Confronto de Alunos em Aula (Tênis/Procópio) — pra bater contra a lista de pagantes que
+  // o clube manda; ciclo de pagamento do clube não bate com o mês calendário (ex.: 21/07 a
+  // 20/08), por isso reaproveita o mesmo filtro De/Até já livre na tela em vez do FiltroMes
+  // (que só anda em mês cheio).
+  async function handleExportarConfronto() {
+    setExportandoConfronto(true)
+    try {
+      const dados = await buscarConfrontoAlunos({ dataInicio, dataFim: dataFimEfetivo })
+      if (dados.totalRegistros === 0) {
+        toast.error('Nenhum aluno encontrado em aula de Tênis nesse período.', { style: toastStyle })
+        return
+      }
+      await exportarConfrontoAlunosPDF(dados, { periodo: { inicio: dataInicio, fim: dataFimEfetivo } })
+    } catch (err) {
+      toast.error('Erro ao gerar relatório: ' + err.message, { style: toastStyle })
+    } finally {
+      setExportandoConfronto(false)
     }
   }
 
@@ -1614,6 +1637,22 @@ export function FinanceiroPage() {
         }}>
           <Download size={15} />
           {exportandoMargem ? 'Gerando...' : 'Relatório de Margem — Tênis (uso interno)'}
+        </button>
+      )}
+
+      {/* Confronto de Alunos em Aula — lista dia a dia (usa o período De/Até acima, que já
+          é livre pra digitar o ciclo de pagamento do clube tipo 21/07 a 20/08, não precisa
+          bater com mês calendário) pra conferir contra a lista de pagantes que o clube manda. */}
+      {empresaId === 'procopio' && (
+        <button onClick={handleExportarConfronto} disabled={exportandoConfronto} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+          width: '100%', padding: '12px', borderRadius: '12px', marginBottom: '14px',
+          border: '1px solid rgba(165,76,46,0.3)', backgroundColor: 'rgba(165,76,46,0.08)',
+          color: 'var(--color-action-primary)', fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+          opacity: exportandoConfronto ? 0.6 : 1,
+        }}>
+          <Download size={15} />
+          {exportandoConfronto ? 'Gerando...' : 'Confronto de Alunos em Aula — Tênis (uso interno)'}
         </button>
       )}
 
