@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import { getModalidadeDaAula, getQuadraNome, MODALIDADE_EMPRESA, diaSemanaDaData } from '../constants/modalidades'
+import { getModalidadeDaAula, getQuadraNome, MODALIDADE_EMPRESA, diaSemanaDaData, parseObservacoes, estimarMensalidadeTenis } from '../constants/modalidades'
 import { QUADRAS_EMPRESA } from './useFinanceiro'
 
 const LABEL_DIA_SEMANA = { segunda: 'Segunda', terca: 'Terça', quarta: 'Quarta', quinta: 'Quinta', sexta: 'Sexta', sabado: 'Sábado', domingo: 'Domingo' }
@@ -174,7 +174,7 @@ async function buscarNossosCombos({ dataInicio, dataFim }) {
     .from('aulas')
     .select(`
       id, data_aula, turma_id, observacoes,
-      turmas(horario_inicio, quadras(nome), modalidades(nome)),
+      turmas(horario_inicio, quadras(nome), modalidades(nome), niveis(nome)),
       presencas(tipo_participacao, status_presenca, alunos(nome))
     `)
     .gte('data_aula', dataInicio)
@@ -189,27 +189,40 @@ async function buscarNossosCombos({ dataInicio, dataFim }) {
     const modalidade = getModalidadeDaAula(a)
     const horario = a.turma_id ? (a.turmas?.horario_inicio?.slice(0, 5) || '') : ''
     const diaSemana = diaSemanaDaData(a.data_aula)
+    const nivel = a.turma_id ? (a.turmas?.niveis?.nome || '') : (parseObservacoes(a.observacoes).nivel || '')
     ;(a.presencas || [])
       .filter(p => p.tipo_participacao !== 'cortesia' && p.alunos?.nome)
       .forEach(p => {
         const nomeNorm = normalizar(p.alunos.nome)
         const chave = `${chaveNome(nomeNorm)}|${modalidade}|${horario}|${empresa}`
         if (!combosMap.has(chave)) {
-          combosMap.set(chave, { nome: p.alunos.nome, chaveNome: chaveNome(nomeNorm), modalidade, horario, empresa, count: 0, presencas: 0, faltas: 0, diasSemana: new Set(), matched: false })
+          combosMap.set(chave, { nome: p.alunos.nome, chaveNome: chaveNome(nomeNorm), modalidade, horario, empresa, count: 0, presencas: 0, faltas: 0, diasSemana: new Set(), niveisContagem: {}, matched: false })
         }
         const combo = combosMap.get(chave)
         combo.count++
         if (p.status_presenca === 'presente') combo.presencas++
         else combo.faltas++
         if (diaSemana) combo.diasSemana.add(diaSemana)
+        if (nivel) combo.niveisContagem[nivel] = (combo.niveisContagem[nivel] || 0) + 1
       })
   })
   // Dias da semana como string ordenada (ex.: "Segunda, Quarta") — turma 2x/semana junta as
   // duas aulas no mesmo combo (mesmo horário), então o combo pode cobrir mais de um dia.
-  return [...combosMap.values()].map(c => ({
-    ...c,
-    diasSemanaLabel: ORDEM_DIA_SEMANA.filter(d => c.diasSemana.has(d)).map(d => LABEL_DIA_SEMANA[d]).join(', '),
-  }))
+  // Nível representativo = o mais frequente das aulas do combo (normalmente só existe um,
+  // já que o mesmo horário/turma tende a manter o mesmo nível — o combo só mistura mais de
+  // um em casos raros de coincidência de nome).
+  return [...combosMap.values()].map(c => {
+    const diasSemana = ORDEM_DIA_SEMANA.filter(d => c.diasSemana.has(d))
+    const nivel = Object.entries(c.niveisContagem).sort((a, b) => b[1] - a[1])[0]?.[0] || ''
+    const individual = nivel === 'Individual'
+    return {
+      ...c,
+      diasSemanaLabel: diasSemana.map(d => LABEL_DIA_SEMANA[d]).join(', '),
+      nivel,
+      individual,
+      valorEstimadoMensalidade: c.modalidade === 'Tênis' ? estimarMensalidadeTenis(individual, diasSemana) : null,
+    }
+  })
 }
 
 // Junta os dois lados. `linhasClube` vem de parseArquivoClube; período deve ser o mesmo

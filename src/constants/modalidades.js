@@ -189,6 +189,26 @@ function valorPlanoMensal(individual, diaSemana) {
   return combo2xDoDia(diaSemana) ? VALOR_MENSALIDADE_GRUPO_2X : VALOR_MENSALIDADE_GRUPO_1X
 }
 
+// Estima o valor de UMA mensalidade de Tênis (não soma nem ajusta por quantos ciclos de
+// cobrança o período coberto tem — é o valor de 1 mês só) a partir dos dias da semana em
+// que o aluno teve presença. Usado no relatório de "alunos sem cobrança do clube", pra dar
+// uma noção de quanto cada um representaria — não confundir com receitaAula/margemAula
+// acima, que rateiam o plano por aula dentro de um mês fechado; aqui é o valor cheio do
+// plano, porque o uso é "quanto essa mensalidade vale", não "quanto essa aula específica
+// rendeu". Retorna null quando os dias não formam um padrão limpo de plano 1x/2x (ex.:
+// aparece em 3+ dias da semana diferentes, sinal de dado ambíguo) — melhor não estimar do
+// que estimar errado.
+export function estimarMensalidadeTenis(individual, diasSemana) {
+  if (individual) return VALOR_MENSALIDADE_INDIVIDUAL
+  const dias = [...diasSemana]
+  if (dias.length === 1) return VALOR_MENSALIDADE_GRUPO_1X
+  if (dias.length === 2) {
+    const combo = combo2xDoDia(dias[0])
+    if (combo && dias.every(d => combo.includes(d))) return VALOR_MENSALIDADE_GRUPO_2X
+  }
+  return null
+}
+
 // Quantas aulas desse "combo de dias" caem no mês — pra individual é só o próprio
 // dia (sempre tratado como 1x/semana, mesmo que o mesmo aluno tenha outro horário
 // individual em outro dia, ver instrução do coordenador).

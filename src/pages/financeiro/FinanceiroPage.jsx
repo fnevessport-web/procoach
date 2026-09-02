@@ -1131,6 +1131,7 @@ export function FinanceiroPage() {
         nome: c.nome, empresa: c.empresa, modalidade: c.modalidade,
         diasSemanaLabel: c.diasSemanaLabel, horario: c.horario,
         presencas: c.presencas, faltas: c.faltas,
+        nivel: c.nivel, valorEstimadoMensalidade: c.valorEstimadoMensalidade,
         categoria: c.apareceEmOutraTurmaDoClube ? 'revisar' : 'forte',
         selecionado: !c.apareceEmOutraTurmaDoClube,
       }))
@@ -2334,6 +2335,15 @@ export function FinanceiroPage() {
                 {selecaoAlunos.filter(s => s.selecionado).length} de {selecaoAlunos.length} selecionados
               </span>
             </div>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px',
+              borderRadius: '10px', backgroundColor: 'rgba(75,139,106,0.1)', border: '1px solid rgba(75,139,106,0.25)', marginBottom: '10px',
+            }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Estimativa (1 mensalidade cada, só Tênis)</span>
+              <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-state-success)' }}>
+                {fmtBRL(selecaoAlunos.filter(s => s.selecionado).reduce((soma, s) => soma + (s.valorEstimadoMensalidade || 0), 0))}
+              </span>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '360px', overflowY: 'auto', marginBottom: '16px' }}>
               {listaFiltradaSelecaoAlunos.map(item => (
                 <label key={item.id} style={{
@@ -2348,9 +2358,12 @@ export function FinanceiroPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{item.nome}</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                      {item.modalidade} · {item.diasSemanaLabel} · {item.horario} · {item.presencas}p/{item.faltas}f
+                      {item.modalidade} · {item.nivel || '—'} · {item.diasSemanaLabel} · {item.horario} · {item.presencas}p/{item.faltas}f
                     </div>
                   </div>
+                  <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', flexShrink: 0 }}>
+                    {item.valorEstimadoMensalidade != null ? fmtBRL(item.valorEstimadoMensalidade) : '—'}
+                  </span>
                   <span style={{
                     fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '999px', flexShrink: 0,
                     color: item.categoria === 'forte' ? 'var(--color-state-danger)' : 'var(--color-state-warning)',
