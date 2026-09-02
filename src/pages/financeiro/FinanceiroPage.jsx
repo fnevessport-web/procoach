@@ -26,7 +26,7 @@ import { calcularValorAula, aulaComTodosAusentes, calcularMargensTenis } from '.
 import { useEmpresaVinculada } from '../../hooks/useProfessores'
 import { buscarRelatorioMargem } from '../../hooks/useRelatorioMargem'
 import { exportarRelatorioMargemPDF } from '../../lib/relatorioMargemPdf'
-import { buscarConfrontoAlunos } from '../../hooks/useRelatorioConfrontoAlunos'
+import { buscarConfrontoAlunos, MODALIDADES_PROCOPIO } from '../../hooks/useRelatorioConfrontoAlunos'
 import { exportarConfrontoAlunosPDF } from '../../lib/relatorioConfrontoAlunosPdf'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
@@ -539,6 +539,7 @@ export function FinanceiroPage() {
   const [filtroSoFalta100, setFiltroSoFalta100] = useState(false) // true = só aulas com 100% de falta na turma
   const [exportandoMargem, setExportandoMargem] = useState(false)
   const [exportandoConfronto, setExportandoConfronto] = useState(false)
+  const [modalidadesConfronto, setModalidadesConfronto] = useState(MODALIDADES_PROCOPIO)
 
   // Form: receita
   const [valorReceitaInput, setValorReceitaInput] = useState('')
@@ -973,16 +974,24 @@ export function FinanceiroPage() {
     }
   }
 
-  // Confronto de Alunos em Aula (Tênis/Procópio) — pra bater contra a lista de pagantes que
-  // o clube manda; ciclo de pagamento do clube não bate com o mês calendário (ex.: 21/07 a
+  // Confronto de Alunos em Aula (Procópio) — pra bater contra a lista de pagantes que o
+  // clube manda; ciclo de pagamento do clube não bate com o mês calendário (ex.: 21/07 a
   // 20/08), por isso reaproveita o mesmo filtro De/Até já livre na tela em vez do FiltroMes
-  // (que só anda em mês cheio).
+  // (que só anda em mês cheio). O clube manda um relatório com todas as modalidades juntas,
+  // então o filtro de modalidade abaixo deixa escolher só as que interessam pra conferência.
+  function toggleModalidadeConfronto(modalidade) {
+    setModalidadesConfronto(prev => prev.includes(modalidade) ? prev.filter(m => m !== modalidade) : [...prev, modalidade])
+  }
   async function handleExportarConfronto() {
+    if (modalidadesConfronto.length === 0) {
+      toast.error('Selecione ao menos uma modalidade.', { style: toastStyle })
+      return
+    }
     setExportandoConfronto(true)
     try {
-      const dados = await buscarConfrontoAlunos({ dataInicio, dataFim: dataFimEfetivo })
+      const dados = await buscarConfrontoAlunos({ dataInicio, dataFim: dataFimEfetivo, modalidades: modalidadesConfronto })
       if (dados.totalRegistros === 0) {
-        toast.error('Nenhum aluno encontrado em aula de Tênis nesse período.', { style: toastStyle })
+        toast.error('Nenhum aluno encontrado nessas modalidades nesse período.', { style: toastStyle })
         return
       }
       await exportarConfrontoAlunosPDF(dados, { periodo: { inicio: dataInicio, fim: dataFimEfetivo } })
@@ -1644,16 +1653,37 @@ export function FinanceiroPage() {
           é livre pra digitar o ciclo de pagamento do clube tipo 21/07 a 20/08, não precisa
           bater com mês calendário) pra conferir contra a lista de pagantes que o clube manda. */}
       {empresaId === 'procopio' && (
-        <button onClick={handleExportarConfronto} disabled={exportandoConfronto} style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-          width: '100%', padding: '12px', borderRadius: '12px', marginBottom: '14px',
-          border: '1px solid rgba(165,76,46,0.3)', backgroundColor: 'rgba(165,76,46,0.08)',
-          color: 'var(--color-action-primary)', fontSize: '13px', fontWeight: '700', cursor: 'pointer',
-          opacity: exportandoConfronto ? 0.6 : 1,
-        }}>
-          <Download size={15} />
-          {exportandoConfronto ? 'Gerando...' : 'Confronto de Alunos em Aula — Tênis (uso interno)'}
-        </button>
+        <div style={{ marginBottom: '14px' }}>
+          <div style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', marginBottom: '6px' }}>
+            Modalidades no confronto (clube chama Tênis de "Saibro")
+          </div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+            {MODALIDADES_PROCOPIO.map(m => {
+              const ativo = modalidadesConfronto.includes(m)
+              return (
+                <button key={m} onClick={() => toggleModalidadeConfronto(m)} style={{
+                  padding: '6px 10px', borderRadius: '8px', cursor: 'pointer',
+                  border: ativo ? 'none' : '1px solid var(--color-border-dark)',
+                  background: ativo ? 'var(--color-action-primary)' : 'var(--color-surface-dark-raised)',
+                  color: ativo ? 'white' : 'var(--color-text-dark-secondary)',
+                  fontSize: '11px', fontWeight: '700',
+                }}>
+                  {m === 'Tênis' ? 'Tênis (Saibro)' : m}
+                </button>
+              )
+            })}
+          </div>
+          <button onClick={handleExportarConfronto} disabled={exportandoConfronto} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            width: '100%', padding: '12px', borderRadius: '12px',
+            border: '1px solid rgba(165,76,46,0.3)', backgroundColor: 'rgba(165,76,46,0.08)',
+            color: 'var(--color-action-primary)', fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+            opacity: exportandoConfronto ? 0.6 : 1,
+          }}>
+            <Download size={15} />
+            {exportandoConfronto ? 'Gerando...' : 'Confronto de Alunos em Aula (uso interno)'}
+          </button>
+        </div>
       )}
 
       {/* ── RECEITA ───────────────────────────────────────────────── */}

@@ -1,11 +1,15 @@
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { nomeComApelidoClube } from '../hooks/useRelatorioConfrontoAlunos'
 
-// Relatório de Confronto — Alunos em Aula (Tênis/Procópio), uso interno. Serve pra bater
-// contra a lista de pagantes que o clube manda: todo aluno marcado numa aula no período,
-// dia a dia, mesmo quem faltou (o clube cobra pela matrícula, não pela presença de fato).
-// Só cortesia fica de fora. Mesma linha de "uso interno" de relatorioMargemPdf.js — sem
-// identidade Beyond/Procópio de marca, documento de conferência, não de apresentação.
+// Relatório de Confronto — Alunos em Aula (Procópio), uso interno. Serve pra bater contra a
+// lista de pagantes que o clube manda: todo aluno marcado numa aula no período, dia a dia,
+// mesmo quem faltou (o clube cobra pela matrícula, não pela presença de fato). Só cortesia
+// fica de fora. Modalidade em escopo é escolhida na tela (Financeiro) — o clube chama Tênis
+// de "Saibro" no relatório dele, por isso o apelido aparece do lado do nome sempre que a
+// modalidade for Tênis (ver nomeComApelidoClube). Mesma linha de "uso interno" de
+// relatorioMargemPdf.js — sem identidade Beyond/Procópio de marca, documento de conferência,
+// não de apresentação.
 
 const COR_TINTA = [30, 43, 36]
 const COR_SAIBRO = [165, 76, 46]
@@ -18,7 +22,8 @@ function fmtDataLonga(dataStr) {
 }
 
 export async function exportarConfrontoAlunosPDF(dados, { periodo }) {
-  const { porDia, nomesUnicos, totalRegistros, totalAlunosUnicos, totalDias } = dados
+  const { porDia, nomesUnicos, totalRegistros, totalAlunosUnicos, totalDias, modalidadesEmEscopo } = dados
+  const modalidadesLabel = modalidadesEmEscopo.map(nomeComApelidoClube).join(' · ')
   const { jsPDF } = await import('jspdf')
   const { autoTable } = await import('jspdf-autotable')
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
@@ -47,13 +52,14 @@ export async function exportarConfrontoAlunosPDF(dados, { periodo }) {
   doc.setFont('helvetica', 'italic')
   doc.setFontSize(10)
   doc.setTextColor(...COR_TEXTO_SUAVE)
-  doc.text('TÊNIS · PROCÓPIO', margem, 56)
+  const linhasModalidade = doc.splitTextToSize(`PROCÓPIO · ${modalidadesLabel}`, larguraUtil * 0.6)
+  doc.text(linhasModalidade, margem, 56)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.text(`Período: ${periodoLabel}`, pageWidth - margem, 32, { align: 'right' })
   doc.text(`Gerado em ${geradoEm}`, pageWidth - margem, 43, { align: 'right' })
 
-  let cursorY = 76
+  let cursorY = 56 + linhasModalidade.length * 12 + 8
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(...COR_TINTA)
@@ -98,18 +104,32 @@ export async function exportarConfrontoAlunosPDF(dados, { periodo }) {
     doc.text(`${fmtDataLonga(data)} — ${itens.length} aluno${itens.length === 1 ? '' : 's'}`, margem + 10, cursorY + 14)
     cursorY += 26
 
+    // Coluna de modalidade só aparece quando o relatório cobre mais de uma — com uma só
+    // em escopo (caso mais comum) já está dita no subtítulo do cabeçalho, vira ruído repetir
+    // em toda linha.
+    const multiModalidade = modalidadesEmEscopo.length > 1
+    const head = multiModalidade
+      ? ['Modalidade', 'Turma', 'Horário/Quadra', 'Aluno', 'Tipo', 'Presença']
+      : ['Turma', 'Horário/Quadra', 'Aluno', 'Tipo', 'Presença']
+    const body = itens.map(l => multiModalidade
+      ? [l.modalidadeLabel, l.turmaNome, l.turmaDetalhe, l.aluno, l.tipo, l.status]
+      : [l.turmaNome, l.turmaDetalhe, l.aluno, l.tipo, l.status])
+    const idxPresenca = multiModalidade ? 5 : 4
+
     autoTable(doc, {
       startY: cursorY,
-      head: [['Turma', 'Horário/Quadra', 'Aluno', 'Tipo', 'Presença']],
-      body: itens.map(l => [l.turmaNome, l.turmaDetalhe, l.aluno, l.tipo, l.status]),
+      head: [head],
+      body,
       theme: 'plain',
       styles: { fontSize: 7.5, cellPadding: 4, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
       headStyles: { fillColor: [240, 236, 228], textColor: COR_TINTA, fontStyle: 'bold', fontSize: 7 },
       alternateRowStyles: { fillColor: [249, 247, 243] },
-      columnStyles: { 3: { cellWidth: 60 }, 4: { cellWidth: 70 } },
+      columnStyles: multiModalidade
+        ? { 4: { cellWidth: 55 }, 5: { cellWidth: 65 } }
+        : { 3: { cellWidth: 60 }, 4: { cellWidth: 70 } },
       margin: { left: margem, right: margem },
       didParseCell: (d) => {
-        if (d.section === 'body' && d.column.index === 4) {
+        if (d.section === 'body' && d.column.index === idxPresenca) {
           const status = itens[d.row.index]?.status
           if (status === 'Presente') d.cell.styles.textColor = [75, 139, 106]
           else if (status?.startsWith('Falta')) d.cell.styles.textColor = [180, 71, 47]
@@ -120,5 +140,5 @@ export async function exportarConfrontoAlunosPDF(dados, { periodo }) {
   })
 
   rodape()
-  doc.save(`confronto-alunos-tenis-${periodo.inicio}-a-${periodo.fim}.pdf`)
+  doc.save(`confronto-alunos-procopio-${periodo.inicio}-a-${periodo.fim}.pdf`)
 }
