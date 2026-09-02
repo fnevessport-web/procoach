@@ -28,6 +28,8 @@ import { buscarRelatorioMargem } from '../../hooks/useRelatorioMargem'
 import { exportarRelatorioMargemPDF } from '../../lib/relatorioMargemPdf'
 import { buscarConfrontoAlunos, MODALIDADES_PROCOPIO } from '../../hooks/useRelatorioConfrontoAlunos'
 import { exportarConfrontoAlunosPDF } from '../../lib/relatorioConfrontoAlunosPdf'
+import { parseArquivoClube, cruzarComClube } from '../../hooks/useCruzamentoClube'
+import { exportarCruzamentoClubePDF } from '../../lib/relatorioCruzamentoClubePdf'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
 import toast from 'react-hot-toast'
@@ -540,6 +542,7 @@ export function FinanceiroPage() {
   const [exportandoMargem, setExportandoMargem] = useState(false)
   const [exportandoConfronto, setExportandoConfronto] = useState(false)
   const [modalidadesConfronto, setModalidadesConfronto] = useState(MODALIDADES_PROCOPIO)
+  const [cruzandoClube, setCruzandoClube] = useState(false)
 
   // Form: receita
   const [valorReceitaInput, setValorReceitaInput] = useState('')
@@ -999,6 +1002,27 @@ export function FinanceiroPage() {
       toast.error('Erro ao gerar relatório: ' + err.message, { style: toastStyle })
     } finally {
       setExportandoConfronto(false)
+    }
+  }
+
+  // Cruzamento automático com o relatório de pagantes do clube (.xlsx) — usa o mesmo
+  // período De/Até da tela. Cobre as duas unidades por baixo dos panos (o relatório do
+  // clube mistura Procópio e Beach Arena numa planilha só), mesmo o botão ficando só na
+  // visão da Procópio (mesmo lugar do Confronto de Alunos em Aula).
+  async function handleAnexarRelatorioClube(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setCruzandoClube(true)
+    try {
+      const linhasClube = await parseArquivoClube(file)
+      const dados = await cruzarComClube({ linhasClube, dataInicio, dataFim: dataFimEfetivo })
+      await exportarCruzamentoClubePDF(dados, { periodo: { inicio: dataInicio, fim: dataFimEfetivo } })
+      toast.success(`${dados.totalBateram} de ${dados.totalClube} linhas bateram (${dados.totalSemCorrespondencia} pra revisar).`, { style: toastStyle, duration: 5000 })
+    } catch (err) {
+      toast.error('Erro ao cruzar: ' + err.message, { style: toastStyle })
+    } finally {
+      setCruzandoClube(false)
     }
   }
 
@@ -1683,6 +1707,22 @@ export function FinanceiroPage() {
             <Download size={15} />
             {exportandoConfronto ? 'Gerando...' : 'Confronto de Alunos em Aula (uso interno)'}
           </button>
+
+          {/* Cruzamento automático — anexa a planilha de pagantes do clube (.xlsx com
+              colunas Nome/Modalidade/Nivel/Turma/ValorProporcional/Data) e o sistema já
+              cruza contra a presença de verdade no ProCoach, gerando o PDF com quem não
+              bateu (ver useCruzamentoClube.js pra entender os critérios de match). */}
+          <label style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            width: '100%', padding: '12px', borderRadius: '12px', marginTop: '8px', boxSizing: 'border-box',
+            border: '1px dashed rgba(165,76,46,0.4)', backgroundColor: 'transparent',
+            color: 'var(--color-action-primary)', fontSize: '13px', fontWeight: '700',
+            cursor: cruzandoClube ? 'not-allowed' : 'pointer', opacity: cruzandoClube ? 0.6 : 1,
+          }}>
+            <input type="file" accept=".xlsx" style={{ display: 'none' }} disabled={cruzandoClube} onChange={handleAnexarRelatorioClube} />
+            <Upload size={15} />
+            {cruzandoClube ? 'Cruzando...' : 'Anexar relatório do clube (.xlsx) e cruzar automático'}
+          </label>
         </div>
       )}
 
