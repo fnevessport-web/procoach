@@ -1,6 +1,9 @@
 import { supabase } from '../lib/supabase'
-import { getModalidadeDaAula, getQuadraNome, MODALIDADE_EMPRESA } from '../constants/modalidades'
+import { getModalidadeDaAula, getQuadraNome, MODALIDADE_EMPRESA, diaSemanaDaData } from '../constants/modalidades'
 import { QUADRAS_EMPRESA } from './useFinanceiro'
+
+const LABEL_DIA_SEMANA = { segunda: 'Segunda', terca: 'Terça', quarta: 'Quarta', quinta: 'Quinta', sexta: 'Sexta', sabado: 'Sábado', domingo: 'Domingo' }
+const ORDEM_DIA_SEMANA = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
 
 // Cruzamento automático — lê o relatório de pagantes que o clube manda (planilha
 // Nome/Modalidade/Nivel/Turma/ValorProporcional/Data) e bate contra os alunos que
@@ -154,7 +157,7 @@ async function buscarNossosCombos({ dataInicio, dataFim }) {
     .select(`
       id, data_aula, turma_id, observacoes,
       turmas(horario_inicio, quadras(nome), modalidades(nome)),
-      presencas(tipo_participacao, alunos(nome))
+      presencas(tipo_participacao, status_presenca, alunos(nome))
     `)
     .gte('data_aula', dataInicio)
     .lte('data_aula', dataFim)
@@ -167,18 +170,28 @@ async function buscarNossosCombos({ dataInicio, dataFim }) {
     if (!empresa) return
     const modalidade = getModalidadeDaAula(a)
     const horario = a.turma_id ? (a.turmas?.horario_inicio?.slice(0, 5) || '') : ''
+    const diaSemana = diaSemanaDaData(a.data_aula)
     ;(a.presencas || [])
       .filter(p => p.tipo_participacao !== 'cortesia' && p.alunos?.nome)
       .forEach(p => {
         const nomeNorm = normalizar(p.alunos.nome)
         const chave = `${chaveNome(nomeNorm)}|${modalidade}|${horario}|${empresa}`
         if (!combosMap.has(chave)) {
-          combosMap.set(chave, { nome: p.alunos.nome, chaveNome: chaveNome(nomeNorm), modalidade, horario, empresa, count: 0, matched: false })
+          combosMap.set(chave, { nome: p.alunos.nome, chaveNome: chaveNome(nomeNorm), modalidade, horario, empresa, count: 0, presencas: 0, faltas: 0, diasSemana: new Set(), matched: false })
         }
-        combosMap.get(chave).count++
+        const combo = combosMap.get(chave)
+        combo.count++
+        if (p.status_presenca === 'presente') combo.presencas++
+        else combo.faltas++
+        if (diaSemana) combo.diasSemana.add(diaSemana)
       })
   })
-  return [...combosMap.values()]
+  // Dias da semana como string ordenada (ex.: "Segunda, Quarta") — turma 2x/semana junta as
+  // duas aulas no mesmo combo (mesmo horário), então o combo pode cobrir mais de um dia.
+  return [...combosMap.values()].map(c => ({
+    ...c,
+    diasSemanaLabel: ORDEM_DIA_SEMANA.filter(d => c.diasSemana.has(d)).map(d => LABEL_DIA_SEMANA[d]).join(', '),
+  }))
 }
 
 // Junta os dois lados. `linhasClube` vem de parseArquivoClube; período deve ser o mesmo

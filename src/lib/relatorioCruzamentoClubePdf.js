@@ -68,10 +68,10 @@ export async function exportarCruzamentoClubePDF(dados, { periodo }) {
   // ---------- Resumo geral (as duas unidades) ----------
   const pctBateram = totalClube > 0 ? Math.round((totalBateram / totalClube) * 100) : 0
   const cardsGerais = [
-    { label: 'Linhas do clube', valor: String(totalClube), cor: COR_TINTA },
-    { label: 'Bateram', valor: `${totalBateram} (${pctBateram}%)`, cor: COR_SUCESSO },
-    { label: 'Prováveis (revisar)', valor: String(totalProvaveis), cor: COR_AVISO },
-    { label: 'Sem correspondência', valor: String(totalSemCorrespondencia), cor: COR_PERIGO },
+    { label: 'Linhas do clube (pagantes)', valor: String(totalClube), cor: COR_TINTA },
+    { label: 'Bateram (nome idêntico)', valor: `${totalBateram} (${pctBateram}%)`, cor: COR_SUCESSO },
+    { label: 'Pagam, nome c/ diferença', valor: String(totalProvaveis), cor: COR_AVISO },
+    { label: 'Clube cobra, sem presença', valor: String(totalSemCorrespondencia), cor: COR_PERIGO },
   ]
   const cardW = (larguraUtil - 24) / 4
   cardsGerais.forEach((c, i) => {
@@ -102,7 +102,7 @@ export async function exportarCruzamentoClubePDF(dados, { periodo }) {
   doc.setFontSize(7.5)
   doc.setTextColor(...COR_TEXTO_SUAVE)
   const aviso = doc.splitTextToSize(
-    'Cruzamento por primeiro+último nome (ignora nome do meio) e, quando não bate exato, por semelhança de grafia (tolera pequeno erro de digitação) + modalidade + horário — não por data exata, já que a coluna Data do clube é hora de processamento da cobrança, não da aula. "Sem correspondência" e "prováveis" precisam de revisão manual antes de qualquer conclusão financeira. O valor estimado de receita não capturada usa a média que o clube paga naquela modalidade — é aproximação, não o valor real daquele aluno específico.',
+    'Cruzamento por primeiro+último nome (ignora nome do meio) e, quando não bate exato, por semelhança de grafia (tolera pequeno erro de digitação) + modalidade + horário — não por data exata, já que a coluna Data do clube é hora de processamento da cobrança, não da aula. Todo aluno das categorias "bateram" e "pagam, nome com diferença" CONSTA na planilha de pagamento do clube — só "clube cobra, sem presença" e as tabelas de "alunos nossos" abaixo são quem fica de fora de um lado ou do outro. O valor estimado de receita não capturada usa a média que o clube paga naquela modalidade — é aproximação, não o valor real daquele aluno específico.',
     larguraUtil
   )
   doc.text(aviso, margem, cursorY)
@@ -149,6 +149,55 @@ export async function exportarCruzamentoClubePDF(dados, { periodo }) {
       cursorY = doc.lastAutoTable.finalY + 16
     }
 
+    if (dadosEmpresa.provaveis && dadosEmpresa.provaveis.length > 0) {
+      garantirEspaco(40)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9.5)
+      doc.setTextColor(...COR_AVISO)
+      const tituloProvaveis = doc.splitTextToSize(
+        'ESTES ALUNOS CONSTAM NA PLANILHA DE PAGAMENTO DO CLUBE — nome grafado com pequena diferença entre as duas planilhas (confirme que é a mesma pessoa)',
+        larguraUtil
+      )
+      doc.text(tituloProvaveis, margem, cursorY)
+      cursorY += tituloProvaveis.length * 11
+      autoTable(doc, {
+        startY: cursorY,
+        head: [['Nome (planilha do clube)', 'Nome (ProCoach)', 'Modalidade', 'Turma']],
+        body: dadosEmpresa.provaveis.map(l => [l.nome, l.nomeProcoach, l.modalidadeClube, l.turmaTexto]),
+        theme: 'plain',
+        styles: { fontSize: 7, cellPadding: 4, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
+        headStyles: { fillColor: COR_AVISO, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 7 },
+        alternateRowStyles: { fillColor: [249, 247, 243] },
+        margin: { left: margem, right: margem },
+      })
+      cursorY = doc.lastAutoTable.finalY + 16
+    }
+
+    if (dadosEmpresa.semCorrespondencia.length > 0) {
+      garantirEspaco(40)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9.5)
+      doc.setTextColor(...COR_AVISO)
+      const tituloSemCorr = doc.splitTextToSize(
+        'ESTES ALUNOS CONSTAM NA PLANILHA DE PAGAMENTO DO CLUBE — mas não achamos presença correspondente no ProCoach (revisar)',
+        larguraUtil
+      )
+      doc.text(tituloSemCorr, margem, cursorY)
+      cursorY += tituloSemCorr.length * 11
+      autoTable(doc, {
+        startY: cursorY,
+        head: [['Nome (clube)', 'Modalidade', 'Turma', 'Valor', 'Motivo']],
+        body: dadosEmpresa.semCorrespondencia.map(l => [l.nome, l.modalidadeClube, l.turmaTexto, fmtBRL(l.valor), l.motivo]),
+        theme: 'plain',
+        styles: { fontSize: 6.5, cellPadding: 3.5, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
+        headStyles: { fillColor: [240, 236, 228], textColor: COR_TINTA, fontStyle: 'bold', fontSize: 6.5 },
+        alternateRowStyles: { fillColor: [249, 247, 243] },
+        columnStyles: { 3: { cellWidth: 50, halign: 'right' }, 4: { cellWidth: 120 } },
+        margin: { left: margem, right: margem },
+      })
+      cursorY = doc.lastAutoTable.finalY + 16
+    }
+
     const semSinalForte = dadosEmpresa.nossosSemCorrespondencia.filter(c => !c.apareceEmOutraTurmaDoClube)
     const semSinalRevisar = dadosEmpresa.nossosSemCorrespondencia.filter(c => c.apareceEmOutraTurmaDoClube)
 
@@ -157,19 +206,23 @@ export async function exportarCruzamentoClubePDF(dados, { periodo }) {
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(9.5)
       doc.setTextColor(...COR_PERIGO)
-      doc.text('Alunos nossos que não constam em nenhuma linha do clube (receita não capturada)', margem, cursorY)
-      cursorY += 8
+      const tituloForte = doc.splitTextToSize(
+        'ESTES ALUNOS NÃO CONSTAM NA PLANILHA DE PAGAMENTO DO CLUBE — demos aula, mas não há cobrança correspondente (receita não capturada)',
+        larguraUtil
+      )
+      doc.text(tituloForte, margem, cursorY)
+      cursorY += tituloForte.length * 11
       autoTable(doc, {
         startY: cursorY,
-        head: [['Aluno (ProCoach)', 'Modalidade', 'Horário', 'Valor estimado']],
+        head: [['Aluno (ProCoach)', 'Dia(s)', 'Modalidade', 'Horário', 'Presença', 'Falta', 'Valor estimado']],
         body: semSinalForte
           .sort((a, b) => b.valorEstimado - a.valorEstimado)
-          .map(c => [c.nome, c.modalidade, c.horario, fmtBRL(c.valorEstimado)]),
+          .map(c => [c.nome, c.diasSemanaLabel, c.modalidade, c.horario, String(c.presencas), String(c.faltas), fmtBRL(c.valorEstimado)]),
         theme: 'plain',
-        styles: { fontSize: 7, cellPadding: 4, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
-        headStyles: { fillColor: COR_PERIGO, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 7 },
+        styles: { fontSize: 6.5, cellPadding: 3.5, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
+        headStyles: { fillColor: COR_PERIGO, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 6.5 },
         alternateRowStyles: { fillColor: [249, 247, 243] },
-        columnStyles: { 3: { halign: 'right' } },
+        columnStyles: { 4: { halign: 'center' }, 5: { halign: 'center' }, 6: { halign: 'right' } },
         margin: { left: margem, right: margem },
       })
       cursorY = doc.lastAutoTable.finalY + 16
@@ -188,8 +241,8 @@ export async function exportarCruzamentoClubePDF(dados, { periodo }) {
       cursorY += tituloRevisar.length * 11
       autoTable(doc, {
         startY: cursorY,
-        head: [['Aluno (ProCoach)', 'Modalidade', 'Horário cadastrado']],
-        body: semSinalRevisar.map(c => [c.nome, c.modalidade, c.horario]),
+        head: [['Aluno (ProCoach)', 'Dia(s)', 'Modalidade', 'Horário cadastrado']],
+        body: semSinalRevisar.map(c => [c.nome, c.diasSemanaLabel, c.modalidade, c.horario]),
         theme: 'plain',
         styles: { fontSize: 7, cellPadding: 4, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
         headStyles: { fillColor: COR_AVISO, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 7 },
@@ -199,46 +252,6 @@ export async function exportarCruzamentoClubePDF(dados, { periodo }) {
       cursorY = doc.lastAutoTable.finalY + 16
     }
 
-    if (dadosEmpresa.semCorrespondencia.length > 0) {
-      garantirEspaco(40)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(9.5)
-      doc.setTextColor(...COR_AVISO)
-      doc.text('Linhas do clube sem correspondência confirmada no ProCoach (revisar)', margem, cursorY)
-      cursorY += 8
-      autoTable(doc, {
-        startY: cursorY,
-        head: [['Nome (clube)', 'Modalidade', 'Turma', 'Valor', 'Motivo']],
-        body: dadosEmpresa.semCorrespondencia.map(l => [l.nome, l.modalidadeClube, l.turmaTexto, fmtBRL(l.valor), l.motivo]),
-        theme: 'plain',
-        styles: { fontSize: 6.5, cellPadding: 3.5, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
-        headStyles: { fillColor: [240, 236, 228], textColor: COR_TINTA, fontStyle: 'bold', fontSize: 6.5 },
-        alternateRowStyles: { fillColor: [249, 247, 243] },
-        columnStyles: { 3: { cellWidth: 50, halign: 'right' }, 4: { cellWidth: 120 } },
-        margin: { left: margem, right: margem },
-      })
-      cursorY = doc.lastAutoTable.finalY + 16
-    }
-
-    if (dadosEmpresa.provaveis && dadosEmpresa.provaveis.length > 0) {
-      garantirEspaco(40)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(9.5)
-      doc.setTextColor(...COR_AVISO)
-      doc.text('Prováveis — nome parecido, mas não idêntico (confirmar)', margem, cursorY)
-      cursorY += 8
-      autoTable(doc, {
-        startY: cursorY,
-        head: [['Nome (clube)', 'Nome (ProCoach)', 'Modalidade', 'Turma']],
-        body: dadosEmpresa.provaveis.map(l => [l.nome, l.nomeProcoach, l.modalidadeClube, l.turmaTexto]),
-        theme: 'plain',
-        styles: { fontSize: 7, cellPadding: 4, valign: 'middle', textColor: COR_TINTA, lineColor: COR_LINHA, lineWidth: 0.4 },
-        headStyles: { fillColor: COR_AVISO, textColor: COR_BRANCO, fontStyle: 'bold', fontSize: 7 },
-        alternateRowStyles: { fillColor: [249, 247, 243] },
-        margin: { left: margem, right: margem },
-      })
-      cursorY = doc.lastAutoTable.finalY + 16
-    }
     cursorY += 10
   }
 
