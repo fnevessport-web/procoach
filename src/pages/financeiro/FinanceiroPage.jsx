@@ -44,6 +44,27 @@ const MESES_ABREV = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT'
 
 const PIN_KEY = 'procoach_pin_fin'
 
+// Sobrevive a reload de página — sem isso, um F5 no meio da seleção de "alunos sem cobrança
+// do clube" perdia tudo e obrigava a reanexar o relatório e remarcar nome por nome de novo.
+// Expira sozinho depois de alguns dias pra não ressurgir com dado de um ciclo antigo.
+const CHAVE_SELECAO_CLUBE = 'procoach_selecao_alunos_clube'
+const VALIDADE_SELECAO_CLUBE_MS = 14 * 24 * 60 * 60 * 1000
+
+function lerSelecaoClubeSalva() {
+  try {
+    const salvo = localStorage.getItem(CHAVE_SELECAO_CLUBE)
+    if (!salvo) return null
+    const parsed = JSON.parse(salvo)
+    if (!parsed?.salvoEm || Date.now() - parsed.salvoEm > VALIDADE_SELECAO_CLUBE_MS) {
+      localStorage.removeItem(CHAVE_SELECAO_CLUBE)
+      return null
+    }
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 const EMPRESAS = {
   procopio: {
     id: 'procopio',
@@ -581,10 +602,24 @@ export function FinanceiroPage() {
   const [cruzandoClube, setCruzandoClube] = useState(false)
   const [revisaoNomes, setRevisaoNomes] = useState(null) // null = modal fechado; array = lista de "prováveis" pra confirmar/corrigir
   const [aplicandoCorrecoesNomes, setAplicandoCorrecoesNomes] = useState(false)
-  const [ultimoCruzamento, setUltimoCruzamento] = useState(null) // { dados, periodo } do último cruzamento rodado — reaproveitado pra tela de seleção
-  const [selecaoAlunos, setSelecaoAlunos] = useState(null) // null = tela fechada; array = lista pra selecionar/exportar
+  // Lazy init: recupera a seleção salva no localStorage (se ainda válida) já na primeira
+  // renderização, pra sobreviver a um F5 no meio do trabalho — ver CHAVE_SELECAO_CLUBE.
+  const [ultimoCruzamento, setUltimoCruzamento] = useState(() => lerSelecaoClubeSalva()?.ultimoCruzamento ?? null)
+  const [selecaoAlunos, setSelecaoAlunos] = useState(() => lerSelecaoClubeSalva()?.selecaoAlunos ?? null)
   const [buscaSelecaoAlunos, setBuscaSelecaoAlunos] = useState('')
   const [exportandoSelecaoAlunos, setExportandoSelecaoAlunos] = useState(false)
+  const [modalSelecaoAlunosAberto, setModalSelecaoAlunosAberto] = useState(false) // separado de selecaoAlunos — fechar o modal não pode apagar a curadoria já feita
+
+  // Persiste a cada mudança — tanto o resultado bruto do cruzamento (pra reabrir a tela de
+  // seleção do zero, se precisar) quanto a seleção já marcada (pra exportar direto sem
+  // remarcar nada). `ultimoCruzamento` sempre presente nos dois, senão não tem como
+  // reconstruir a tela depois de um reload.
+  useEffect(() => {
+    if (!ultimoCruzamento) { localStorage.removeItem(CHAVE_SELECAO_CLUBE); return }
+    try {
+      localStorage.setItem(CHAVE_SELECAO_CLUBE, JSON.stringify({ ultimoCruzamento, selecaoAlunos, salvoEm: Date.now() }))
+    } catch { /* localStorage cheio/indisponível — segue sem persistir, sem quebrar a tela */ }
+  }, [ultimoCruzamento, selecaoAlunos])
 
   // Form: receita
   const [valorReceitaInput, setValorReceitaInput] = useState('')
@@ -1072,6 +1107,7 @@ export function FinanceiroPage() {
       await exportarCruzamentoClubePDF(dados, { periodo: { inicio: dataInicio, fim: dataFimEfetivo } })
       toast.success(`${dados.totalBateram} bateram, ${dados.totalProvaveis} prováveis, ${dados.totalSemCorrespondencia} sem correspondência (de ${dados.totalClube}). Estimativa perdida: ${dados.valorEstimadoPerdido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`, { style: toastStyle, duration: 6000 })
       setUltimoCruzamento({ dados, periodo: { inicio: dataInicio, fim: dataFimEfetivo } })
+      setSelecaoAlunos(null) // cruzamento novo — descarta seleção de um período anterior, evita exportar lista desatualizada
 
       // "Prováveis" = mesma pessoa, grafia diferente entre as duas planilhas — junta pra
       // sugerir a correção do cadastro (dedupe por nomeProcoach, já que o mesmo aluno pode
@@ -1115,17 +1151,16 @@ export function FinanceiroPage() {
     }
   }
 
-  // Tela de seleção — reaproveita o último cruzamento rodado (ultimoCruzamento) pra montar a
-  // lista de "alunos com aula dada mas fora da planilha de pagamento do clube", já juntando
-  // as duas categorias que a lib separa internamente (nossosSemCorrespondencia): quem não
-  // consta em lugar nenhum ("forte") e quem consta em outra turma/horário ("revisar" — pode
-  // ser erro de cadastro nosso, mas o coordenador decide caso a caso, por isso aparece
-  // desmarcado por padrão em vez de escondido). Tudo aberto pra seleção manual porque só o
-  // coordenador sabe quais são cortesia não marcada ou nome que já sabe estar errado.
-  function handleAbrirSelecaoAlunos() {
-    if (!ultimoCruzamento) return
+  // Monta a lista de "alunos com aula dada mas fora da planilha de pagamento do clube" a
+  // partir do último cruzamento, já juntando as duas categorias que a lib separa
+  // internamente (nossosSemCorrespondencia): quem não consta em lugar nenhum ("forte") e
+  // quem consta em outra turma/horário ("revisar" — pode ser erro de cadastro nosso, mas o
+  // coordenador decide caso a caso, por isso aparece desmarcado por padrão em vez de
+  // escondido). Tudo aberto pra seleção manual porque só o coordenador sabe quais são
+  // cortesia não marcada ou nome que já sabe estar errado.
+  function construirListaSelecaoAlunos() {
     const { procopio, beachArena } = ultimoCruzamento.dados
-    const linhas = [...procopio.nossosSemCorrespondencia, ...beachArena.nossosSemCorrespondencia]
+    return [...procopio.nossosSemCorrespondencia, ...beachArena.nossosSemCorrespondencia]
       .map((c, i) => ({
         id: `${c.chaveNome}|${c.modalidade}|${c.horario}|${c.empresa}|${i}`,
         nome: c.nome, empresa: c.empresa, modalidade: c.modalidade,
@@ -1136,8 +1171,22 @@ export function FinanceiroPage() {
         selecionado: !c.apareceEmOutraTurmaDoClube,
       }))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+  }
+
+  // Só remonta a lista do zero se ainda não existe uma (primeira vez depois do cruzamento) —
+  // se já tem uma seleção em andamento (inclusive recuperada do localStorage depois de um
+  // reload ou de ter fechado o modal), reabre exatamente como estava, sem perder o que já
+  // foi marcado/desmarcado.
+  function handleAbrirSelecaoAlunos() {
+    if (!ultimoCruzamento) return
+    if (!selecaoAlunos) setSelecaoAlunos(construirListaSelecaoAlunos())
     setBuscaSelecaoAlunos('')
-    setSelecaoAlunos(linhas)
+    setModalSelecaoAlunosAberto(true)
+  }
+
+  function handleRecomecarSelecaoAlunos() {
+    if (!ultimoCruzamento) return
+    setSelecaoAlunos(construirListaSelecaoAlunos())
   }
 
   // `destino`: 'clube' gera a versão sem valor (pra mandar pro clube verificar a cobrança);
@@ -2302,14 +2351,23 @@ export function FinanceiroPage() {
           do clube. Nada é exportado sem passar por aqui: o coordenador é quem sabe qual nome
           é cortesia não marcada ou está errado no cadastro, então tudo fica selecionável
           manualmente (nenhuma seleção automática além do padrão inicial). */}
-      <Modal open={!!selecaoAlunos} onClose={() => setSelecaoAlunos(null)} title="Selecionar alunos p/ enviar ao clube" size="xl">
+      <Modal open={modalSelecaoAlunosAberto} onClose={() => setModalSelecaoAlunosAberto(false)} title="Selecionar alunos p/ enviar ao clube" size="xl">
         {selecaoAlunos && (
           <>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: 0, marginBottom: '12px' }}>
-              Alunos com aula dada no período que não constam na planilha de pagamento do clube.
-              Desmarque quem for cortesia não marcada como tal, nome que já sabe estar errado, ou
-              qualquer um que não queira incluir no envio.
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '12px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+                Alunos com aula dada no período que não constam na planilha de pagamento do clube.
+                Desmarque quem for cortesia não marcada como tal, nome que já sabe estar errado, ou
+                qualquer um que não queira incluir no envio. Fica salvo automaticamente — pode fechar
+                e voltar depois sem perder a marcação.
+              </p>
+              <button onClick={handleRecomecarSelecaoAlunos} style={{
+                flexShrink: 0, padding: '4px 0', border: 'none', background: 'none',
+                color: 'var(--text-muted)', fontSize: '11px', textDecoration: 'underline', cursor: 'pointer',
+              }}>
+                Recomeçar
+              </button>
+            </div>
             <input
               type="text"
               placeholder="Buscar por nome..."
@@ -2383,7 +2441,7 @@ export function FinanceiroPage() {
               )}
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setSelecaoAlunos(null)} style={{
+              <button onClick={() => setModalSelecaoAlunosAberto(false)} style={{
                 padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border)',
                 backgroundColor: 'transparent', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
               }}>
