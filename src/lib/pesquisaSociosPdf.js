@@ -106,26 +106,29 @@ export async function exportarPesquisaSociosPDF(campanha, respostas, professores
   }
 
   // ---------- Cabeçalho ----------
+  // Título curto na linha principal + subtítulo com o resto — "PESQUISA DE SATISFAÇÃO —
+  // SÓCIOS BEYOND THE CLUB" inteiro numa linha só de 16px colidia com o "Gerado em" no canto
+  // (achado testando com dado real antes de mandar pra diretoria aprovar).
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(16)
   doc.setTextColor(...COR_TINTA)
-  doc.text('PESQUISA DE SATISFAÇÃO — SÓCIOS BEYOND THE CLUB', margem, 40)
+  doc.text('PESQUISA DE SATISFAÇÃO', margem, 32)
   doc.setFont('helvetica', 'italic')
   doc.setFontSize(10)
   doc.setTextColor(...COR_TEXTO_SUAVE)
-  doc.text(campanha.nome, margem, 56)
+  doc.text(`SÓCIOS BEYOND THE CLUB — ${campanha.nome}`, margem, 48)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.text(`Gerado em ${geradoEm}`, pageWidth - margem, 32, { align: 'right' })
 
   doc.setFillColor(...COR_PERIGO)
-  doc.roundedRect(margem, 68, larguraUtil, 22, 3, 3, 'F')
+  doc.roundedRect(margem, 62, larguraUtil, 22, 3, 3, 'F')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9)
   doc.setTextColor(...COR_BRANCO)
-  doc.text('USO INTERNO - NÃO DISTRIBUIR', pageWidth / 2, 82, { align: 'center' })
+  doc.text('USO INTERNO - NÃO DISTRIBUIR', pageWidth / 2, 76, { align: 'center' })
 
-  let cursorY = 108
+  let cursorY = 102
 
   // ---------- KPIs ----------
   const cards = [
