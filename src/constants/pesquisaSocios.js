@@ -10,7 +10,7 @@
 // Silva", etc. Mesma convenção usada no resto do app (Home, aulas...), que sempre mostra o
 // nome completo cadastrado, nunca uma versão abreviada.
 export const NOMES_PROFESSORES_PESQUISA_SOCIOS = [
-  'Bruno Borges', 'Bruno Nunes Ferreira Nascimento', 'Charles de Melo Silva',
+  'Bruno Borges da Silva', 'Bruno Nunes Ferreira Nascimento', 'Charles de Melo Silva',
   'Douglas Paixão Prier de Saone', 'Eric Jun Domiciano Higashi', 'João Vitor Martins de França',
   'Kelly Gomes Rodrigues', 'Lucas Miguel', 'Marcelo Ribeiro Rocha', 'Marcelo Villalobo Faria',
   'Nayara Santos', 'Tiago Guedes', 'Wendel Anjos',

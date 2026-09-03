@@ -8,12 +8,15 @@
     <meta name="theme-color" content="#1E2B24" />
     <meta name="description" content="Gestão de aulas esportivas, presença e pagamentos" />
     <!-- Preview ao colar um link (WhatsApp, etc.) — como é SPA de página única, esse cartão
-         vale pra qualquer rota (inclusive as públicas: /pesquisa/:token, /disponibilidade/:token,
-         /eventos/:slug), por isso o texto fica genérico/institucional em vez de específico de
-         uma página, pra nunca ficar errado em nenhum link compartilhado. -->
+         vale pra qualquer rota. Título/descrição cobrem as duas pesquisas que hoje são
+         compartilhadas por link (/pesquisa/:token de professor e /pesquisa-socios/:token de
+         sócio) — por isso "Pesquisa de Satisfação" sem qualificador de público. Se um link de
+         /disponibilidade/:token ou /eventos/:slug for compartilhado, aparece esse mesmo cartão
+         (não tem como diferenciar por rota numa SPA sem SSR/edge) — nesses casos o texto fica
+         genérico o bastante pra não ficar claramente errado, mas não é ideal. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ProCoach Sport" />
-    <meta property="og:title" content="Pesquisa de Satisfação — Colaboradores" />
+    <meta property="og:title" content="Pesquisa de Satisfação" />
     <meta property="og:description" content="Sua opinião é importante pra gente. Responda em poucos minutos." />
     <meta property="og:image" content="https://procoachsport.com.br/images/macro.jpg" />
     <meta name="twitter:card" content="summary_large_image" />

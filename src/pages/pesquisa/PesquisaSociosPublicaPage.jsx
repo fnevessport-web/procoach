@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { XCircle, CheckCircle2, Send } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { XCircle, CheckCircle2, Send, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { FotoProfessor } from '../../components/ui/FotoProfessor'
 import { CabecalhoRelatorio, EstrelasInput, NpsInput } from './PesquisaSatisfacaoPage'
@@ -18,8 +19,42 @@ const toastStyle = {
 
 const textareaStyle = {
   width: '100%', minHeight: '90px', padding: '10px 12px', borderRadius: '10px', boxSizing: 'border-box',
-  border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-base)',
+  border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-overlay)',
   color: 'var(--color-text-light-primary)', fontSize: '13px', lineHeight: '1.5', resize: 'vertical', fontFamily: 'inherit',
+}
+
+// Foto clicável (lista de seleção e cabeçalho do bloco) — abre em tamanho grande, pra quem
+// não lembra o nome do professor conseguir reconhecer o rosto. Portal pro <body> pelo mesmo
+// motivo do Modal.jsx: position:fixed dentro do container com overflow-y desta página tem
+// bug conhecido no Safari mobile (fica preso dentro do scroll em vez de cobrir a tela toda).
+function FotoClicavel({ src, nome, size, onAmpliar }) {
+  return (
+    <button
+      type="button"
+      onClick={e => { e.preventDefault(); e.stopPropagation(); onAmpliar({ src, nome }) }}
+      style={{ background: 'none', border: 'none', padding: 0, cursor: src ? 'zoom-in' : 'default', flexShrink: 0, borderRadius: '50%' }}
+    >
+      <FotoProfessor src={src} nome={nome} size={size} redondo />
+    </button>
+  )
+}
+
+function ModalFotoAmpliada({ foto, onClose }) {
+  if (!foto) return null
+  return createPortal((
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 999, backgroundColor: 'rgba(0,0,0,0.88)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '24px', cursor: 'zoom-out',
+    }}>
+      <button onClick={onClose} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', padding: '6px' }}>
+        <X size={26} color="white" />
+      </button>
+      {foto.src
+        ? <img src={foto.src} alt={foto.nome} style={{ maxWidth: '85%', maxHeight: '65vh', borderRadius: '16px', objectFit: 'cover' }} />
+        : <FotoProfessor nome={foto.nome} size={160} redondo />}
+      <div style={{ color: 'white', fontSize: '17px', fontWeight: '700' }}>{foto.nome}</div>
+    </div>
+  ), document.body)
 }
 
 function tituloPergunta(texto) {
@@ -51,10 +86,12 @@ export function PesquisaSociosPublicaPage() {
   const [professoresSelecionados, setProfessoresSelecionados] = useState([]) // ids, na ordem em que foram marcados
   const [avaliacoes, setAvaliacoes] = useState({}) // { [professorId]: { nota_tecnica, ..., comentario } }
   const [comentarioFinal, setComentarioFinal] = useState('')
+  const [fotoAmpliada, setFotoAmpliada] = useState(null) // { src, nome } | null
 
   const refsPerguntas = useRef({}) // pra destaque+scroll de campo obrigatório faltando
   const refsBlocos = useRef({}) // pra scroll automático até o bloco do professor recém-marcado
   const qtdSelecionadosAnterior = useRef(0)
+  const timerScrollRef = useRef(null)
 
   useEffect(() => {
     async function carregar() {
@@ -72,15 +109,25 @@ export function PesquisaSociosPublicaPage() {
     carregar()
   }, [token])
 
-  // Scroll automático até o bloco do professor recém-marcado — só quando a seleção CRESCE
-  // (desmarcar não deve rolar a tela). requestAnimationFrame porque o bloco só existe no DOM
-  // depois do re-render que a mudança de estado dispara.
+  // Scroll automático até o bloco de professor que falta preencher — só quando a seleção
+  // CRESCE (desmarcar não deve rolar a tela) e só depois de ~700ms sem marcar mais ninguém
+  // (debounce). Sem o debounce, marcar vários professores em sequência rápida ficava
+  // "puxando" a tela pra baixo a cada clique, sem dar tempo de continuar marcando na lista —
+  // pedido explícito pra deixar a pessoa marcar todo mundo primeiro, só descendo sozinho
+  // quando ela parar. Alvo é o primeiro selecionado que ainda não tem nenhuma nota (não
+  // necessariamente o último marcado), pra sempre pousar em quem falta responder.
   useEffect(() => {
     if (professoresSelecionados.length > qtdSelecionadosAnterior.current) {
-      const novoId = professoresSelecionados[professoresSelecionados.length - 1]
-      requestAnimationFrame(() => refsBlocos.current[novoId]?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+      clearTimeout(timerScrollRef.current)
+      timerScrollRef.current = setTimeout(() => {
+        const semNenhumaNota = id => !PERGUNTAS_POR_PROFESSOR.some(p => avaliacoes[id]?.[p.chave])
+        const alvo = professoresSelecionados.find(semNenhumaNota) ?? professoresSelecionados[professoresSelecionados.length - 1]
+        refsBlocos.current[alvo]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 700)
     }
     qtdSelecionadosAnterior.current = professoresSelecionados.length
+    return () => clearTimeout(timerScrollRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [professoresSelecionados])
 
   function toggleProfessor(id) {
@@ -217,7 +264,7 @@ export function PesquisaSociosPublicaPage() {
                     backgroundColor: marcado ? 'rgba(165,76,46,0.06)' : 'var(--color-surface-light-overlay)',
                   }}>
                     <input type="checkbox" checked={marcado} onChange={() => toggleProfessor(p.id)} style={{ width: '18px', height: '18px', flexShrink: 0 }} />
-                    <FotoProfessor src={p.foto_url} nome={p.nome} size={40} redondo />
+                    <FotoClicavel src={p.foto_url} nome={p.nome} size={40} onAmpliar={setFotoAmpliada} />
                     <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)' }}>{p.nome}</span>
                   </label>
                 )
@@ -237,7 +284,7 @@ export function PesquisaSociosPublicaPage() {
                 style={{ border: '1px solid var(--color-border-light)', borderRadius: '16px', padding: '16px', backgroundColor: 'var(--color-surface-light-overlay)' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
-                  <FotoProfessor src={prof.foto_url} nome={prof.nome} size={48} redondo />
+                  <FotoClicavel src={prof.foto_url} nome={prof.nome} size={48} onAmpliar={setFotoAmpliada} />
                   <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>{prof.nome}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -295,6 +342,8 @@ export function PesquisaSociosPublicaPage() {
           {enviando ? 'Enviando...' : <><Send size={15} /> Enviar Respostas</>}
         </button>
       </div>
+
+      <ModalFotoAmpliada foto={fotoAmpliada} onClose={() => setFotoAmpliada(null)} />
     </div>
   )
 }
