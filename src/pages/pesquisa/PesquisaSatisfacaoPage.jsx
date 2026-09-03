@@ -19,7 +19,7 @@ const COR_CREME = '#F1EFEA'
 const COR_TINTA = '#1A1818'
 const COR_TEXTO_SUAVE = '#6E6A64'
 
-function EstrelasInput({ value, onChange }) {
+export function EstrelasInput({ value, onChange }) {
   return (
     <div style={{ display: 'flex', gap: '6px' }}>
       {[1, 2, 3, 4, 5].map(n => (
@@ -36,7 +36,7 @@ function EstrelasInput({ value, onChange }) {
   )
 }
 
-function NpsInput({ value, onChange }) {
+export function NpsInput({ value, onChange }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(11, 1fr)', gap: '4px' }}>
       {Array.from({ length: 11 }, (_, n) => n).map(n => {
@@ -64,8 +64,9 @@ function NpsInput({ value, onChange }) {
 // Cabeçalho idêntico ao do relatório mensal (relatorioPdf.js: desenharLockupLogos +
 // CORES_CHIP): logo Beyond + linha fina + logo da unidade, título, subtítulo em itálico,
 // tarja de 4 cores embaixo. Sem nenhum dado do professor — esse cabeçalho é igual pra
-// qualquer link.
-function CabecalhoRelatorio() {
+// qualquer link. `titulo`/`subtitulo` opcionais pra reaproveitar em outras pesquisas
+// (ex.: pesquisa de sócios) sem duplicar o componente inteiro.
+export function CabecalhoRelatorio({ titulo = 'PESQUISA DE SATISFAÇÃO', subtitulo = 'PROCÓPIO' }) {
   return (
     <div style={{ backgroundColor: COR_CREME }}>
       <div style={{ maxWidth: '560px', margin: '0 auto', padding: '20px 20px 16px', boxSizing: 'border-box' }}>
@@ -74,8 +75,8 @@ function CabecalhoRelatorio() {
           <div style={{ width: '1px', height: '44px', backgroundColor: 'rgba(26,24,24,0.25)' }} />
           <img src="/images/logoprocopio_preto.png" alt="Procópio" style={{ height: '58px', objectFit: 'contain' }} />
         </div>
-        <div style={{ fontSize: '16px', fontWeight: '700', color: COR_TINTA }}>PESQUISA DE SATISFAÇÃO</div>
-        <div style={{ fontSize: '11px', fontStyle: 'italic', color: COR_TEXTO_SUAVE, marginTop: '2px' }}>PROCÓPIO</div>
+        <div style={{ fontSize: '16px', fontWeight: '700', color: COR_TINTA }}>{titulo}</div>
+        <div style={{ fontSize: '11px', fontStyle: 'italic', color: COR_TEXTO_SUAVE, marginTop: '2px' }}>{subtitulo}</div>
       </div>
       <div style={{ display: 'flex' }}>
         {CORES_CHIP.map((cor, i) => (
