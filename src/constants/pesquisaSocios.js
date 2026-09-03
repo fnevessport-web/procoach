@@ -43,9 +43,20 @@ export function nomeExibicaoProfessor(nomeCompleto) {
 
 export const TEXTO_INTRO_PESQUISA_SOCIOS = 'Olá, associado! A Procópio, empresa responsável pela operação das aulas de tênis do Beyond, quer muito ouvir você. Nosso objetivo é entregar uma experiência cada vez melhor, mais profissional e à altura do que você merece, e ninguém melhor do que você, que vive as aulas na prática, para nos dizer o que está funcionando e o que podemos melhorar. Esta é uma pesquisa sem identificação, você não precisa colocar seu nome. Leva pouquíssimos minutos. Obrigado por construirmos juntos um tênis cada vez melhor dentro do Beyond the Club.'
 
-export const TEXTO_PERGUNTA_NPS = 'De 0 a 10, o quanto você recomendaria as aulas de tênis do Beyond a um amigo ou familiar?'
+// "outro associado", não "amigo ou familiar" — só sócio pode fazer aula no Beyond, amigo/
+// familiar de fora não tem como se inscrever, então recomendar pra eles não faz sentido
+// nesse contexto (pedido explícito depois do primeiro teste real).
+export const TEXTO_PERGUNTA_NPS = 'De 0 a 10, o quanto você recomendaria as aulas de tênis do Beyond a outro associado?'
 export const TEXTO_PERGUNTA_MOTIVO_NPS = 'O que motivou a sua nota?'
 export const TEXTO_PERGUNTA_PROFESSORES = 'Com quais professores você já teve aula?'
+
+// Opção extra na lista de professores pra quem teve aula mas não lembra com quem — poucos
+// casos, mas sem essa opção a pessoa ou inventava um nome ou pulava a avaliação inteira.
+// `id` é uma string fixa (não é UUID de professor de verdade) só pra funcionar como chave
+// nos mesmos lugares que um professor_id funcionaria (professores_ids[], avaliacoes.<id>);
+// nunca é gravado na tabela `professores`.
+export const ID_PROFESSOR_NAO_LEMBRO = 'nao-lembro-nome'
+export const NOME_PROFESSOR_NAO_LEMBRO = 'Não lembro o nome'
 
 // As 5 perguntas repetidas pra cada professor selecionado — chave usada dentro de
 // `avaliacoes.<professor_id>` no JSONB de resposta (ver salvar_resposta_pesquisa_socios).

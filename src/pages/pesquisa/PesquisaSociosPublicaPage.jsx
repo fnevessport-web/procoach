@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { XCircle, CheckCircle2, Send, X } from 'lucide-react'
+import { XCircle, CheckCircle2, Send, X, User } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { FotoProfessor } from '../../components/ui/FotoProfessor'
 import { CabecalhoRelatorio, EstrelasInput, NpsInput } from './PesquisaSatisfacaoPage'
@@ -8,6 +8,7 @@ import {
   NOMES_PROFESSORES_PESQUISA_SOCIOS, TEXTO_INTRO_PESQUISA_SOCIOS, TEXTO_PERGUNTA_NPS,
   TEXTO_PERGUNTA_MOTIVO_NPS, TEXTO_PERGUNTA_PROFESSORES, PERGUNTAS_POR_PROFESSOR,
   TEXTO_COMENTARIO_PROFESSOR, TEXTO_PERGUNTA_FINAL, nomeExibicaoProfessor,
+  ID_PROFESSOR_NAO_LEMBRO, NOME_PROFESSOR_NAO_LEMBRO,
 } from '../../constants/pesquisaSocios'
 import toast from 'react-hot-toast'
 
@@ -36,6 +37,20 @@ function FotoClicavel({ src, nome, size, onAmpliar }) {
     >
       <FotoProfessor src={src} nome={nome} size={size} redondo />
     </button>
+  )
+}
+
+// Avatar de silhueta escura pra opção "Não lembro o nome" — nunca é clicável/ampliável
+// (não tem foto de verdade pra mostrar grande, e "ampliar" um ícone genérico não ajudaria
+// ninguém a reconhecer nada).
+function AvatarNaoLembro({ size }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      backgroundColor: '#2E2E2E', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <User size={size * 0.58} color="#7A7A7A" fill="#7A7A7A" />
+    </div>
   )
 }
 
@@ -106,8 +121,12 @@ export function PesquisaSociosPublicaPage() {
       setLinkValido(!resValido.error && resValido.data === true)
       // Nome de exibição (curto) em vez do nome completo do cadastro — aplicado aqui, na
       // entrada dos dados, pra todo o resto da tela (lista, blocos, foto ampliada) já
-      // trabalhar com o nome certo sem precisar pensar nisso de novo.
-      setProfessores((resProfs.data || []).map(p => ({ ...p, nome: nomeExibicaoProfessor(p.nome) })))
+      // trabalhar com o nome certo sem precisar pensar nisso de novo. "Não lembro o nome"
+      // entra como um 14º item da mesma lista, sempre por último — assim todo o resto do
+      // componente (seleção, blocos, ordem por clique, validação) trata ela igual a um
+      // professor de verdade, sem precisar de nenhum caso especial além do avatar.
+      const professoresReais = (resProfs.data || []).map(p => ({ ...p, nome: nomeExibicaoProfessor(p.nome) }))
+      setProfessores([...professoresReais, { id: ID_PROFESSOR_NAO_LEMBRO, nome: NOME_PROFESSOR_NAO_LEMBRO, foto_url: null }])
     }
     carregar()
   }, [token])
@@ -267,7 +286,9 @@ export function PesquisaSociosPublicaPage() {
                     backgroundColor: marcado ? 'rgba(165,76,46,0.06)' : 'var(--color-surface-light-overlay)',
                   }}>
                     <input type="checkbox" checked={marcado} onChange={() => toggleProfessor(p.id)} style={{ width: '18px', height: '18px', flexShrink: 0 }} />
-                    <FotoClicavel src={p.foto_url} nome={p.nome} size={40} onAmpliar={setFotoAmpliada} />
+                    {p.id === ID_PROFESSOR_NAO_LEMBRO
+                      ? <AvatarNaoLembro size={40} />
+                      : <FotoClicavel src={p.foto_url} nome={p.nome} size={40} onAmpliar={setFotoAmpliada} />}
                     <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)' }}>{p.nome}</span>
                   </label>
                 )
@@ -287,7 +308,9 @@ export function PesquisaSociosPublicaPage() {
                 style={{ border: '1px solid var(--color-border-light)', borderRadius: '16px', padding: '16px', backgroundColor: 'var(--color-surface-light-overlay)' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
-                  <FotoClicavel src={prof.foto_url} nome={prof.nome} size={48} onAmpliar={setFotoAmpliada} />
+                  {prof.id === ID_PROFESSOR_NAO_LEMBRO
+                    ? <AvatarNaoLembro size={48} />
+                    : <FotoClicavel src={prof.foto_url} nome={prof.nome} size={48} onAmpliar={setFotoAmpliada} />}
                   <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>{prof.nome}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

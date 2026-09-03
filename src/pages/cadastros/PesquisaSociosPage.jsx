@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, X, Copy, Check, FileText, ChevronLeft, ChevronRight, Star, ClipboardList } from 'lucide-react'
+import { Plus, X, Copy, Check, FileText, ChevronLeft, ChevronRight, Star, ClipboardList, User } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { BarChart, Bar, Cell, XAxis, YAxis, ResponsiveContainer } from 'recharts'
@@ -11,7 +11,7 @@ import {
   useCampanhasPesquisaSocios, useCriarCampanhaPesquisaSocios,
   useRespostasCampanha, useProfessoresPesquisaSocios,
 } from '../../hooks/usePesquisaSocios'
-import { PERGUNTAS_POR_PROFESSOR } from '../../constants/pesquisaSocios'
+import { PERGUNTAS_POR_PROFESSOR, ID_PROFESSOR_NAO_LEMBRO } from '../../constants/pesquisaSocios'
 import { exportarPesquisaSociosPDF } from '../../lib/pesquisaSociosPdf'
 
 const toastStyle = {
@@ -36,6 +36,29 @@ function EstrelasDisplay({ value }) {
       ))}
     </div>
   )
+}
+
+// Mesmo avatar de silhueta escura da tela pública (PesquisaSociosPublicaPage.jsx) pra quem
+// respondeu "Não lembro o nome" — sem isso, FotoProfessor cairia no fallback de iniciais
+// coloridas ("NL" laranja), que não faz sentido pra um pseudo-professor.
+function AvatarNaoLembro({ size }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      backgroundColor: '#2E2E2E', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <User size={size * 0.58} color="#7A7A7A" fill="#7A7A7A" />
+    </div>
+  )
+}
+
+// `id` explícito em vez de ler de dentro de um objeto `prof` — os dois call-sites usam
+// formatos de objeto diferentes (um vem de `dados.porProfessor`, com chave `profId`; o
+// outro vem direto da lista de `professores`, com chave `id`), mais simples pedir o id já
+// resolvido do que a função adivinhar qual chave ler.
+function FotoOuAvatarNaoLembro({ id, foto_url, nome, size }) {
+  if (id === ID_PROFESSOR_NAO_LEMBRO) return <AvatarNaoLembro size={size} />
+  return <FotoProfessor src={foto_url} nome={nome} size={size} redondo />
 }
 
 // Mesmo padrão de "copiar com 1 clique" já duplicado em ProfessoresPage.jsx (PixCopiavel) e
@@ -109,7 +132,7 @@ function CardDesempenhoProfessor({ prof }) {
   return (
     <div style={{ border: '1px solid var(--color-border-light)', borderRadius: '14px', padding: '14px', backgroundColor: 'var(--color-surface-light-overlay)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-        <FotoProfessor src={prof.foto_url} nome={prof.nome} size={36} redondo />
+        <FotoOuAvatarNaoLembro id={prof.profId} foto_url={prof.foto_url} nome={prof.nome} size={36} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>{prof.nome}</div>
           <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>{prof.qtd} avaliação{prof.qtd === 1 ? '' : 'ões'}</div>
@@ -262,7 +285,7 @@ function AbaRespostasIndividuais({ respostas, professores, carregando }) {
       {profsAvaliados.map(({ id, prof, notas }) => (
         <div key={id} style={{ border: '1px solid var(--color-border-light)', borderRadius: '12px', padding: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-            <FotoProfessor src={prof?.foto_url} nome={prof?.nome || '?'} size={32} redondo />
+            <FotoOuAvatarNaoLembro id={id} foto_url={prof?.foto_url} nome={prof?.nome || '?'} size={32} />
             <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-light-primary)' }}>{prof?.nome || 'Professor removido'}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
