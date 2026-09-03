@@ -171,6 +171,16 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   const { modalidadeSelecionada, setOrigemAulas, user, setNavRecolhida } = useAppStore()
   const alturaVisivel = useVisualViewportHeight()
   const qc = useQueryClient()
+  // Financeiro (fin_custos_prof/fin_aulas_prof/fin_aulas_ano_prof) tem staleTime próprio e
+  // NUNCA era invalidado daqui — editar/excluir/mudar status de uma aula sempre invalidava só
+  // ['aulas'], então quem já tinha aberto o Financeiro na mesma sessão continuava vendo o
+  // total antigo até o cache expirar sozinho (staleTime 60s) ou a página recarregar. Chamar
+  // isso em toda alteração de aula garante que o Financeiro sempre reflita o ajuste na volta.
+  function invalidarFinanceiro() {
+    qc.invalidateQueries({ queryKey: ['fin_custos_prof'] })
+    qc.invalidateQueries({ queryKey: ['fin_aulas_prof'] })
+    qc.invalidateQueries({ queryKey: ['fin_aulas_ano_prof'] })
+  }
   const location = useLocation()
   const navigate = useNavigate()
   const abrirConversaDaAula = useAbrirConversaDaAula()
@@ -278,11 +288,22 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
     if (!acaoMassa) return
     setExecutandoMassa(true)
     try {
-      for (const a of aulasFiltradas) {
-        const statusAula = acaoMassa === 'confirmar' ? 'dada' : acaoMassa === 'sem_aula' ? 'nao_dada' : 'cancelada'
-        const pagaProfessor = acaoMassa !== 'cancelar'
-        const statusPresenca = acaoMassa === 'confirmar' ? 'presente' : acaoMassa === 'sem_aula' ? 'falta' : 'falta_justificada'
+      const statusAula = acaoMassa === 'confirmar' ? 'dada' : acaoMassa === 'sem_aula' ? 'nao_dada' : 'cancelada'
+      const pagaProfessor = acaoMassa !== 'cancelar'
+      const statusPresenca = acaoMassa === 'confirmar' ? 'presente' : acaoMassa === 'sem_aula' ? 'falta' : 'falta_justificada'
 
+      // Uma aula já marcada individualmente como "não dada"/"cancelada" é uma decisão
+      // explícita do coordenador (aluno faltou, choveu, etc) — a ação em massa do dia
+      // inteiro não pode reverter isso de volta pra "dada" (e pagar o professor) só porque
+      // passou por cima de tudo. Só entram no lote as aulas que ainda não tinham status
+      // manual, ou que já são o próprio alvo da ação escolhida agora.
+      const alvo = aulasFiltradas.filter(a => {
+        const atual = statusLocal[a.id] || a.status_aula || 'dada'
+        return atual === statusAula || (atual !== 'nao_dada' && atual !== 'cancelada')
+      })
+      const puladas = aulasFiltradas.length - alvo.length
+
+      for (const a of alvo) {
         await supabase.from('aulas').update({
           status_aula: statusAula,
           paga_professor: pagaProfessor,
@@ -296,13 +317,22 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
         if (acaoMassa === 'cancelar') {
           await gerarReposicoesPorCancelamento(a.id, motivoCancelamentoMassa)
         }
+
+        // Essa ação nunca deixava rastro nenhum em audit_log (diferente da troca de status
+        // individual) — uma reversão em massa ficava impossível de rastrear depois.
+        await logAudit('aulas', a.id, 'UPDATE',
+          { turma: getNivel(a) || a.turmas?.nome, horario: getHorario(a), data: a.data_aula },
+          { status_aula: statusAula, acao_massa: acaoMassa }
+        )
       }
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
       qc.invalidateQueries({ queryKey: ['relatorio_repos'] })
+      const sufixoPuladas = puladas > 0 ? ` (${puladas} já estava${puladas > 1 ? 'm' : ''} marcada${puladas > 1 ? 's' : ''} manualmente e foi${puladas > 1 ? 'ram' : ''} mantida${puladas > 1 ? 's' : ''})` : ''
       toast.success(
-        acaoMassa === 'confirmar' ? 'Todas as aulas confirmadas!' :
-        acaoMassa === 'sem_aula' ? 'Todas marcadas como Sem Aula!' :
-        'Todas as aulas canceladas!',
+        (acaoMassa === 'confirmar' ? 'Aulas confirmadas!' :
+        acaoMassa === 'sem_aula' ? 'Aulas marcadas como Sem Aula!' :
+        'Aulas canceladas!') + sufixoPuladas,
         { style: toastStyle }
       )
       setModalMassa(null)
@@ -690,6 +720,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       await supabase.from('presencas').delete().eq('aula_id', aulaId).eq('aluno_id', alunoId)
       removerAlunoDaListaLocal(aulaId, alunoId)
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
       toast.success('Aluno removido dessa aula.', { style: toastStyle })
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
@@ -710,6 +741,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       }
       removerAlunoDaListaLocal(aulaId, alunoId)
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
       toast.success('Aluno removido dessa aula e de todas as futuras da turma.', { style: toastStyle })
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
@@ -752,6 +784,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
         .eq('id', aulaId)
       if (error) throw error
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
       setEditandoNotas(false)
       toast.success('Observação salva!', { style: toastStyle })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
@@ -832,6 +865,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       updatePresenca(aulaId, alunoId, 'obs_nivel_prof', '')
       setAlertaNivel(prev => ({ ...prev, [alunoId]: null }))
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
       toast.success('Alerta removido do aluno. Histórico das aulas preservado!', { style: toastStyle })
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
   }
@@ -970,6 +1004,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       }
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
       toast.success('Presenças salvas!', { style: toastStyle })
       reposicoesBaixadas.forEach(r => {
         if (!r.dataFaltaResolvida) return
@@ -1024,6 +1059,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       }).eq('id', aula.id)
       if (error) throw error
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
       toast.success('Aula atualizada!', { style: toastStyle })
       setEditandoAula(null)
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
@@ -1102,6 +1138,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       )
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
       const mudancas = []
       if (novoNivelId && novoNivelId !== turmaOriginal.nivel_id) mudancas.push(`nível pra ${nomeNivelNovo}`)
       if (novoProfessorTurmaId && novoProfessorTurmaId !== turmaOriginal.professor_titular_id) mudancas.push(`professor pra ${nomeProfessorNovo}`)
@@ -1135,6 +1172,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       )
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
       toast.success(`${nomeSubstituto} substituindo nessa aula!`, { style: toastStyle })
       setSubstituindoProfessor(false)
       setNovoProfessorSubstitutoId('')
@@ -1156,6 +1194,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       if (error) throw error
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
       toast.success('Substituição removida — volta pro professor titular.', { style: toastStyle })
       setSubstituindoProfessor(false)
       setNovoProfessorSubstitutoId('')
@@ -1229,6 +1268,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       )
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
       toast.success(`Aula movida pra ${novoHorarioMover}!`, { style: toastStyle })
       fecharModal()
     } catch (err) {
@@ -1258,6 +1298,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
         null
       )
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
       toast.success('Aula excluída!', { style: toastStyle })
       fecharModal()
     } catch (err) { toast.error(err.message, { style: toastStyle }) }
@@ -1326,6 +1367,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
         [{ aluno_id: promptOutraTurma.alunoId }]
       )
       qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
       toast.success(`${promptOutraTurma.alunoNome} incluído(a) também em ${turma.nome}!`, { style: toastStyle })
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
