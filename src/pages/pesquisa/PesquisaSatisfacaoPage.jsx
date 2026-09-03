@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { XCircle, CheckCircle2, Send, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { PERGUNTAS_PESQUISA_SATISFACAO, TEXTO_INTRO_PESQUISA } from '../../constants/pesquisaSatisfacao'
@@ -92,6 +92,8 @@ export function PesquisaSatisfacaoPage() {
   const [respostas, setRespostas] = useState({})
   const [enviando, setEnviando] = useState(false)
   const [enviado, setEnviado] = useState(false)
+  const [tentouEnviar, setTentouEnviar] = useState(false) // true depois do 1º clique em Enviar com pergunta faltando — só a partir daí destaca campo vazio
+  const refsPerguntas = useRef({})
 
   useEffect(() => {
     async function carregar() {
@@ -114,14 +116,18 @@ export function PesquisaSatisfacaoPage() {
 
   // Todas as perguntas são obrigatórias agora, inclusive as de texto livre — pra estrela/nps
   // basta ter um valor selecionado, pra texto precisa ter algo digitado (não só espaços).
-  const faltamObrigatorias = PERGUNTAS_PESQUISA_SATISFACAO.some(p => {
+  function perguntaVazia(p) {
     if (p.tipo === 'texto') return !String(respostas[p.id] || '').trim()
     return respostas[p.id] == null
-  })
+  }
+  const faltamObrigatorias = PERGUNTAS_PESQUISA_SATISFACAO.some(perguntaVazia)
 
   async function handleEnviar() {
     if (faltamObrigatorias) {
-      toast.error('Responda todas as perguntas antes de enviar.', { style: toastStyle })
+      setTentouEnviar(true)
+      toast.error('Preencha as perguntas destacadas em vermelho antes de enviar.', { style: toastStyle })
+      const primeiraFaltando = PERGUNTAS_PESQUISA_SATISFACAO.find(perguntaVazia)
+      refsPerguntas.current[primeiraFaltando?.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
     setEnviando(true)
@@ -183,28 +189,44 @@ export function PesquisaSatisfacaoPage() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-          {PERGUNTAS_PESQUISA_SATISFACAO.map(p => (
-            <div key={p.id}>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '10px' }}>
-                {p.texto}
+          {PERGUNTAS_PESQUISA_SATISFACAO.map(p => {
+            const vazia = tentouEnviar && perguntaVazia(p)
+            return (
+              <div
+                key={p.id}
+                ref={el => { refsPerguntas.current[p.id] = el }}
+                style={{
+                  padding: '12px', borderRadius: '12px', boxSizing: 'border-box',
+                  border: vazia ? '1.5px solid var(--color-state-danger)' : '1.5px solid transparent',
+                  backgroundColor: vazia ? 'rgba(180,71,47,0.06)' : 'transparent',
+                }}
+              >
+                <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '10px' }}>
+                  {p.texto}
+                </div>
+                {p.tipo === 'estrelas' && <EstrelasInput value={respostas[p.id] || 0} onChange={v => setResposta(p.id, v)} />}
+                {p.tipo === 'nps' && <NpsInput value={respostas[p.id]} onChange={v => setResposta(p.id, v)} />}
+                {p.tipo === 'texto' && (
+                  <textarea
+                    rows={6}
+                    value={respostas[p.id] || ''}
+                    onChange={e => setResposta(p.id, e.target.value)}
+                    placeholder="Escreva sua resposta..."
+                    style={{
+                      width: '100%', minHeight: '140px', padding: '12px 14px', borderRadius: '10px', boxSizing: 'border-box',
+                      border: `1px solid ${vazia ? 'var(--color-state-danger)' : 'var(--color-border-light)'}`, backgroundColor: 'var(--color-surface-light-overlay)',
+                      color: 'var(--color-text-light-primary)', fontSize: '14px', lineHeight: '1.5', resize: 'vertical', fontFamily: 'inherit',
+                    }}
+                  />
+                )}
+                {vazia && (
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-state-danger)', marginTop: '8px' }}>
+                    Essa pergunta é obrigatória.
+                  </div>
+                )}
               </div>
-              {p.tipo === 'estrelas' && <EstrelasInput value={respostas[p.id] || 0} onChange={v => setResposta(p.id, v)} />}
-              {p.tipo === 'nps' && <NpsInput value={respostas[p.id]} onChange={v => setResposta(p.id, v)} />}
-              {p.tipo === 'texto' && (
-                <textarea
-                  rows={6}
-                  value={respostas[p.id] || ''}
-                  onChange={e => setResposta(p.id, e.target.value)}
-                  placeholder="Escreva sua resposta..."
-                  style={{
-                    width: '100%', minHeight: '140px', padding: '12px 14px', borderRadius: '10px', boxSizing: 'border-box',
-                    border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-overlay)',
-                    color: 'var(--color-text-light-primary)', fontSize: '14px', lineHeight: '1.5', resize: 'vertical', fontFamily: 'inherit',
-                  }}
-                />
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         <button
