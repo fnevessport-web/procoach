@@ -804,8 +804,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
     try {
       const conversaId = await abrirConversaDaAula.mutateAsync({ aulaId: aulaAlvo.id, outroUserId: perfilProfessor.user_id })
       navigate('/mensagens', { state: { conversaId } })
-    } catch {
-      toast.error('Mensagens por aula ainda não disponível — falta rodar uma migração no banco.', { style: toastStyle })
+    } catch (err) {
+      // Antes engolia QUALQUER erro atrás de uma mensagem fixa de "falta migração" — chegou
+      // a mascarar um bug real (recursão de RLS em conversas_participantes, ver migration
+      // 034) por tempo indeterminado, porque ninguém via o erro de verdade.
+      toast.error('Não foi possível abrir a conversa: ' + (err.message || 'erro desconhecido'), { style: toastStyle })
     }
   }
 
@@ -821,8 +824,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       }
       if (destinatarioIds.length > 1) toast.success(`Conversa iniciada com ${destinatarioIds.length} pessoas!`, { style: toastStyle })
       navigate('/mensagens', { state: { conversaId: primeiraConversaId } })
-    } catch {
-      toast.error('Mensagens por aula ainda não disponível — falta rodar uma migração no banco.', { style: toastStyle })
+    } catch (err) {
+      toast.error('Não foi possível abrir a conversa: ' + (err.message || 'erro desconhecido'), { style: toastStyle })
     } finally {
       setEscolhendoDestinatario(null)
       setDestinatariosSelecionados([])

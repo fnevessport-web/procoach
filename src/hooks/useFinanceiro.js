@@ -302,6 +302,13 @@ export function useAulasProfessorFinanceiro({ professorId, professor, empresa, d
 // useCustoProfessores/useAulasProfessorFinanceiro) e `valor` já calculado pra essa empresa.
 export function useAulasAnoProfessor({ professorId, professor }) {
   return useQuery({
+    // `professor` não entra na key, mas o valor de cada aula é calculado a partir dele —
+    // sem isso, se essa query disparasse ANTES da query separada que busca o professor
+    // terminar (corrida comum: as duas saem juntas no mount de MeuFinanceiroProfessor.jsx),
+    // ela rodava com professor=undefined, calcularValorAula caía no `: 0` do fallback, e o
+    // resultado (TODOS os meses do ano com valor R$0,00) ficava em cache até o staleTime
+    // expirar — foi exatamente o que aconteceu com o Bruno Borges (financeiro do próprio
+    // professor zerado mesmo com 55 aulas em agosto). `enabled` abaixo evita a corrida.
     queryKey: ['fin_aulas_ano_prof', professorId],
     queryFn: async () => {
       if (!professorId) return []
@@ -331,7 +338,7 @@ export function useAulasAnoProfessor({ professorId, professor }) {
         })
         .filter(a => aulaJaComecou(a.data_aula, a.horario))
     },
-    enabled: !!professorId,
+    enabled: !!professorId && !!professor,
     staleTime: 60000,
   })
 }
