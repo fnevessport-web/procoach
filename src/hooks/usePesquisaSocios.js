@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { NOMES_PROFESSORES_PESQUISA_SOCIOS } from '../constants/pesquisaSocios'
+import { NOMES_PROFESSORES_PESQUISA_SOCIOS, nomeExibicaoProfessor } from '../constants/pesquisaSocios'
 
 // Todas as campanhas já criadas (mais recente primeiro), com a contagem de respostas de
 // cada uma. RLS de pesquisa_socios_campanhas/respostas só libera pra role 'admin' (ver
@@ -62,6 +62,9 @@ export function useRespostasCampanha(campanhaId) {
 // authenticated, leitura direta OK) pra montar os cards de desempenho por professor e a
 // navegação de respostas individuais. A página pública usa a RPC
 // listar_professores_pesquisa_socios em vez disso (sessão anon não lê `professores` direto).
+// `nome` já sai como o nome de exibição (curto) — nome completo do cadastro só serve pra
+// achar o registro certo no banco, mostrar o nome inteiro pareceu invasivo demais pra uma
+// pesquisa que a diretoria também vê.
 export function useProfessoresPesquisaSocios() {
   return useQuery({
     queryKey: ['professores_pesquisa_socios'],
@@ -72,7 +75,7 @@ export function useProfessoresPesquisaSocios() {
         .in('nome', NOMES_PROFESSORES_PESQUISA_SOCIOS)
         .order('nome')
       if (error) throw error
-      return data || []
+      return (data || []).map(p => ({ ...p, nome: nomeExibicaoProfessor(p.nome) }))
     },
   })
 }

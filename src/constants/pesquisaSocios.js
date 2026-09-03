@@ -16,6 +16,31 @@ export const NOMES_PROFESSORES_PESQUISA_SOCIOS = [
   'Nayara Santos', 'Tiago Guedes', 'Wendel Anjos',
 ]
 
+// Nome completo (cadastro) fica só pra achar o registro certo no banco — mostrar o nome
+// inteiro do professor pro sócio que vai responder (ou pra diretoria no relatório) pareceu
+// invasivo demais, então a EXIBIÇÃO usa o nome curto pelo qual a pessoa é conhecida no dia a
+// dia (primeiro nome + um sobrenome — os mesmos nomes usados originalmente pra pedir essa
+// pesquisa, antes de eu descobrir o nome completo de cada um no cadastro). Não mexe no
+// cadastro de professores em si, só troca o texto mostrado dentro da pesquisa de sócios.
+const NOME_EXIBICAO_POR_NOME_COMPLETO = {
+  'Bruno Borges da Silva': 'Bruno Borges',
+  'Bruno Nunes Ferreira Nascimento': 'Bruno Nunes',
+  'Charles de Melo Silva': 'Charles Melo',
+  'Douglas Paixão Prier de Saone': 'Douglas Paixão',
+  'Eric Jun Domiciano Higashi': 'Eric Jun',
+  'João Vitor Martins de França': 'João França',
+  'Kelly Gomes Rodrigues': 'Kelly Gomes',
+  'Lucas Miguel': 'Lucas Miguel',
+  'Marcelo Ribeiro Rocha': 'Marcelo Rocha',
+  'Marcelo Villalobo Faria': 'Marcelo Villalobo',
+  'Nayara Santos': 'Nayara Santos',
+  'Tiago Guedes': 'Tiago Guedes',
+  'Wendel Anjos': 'Wendel Anjos',
+}
+export function nomeExibicaoProfessor(nomeCompleto) {
+  return NOME_EXIBICAO_POR_NOME_COMPLETO[nomeCompleto] || nomeCompleto
+}
+
 export const TEXTO_INTRO_PESQUISA_SOCIOS = 'Olá, associado! A Procópio, empresa responsável pela operação das aulas de tênis do Beyond, quer muito ouvir você. Nosso objetivo é entregar uma experiência cada vez melhor, mais profissional e à altura do que você merece, e ninguém melhor do que você, que vive as aulas na prática, para nos dizer o que está funcionando e o que podemos melhorar. Esta é uma pesquisa sem identificação, você não precisa colocar seu nome. Leva pouquíssimos minutos. Obrigado por construirmos juntos um tênis cada vez melhor dentro do Beyond the Club.'
 
 export const TEXTO_PERGUNTA_NPS = 'De 0 a 10, o quanto você recomendaria as aulas de tênis do Beyond a um amigo ou familiar?'

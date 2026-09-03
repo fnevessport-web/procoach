@@ -7,7 +7,7 @@ import { CabecalhoRelatorio, EstrelasInput, NpsInput } from './PesquisaSatisfaca
 import {
   NOMES_PROFESSORES_PESQUISA_SOCIOS, TEXTO_INTRO_PESQUISA_SOCIOS, TEXTO_PERGUNTA_NPS,
   TEXTO_PERGUNTA_MOTIVO_NPS, TEXTO_PERGUNTA_PROFESSORES, PERGUNTAS_POR_PROFESSOR,
-  TEXTO_COMENTARIO_PROFESSOR, TEXTO_PERGUNTA_FINAL,
+  TEXTO_COMENTARIO_PROFESSOR, TEXTO_PERGUNTA_FINAL, nomeExibicaoProfessor,
 } from '../../constants/pesquisaSocios'
 import toast from 'react-hot-toast'
 
@@ -104,7 +104,10 @@ export function PesquisaSociosPublicaPage() {
         supabase.rpc('listar_professores_pesquisa_socios', { p_nomes: NOMES_PROFESSORES_PESQUISA_SOCIOS }),
       ])
       setLinkValido(!resValido.error && resValido.data === true)
-      setProfessores(resProfs.data || [])
+      // Nome de exibição (curto) em vez do nome completo do cadastro — aplicado aqui, na
+      // entrada dos dados, pra todo o resto da tela (lista, blocos, foto ampliada) já
+      // trabalhar com o nome certo sem precisar pensar nisso de novo.
+      setProfessores((resProfs.data || []).map(p => ({ ...p, nome: nomeExibicaoProfessor(p.nome) })))
     }
     carregar()
   }, [token])
