@@ -2417,11 +2417,13 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
 
             {!isAvulsa && !somenteLeitura && (!professorProprioId || ehTitularDaTurma) && (
               <div style={{ marginBottom: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {!aulaFutura && (
-                  <button onClick={() => setEditandoNotas(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: notasAula ? '1px solid rgba(30,43,36,0.15)' : '1px solid var(--color-border-light)', background: 'none', color: notasAula ? 'var(--color-text-light-secondary)' : 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer' }}>
-                    <FileText size={12} /> {notasAula ? 'Ver nota' : 'Observação'}
-                  </button>
-                )}
+                {/* Antes só aparecia em aula já passada (!aulaFutura) — sem motivo técnico
+                    real, já que notas é só um texto salvo na aula específica (handleSalvarNotas),
+                    e bloqueava justamente o caso de uso de avisar o professor com antecedência
+                    numa aula futura. */}
+                <button onClick={() => setEditandoNotas(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: notasAula ? '1px solid rgba(30,43,36,0.15)' : '1px solid var(--color-border-light)', background: 'none', color: notasAula ? 'var(--color-text-light-secondary)' : 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer' }}>
+                  <FileText size={12} /> {notasAula ? 'Ver nota' : 'Observação'}
+                </button>
                 {!confirmandoExclusao ? (
                   <button onClick={() => setConfirmandoExclusao(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(180,71,47,0.3)', background: 'none', color: 'var(--color-state-danger)', fontSize: '12px', cursor: 'pointer' }}>
                     <Trash2 size={12} /> Excluir aula
