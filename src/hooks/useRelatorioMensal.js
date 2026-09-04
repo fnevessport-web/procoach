@@ -7,7 +7,7 @@ import { getFeriado } from '../constants/feriados'
 
 const SELECT_AULAS = `
   id, data_aula, status_aula, motivo_cancelamento, turma_id, observacoes, professor_executou_id, paga_professor,
-  professores!professor_executou_id(nome, valor_aula, valor_hora_aula, valor_aula_beach),
+  professores!professor_executou_id(id, nome, valor_aula, valor_hora_aula, valor_aula_beach),
   turmas(nome, quadra_id, quadras(nome), modalidade_id, modalidades(nome), horario_inicio, nivel_id, niveis(nome)),
   presencas(id, aluno_id, status_presenca, tipo_participacao, alunos(nome))
 `

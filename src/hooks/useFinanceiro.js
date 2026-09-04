@@ -86,7 +86,7 @@ export function useDesautorizar() {
 // ──────────────────────────────────────────────────────────────────────
 
 export const QUADRAS_EMPRESA = {
-  procopio: ['Quadra 1', 'Quadra 2', 'Quadra 3', 'Quadra 4', 'Quadra de Padel'],
+  procopio: ['Quadra 1', 'Quadra 2', 'Quadra 3', 'Quadra 4', 'Quadra de Padel', 'Quadra de Squash'],
   beach_arena: ['Quadra 1 Areia', 'Quadra 3 Areia', 'Quadra 5 Areia'],
 }
 

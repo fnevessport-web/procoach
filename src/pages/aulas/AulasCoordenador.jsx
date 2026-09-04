@@ -1392,7 +1392,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
     {
       empresa: 'PROCOPIO',
       cor: 'var(--color-action-primary)',
-      quadras: ['Quadra 4', 'Quadra 3', 'Quadra 2', 'Quadra 1', 'Quadra de Padel'],
+      quadras: ['Quadra 4', 'Quadra 3', 'Quadra 2', 'Quadra 1', 'Quadra de Padel', 'Quadra de Squash'],
     },
     {
       empresa: 'BEACH ARENA',
@@ -1406,6 +1406,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   function quadraCombinaComModalidade(q, nomeModalidade) {
     if (nomeModalidade === 'Tênis') return ['Quadra 1', 'Quadra 2', 'Quadra 3', 'Quadra 4'].includes(q)
     if (nomeModalidade === 'Padel') return q === 'Quadra de Padel'
+    if (nomeModalidade === 'Squash') return q === 'Quadra de Squash'
     if (nomeModalidade === 'Beach Tênis') return q === 'Quadra 1 Areia'
     if (nomeModalidade === 'Futevôlei') return q === 'Quadra 3 Areia'
     if (nomeModalidade === 'Vôlei de Praia') return q === 'Quadra 5 Areia'
@@ -1439,6 +1440,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       .map(q => {
         if (['Quadra 1', 'Quadra 2', 'Quadra 3', 'Quadra 4'].includes(q)) return 'Tênis'
         if (q === 'Quadra de Padel') return 'Padel'
+        if (q === 'Quadra de Squash') return 'Squash'
         if (q === 'Quadra 1 Areia') return 'Beach Tênis'
         if (q === 'Quadra 3 Areia') return 'Futevôlei'
         if (q === 'Quadra 5 Areia') return 'Vôlei de Praia'

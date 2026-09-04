@@ -31,6 +31,7 @@ export const EMPRESAS = [
 export const QUADRA_MODALIDADE = {
   'Quadra 1': 'Tênis', 'Quadra 2': 'Tênis', 'Quadra 3': 'Tênis', 'Quadra 4': 'Tênis',
   'Quadra de Padel': 'Padel',
+  'Quadra de Squash': 'Squash',
   'Quadra 1 Areia': 'Beach Tennis',
   'Quadra 3 Areia': 'Futevôlei',
   'Quadra 5 Areia': 'Vôlei de Praia',
@@ -99,13 +100,19 @@ export function isAulaIndividual(aula) {
   return parseObservacoes(aula.observacoes).nivel === 'Individual'
 }
 
-// A partir de 1/8/2026, aula de Tênis em GRUPO com só 1 aluno pagante vira deficitária
-// pro clube no valor cheio — decisão do coordenador foi pagar R$100 fixo nesse caso
-// específico, em vez do valor normal do professor. Vale só pra Tênis (as outras
-// modalidades continuam no valor cheio de sempre) e só a partir dessa data — aulas
-// de antes ficam com o valor de sempre, mesmo recalculadas depois.
+// A partir de 1/8/2026, aula de Tênis em GRUPO com só 1 aluno pagante (ou 100% cortesia —
+// zero pagante, só cortesia) vira deficitária pro clube no valor cheio — decisão do
+// coordenador foi pagar R$100 fixo nesse caso, em vez do valor normal do professor.
+// Estendido pro Padel também, mas só pro Marcelo Villalobo Faria por enquanto: os outros
+// professores de Padel (ex: Daniel) ainda não foram avisados dessa mudança de valor, então
+// continuam no cheio até isso ser comunicado (previsto pro mês que vem — ver
+// PROFESSOR_ID_PADEL_REGRA_VALOR_GRUPO_1_ALUNO abaixo, remover a checagem quando a regra
+// valer pra todo mundo do Padel). Vale só a partir dessa data — aulas de antes ficam com o
+// valor de sempre, mesmo recalculadas depois.
 export const DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO = '2026-08-01'
 export const VALOR_AULA_GRUPO_1_ALUNO = 100
+const MODALIDADES_REGRA_VALOR_GRUPO_1_ALUNO = ['Tênis', 'Padel']
+const PROFESSOR_ID_PADEL_REGRA_VALOR_GRUPO_1_ALUNO = '76dafb8e-a18d-4bb4-9d94-eaab055073a7' // Marcelo Villalobo Faria
 
 // Valor cheio configurado pro professor (valor_aula, ou valor_aula_beach se a aula for
 // na Beach Arena e esse campo estiver preenchido) — mesma regra usada nos 3 lugares que
@@ -128,6 +135,15 @@ export function qtdAlunosPagantes(aula) {
   return (aula.presencas || []).filter(p => p.tipo_participacao !== 'cortesia' && p.tipo_participacao !== 'reposicao').length
 }
 
+// Aula 100% cortesia: teve gente na lista de presença, mas ninguém pagante — só cortesia
+// (e opcionalmente reposição, que também não gera cobrança). Usado pra estender o R$100
+// fixo (ver VALOR_AULA_GRUPO_1_ALUNO) também pra esse caso.
+function ehAulaTodaCortesia(aula) {
+  const presencas = aula.presencas || []
+  if (presencas.length === 0) return false
+  return qtdAlunosPagantes(aula) === 0 && presencas.some(p => p.tipo_participacao === 'cortesia')
+}
+
 // Aula "zerada": tinha presença registrada (alguém previsto pra estar lá — mensalista,
 // avulso, reposição ou cortesia) mas NENHUM compareceu, e mesmo assim o professor é pago
 // normalmente (falta de aluno não é falta do professor). Conta qualquer tipo de
@@ -141,14 +157,16 @@ export function aulaComTodosAusentes(aula) {
 }
 
 // Valor que o professor recebe por essa aula específica — normalmente o valor cheio
-// configurado pra ele, exceto no caso Tênis-grupo-1-aluno-pagante-a-partir-de-agosto
+// configurado pra ele, exceto no caso grupo-1-aluno-pagante-ou-cortesia-a-partir-de-agosto
 // descrito acima em DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO.
 export function calcularValorAula(aula, professor, empresa) {
   const valorCheio = valorCheioProfessor(professor, empresa)
-  if (getModalidadeDaAula(aula) !== 'Tênis') return valorCheio
+  const modalidade = getModalidadeDaAula(aula)
+  if (!MODALIDADES_REGRA_VALOR_GRUPO_1_ALUNO.includes(modalidade)) return valorCheio
+  if (modalidade === 'Padel' && professor?.id !== PROFESSOR_ID_PADEL_REGRA_VALOR_GRUPO_1_ALUNO) return valorCheio
   if (isAulaIndividual(aula)) return valorCheio
   if (!aula.data_aula || aula.data_aula < DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO) return valorCheio
-  if (qtdAlunosPagantes(aula) === 1) return VALOR_AULA_GRUPO_1_ALUNO
+  if (qtdAlunosPagantes(aula) === 1 || ehAulaTodaCortesia(aula)) return VALOR_AULA_GRUPO_1_ALUNO
   return valorCheio
 }
 
