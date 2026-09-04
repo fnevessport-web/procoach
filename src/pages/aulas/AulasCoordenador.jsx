@@ -1026,13 +1026,16 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
     setMostrarMotivoCancelamento(false)
     try {
       await atualizarStatus.mutateAsync({ aulaId, statusAula, pagaProfessor, motivoCancelamento })
-      if (statusAula !== 'dada') {
-        const aula = aulas?.find(a => a.id === aulaId)
-        await logAudit('aulas', aulaId, 'UPDATE',
-          { turma: getNivel(aula) || aula?.turmas?.nome, horario: getHorario(aula), data: aula?.data_aula },
-          { status_aula: statusAula, motivo_cancelamento: statusAula === 'cancelada' ? motivoCancelamento : undefined }
-        )
-      }
+      // Antes só logava ao SAIR de "dada" — uma aula sendo revertida DE VOLTA pra "dada"
+      // (ex: alguém clica "Confirmada" numa aula que tinha sido marcada Não dada de
+      // propósito) ficava sem rastro nenhum. Foi exatamente isso que aconteceu com uma aula
+      // do Marcelo Faria em 03/08/2026: corrigida pra "Não dada" e revertida de volta pra
+      // "Dada" horas depois sem deixar pista — só descoberto comparando log x banco na mão.
+      const aula = aulas?.find(a => a.id === aulaId)
+      await logAudit('aulas', aulaId, 'UPDATE',
+        { turma: getNivel(aula) || aula?.turmas?.nome, horario: getHorario(aula), data: aula?.data_aula },
+        { status_aula: statusAula, motivo_cancelamento: statusAula === 'cancelada' ? motivoCancelamento : undefined }
+      )
       toast.success('Status atualizado!', { style: toastStyle })
     } catch (err) {
       setStatusLocal(prev => ({ ...prev, [aulaId]: undefined }))

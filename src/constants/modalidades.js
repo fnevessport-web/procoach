@@ -160,6 +160,12 @@ export function aulaComTodosAusentes(aula) {
 // configurado pra ele, exceto no caso grupo-1-aluno-pagante-ou-cortesia-a-partir-de-agosto
 // descrito acima em DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO.
 export function calcularValorAula(aula, professor, empresa) {
+  // Aula sem NENHUM aluno vinculado (nem presente, nem falta, nem cortesia — a lista de
+  // presença veio vazia) não conta como aula dada pra fim de pagamento, mesmo que
+  // status_aula/paga_professor digam o contrário no banco — decisão explícita do
+  // coordenador: aula sem aluno nenhum é aula que não teve, não gera custo. Diferente de
+  // aulaComTodosAusentes() (que É paga: lá tinha gente esperada e todo mundo faltou).
+  if ((aula.presencas || []).length === 0) return 0
   const valorCheio = valorCheioProfessor(professor, empresa)
   const modalidade = getModalidadeDaAula(aula)
   if (!MODALIDADES_REGRA_VALOR_GRUPO_1_ALUNO.includes(modalidade)) return valorCheio
