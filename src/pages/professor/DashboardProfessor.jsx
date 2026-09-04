@@ -154,7 +154,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
       await confirmarAulasElegiveis({ professorId, dataFim: hoje })
       const { data, error } = await supabase
         .from('aulas')
-        .select('id, data_aula, status_aula, paga_professor, turmas(niveis(nome), modalidades(nome)), presencas(tipo_participacao)')
+        .select('id, data_aula, turma_id, status_aula, paga_professor, turmas(niveis(nome), modalidades(nome)), presencas(tipo_participacao)')
         .eq('professor_executou_id', professorId)
         .eq('status_aula', 'dada')
         .eq('paga_professor', true)
