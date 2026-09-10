@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil, Lock, KeyRound, Eye, EyeOff, MoreVertical, Ban, RotateCcw, Save, Landmark, TriangleAlert } from 'lucide-react'
+import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil, Lock, KeyRound, Eye, EyeOff, MoreVertical, Ban, RotateCcw, Save, TriangleAlert } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { usePermissions } from '../../hooks/usePermissions'
@@ -237,17 +237,6 @@ function BlocoDadosBancarios({ sufixo, titulo, cor, form, set, cardAberto }) {
       </div>
       <div><div style={labelStyle}>Chave PIX</div><input style={inputStyle} placeholder="CPF, e-mail, telefone..." value={v('chave_pix')} onChange={upd('chave_pix')} /></div>
       {cardAberto[campo('chave_pix')] && <PixCopiavel pix={cardAberto[campo('chave_pix')]} />}
-      {cardAberto[campo('banco')] === 'Itaú' && (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: 'rgba(201,138,60,0.08)', borderRadius: '8px', border: '1px solid rgba(201,138,60,0.2)' }}>
-            <Landmark size={15} color="var(--color-state-warning)" style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: '12px', color: 'var(--color-state-warning)', fontWeight: '600' }}>Correntista Itaú — pagar via PIX</span>
-          </div>
-          {v('nome_titular') && (
-            <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '6px', paddingLeft: '2px' }}>{v('nome_titular')}</div>
-          )}
-        </div>
-      )}
 
       {/* Dados do titular da conta */}
       <div style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', border: '1px solid var(--color-border-light)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>

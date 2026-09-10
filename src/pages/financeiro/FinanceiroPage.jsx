@@ -1312,7 +1312,7 @@ export function FinanceiroPage() {
     // colaborador pode receber Boleto na Procópio e PIX na Beach Arena, por exemplo. `pag`
     // sempre reflete a empresa que está sendo vista agora (empresaId).
     const pag = dadosPagamentoEmpresa(professorSel, empresaId)
-    const temPix = pag.tipo_pagamento === 'pix' || (pag.banco === 'Itaú' && pag.chave_pix)
+    const temPix = pag.tipo_pagamento === 'pix'
     const temBoleto = pag.tipo_pagamento === 'boleto'
     const temDadosConta = !temBoleto && !pag.chave_pix && pag.banco && pag.conta
     // Boleto/NF mostram só a empresa que está sendo vista agora (empresaId) — ao entrar em
@@ -1506,7 +1506,7 @@ export function FinanceiroPage() {
           </button>
         )}
 
-        {/* PIX ITAÚ */}
+        {/* PIX */}
         {temPix && pag.chave_pix && (
           <div style={{
             backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px',
@@ -1514,7 +1514,7 @@ export function FinanceiroPage() {
             marginBottom: '14px',
           }}>
             <div style={{ fontSize: '10px', color: 'var(--color-state-warning)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
-              PIX ITAÚ
+              PIX
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button
@@ -1580,7 +1580,7 @@ export function FinanceiroPage() {
             marginBottom: '14px',
           }}>
             <div style={{ fontSize: '10px', color: 'var(--color-state-warning)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
-              {pag.banco === 'Itaú' ? 'Transferência Itaú' : 'Dados Bancários'}
+              Dados Bancários
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button
