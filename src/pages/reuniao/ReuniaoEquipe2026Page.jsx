@@ -95,6 +95,16 @@ function CardTema({ titulo, badge, badgeCor, children }) {
   )
 }
 
+// Trecho literal de uma resposta da pesquisa (sem nome de quem escreveu — anônimo mesmo
+// aqui na reunião, pra não expor ninguém na frente do time todo).
+function Citacao({ children }) {
+  return (
+    <div style={{ fontSize: '12px', fontStyle: 'italic', color: C.tinta, lineHeight: 1.55, background: `${C.laranja}0d`, borderLeft: `3px solid ${C.laranja}`, borderRadius: '4px', padding: '8px 12px', marginTop: '8px' }}>
+      "{children}"
+    </div>
+  )
+}
+
 function FotoProf({ url, nome }) {
   return (
     <div style={{ textAlign: 'center' }}>
@@ -211,9 +221,21 @@ export function ReuniaoEquipe2026Page() {
           <Reveal delay={250}>
             <div>
               <div style={{ fontSize: '13px', fontWeight: 800, color: C.vinho, marginBottom: '12px', textTransform: 'uppercase' }}>⚠ Pontos de atenção</div>
-              <CardTema titulo="Política de reposição" badge="9 de 13" badgeCor={C.vinho}>O assunto mais recorrente. Pedido de critérios objetivos e um teto mensal.</CardTema>
-              <CardTema titulo="Dias de chuva" badge={null}>Falta um protocolo claro de aviso e remuneração garantida.</CardTema>
-              <CardTema titulo="Material de trabalho" badge="3,92/5" badgeCor={C.laranja}>Mais bolas de qualidade e mais pegadores de bola nas aulas.</CardTema>
+              <CardTema titulo="Política de reposição" badge="9 de 13" badgeCor={C.vinho}>
+                O assunto mais recorrente. Pedido de critérios objetivos e um teto mensal.
+                <Citacao>Tentaria brigar com o clube para vermos referente a reposições, visto que não conseguimos repor essas aulas quase nunca, saímos perdendo. Acho que a política de reposição poderia ser mudada, todos os professores estão insatisfeitos com essa política de reposição.</Citacao>
+                <Citacao>Hoje, há possibilidades de reposição por praticamente qualquer motivo, o que acaba gerando um volume elevado de remarcações e impactando diretamente a organização da agenda e a previsibilidade da remuneração dos professores.</Citacao>
+              </CardTema>
+              <CardTema titulo="Dias de chuva" badge={null}>
+                Falta um protocolo claro de aviso e remuneração garantida.
+                <Citacao>Minha ideia é que o professor receba as aulas da chuva. E em contrapartida se comprometa a ministrar aulas de reposição se receber a mais por isso. Afinal somos um time.</Citacao>
+                <Citacao>O professor mantém aquele horário reservado para a aula e, quando já possui a agenda cheia, muitas vezes não tem disponibilidade para realizar a reposição posteriormente, gerando perda de renda por uma situação que foge do seu controle.</Citacao>
+              </CardTema>
+              <CardTema titulo="Material de trabalho" badge="3,92/5" badgeCor={C.laranja}>
+                Mais bolas de qualidade e mais pegadores de bola nas aulas.
+                <Citacao>Já recebi uma quantia considerável de reclamações sobre bolas.</Citacao>
+                <Citacao>Colocaria 2 quadras cobertas, e mais 2 pegadores de bola para melhoria das aulas!</Citacao>
+              </CardTema>
               <CardTema titulo="Apoio da liderança técnica" badge="4,23/5" badgeCor={C.laranja}>Pedido de mais suporte técnico/pedagógico dos Head Coaches no dia a dia.</CardTema>
             </div>
           </Reveal>
@@ -320,10 +342,24 @@ export function ReuniaoEquipe2026Page() {
           <Reveal delay={220}>
             <div>
               <div style={{ fontSize: '13px', fontWeight: 800, color: C.vinho, marginBottom: '12px', textTransform: 'uppercase' }}>⚠ Pontos de atenção</div>
-              <CardTema titulo="Reposição / rigidez de horário" badge="12 de 58" badgeCor={C.vinho}>O assunto mais citado — mesmo tema apontado por vocês na pesquisa interna.</CardTema>
-              <CardTema titulo="Dias de chuva" badge="9 de 58" badgeCor={C.vinho}>Pedido recorrente de liberar uma quadra coberta.</CardTema>
-              <CardTema titulo="Qualidade das bolas" badge="7 de 58" badgeCor={C.laranja}>"As bolinhas têm deixado muito a desejar."</CardTema>
-              <CardTema titulo="Duração da aula, comunicação e preço" badge="4 + 4 + 4" badgeCor={C.laranja}>Sensação de aula curta (50 min), demora no Concierge, e valor comparado a outras escolas.</CardTema>
+              <CardTema titulo="Reposição / rigidez de horário" badge="12 de 58" badgeCor={C.vinho}>
+                O assunto mais citado — mesmo tema apontado por vocês na pesquisa interna.
+                <Citacao>Gostaria de mais opções de horários 1x na semana, esta obrigação de 2x está horrível.</Citacao>
+                <Citacao>A rigidez do clube para marcar aulas na conveniência dos horários dos associados é péssima.</Citacao>
+              </CardTema>
+              <CardTema titulo="Dias de chuva" badge="9 de 58" badgeCor={C.vinho}>
+                Pedido recorrente de liberar uma quadra coberta.
+                <Citacao>Não podemos usar as quadras cobertas se os alunos também são sócios? Nem que seja uma quadra só e os professores se ajustem.</Citacao>
+              </CardTema>
+              <CardTema titulo="Qualidade das bolas" badge="7 de 58" badgeCor={C.laranja}>
+                <Citacao>As bolinhas têm deixado muito a desejar.</Citacao>
+                <Citacao>Coloquem uma compra fixa mensal de reposição de bolas, pq pra quem joga tênis sabe o quanto as bolas gastam rápido.</Citacao>
+              </CardTema>
+              <CardTema titulo="Duração da aula, comunicação e preço" badge="4 + 4 + 4" badgeCor={C.laranja}>
+                Sensação de aula curta (50 min), demora no Concierge, e valor comparado a outras escolas.
+                <Citacao>As aulas são de 50 minutos. Não entendo porque não são de 1 hora.</Citacao>
+                <Citacao>Ainda continua muito ruim a parte de comunicação com o Concierge. Às vezes demora 2, 3, 4 horas para conseguir um simples retorno.</Citacao>
+              </CardTema>
             </div>
           </Reveal>
         </div>
