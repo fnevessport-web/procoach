@@ -121,11 +121,11 @@ function FraseSocio({ children, tipo }) {
   )
 }
 
-function FotoProf({ url, nome }) {
+function FotoProf({ url, nome, tamanho = 120, cor, corTexto = C.tinta }) {
   return (
     <div style={{ textAlign: 'center' }}>
-      <img src={url} alt={nome} style={{ width: '92px', height: '92px', borderRadius: '50%', objectFit: 'cover', border: `3px solid ${C.laranja}`, display: 'block', margin: '0 auto 10px' }} />
-      <div style={{ fontSize: '13px', fontWeight: 700, color: C.tinta }}>{nome}</div>
+      <img src={url} alt={nome} style={{ width: `${tamanho}px`, height: `${tamanho}px`, borderRadius: '50%', objectFit: 'cover', border: `4px solid ${cor || C.laranja}`, display: 'block', margin: '0 auto 12px', boxShadow: '0 8px 20px rgba(0,0,0,0.18)' }} />
+      <div style={{ fontSize: '14px', fontWeight: 700, color: corTexto }}>{nome}</div>
     </div>
   )
 }
@@ -197,7 +197,6 @@ export function ReuniaoEquipe2026Page() {
 
       {/* ============ PARTE 1 — PESQUISA INTERNA ============ */}
       <Secao id="parte1" corFundo={C.creme}>
-        <Reveal><Kicker>Parte 1</Kicker></Reveal>
         <Reveal><Titulo cor={C.tinta}>O que vocês disseram — pesquisa interna</Titulo></Reveal>
         <Reveal><p style={{ color: C.textoSuave, fontSize: '14px', lineHeight: 1.6, marginBottom: '32px' }}>13 professores responderam de forma anônima uma pesquisa sobre o dia a dia de trabalho aqui. Isso é o retrato de vocês mesmos — e a base de boa parte do que vem a seguir.</p></Reveal>
 
@@ -261,7 +260,6 @@ export function ReuniaoEquipe2026Page() {
       {/* ============ PARTE 2 — VAMOS OUVIR VOCÊS ============ */}
       <Secao id="parte2" corFundo={C.marinho} corTexto="#fff" style={{ minHeight: '70vh', display: 'flex', alignItems: 'center' }}>
         <div style={{ textAlign: 'center', width: '100%' }}>
-          <Reveal><Kicker cor={C.salvia}>Parte 2</Kicker></Reveal>
           <Reveal><Titulo cor="#fff">Agora é a vez de vocês</Titulo></Reveal>
           <Reveal delay={150}>
             <p style={{ fontSize: 'clamp(15px,2.4vw,19px)', color: 'rgba(255,255,255,0.75)', maxWidth: '560px', margin: '0 auto', lineHeight: 1.7 }}>
@@ -273,7 +271,6 @@ export function ReuniaoEquipe2026Page() {
 
       {/* ============ PARTE 3 — NÚMEROS ============ */}
       <Secao id="parte3" corFundo={C.creme}>
-        <Reveal><Kicker>Parte 3</Kicker></Reveal>
         <Reveal><Titulo cor={C.tinta}>Números da operação — julho e agosto</Titulo></Reveal>
         <Reveal><p style={{ color: C.textoSuave, fontSize: '14px', lineHeight: 1.6, marginBottom: '32px' }}>A realidade financeira por trás das aulas em grupo, direto do sistema.</p></Reveal>
 
@@ -322,7 +319,6 @@ export function ReuniaoEquipe2026Page() {
 
       {/* ============ PARTE 4 — PESQUISA DOS SÓCIOS ============ */}
       <Secao id="parte4" corFundo={C.creme}>
-        <Reveal><Kicker>Parte 4</Kicker></Reveal>
         <Reveal><Titulo cor={C.tinta}>O que os sócios disseram</Titulo></Reveal>
         <Reveal><p style={{ color: C.textoSuave, fontSize: '14px', lineHeight: 1.6, marginBottom: '32px' }}>Pesquisa anônima do lado do sócio. Nomes de quem respondeu não existem no sistema — e nas frases abaixo, qualquer professor citado nominalmente foi substituído por XXXX, pra não expor ninguém aqui. Individualmente, cada um de vocês vai receber sua própria pesquisa depois.</p></Reveal>
 
@@ -351,7 +347,7 @@ export function ReuniaoEquipe2026Page() {
               <div style={{ fontSize: '13px', fontWeight: 800, color: '#3F835B', marginBottom: '12px', textTransform: 'uppercase' }}>✓ Elogios</div>
               <CardTema titulo="Qualidade geral dos professores">O elogio mais frequente de longe — "professores excelentes", "amo os professores".</CardTema>
               <CardTema titulo="Estrutura e melhorias recentes">Irrigação automática, o novo app de agendamento e o gandula nas aulas foram citados como avanços reais.</CardTema>
-              <CardTema titulo="Coordenação e atendimento">"O gestor Fernando e o George Procópio são extremamente atenciosos."</CardTema>
+              <CardTema titulo="Coordenação e atendimento">Elogio espontâneo à gestão como atenciosa e presente no dia a dia.</CardTema>
             </div>
           </Reveal>
           <Reveal delay={220}>
@@ -390,7 +386,6 @@ export function ReuniaoEquipe2026Page() {
         <Reveal delay={130}>
           <div style={{ fontSize: '12px', fontWeight: 800, color: '#3F835B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>✓ Elogios</div>
           <FraseSocio tipo="elogio">Já fiz aulas em 5 academias de tênis, e a do Beyond é, de longe, a melhor.</FraseSocio>
-          <FraseSocio tipo="elogio">O gestor Fernando e o George Procópio que estão à frente são extremamente atenciosos e preocupados em atender os alunos.</FraseSocio>
           <FraseSocio tipo="elogio">Amo os professores e toda coordenação da Procópio.</FraseSocio>
           <FraseSocio tipo="elogio">A estrutura do clube é fantástica. Não tenho nada a reclamar, igual um monte de gente azeda que tem no clube.</FraseSocio>
           <FraseSocio tipo="elogio">O professor XXX é muito bom.</FraseSocio>
@@ -402,11 +397,10 @@ export function ReuniaoEquipe2026Page() {
         </Reveal>
 
         <Reveal delay={160}>
-          <div style={{ fontSize: '12px', fontWeight: 800, color: C.vinho, textTransform: 'uppercase', letterSpacing: '0.5px', margin: '28px 0 12px' }}>⚠ Críticas</div>
+          <div style={{ fontSize: '12px', fontWeight: 800, color: C.vinho, textTransform: 'uppercase', letterSpacing: '0.5px', margin: '28px 0 12px' }}>⚠ Críticas gerais sobre a operação</div>
           <FraseSocio tipo="critica">As aulas são de 50 minutos. Não entendo porque não são de 1 hora.</FraseSocio>
           <FraseSocio tipo="critica">A rigidez do clube para marcar aulas na conveniência dos horários dos associados é péssima.</FraseSocio>
           <FraseSocio tipo="critica">Os professores são ótimos, a gerência não muito. A reposição das aulas é desorganizada.</FraseSocio>
-          <FraseSocio tipo="critica">Gosto do professor XXX e da dinâmica da aula, mas a aula está terminando 5 a 7 minutos antes — não fecha nem 1 hora. E os boleiros são muito lentos pra pegar as bolinhas.</FraseSocio>
           <FraseSocio tipo="critica">Único ponto negativo está sendo a marcação de reposição de aulas! Sempre uma novela conseguir fazer a aula.</FraseSocio>
           <FraseSocio tipo="critica">Não tem mais zelador lá, fica péssimo pra saber onde vai ser a minha aula, temos que ficar caçando.</FraseSocio>
           <FraseSocio tipo="critica">Quadras de saibro estão muito mal cuidadas. Quadras largadas, sendo que são novas.</FraseSocio>
@@ -415,13 +409,31 @@ export function ReuniaoEquipe2026Page() {
           <FraseSocio tipo="critica">Os professores não têm ensinado "tecnicamente". As aulas parecem mais um bate-bola.</FraseSocio>
         </Reveal>
 
+        <Reveal delay={180}>
+          <div style={{ fontSize: '12px', fontWeight: 800, color: C.vinho, textTransform: 'uppercase', letterSpacing: '0.5px', margin: '28px 0 6px' }}>⚠ Críticas sobre as aulas — direto de cada professor avaliado</div>
+          <p style={{ fontSize: '11.5px', color: C.textoSuave, marginBottom: '14px' }}>Uma crítica real por professor que recebeu alguma, na íntegra. Se o comentário citava outro professor, o nome também virou XXX.</p>
+          <FraseSocio tipo="critica">É mais duro, cobra mais — minha esposa já fez aula com ele e não curtiu o jeito dele.</FraseSocio>
+          <FraseSocio tipo="critica">Reduzi a nota de pontualidade só pelo fato da aula terminar antes. A aula precisa terminar com 1 hora de treino, no máximo 2 minutos antes. Não dá pra terminar 7 minutos antes.</FraseSocio>
+          <FraseSocio tipo="critica">Bom professor, gosto dele, mas ele é muito bom pra bater bola, não corrige com tanta maestria igual XXX e XXX, profs que eu já tive aula.</FraseSocio>
+          <FraseSocio tipo="critica">Bom professor, faz o feijão com arroz bem feito, nada de extraordinário. Precisa ser mais dinâmico, aulas diferentes.</FraseSocio>
+          <FraseSocio tipo="critica">Sinto falta de aulas mais dinâmicas — já tive com outro prof e achei a outra aula mais dinâmica, com mais repertório.</FraseSocio>
+          <FraseSocio tipo="critica">Senti que poderia ter um olhar mais detalhado para correção de erros e aprimoramento da técnica dos alunos.</FraseSocio>
+          <FraseSocio tipo="critica">Acho meio lento nas explicações, ou eu sou muito acelerada, não sei. Bom professor, mas acho que falta algo para deixar a aula mais empolgante.</FraseSocio>
+          <FraseSocio tipo="critica">Para o meu nível (avançado) eu acho fraco para esse nível.</FraseSocio>
+          <FraseSocio tipo="critica">Meus filhos gostam, mas não vejo uma aula dinâmica para o aprendizado deles — acho que é muita brincadeira e pouca parte técnica.</FraseSocio>
+          <FraseSocio tipo="critica">Confesso que, entre 5 professores que já tive, foi quem mais me decepcionou. Não corrige, aulas repetidas, não vejo mudanças — teve aula em que ficava muito no celular. Precisa melhorar muito no horário de início.</FraseSocio>
+          <FraseSocio tipo="critica">Bate bola bem, mas ensinar ainda é muito "cozido" — falta paciência para ensinar.</FraseSocio>
+          <FraseSocio tipo="critica">Já fiz aula com outro prof e senti muita diferença. Fiz poucas aulas, nada demais.</FraseSocio>
+          <FraseSocio tipo="critica">Não gostei muito da aula dele, não vejo repertório diferente, aulas sempre iguais. Falta ter aulas mais diferentes, com mais materiais para motivar.</FraseSocio>
+        </Reveal>
+
         <Reveal delay={100}>
           <div style={{ height: '1px', background: `${C.textoSuave}30`, margin: '32px 0' }} />
           <div style={{ fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px', color: C.tinta, textAlign: 'center' }}>
             Top 5 mais bem avaliados
           </div>
           <div style={{ fontSize: '11.5px', color: C.textoSuave, textAlign: 'center', marginBottom: '24px' }}>em ordem alfabética — não é ranking de 1º a 5º</div>
-          <div className="grid5" style={{ marginBottom: '36px' }}>
+          <div className="grid5" style={{ marginBottom: '64px' }}>
             <FotoProf url={FOTO.eric} nome="Eric" />
             <FotoProf url={FOTO.guedes} nome="Guedes" />
             <FotoProf url={FOTO.joao} nome="João" />
@@ -431,12 +443,17 @@ export function ReuniaoEquipe2026Page() {
         </Reveal>
 
         <Reveal delay={150}>
-          <div style={{ background: `linear-gradient(135deg, ${C.laranja}, ${C.vinho})`, borderRadius: '18px', padding: '28px 26px', textAlign: 'center', color: '#fff', marginBottom: '32px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '10px', opacity: 0.9 }}>Premiação do mês</div>
-            <div style={{ fontSize: 'clamp(22px,4vw,30px)', fontWeight: 700, fontFamily: "'Playfair Display', serif", marginBottom: '6px' }}>
+          <div style={{ height: '1px', background: `${C.textoSuave}30`, margin: '0 0 48px' }} />
+          <div style={{ background: `linear-gradient(135deg, ${C.laranja}, ${C.vinho})`, borderRadius: '18px', padding: '36px 26px', textAlign: 'center', color: '#fff', marginBottom: '32px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '22px', opacity: 0.9 }}>Premiação do mês</div>
+            <div className="grid3" style={{ maxWidth: '480px', margin: '0 auto 26px' }}>
+              <FotoProf url={FOTO.eric} nome="Eric" tamanho={110} cor="#fff" corTexto="#fff" />
+              <FotoProf url={FOTO.guedes} nome="Guedes" tamanho={110} cor="#fff" corTexto="#fff" />
+              <FotoProf url={FOTO.marceloRocha} nome="Marcelo Rocha" tamanho={110} cor="#fff" corTexto="#fff" />
+            </div>
+            <div style={{ fontSize: 'clamp(22px,4vw,30px)', fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>
               Os 3 primeiros colocados ganham R$ 500,00 no mês que vem
             </div>
-            <div style={{ fontSize: '15px', opacity: 0.92 }}>Eric · Guedes · Marcelo Rocha</div>
           </div>
         </Reveal>
 
@@ -449,9 +466,8 @@ export function ReuniaoEquipe2026Page() {
 
       {/* ============ PARTE 5 — NOVOS VALORES ============ */}
       <Secao id="parte5" corFundo={C.marinho} corTexto="#fff">
-        <Reveal><Kicker cor={C.salvia}>Parte 5</Kicker></Reveal>
         <Reveal><Titulo cor="#fff">Novos valores — pagamento por aula</Titulo></Reveal>
-        <Reveal><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', lineHeight: 1.6, marginBottom: '32px' }}>A partir de agora, o valor por aula em grupo passa a variar pela quantidade de alunos pagantes em quadra. Aluno cortesia não entra nessa conta.</p></Reveal>
+        <Reveal><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', lineHeight: 1.6, marginBottom: '32px' }}>Veja como fica o valor por aula a partir de agora.</p></Reveal>
 
         <Reveal delay={100}>
           <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '16px', padding: '26px 24px', textAlign: 'center', marginBottom: '24px' }}>
@@ -475,7 +491,6 @@ export function ReuniaoEquipe2026Page() {
 
       {/* ============ PARTE 6 — REGRAS ============ */}
       <Secao id="parte6" corFundo={C.creme}>
-        <Reveal><Kicker>Parte 6</Kicker></Reveal>
         <Reveal><Titulo cor={C.tinta}>Novas regras e condutas</Titulo></Reveal>
 
         <Reveal delay={100}>
