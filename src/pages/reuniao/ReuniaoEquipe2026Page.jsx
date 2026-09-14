@@ -105,6 +105,22 @@ function Citacao({ children }) {
   )
 }
 
+// Frase de sócio, na íntegra — sem nome de quem respondeu (a pesquisa já é anônima) e sem
+// nome de professor citado no meio do texto (substituído por XXX antes de chegar aqui).
+function FraseSocio({ children, tipo }) {
+  const cor = tipo === 'elogio' ? '#3F835B' : C.vinho
+  return (
+    <div style={{
+      background: tipo === 'elogio' ? 'rgba(63,131,91,0.07)' : 'rgba(107,27,39,0.06)',
+      borderLeft: `4px solid ${cor}`, borderRadius: '10px', padding: '16px 20px', marginBottom: '12px',
+      display: 'flex', gap: '12px', alignItems: 'flex-start',
+    }}>
+      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', color: cor, lineHeight: 1, flexShrink: 0 }}>"</div>
+      <div style={{ fontSize: '13.5px', color: C.tinta, lineHeight: 1.55, fontStyle: 'italic', paddingTop: '6px' }}>{children}</div>
+    </div>
+  )
+}
+
 function FotoProf({ url, nome }) {
   return (
     <div style={{ textAlign: 'center' }}>
@@ -249,7 +265,7 @@ export function ReuniaoEquipe2026Page() {
           <Reveal><Titulo cor="#fff">Agora é a vez de vocês</Titulo></Reveal>
           <Reveal delay={150}>
             <p style={{ fontSize: 'clamp(15px,2.4vw,19px)', color: 'rgba(255,255,255,0.75)', maxWidth: '560px', margin: '0 auto', lineHeight: 1.7 }}>
-              Espaço aberto. O que mais está pesando no dia a dia? O que a gente ainda não perguntou e deveria?
+              Espaço aberto para discussão.
             </p>
           </Reveal>
         </div>
@@ -262,10 +278,9 @@ export function ReuniaoEquipe2026Page() {
         <Reveal><p style={{ color: C.textoSuave, fontSize: '14px', lineHeight: 1.6, marginBottom: '32px' }}>A realidade financeira por trás das aulas em grupo, direto do sistema.</p></Reveal>
 
         <Reveal delay={100}>
-          <div className="grid3" style={{ marginBottom: '18px' }}>
-            <StatGrande valor="60" label="Turmas deficitárias no período (29 em julho + 31 em agosto)" cor={C.vinho} />
-            <StatGrande valor="887" label="Aulas com lucro até R$ 20,00" cor={C.laranja} />
-            <StatGrande valor="R$ 13.200" label="Pagos a professores em aulas 100% falta, só em agosto" cor={C.vinho} />
+          <div className="grid2" style={{ marginBottom: '18px' }}>
+            <StatGrande valor="155" label="Turmas deficitárias no período (71 em julho + 84 em agosto)" cor={C.vinho} />
+            <StatGrande valor="R$ 23.760" label="Pagos a professores em aulas 100% falta (julho + agosto)" cor={C.vinho} />
           </div>
         </Reveal>
 
@@ -365,7 +380,43 @@ export function ReuniaoEquipe2026Page() {
         </div>
 
         <Reveal delay={100}>
-          <div style={{ height: '1px', background: `${C.textoSuave}30`, margin: '10px 0 32px' }} />
+          <div style={{ height: '1px', background: `${C.textoSuave}30`, margin: '32px 0' }} />
+          <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(20px,3.5vw,26px)', color: C.tinta, textAlign: 'center', margin: '0 0 6px' }}>Na voz dos sócios</h3>
+          <p style={{ fontSize: '12px', color: C.textoSuave, textAlign: 'center', maxWidth: '520px', margin: '0 auto 24px' }}>
+            Trecho exatamente como foi escrito. Nome de sócio não existe no sistema; nome de professor citado no texto foi trocado por XXX.
+          </p>
+        </Reveal>
+
+        <Reveal delay={130}>
+          <div style={{ fontSize: '12px', fontWeight: 800, color: '#3F835B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>✓ Elogios</div>
+          <FraseSocio tipo="elogio">Já fiz aulas em 5 academias de tênis, e a do Beyond é, de longe, a melhor.</FraseSocio>
+          <FraseSocio tipo="elogio">O gestor Fernando e o George Procópio que estão à frente são extremamente atenciosos e preocupados em atender os alunos.</FraseSocio>
+          <FraseSocio tipo="elogio">Amo os professores e toda coordenação da Procópio.</FraseSocio>
+          <FraseSocio tipo="elogio">A estrutura do clube é fantástica. Não tenho nada a reclamar, igual um monte de gente azeda que tem no clube.</FraseSocio>
+          <FraseSocio tipo="elogio">O professor XXX é muito bom.</FraseSocio>
+          <FraseSocio tipo="elogio">Professor XXX é muito esforçado e domina bem a técnica do esporte.</FraseSocio>
+          <FraseSocio tipo="elogio">O XXX é muito comprometido como treinador.</FraseSocio>
+          <FraseSocio tipo="elogio">A professora XXX!</FraseSocio>
+          <FraseSocio tipo="elogio">Empresa séria, acredito que é a mais organizada dentre as outras. Me atendem muito bem, super educados e prestativos.</FraseSocio>
+          <FraseSocio tipo="elogio">Inclusão de um gandula durante as aulas foi um grande acerto. Melhorou bastante a interface do app para contratação das aulas.</FraseSocio>
+        </Reveal>
+
+        <Reveal delay={160}>
+          <div style={{ fontSize: '12px', fontWeight: 800, color: C.vinho, textTransform: 'uppercase', letterSpacing: '0.5px', margin: '28px 0 12px' }}>⚠ Críticas</div>
+          <FraseSocio tipo="critica">As aulas são de 50 minutos. Não entendo porque não são de 1 hora.</FraseSocio>
+          <FraseSocio tipo="critica">A rigidez do clube para marcar aulas na conveniência dos horários dos associados é péssima.</FraseSocio>
+          <FraseSocio tipo="critica">Os professores são ótimos, a gerência não muito. A reposição das aulas é desorganizada.</FraseSocio>
+          <FraseSocio tipo="critica">Gosto do professor XXX e da dinâmica da aula, mas a aula está terminando 5 a 7 minutos antes — não fecha nem 1 hora. E os boleiros são muito lentos pra pegar as bolinhas.</FraseSocio>
+          <FraseSocio tipo="critica">Único ponto negativo está sendo a marcação de reposição de aulas! Sempre uma novela conseguir fazer a aula.</FraseSocio>
+          <FraseSocio tipo="critica">Não tem mais zelador lá, fica péssimo pra saber onde vai ser a minha aula, temos que ficar caçando.</FraseSocio>
+          <FraseSocio tipo="critica">Quadras de saibro estão muito mal cuidadas. Quadras largadas, sendo que são novas.</FraseSocio>
+          <FraseSocio tipo="critica">Material, precisa ter diversidade de material e bolas novas pelo amor de Deus!!!</FraseSocio>
+          <FraseSocio tipo="critica">Já tive aula com 3 professores diferentes e cada um fala uma coisa — pra quem está começando, fica confuso.</FraseSocio>
+          <FraseSocio tipo="critica">Os professores não têm ensinado "tecnicamente". As aulas parecem mais um bate-bola.</FraseSocio>
+        </Reveal>
+
+        <Reveal delay={100}>
+          <div style={{ height: '1px', background: `${C.textoSuave}30`, margin: '32px 0' }} />
           <div style={{ fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px', color: C.tinta, textAlign: 'center' }}>
             Top 5 mais bem avaliados
           </div>
