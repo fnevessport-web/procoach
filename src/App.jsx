@@ -39,6 +39,7 @@ import { EventoInscricaoPage } from './pages/eventos/EventoInscricaoPage'
 import { PoliticaPrivacidadePage } from './pages/legal/PoliticaPrivacidadePage'
 import { ComoFuncionaAPontuacaoPage } from './pages/legal/ComoFuncionaAPontuacaoPage'
 import { ComoFuncionaORankingPage } from './pages/legal/ComoFuncionaORankingPage'
+import { ReuniaoEquipe2026Page } from './pages/reuniao/ReuniaoEquipe2026Page'
 import { HomeParticular } from './pages/particular/HomeParticular'
 import { AgendaParticular } from './pages/particular/AgendaParticular'
 import { CadastroParticular } from './pages/particular/CadastroParticular'
@@ -195,6 +196,7 @@ export default function App() {
           <Route path="/pesquisa/:token" element={<PesquisaSatisfacaoPage />} />
           <Route path="/pesquisa-socios/:token" element={<PesquisaSociosPublicaPage />} />
           <Route path="/eventos/:slug" element={<EventoInscricaoPage />} />
+          <Route path="/reuniao-equipe-2026" element={<ReuniaoEquipe2026Page />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/politica-de-privacidade" element={<PoliticaPrivacidadePage />} />
           <Route path="/pontuacao" element={<ComoFuncionaAPontuacaoPage />} />
