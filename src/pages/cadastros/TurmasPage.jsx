@@ -26,7 +26,7 @@ const diasSemana = [
 
 function formInicial() {
   return {
-    modalidade_id: '', nivel_id: '', quadra_id: '', professor_titular_id: ''
+    modalidade_id: '', nivel_id: '', quadra_id: '', professor_titular_id: '', eh_turma_reposicao: false
   }
 }
 
@@ -52,7 +52,7 @@ export function TurmasPage({ onIrParaProfessores }) {
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   function updateModalidade(v) {
-    setForm(f => ({ ...f, modalidade_id: v, nivel_id: '', quadra_id: '', professor_titular_id: '' }))
+    setForm(f => ({ ...f, modalidade_id: v, nivel_id: '', quadra_id: '', professor_titular_id: '', eh_turma_reposicao: false }))
   }
 
   function abrirCriar() {
@@ -70,6 +70,7 @@ export function TurmasPage({ onIrParaProfessores }) {
       nivel_id: turma.nivel_id || '',
       quadra_id: turma.quadra_id || '',
       professor_titular_id: turma.professor_titular_id || '',
+      eh_turma_reposicao: turma.eh_turma_reposicao || false,
     })
     const idsAtivos = turma.turmas_alunos?.filter(ta => ta.ativo).map(ta => ta.aluno_id) || []
     setAlunosSelecionados(idsAtivos)
@@ -106,6 +107,8 @@ export function TurmasPage({ onIrParaProfessores }) {
       toast.error(err.message)
     }
   }
+
+  const modalidadeNome = modalidades?.find(m => m.id === form.modalidade_id)?.nome
 
   const filtradas = turmas?.filter(t =>
     t.nome.toLowerCase().includes(busca.toLowerCase())
@@ -224,6 +227,30 @@ export function TurmasPage({ onIrParaProfessores }) {
             <option value="">Selecione...</option>
             {quadras?.map(q => <option key={q.id} value={q.id}>{q.nome}</option>)}
           </Select>
+
+          {modalidadeNome === 'Tênis' && (
+            <label style={{
+              display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '10px 12px',
+              borderRadius: '10px', backgroundColor: 'var(--color-surface-light-overlay)',
+              border: '1px solid var(--color-border-light)', cursor: 'pointer',
+            }}>
+              <input
+                type="checkbox"
+                checked={form.eh_turma_reposicao}
+                onChange={e => update('eh_turma_reposicao', e.target.checked)}
+                style={{ marginTop: '2px' }}
+              />
+              <span>
+                <span style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-light-primary)' }}>
+                  Turma especial de reposição
+                </span>
+                <span style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
+                  Alunos colocados aqui entram como reposição (baixa a falta pendente mais antiga
+                  de cada um) e o professor recebe 50% do valor por quantidade de alunos.
+                </span>
+              </span>
+            </label>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <Select label="Professor Titular (opcional)" value={form.professor_titular_id} onChange={e => update('professor_titular_id', e.target.value)}>

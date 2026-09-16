@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown, Info, History, Repeat, CloudRain, Trash2, Save, User, MessageSquareText, DollarSign, Plus, Minus, CalendarDays, PartyPopper, StickyNote } from 'lucide-react'
-import { horarioParaMinutos } from '../../constants/modalidades'
+import { horarioParaMinutos, emEscopoRegraValorGrupo } from '../../constants/modalidades'
 import { nomeCurto } from '../../lib/nomes'
 import { getFeriado } from '../../constants/feriados'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas, confirmarAulasElegiveis, gerarReposicoesPorCancelamento, useAvisarFalta } from '../../hooks/useAulas'
@@ -289,7 +289,6 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
     setExecutandoMassa(true)
     try {
       const statusAula = acaoMassa === 'confirmar' ? 'dada' : acaoMassa === 'sem_aula' ? 'nao_dada' : 'cancelada'
-      const pagaProfessor = acaoMassa !== 'cancelar'
       const statusPresenca = acaoMassa === 'confirmar' ? 'presente' : acaoMassa === 'sem_aula' ? 'falta' : 'falta_justificada'
 
       // Uma aula já marcada individualmente como "não dada"/"cancelada" é uma decisão
@@ -304,6 +303,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       const puladas = aulasFiltradas.length - alvo.length
 
       for (const a of alvo) {
+        // Mesma regra do cancelamento individual (handleStatusAula): cancelar por Chuva
+        // dentro do escopo (Tênis, ou Padel só do Marcelo) já nasce pago a 50% — calculado
+        // por calcularValorAula(). Qualquer outro motivo continua sem pagar nada.
+        const pagaProfessor = acaoMassa !== 'cancelar'
+          ? true
+          : (motivoCancelamentoMassa === 'Chuva' && emEscopoRegraValorGrupo(a, a.professor_executou_id))
         await supabase.from('aulas').update({
           status_aula: statusAula,
           paga_professor: pagaProfessor,
@@ -1021,7 +1026,13 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   }
 
   async function handleStatusAula(aulaId, statusAula, motivoCancelamento) {
-    const pagaProfessor = STATUS_AULA.find(s => s.value === statusAula)?.paga ?? true
+    const aula = aulas?.find(a => a.id === aulaId)
+    // Cancelamento por Chuva dentro do escopo (Tênis, ou Padel só do Marcelo — ver
+    // emEscopoRegraValorGrupo) já nasce paga: calcularValorAula() sabe reduzir pra 50% do
+    // valor normal nesse caso. Qualquer outro motivo de cancelamento continua sem pagar nada.
+    const pagaProfessor = statusAula !== 'cancelada'
+      ? (STATUS_AULA.find(s => s.value === statusAula)?.paga ?? true)
+      : (motivoCancelamento === 'Chuva' && emEscopoRegraValorGrupo(aula, aula?.professor_executou_id))
     setStatusLocal(prev => ({ ...prev, [aulaId]: statusAula }))
     setMostrarMotivoCancelamento(false)
     try {
@@ -1031,7 +1042,6 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       // propósito) ficava sem rastro nenhum. Foi exatamente isso que aconteceu com uma aula
       // do Marcelo Faria em 03/08/2026: corrigida pra "Não dada" e revertida de volta pra
       // "Dada" horas depois sem deixar pista — só descoberto comparando log x banco na mão.
-      const aula = aulas?.find(a => a.id === aulaId)
       await logAudit('aulas', aulaId, 'UPDATE',
         { turma: getNivel(aula) || aula?.turmas?.nome, horario: getHorario(aula), data: aula?.data_aula },
         { status_aula: statusAula, motivo_cancelamento: statusAula === 'cancelada' ? motivoCancelamento : undefined }

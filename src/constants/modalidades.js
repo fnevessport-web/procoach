@@ -100,19 +100,41 @@ export function isAulaIndividual(aula) {
   return parseObservacoes(aula.observacoes).nivel === 'Individual'
 }
 
-// A partir de 1/8/2026, aula de Tênis em GRUPO com só 1 aluno pagante (ou 100% cortesia —
-// zero pagante, só cortesia) vira deficitária pro clube no valor cheio — decisão do
-// coordenador foi pagar R$100 fixo nesse caso, em vez do valor normal do professor.
-// Estendido pro Padel também, mas só pro Marcelo Villalobo Faria por enquanto: os outros
-// professores de Padel (ex: Daniel) ainda não foram avisados dessa mudança de valor, então
-// continuam no cheio até isso ser comunicado (previsto pro mês que vem — ver
-// PROFESSOR_ID_PADEL_REGRA_VALOR_GRUPO_1_ALUNO abaixo, remover a checagem quando a regra
-// valer pra todo mundo do Padel). Vale só a partir dessa data — aulas de antes ficam com o
-// valor de sempre, mesmo recalculadas depois.
+// De 1/8/2026 a 31/8/2026, aula de Tênis em GRUPO com só 1 aluno pagante (ou 100% cortesia —
+// zero pagante, só cortesia) virou deficitária pro clube no valor cheio — decisão do
+// coordenador foi pagar R$100 fixo nesse caso, em vez do valor normal do professor. A partir de
+// 1/9/2026 essa regra pontual foi substituída pela tabela completa por quantidade (ver
+// DATA_INICIO_TABELA_VALOR_POR_QTD mais abaixo) — as duas constantes abaixo ficam só pra aulas
+// desse mês específico não serem recalculadas com a regra nova (histórico já fechado).
 export const DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO = '2026-08-01'
 export const VALOR_AULA_GRUPO_1_ALUNO = 100
+
+// A partir de 1/9/2026: aula de Tênis em GRUPO (Procópio, qualquer professor) ou Padel em GRUPO
+// (só o Marcelo Villalobo Faria — ver PROFESSOR_ID_PADEL_REGRA_VALOR_GRUPO_1_ALUNO) passa a pagar
+// um valor fixo por quantidade de alunos PAGANTES (cortesia e reposição nunca contam, ver
+// qtdAlunosPagantes) em vez do valor cheio cadastrado do professor. 5+ alunos usa o mesmo valor de
+// 4 (grupo não passa disso na prática, mas por segurança não fica sem valor se acontecer). Aula
+// com gente mas 0 pagante (só cortesia e/ou só reposição) cai no valor do tier de 1 aluno — é o
+// próprio clamp de valorGrupoPorQtd fazendo isso, sem checagem extra.
+export const DATA_INICIO_TABELA_VALOR_POR_QTD = '2026-09-01'
+const TABELA_VALOR_GRUPO_POR_QTD = { 1: 80, 2: 100, 3: 120, 4: 140 }
+function valorGrupoPorQtd(qtd) {
+  return TABELA_VALOR_GRUPO_POR_QTD[Math.min(Math.max(qtd, 1), 4)]
+}
+
 const MODALIDADES_REGRA_VALOR_GRUPO_1_ALUNO = ['Tênis', 'Padel']
 const PROFESSOR_ID_PADEL_REGRA_VALOR_GRUPO_1_ALUNO = '76dafb8e-a18d-4bb4-9d94-eaab055073a7' // Marcelo Villalobo Faria
+
+// Aula de Tênis (qualquer professor) ou de Padel só do Marcelo — mesmo recorte usado tanto pra
+// tabela de valor por quantidade quanto pro pagamento de 50% em cancelamento por chuva (ver
+// calcularValorAula), e pra decidir se uma aula cancelada por chuva já nasce paga no momento do
+// cancelamento (AulasCoordenador.jsx).
+export function emEscopoRegraValorGrupo(aula, professorId) {
+  const modalidade = getModalidadeDaAula(aula)
+  if (!MODALIDADES_REGRA_VALOR_GRUPO_1_ALUNO.includes(modalidade)) return false
+  if (modalidade === 'Padel' && professorId !== PROFESSOR_ID_PADEL_REGRA_VALOR_GRUPO_1_ALUNO) return false
+  return true
+}
 
 // Valor cheio configurado pro professor (valor_aula, ou valor_aula_beach se a aula for
 // na Beach Arena e esse campo estiver preenchido) — mesma regra usada nos 3 lugares que
@@ -156,9 +178,19 @@ export function aulaComTodosAusentes(aula) {
   return presencas.length > 0 && presencas.every(p => p.status_presenca !== 'presente')
 }
 
-// Valor que o professor recebe por essa aula específica — normalmente o valor cheio
-// configurado pra ele, exceto no caso grupo-1-aluno-pagante-ou-cortesia-a-partir-de-agosto
-// descrito acima em DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO.
+// Valor que o professor recebe por essa aula específica.
+// - Turma marcada como especial de reposição (eh_turma_reposicao): 50% da tabela por
+//   quantidade, contando TODOS os alunos não-cortesia (aqui reposição CONTA pra quantidade —
+//   ao contrário do resto da regra, é o próprio propósito dessa turma). Cancelada não paga
+//   nada, qualquer que seja o motivo.
+// - Fora do escopo (outra modalidade, ou Padel de professor que não o Marcelo), ou aula
+//   individual: sempre o valor cheio cadastrado do professor, sem mudança nenhuma.
+// - Grupo dentro do escopo, a partir de DATA_INICIO_TABELA_VALOR_POR_QTD: valor fixo pela
+//   tabela por quantidade de pagantes (valorGrupoPorQtd).
+// - Grupo dentro do escopo, entre DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO e a data acima: regra
+//   antiga (R$100 fixo só no caso de sobrar 1 pagante, ou zero pagante com alguma cortesia).
+// - Cancelada por Chuva dentro do escopo: 50% do valor que a aula pagaria se não tivesse sido
+//   cancelada. Cancelada por qualquer outro motivo (ou chuva fora do escopo): zero.
 export function calcularValorAula(aula, professor, empresa) {
   // Aula sem NENHUM aluno vinculado (nem presente, nem falta, nem cortesia — a lista de
   // presença veio vazia) não conta como aula dada pra fim de pagamento, mesmo que
@@ -166,14 +198,29 @@ export function calcularValorAula(aula, professor, empresa) {
   // coordenador: aula sem aluno nenhum é aula que não teve, não gera custo. Diferente de
   // aulaComTodosAusentes() (que É paga: lá tinha gente esperada e todo mundo faltou).
   if ((aula.presencas || []).length === 0) return 0
+
+  if (aula.turmas?.eh_turma_reposicao) {
+    if (aula.status_aula === 'cancelada') return 0
+    const qtd = aula.presencas.filter(p => p.tipo_participacao !== 'cortesia').length
+    return qtd > 0 ? valorGrupoPorQtd(qtd) * 0.5 : 0
+  }
+
   const valorCheio = valorCheioProfessor(professor, empresa)
-  const modalidade = getModalidadeDaAula(aula)
-  if (!MODALIDADES_REGRA_VALOR_GRUPO_1_ALUNO.includes(modalidade)) return valorCheio
-  if (modalidade === 'Padel' && professor?.id !== PROFESSOR_ID_PADEL_REGRA_VALOR_GRUPO_1_ALUNO) return valorCheio
-  if (isAulaIndividual(aula)) return valorCheio
-  if (!aula.data_aula || aula.data_aula < DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO) return valorCheio
-  if (qtdAlunosPagantes(aula) === 1 || ehAulaTodaCortesia(aula)) return VALOR_AULA_GRUPO_1_ALUNO
-  return valorCheio
+  const emEscopo = emEscopoRegraValorGrupo(aula, professor?.id)
+
+  let valorNormal
+  if (!emEscopo || isAulaIndividual(aula) || !aula.data_aula || aula.data_aula < DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO) {
+    valorNormal = valorCheio
+  } else if (aula.data_aula < DATA_INICIO_TABELA_VALOR_POR_QTD) {
+    valorNormal = (qtdAlunosPagantes(aula) === 1 || ehAulaTodaCortesia(aula)) ? VALOR_AULA_GRUPO_1_ALUNO : valorCheio
+  } else {
+    valorNormal = valorGrupoPorQtd(qtdAlunosPagantes(aula))
+  }
+
+  if (aula.status_aula === 'cancelada') {
+    return aula.motivo_cancelamento === 'Chuva' && emEscopo ? valorNormal * 0.5 : 0
+  }
+  return valorNormal
 }
 
 // ──────────────────────────────────────────────────────────────────────

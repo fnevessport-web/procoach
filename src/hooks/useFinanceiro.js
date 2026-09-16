@@ -217,15 +217,15 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
       const aulas = await buscarTodasAsAulas(() => supabase
         .from('aulas')
         .select(`
-          id, professor_executou_id, turma_id, observacoes, data_aula,
-          turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome)),
+          id, professor_executou_id, turma_id, observacoes, data_aula, status_aula, motivo_cancelamento,
+          turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao),
           presencas(tipo_participacao),
           professores!professor_executou_id(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular, chave_pix_beach, banco_beach, agencia_beach, conta_beach, tipo_conta_beach, tipo_pagamento_beach, nome_titular_beach, cpf_titular_beach)
         `)
         .gte('data_aula', dataInicio)
         .lte('data_aula', dataFim)
         .eq('paga_professor', true)
-        .eq('status_aula', 'dada'))
+        .in('status_aula', ['dada', 'cancelada']))
 
       const quadras = QUADRAS_EMPRESA[empresa] || []
       const filtradas = (aulas || []).filter(a => {
@@ -269,15 +269,15 @@ export function useAulasProfessorFinanceiro({ professorId, professor, empresa, d
       const { data: aulas, error } = await supabase
         .from('aulas')
         .select(`
-          id, data_aula, turma_id, observacoes, status_aula,
-          turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome)),
+          id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento,
+          turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao),
           presencas(tipo_participacao, status_presenca)
         `)
         .eq('professor_executou_id', professorId)
         .gte('data_aula', dataInicio)
         .lte('data_aula', dataFim)
         .eq('paga_professor', true)
-        .eq('status_aula', 'dada')
+        .in('status_aula', ['dada', 'cancelada'])
         .order('data_aula', { ascending: true })
       if (error) throw error
 
@@ -317,13 +317,13 @@ export function useAulasAnoProfessor({ professorId, professor }) {
       const { data: aulas, error } = await supabase
         .from('aulas')
         .select(`
-          id, data_aula, turma_id, observacoes,
-          turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome)),
+          id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento,
+          turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao),
           presencas(tipo_participacao)
         `)
         .eq('professor_executou_id', professorId)
         .eq('paga_professor', true)
-        .eq('status_aula', 'dada')
+        .in('status_aula', ['dada', 'cancelada'])
         .lte('data_aula', hoje)
         .order('data_aula', { ascending: true })
       if (error) throw error

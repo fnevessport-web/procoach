@@ -704,6 +704,11 @@ export function useGerarAulas() {
       if (error) throw error
 
       if (alunosFixos.length > 0 && aulasCriadas?.length > 0) {
+        // Turma marcada como especial de reposição: os alunos fixos dela ENTRAM como
+        // 'reposicao' (não 'mensalista') — cada presença já baixa a falta pendente mais
+        // antiga do aluno (FIFO, mesma resolverReposicaoFIFO usada no agendamento
+        // self-service), então colocar alguém nessa turma já desconta a reposição dele.
+        const tipoParticipacao = turma.eh_turma_reposicao ? 'reposicao' : 'mensalista'
         const presencasParaInserir = []
         for (const aula of aulasCriadas) {
           for (const alunoId of alunosFixos) {
@@ -712,11 +717,19 @@ export function useGerarAulas() {
               aluno_id: alunoId,
               presente: false,
               status_presenca: 'presente',
-              tipo_participacao: 'mensalista',
+              tipo_participacao: tipoParticipacao,
             })
           }
         }
         await supabase.from('presencas').insert(presencasParaInserir)
+
+        if (turma.eh_turma_reposicao) {
+          for (const aula of aulasCriadas) {
+            for (const alunoId of alunosFixos) {
+              await resolverReposicaoFIFO({ alunoId, aulaDestinoId: aula.id })
+            }
+          }
+        }
       }
 
       return aulasCriadas.length
