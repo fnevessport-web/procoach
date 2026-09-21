@@ -36,6 +36,7 @@ import { PesquisaSatisfacaoPage } from './pages/pesquisa/PesquisaSatisfacaoPage'
 import { PesquisaSociosPublicaPage } from './pages/pesquisa/PesquisaSociosPublicaPage'
 import { DisponibilidadeTurmasPage } from './pages/disponibilidade/DisponibilidadeTurmasPage'
 import { EventoInscricaoPage } from './pages/eventos/EventoInscricaoPage'
+import { ReposicaoExtraPage } from './pages/reposicao/ReposicaoExtraPage'
 import { PoliticaPrivacidadePage } from './pages/legal/PoliticaPrivacidadePage'
 import { ComoFuncionaAPontuacaoPage } from './pages/legal/ComoFuncionaAPontuacaoPage'
 import { ComoFuncionaORankingPage } from './pages/legal/ComoFuncionaORankingPage'
@@ -196,6 +197,7 @@ export default function App() {
           <Route path="/pesquisa/:token" element={<PesquisaSatisfacaoPage />} />
           <Route path="/pesquisa-socios/:token" element={<PesquisaSociosPublicaPage />} />
           <Route path="/eventos/:slug" element={<EventoInscricaoPage />} />
+          <Route path="/reposicao" element={<ReposicaoExtraPage />} />
           <Route path="/reuniao-equipe-2026" element={<ReuniaoEquipe2026Page />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/politica-de-privacidade" element={<PoliticaPrivacidadePage />} />
