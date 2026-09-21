@@ -38,6 +38,13 @@ export const TURMA_VAZIA = { dias: [], horario: '', formato: '', nivel: '' }
 // Regra de elegibilidade da reposição: quem faz só Grupo repõe só em Grupo; quem faz Individual
 // (sozinho ou junto com Grupo) pode repor em Individual ou Grupo. O servidor confere a mesma regra.
 export const fazIndividual = turmas => turmas.some(t => t.formato === 'individual')
+export const fazGrupo = turmas => turmas.some(t => t.formato === 'grupo')
+
+// Aluno que faz SÓ aula individual e escolheu uma aula em grupo: está gastando o crédito de aula
+// individual numa aula em grupo — precisa concordar explicitamente (tela de confirmação).
+// Quem faz Individual E Grupo não entra aqui (tem crédito de grupo pra usar).
+export const usaCreditoIndividualEmGrupo = (turmas, slot) =>
+  slot.formato === 'grupo' && fazIndividual(turmas) && !fazGrupo(turmas)
 
 // ---- datas/horas -------------------------------------------------------------------------
 

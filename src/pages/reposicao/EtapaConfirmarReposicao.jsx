@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { CalendarCheck, ChevronLeft, Clock, MapPin, TriangleAlert, User } from 'lucide-react'
-import { faixaHorario, rotuloDiaCurto, rotuloDiaLongo, rotuloNivel, rotuloProfessor, ordenarSlots, TEXTO_DECLARACAO } from './constantes'
+import { faixaHorario, rotuloDiaCurto, rotuloDiaLongo, rotuloNivel, rotuloProfessor, ordenarSlots, usaCreditoIndividualEmGrupo, TEXTO_DECLARACAO } from './constantes'
 import { confirmarReposicao } from './api'
 import { Titulo, Cartao, Nota, Botao, BarraInferior } from './ui'
 
 // Linha de uma aula agendada — reaproveitada nas telas de confirmação, resumo e final.
-export function LinhaAula({ slot, destaque, compacta }) {
+export function LinhaAula({ slot, destaque, compacta, aviso }) {
   if (compacta) {
     // Versão enxuta pra tela final — cabe mais aulas numa única captura de tela.
     return (
@@ -21,6 +21,7 @@ export function LinhaAula({ slot, destaque, compacta }) {
           <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>
             {[slot.quadra, rotuloProfessor(slot.professor)].filter(Boolean).join(' · ')}
           </div>
+          {aviso && <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-state-warning)', marginTop: '2px' }}>{aviso}</div>}
         </div>
         <div style={{ fontSize: '16px', fontWeight: 800, whiteSpace: 'nowrap' }}>{faixaHorario(slot)}</div>
       </div>
@@ -43,6 +44,7 @@ export function LinhaAula({ slot, destaque, compacta }) {
           {slot.quadra && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={12} />{slot.quadra}</span>}
           {slot.professor && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><User size={12} />{rotuloProfessor(slot.professor)}</span>}
         </div>
+        {aviso && <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-state-warning)', marginTop: '5px' }}>{aviso}</div>}
       </div>
     </div>
   )
@@ -89,7 +91,7 @@ export function EtapaConfirmarReposicao({ dados, selecionados, onVoltar, onConfi
 
       {selecionados.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
-          {ordenarSlots(selecionados).map(s => <LinhaAula key={s.slot_id} slot={s} />)}
+          {ordenarSlots(selecionados).map(s => <LinhaAula key={s.slot_id} slot={s} aviso={usaCreditoIndividualEmGrupo(dados.turmas, s) ? 'Usa o seu crédito de aula individual' : undefined} />)}
         </div>
       ) : (
         <Nota icone={<CalendarCheck size={16} />} style={{ marginBottom: '18px' }}>

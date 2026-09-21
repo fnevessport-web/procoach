@@ -350,7 +350,12 @@ grant execute on function extras_confirmar_presente(uuid, uuid[]) to anon, authe
 create or replace view extras_relatorio with (security_invoker = true) as
 select i.criado_em as inscrito_em, i.nome, i.telefone, i.conferencia, i.observacao,
        a.tipo, a.modalidade, s.data_aula, s.horario_inicio, s.quadra, s.professor, s.nivel,
-       a.status, i.turma_atual, i.declaracao_em, i.id as inscricao_id, a.id as agendamento_id
+       a.status, i.turma_atual, i.declaracao_em, i.id as inscricao_id, a.id as agendamento_id,
+       -- 'sim' = aluno que só faz aula individual repondo em aula em grupo (concordou na tela em usar o
+       -- crédito de aula individual) — pra você dar baixa no crédito certo na conferência.
+       case when a.tipo = 'reposicao' and s.formato = 'grupo'
+             and not exists (select 1 from jsonb_array_elements(i.turma_atual) b where b ->> 'formato' = 'grupo')
+            then 'sim' end as usa_credito_individual_em_grupo
 from extras_inscricoes i
 left join extras_agendamentos a on a.inscricao_id = i.id
 left join extras_slots s on s.id = a.slot_id

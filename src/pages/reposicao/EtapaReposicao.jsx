@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { CalendarClock, ChevronLeft, Gift, Info, TriangleAlert } from 'lucide-react'
-import { MAX_REPOSICOES, encontrarConflito, fazIndividual, rotuloDiaCurto } from './constantes'
+import { ArrowLeftRight, CalendarClock, ChevronLeft, Gift, Info, TriangleAlert } from 'lucide-react'
+import { MAX_REPOSICOES, encontrarConflito, fazIndividual, rotuloDiaCurto, usaCreditoIndividualEmGrupo } from './constantes'
 import { useVagas } from './api'
 import { Titulo, Nota, Botao, BarraInferior, Chip, AoVivo, SlotsPorDia, ModalAviso } from './ui'
 
@@ -62,6 +62,21 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
     const conflito = encontrarConflito(slot, { turmas: dados.turmas, outros: selecionados })
     if (conflito) {
       setAviso({ titulo: 'Horário já ocupado', texto: conflito.texto })
+      return
+    }
+    // Aluno só de aula individual escolhendo aula em grupo: pede concordância antes de adicionar.
+    if (usaCreditoIndividualEmGrupo(dados.turmas, slot)) {
+      setAviso({
+        titulo: 'Você vai usar o seu crédito de aula individual',
+        icone: <ArrowLeftRight size={24} />,
+        texto: 'A sua aula é individual e este horário é de aula em grupo. Ao agendar, você estará utilizando o seu crédito de aula individual em uma aula em grupo. Tudo bem para você?',
+        acoes: (
+          <>
+            <Botao onClick={() => { setSelecionados(sel => [...sel, slot]); setAviso(null) }}>Sim, concordo em usar meu crédito</Botao>
+            <Botao variante="secundario" onClick={() => setAviso(null)}>Não, escolher outro horário</Botao>
+          </>
+        ),
+      })
       return
     }
     setSelecionados(sel => [...sel, slot])
@@ -129,7 +144,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
 
       <BarraInferior>
         <Botao disabled={selecionados.length === 0} onClick={onProsseguir}>
-          {selecionados.length === 0 ? 'Escolha ao menos 1 horário' : `Prosseguir com ${selecionados.length} de ${MAX_REPOSICOES} aula${selecionados.length > 1 ? 's' : ''}`}
+          {selecionados.length === 0 ? 'Escolha ao menos 1 horário' : `Prosseguir com ${selecionados.length} de ${MAX_REPOSICOES} aulas`}
         </Botao>
         {selecionados.length === 0 && (
           <Botao variante="suave" onClick={onNenhumHorario} style={{ padding: '4px' }}>Nenhum horário me atende — quero usar meu voucher</Botao>
@@ -137,7 +152,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
       </BarraInferior>
 
       {aviso && (
-        <ModalAviso icone={<TriangleAlert size={24} />} titulo={aviso.titulo}
+        <ModalAviso icone={aviso.icone || <TriangleAlert size={24} />} titulo={aviso.titulo}
           acoes={aviso.acoes || <Botao onClick={() => setAviso(null)}>Voltar para o agendamento</Botao>}>
           {aviso.texto}
         </ModalAviso>

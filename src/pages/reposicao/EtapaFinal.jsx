@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import { Camera, CalendarSearch, CalendarX2, Gift, MessageCircle, Phone, RotateCcw } from 'lucide-react'
-import { WHATSAPP_EXIBIDO, WHATSAPP_LINK, ordenarSlots } from './constantes'
+import { WHATSAPP_EXIBIDO, WHATSAPP_LINK, ordenarSlots, usaCreditoIndividualEmGrupo } from './constantes'
 import { LinhaAula } from './EtapaConfirmarReposicao'
 import { Cartao, Nota } from './ui'
 
@@ -67,7 +67,7 @@ export function EtapaFinal({ dados, reposicoes, presentes, onNovo }) {
 
           {reposicoes.length > 0 && (
             <Secao icone={<RotateCcw size={13} />} titulo={`Reposição de Tênis (${reposicoes.length})`}>
-              {ordenarSlots(reposicoes).map(s => <LinhaAula key={s.slot_id} slot={s} compacta />)}
+              {ordenarSlots(reposicoes).map(s => <LinhaAula key={s.slot_id} slot={s} compacta aviso={usaCreditoIndividualEmGrupo(dados.turmas, s) ? 'Usa o seu crédito de aula individual' : undefined} />)}
             </Secao>
           )}
 

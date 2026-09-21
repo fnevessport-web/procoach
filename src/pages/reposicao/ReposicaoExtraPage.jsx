@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+import { fazGrupo, fazIndividual } from './constantes'
 import { Pagina } from './ui'
 import { EtapaCadastro } from './EtapaCadastro'
 import { EtapaReposicao } from './EtapaReposicao'
@@ -27,6 +28,17 @@ export function ReposicaoExtraPage() {
   const [reposicoes, setReposicoes] = useState([])
   const [presentes, setPresentes] = useState([])
   const [inscricaoId, setInscricaoId] = useState(null)
+  // As regras de Individual/Grupo dependem da turma atual. Se a pessoa voltar ao cadastro e mudar
+  // o tipo de aula, as reposições já escolhidas (e a concordância de crédito) deixam de valer.
+  const perfilAoEscolher = useRef('')
+  const perfilDe = turmas => `${fazIndividual(turmas)}-${fazGrupo(turmas)}`
+
+  function continuarDoCadastro() {
+    const perfil = perfilDe(dados.turmas)
+    if (reposicoes.length && perfil !== perfilAoEscolher.current) setReposicoes([])
+    perfilAoEscolher.current = perfil
+    setEtapa('reposicao')
+  }
 
   const atualizarVagas = () => qc.invalidateQueries({ queryKey: ['extras-vagas'] })
 
@@ -45,13 +57,14 @@ export function ReposicaoExtraPage() {
     setReposicoes([])
     setPresentes([])
     setInscricaoId(null)
+    perfilAoEscolher.current = ''
     setEtapa('cadastro')
   }
 
   return (
     <Pagina resetKey={etapa}>
       {etapa === 'cadastro' && (
-        <EtapaCadastro dados={dados} setDados={setDados} onContinuar={() => setEtapa('reposicao')} />
+        <EtapaCadastro dados={dados} setDados={setDados} onContinuar={continuarDoCadastro} />
       )}
 
       {etapa === 'reposicao' && (
