@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CloudRain, Gift, Plus, Trash2 } from 'lucide-react'
+import { CloudRain, Gift, Info, Plus, Trash2, User, Users } from 'lucide-react'
 import { mascararTelefoneBR, apenasDigitosTelefone } from '../../lib/telefone'
 import {
   DIAS, HORARIOS, NIVEIS_ADULTO, NIVEIS_KIDS, TURMA_VAZIA, MODALIDADES_PRESENTE, MAX_REPOSICOES,
@@ -7,55 +7,61 @@ import {
 } from './constantes'
 import { Titulo, Cartao, Nota, Botao, Campo, Chip } from './ui'
 
-const MAX_TURMAS = 3
+const MAX_POR_TIPO = 3
+
+// Individual = verde-court, Grupo = saibro: a cor do bloco inteiro (borda, chips marcados) diz de
+// qual tipo de aula ele é. As cores adulto/Kids ficam só nos chips de nível, dentro do Grupo.
+const TIPOS = [
+  { chave: 'individual', rotulo: 'Aula Individual', sub: 'Só você e o professor', Icone: User,
+    cor: 'var(--color-brand-verde-court)', corTexto: 'var(--color-text-dark-primary)' },
+  { chave: 'grupo', rotulo: 'Aula em Grupo', sub: 'Turma com outros alunos', Icone: Users,
+    cor: 'var(--color-action-primary)', corTexto: 'var(--color-action-on-primary)' },
+]
 
 function validar(dados) {
   if (dados.nome.trim().split(/\s+/).filter(Boolean).length < 2) return 'Informe o nome completo do aluno.'
   if (dados.telefone.length < 10) return 'Informe o telefone com DDD.'
+  if (!dados.turmas.length) return 'Marque o tipo da sua aula atual: Individual, Grupo ou os dois.'
   for (const t of dados.turmas) {
-    if (!t.dias.length) return 'Marque ao menos um dia da semana da sua turma atual.'
-    if (!t.horario) return 'Marque o horário da sua turma atual.'
-    if (!t.formato) return 'Informe se a sua aula é Individual ou em Grupo.'
-    if (t.formato === 'grupo' && !t.nivel) return 'Escolha o nível da sua turma.'
+    const de = t.formato === 'individual' ? 'da aula Individual' : 'da turma em Grupo'
+    if (!t.dias.length) return `Marque ao menos um dia da semana ${de}.`
+    if (!t.horario) return `Marque o horário ${de}.`
+    if (t.formato === 'grupo' && !t.nivel) return 'Escolha o nível da sua turma em Grupo.'
   }
   return ''
 }
 
-function BlocoTurma({ turma, indice, total, onChange, onRemover }) {
+function BlocoTurma({ turma, tipo, ordem, total, onChange, onRemover }) {
   const set = patch => onChange({ ...turma, ...patch })
   const toggleDia = key => set({ dias: turma.dias.includes(key) ? turma.dias.filter(d => d !== key) : [...turma.dias, key] })
+  const { cor, corTexto, Icone } = tipo
 
   return (
-    <Cartao style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {total > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-text-light-muted)' }}>Turma {indice + 1}</span>
-          <button type="button" onClick={onRemover} aria-label="Remover turma" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-state-danger)', display: 'flex', padding: '4px' }}>
+    <Cartao style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderLeft: `5px solid ${cor}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 800, color: cor === 'var(--color-brand-verde-court)' ? cor : 'var(--color-action-primary)' }}>
+          <Icone size={16} /> {tipo.rotulo}{total > 1 ? ` · horário ${ordem}` : ''}
+        </span>
+        {total > 1 && (
+          <button type="button" onClick={onRemover} aria-label="Remover este horário" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-state-danger)', display: 'flex', padding: '4px' }}>
             <Trash2 size={16} />
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       <Campo label="Dias da semana">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px' }}>
-          {DIAS.map(d => <Chip key={d.key} ativo={turma.dias.includes(d.key)} onClick={() => toggleDia(d.key)} style={{ padding: '10px 0', fontSize: '12px' }}>{d.label}</Chip>)}
+          {DIAS.map(d => <Chip key={d.key} ativo={turma.dias.includes(d.key)} onClick={() => toggleDia(d.key)} cor={cor} corTexto={corTexto} style={{ padding: '10px 0', fontSize: '12px' }}>{d.label}</Chip>)}
         </div>
       </Campo>
 
       <Campo label="Horário da aula">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
           {HORARIOS.map(h => (
-            <Chip key={h} ativo={turma.horario === h} onClick={() => set({ horario: h })} style={{ padding: '10px 0', fontSize: '12px' }}>
+            <Chip key={h} ativo={turma.horario === h} onClick={() => set({ horario: h })} cor={cor} corTexto={corTexto} style={{ padding: '10px 0', fontSize: '12px' }}>
               {Number(h.slice(0, 2))}h
             </Chip>
           ))}
-        </div>
-      </Campo>
-
-      <Campo label="Tipo de aula">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-          <Chip ativo={turma.formato === 'individual'} onClick={() => set({ formato: 'individual', nivel: '' })}>Individual</Chip>
-          <Chip ativo={turma.formato === 'grupo'} onClick={() => set({ formato: 'grupo' })}>Grupo</Chip>
         </div>
       </Campo>
 
@@ -88,7 +94,14 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
     onContinuar()
   }
 
+  const temTipo = chave => dados.turmas.some(t => t.formato === chave)
+  const alternarTipo = chave => setDados(d => ({
+    ...d,
+    turmas: temTipo(chave) ? d.turmas.filter(t => t.formato !== chave) : [...d.turmas, { ...TURMA_VAZIA, formato: chave }],
+  }))
   const setTurma = (i, t) => setDados(d => ({ ...d, turmas: d.turmas.map((x, j) => (j === i ? t : x)) }))
+  const removerTurma = i => setDados(d => ({ ...d, turmas: d.turmas.filter((_, j) => j !== i) }))
+  const adicionarHorario = chave => setDados(d => ({ ...d, turmas: [...d.turmas, { ...TURMA_VAZIA, formato: chave }] }))
 
   return (
     <form onSubmit={enviar} style={{ animation: 'repoSobe 0.25s ease-out' }}>
@@ -99,7 +112,7 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
           <CloudRain size={22} style={{ color: 'var(--color-state-info)', flexShrink: 0, marginTop: '2px' }} />
           <div style={{ fontSize: '14px', lineHeight: 1.7, color: 'var(--color-text-light-secondary)' }}>
             <p style={{ margin: '0 0 10px' }}>
-              Nas últimas semanas a chuva nos impediu de realizar muitas aulas de Tênis. Nós, da Procópio,
+              Nas últimas semanas a chuva nos impediu de realizar muitas aulas de Tênis. Nós, da Procopio,
               nos preocupamos com a entrega que fazemos aos nossos alunos e, por isso, estamos abrindo
               <strong style={{ color: 'var(--color-text-light-primary)' }}> aulas extras de reposição</strong>.
             </p>
@@ -122,7 +135,7 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
         </div>
         <p style={{ margin: '0 0 12px', fontSize: '13px', lineHeight: 1.65, color: 'var(--color-text-dark-secondary)' }}>
           Como agradecimento pela paciência, todos os nossos alunos ganham <strong style={{ color: 'var(--color-text-dark-primary)' }}>1 aula gratuita</strong> para
-          conhecer as outras modalidades que a Procópio opera. Você pode experimentar todas elas,
+          conhecer as outras modalidades que a Procopio opera. Você pode experimentar todas elas,
           mas é <strong style={{ color: 'var(--color-text-dark-primary)' }}>1 aula por modalidade</strong>:
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -155,20 +168,50 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
       <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', fontWeight: 700, margin: '26px 0 4px' }}>Sua turma atual de Tênis</div>
       <p style={{ fontSize: '12px', lineHeight: 1.6, color: 'var(--color-text-light-muted)', margin: '0 0 12px' }}>
         Usamos essas informações para nos organizarmos e para evitar choque com as aulas que você já tem.
-        Se tiver aulas em horários diferentes, adicione outra turma.
       </p>
 
+      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-light-secondary)', marginBottom: '6px' }}>
+        Que tipo de aula você faz? <span style={{ fontWeight: 500, color: 'var(--color-text-light-muted)' }}>(pode marcar os dois)</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+        {TIPOS.map(t => {
+          const ativo = temTipo(t.chave)
+          return (
+            <button key={t.chave} type="button" onClick={() => alternarTipo(t.chave)} style={{
+              cursor: 'pointer', textAlign: 'left', padding: '14px 12px', borderRadius: '14px', boxSizing: 'border-box',
+              display: 'flex', flexDirection: 'column', gap: '4px', transition: 'all 0.12s',
+              backgroundColor: ativo ? t.cor : 'var(--color-surface-light-overlay)', color: ativo ? t.corTexto : 'var(--color-text-light-primary)',
+              border: `2px solid ${ativo ? t.cor : 'var(--color-border-light)'}`,
+            }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '14px', fontWeight: 800 }}><t.Icone size={17} />{t.rotulo}</span>
+              <span style={{ fontSize: '11px', opacity: 0.8 }}>{t.sub}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      <Nota cor="var(--color-state-info)" icone={<Info size={16} />} style={{ marginBottom: '14px' }}>
+        Quem faz <strong>só aula em Grupo</strong> repõe em aulas de Grupo. Quem faz <strong>aula Individual</strong> pode repor
+        em aulas Individuais ou de Grupo.
+      </Nota>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {dados.turmas.map((t, i) => (
-          <BlocoTurma key={i} turma={t} indice={i} total={dados.turmas.length}
-            onChange={nt => setTurma(i, nt)}
-            onRemover={() => setDados(d => ({ ...d, turmas: d.turmas.filter((_, j) => j !== i) }))} />
-        ))}
-        {dados.turmas.length < MAX_TURMAS && (
-          <Botao variante="secundario" onClick={() => setDados(d => ({ ...d, turmas: [...d.turmas, { ...TURMA_VAZIA }] }))} style={{ fontSize: '13px', padding: '11px' }}>
-            <Plus size={15} /> Adicionar outra turma
-          </Botao>
-        )}
+        {TIPOS.filter(t => temTipo(t.chave)).map(t => {
+          const doTipo = dados.turmas.map((tm, i) => ({ tm, i })).filter(x => x.tm.formato === t.chave)
+          return (
+            <div key={t.chave} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {doTipo.map(({ tm, i }, n) => (
+                <BlocoTurma key={i} turma={tm} tipo={t} ordem={n + 1} total={doTipo.length}
+                  onChange={nt => setTurma(i, nt)} onRemover={() => removerTurma(i)} />
+              ))}
+              {doTipo.length < MAX_POR_TIPO && (
+                <Botao variante="secundario" onClick={() => adicionarHorario(t.chave)} style={{ fontSize: '13px', padding: '11px' }}>
+                  <Plus size={15} /> Adicionar outro horário de {t.chave === 'individual' ? 'aula Individual' : 'Grupo'}
+                </Botao>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {erro && <Nota cor="var(--color-state-danger)" style={{ marginTop: '16px' }}>{erro}</Nota>}

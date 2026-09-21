@@ -3,7 +3,7 @@ import { WHATSAPP_EXIBIDO, WHATSAPP_LINK_SEM_HORARIO } from './constantes'
 import { Titulo, Cartao, Botao, BarraInferior } from './ui'
 
 // Aparece quando a pessoa diz que nenhum horário de reposição atende: antes de levá-la ao
-// presente, explica que a reposição dela não se perde e que ela deve falar com a Procópio pra
+// presente, explica que a reposição dela não se perde e que ela deve falar com a Procopio pra
 // conferirmos os horários da grade regular.
 export function EtapaSemHorario({ onVoltar, onContinuar }) {
   return (
@@ -34,7 +34,7 @@ export function EtapaSemHorario({ onVoltar, onContinuar }) {
           marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '13px', borderRadius: '12px', textDecoration: 'none',
           backgroundColor: 'var(--color-brand-verde-court)', color: 'var(--color-text-dark-primary)', fontSize: '14px', fontWeight: 700,
         }}>
-          <MessageCircle size={17} /> Falar com a Procópio agora
+          <MessageCircle size={17} /> Falar com a Procopio agora
         </a>
       </Cartao>
 

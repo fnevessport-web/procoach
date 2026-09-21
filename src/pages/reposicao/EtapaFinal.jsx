@@ -49,7 +49,7 @@ export function EtapaFinal({ dados, reposicoes, presentes, onNovo }) {
         <p style={{ fontSize: '14px', lineHeight: 1.7, color: 'var(--color-text-light-secondary)', margin: '10px 0 0' }}>
           {nada
             ? 'Registramos as suas informações. Se precisar de qualquer coisa, é só falar com a gente pelo WhatsApp.'
-            : 'Agradecemos a sua paciência e o carinho com a Procópio. Estamos ansiosos para receber você!'}
+            : 'Agradecemos a sua paciência e o carinho com a Procopio. Estamos ansiosos para receber você!'}
         </p>
       </div>
 
@@ -95,7 +95,7 @@ export function EtapaFinal({ dados, reposicoes, presentes, onNovo }) {
 
       <Cartao style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 700 }}>
-          <Phone size={16} style={{ color: 'var(--color-action-primary)' }} /> Fale com a Procópio
+          <Phone size={16} style={{ color: 'var(--color-action-primary)' }} /> Fale com a Procopio
         </div>
         <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '0.01em' }}>{WHATSAPP_EXIBIDO}</div>
         <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" style={{

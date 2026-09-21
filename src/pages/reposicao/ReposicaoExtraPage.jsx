@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { TURMA_VAZIA } from './constantes'
 import { Pagina } from './ui'
 import { EtapaCadastro } from './EtapaCadastro'
 import { EtapaReposicao } from './EtapaReposicao'
@@ -11,7 +10,7 @@ import { EtapaPresente } from './EtapaPresente'
 import { EtapaResumoPresente } from './EtapaResumoPresente'
 import { EtapaFinal } from './EtapaFinal'
 
-const DADOS_VAZIOS = { nome: '', telefone: '', turmas: [{ ...TURMA_VAZIA }] }
+const DADOS_VAZIOS = { nome: '', telefone: '', turmas: [] }
 
 // Página pública /reposicao (sem login) — aulas extras por causa da chuva: reposição de Tênis
 // (até 2 por pessoa) + 1 aula de presente em cada uma das outras modalidades. Isolada da agenda

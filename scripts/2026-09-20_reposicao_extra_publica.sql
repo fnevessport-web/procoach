@@ -221,6 +221,14 @@ begin
         'mensagem', 'Algum horário escolhido não está mais disponível. Atualize a lista e escolha novamente.');
     end if;
 
+    -- Quem faz só aula em Grupo repõe só em Grupo; aula Individual exige ter turma Individual
+    -- (sozinha ou junto com Grupo). Vale só pra reposição — o presente não tem essa trava.
+    if exists (select 1 from extras_slots s where s.id = any(v_ids) and s.formato = 'individual')
+       and not exists (select 1 from jsonb_array_elements(p_turma_atual) b where b ->> 'formato' = 'individual') then
+      return jsonb_build_object('ok', false, 'codigo', 'formato_nao_permitido',
+        'mensagem', 'As reposições em aula individual são para quem faz aula individual. Escolha uma aula em grupo.');
+    end if;
+
     select count(*) into v_ja from extras_agendamentos where chave = v_chave and tipo = 'reposicao' and status = 'confirmado';
     if v_ja + array_length(v_ids, 1) > c_limite then
       return jsonb_build_object('ok', false, 'codigo', 'limite_reposicao',

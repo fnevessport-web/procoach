@@ -19,8 +19,26 @@ export function Pagina({ children, largura = 560, resetKey }) {
         @keyframes repoSobe { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
       `}</style>
       <div style={{ maxWidth: `${largura}px`, margin: '0 auto', padding: '20px 16px 120px', boxSizing: 'border-box' }}>
-        <img src="/images/logoprocopio_preto.png" alt="Procópio" style={{ height: '44px', objectFit: 'contain', display: 'block', marginBottom: '22px' }} />
+        <Cabecalho />
         {children}
+      </div>
+    </div>
+  )
+}
+
+// Procopio + Beyond lado a lado, separados por um traço vertical (mesmo cabeçalho da inscrição do
+// Kids Competitivo, em escala maior). logobeyond_preto.png tem uma margem transparente enorme (o
+// texto ocupa só ~19% da altura do canvas), então a imagem é renderizada grande e recortada por
+// um contêiner com overflow:hidden, em vez de esticar a altura do cabeçalho.
+function Cabecalho() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '24px' }}>
+      <img src="/images/logoprocopio_preto.png" alt="Procopio" style={{ height: '58px', objectFit: 'contain', display: 'block' }} />
+      <div style={{ width: '1px', height: '46px', backgroundColor: 'var(--color-border-light)' }} />
+      <div style={{ height: '46px', width: '172px', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+        <img src="/images/logobeyond_preto.png" alt="Beyond The Club" style={{
+          position: 'absolute', top: '50%', left: '50%', height: '178px', width: '178px', transform: 'translate(-50%, -50%)',
+        }} />
       </div>
     </div>
   )
@@ -144,7 +162,7 @@ export function BadgePublico({ kids, children }) {
 }
 
 // Um card de horário. A régua de "pips" mostra as vagas: preenchido = ocupada, cor = livre.
-export function CardSlot({ slot, selecionado, onClick, mostrarModalidade }) {
+export function CardSlot({ slot, selecionado, onClick, mostrarModalidade, restrito }) {
   const estado = estadoVagas(slot)
   const lotado = estado.chave === 'lotado'
   const ocupadas = slot.capacidade - Math.max(0, slot.vagas_restantes)
@@ -152,7 +170,7 @@ export function CardSlot({ slot, selecionado, onClick, mostrarModalidade }) {
   return (
     <button type="button" onClick={() => onClick(slot)} style={{
       textAlign: 'left', cursor: lotado ? 'not-allowed' : 'pointer', borderRadius: '12px', boxSizing: 'border-box',
-      display: 'flex', flexDirection: 'column', gap: '7px', width: '100%', opacity: lotado ? 0.55 : 1, transition: 'all 0.12s',
+      display: 'flex', flexDirection: 'column', gap: '7px', width: '100%', opacity: lotado ? 0.55 : restrito ? 0.6 : 1, transition: 'all 0.12s',
       // a borda de 2px quando selecionado tira 1px de padding pra o card não "pular" de tamanho
       backgroundColor: selecionado ? 'color-mix(in srgb, var(--color-action-primary) 10%, var(--color-surface-light-raised))' : 'var(--color-surface-light-raised)',
       border: selecionado ? '2px solid var(--color-action-primary)' : '1px solid var(--color-border-light)',
@@ -185,12 +203,15 @@ export function CardSlot({ slot, selecionado, onClick, mostrarModalidade }) {
           }} />
         ))}
       </div>
+      {restrito && (
+        <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-light-muted)' }}>Somente para quem faz aula individual</div>
+      )}
     </button>
   )
 }
 
 // Lista agrupada por dia, com o cabeçalho de cada data.
-export function SlotsPorDia({ slots, selecionadosIds = [], onClick, mostrarModalidade }) {
+export function SlotsPorDia({ slots, selecionadosIds = [], onClick, mostrarModalidade, restrito }) {
   const grupos = []
   for (const s of slots) {
     const ultimo = grupos[grupos.length - 1]
@@ -206,7 +227,7 @@ export function SlotsPorDia({ slots, selecionadosIds = [], onClick, mostrarModal
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '10px' }}>
             {g.itens.map(s => (
-              <CardSlot key={s.slot_id} slot={s} mostrarModalidade={mostrarModalidade}
+              <CardSlot key={s.slot_id} slot={s} mostrarModalidade={mostrarModalidade} restrito={restrito ? restrito(s) : false}
                 selecionado={selecionadosIds.includes(s.slot_id)} onClick={onClick} />
             ))}
           </div>

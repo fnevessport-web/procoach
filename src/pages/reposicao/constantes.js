@@ -5,7 +5,7 @@ export const MAX_REPOSICOES = 2
 
 export const WHATSAPP_EXIBIDO = '+55 11 96913-0246'
 export const WHATSAPP_LINK = 'https://wa.me/5511969130246?text=' +
-  encodeURIComponent('Olá! Fiz o agendamento de aulas extras pelo link e gostaria de falar com a Procópio.')
+  encodeURIComponent('Olá! Fiz o agendamento de aulas extras pelo link e gostaria de falar com a Procopio.')
 export const WHATSAPP_LINK_SEM_HORARIO = 'https://wa.me/5511969130246?text=' +
   encodeURIComponent('Olá! Nenhum horário de reposição me atendeu. Gostaria de verificar os horários da grade regular para repor as minhas aulas.')
 
@@ -34,6 +34,10 @@ export const IMG_MODALIDADE = Object.fromEntries(MODALIDADES_PRESENTE.map(m => [
 IMG_MODALIDADE['Tênis'] = '/images/tenis.png'
 
 export const TURMA_VAZIA = { dias: [], horario: '', formato: '', nivel: '' }
+
+// Regra de elegibilidade da reposição: quem faz só Grupo repõe só em Grupo; quem faz Individual
+// (sozinho ou junto com Grupo) pode repor em Individual ou Grupo. O servidor confere a mesma regra.
+export const fazIndividual = turmas => turmas.some(t => t.formato === 'individual')
 
 // ---- datas/horas -------------------------------------------------------------------------
 
@@ -132,7 +136,7 @@ export function encontrarConflito(slot, { turmas = [], outros = [] }) {
 // ---- textos ------------------------------------------------------------------------------
 
 export const TEXTO_DECLARACAO =
-  'Declaro que as informações que preenchi são verdadeiras. Estou ciente de que a Procópio, ' +
+  'Declaro que as informações que preenchi são verdadeiras. Estou ciente de que a Procopio, ' +
   'como empresa operadora, irá conferir todos os agendamentos e poderá entrar em contato caso ' +
   'seja necessário ajustar algum horário.'
 

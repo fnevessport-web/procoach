@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CalendarClock, ChevronLeft, Gift, Info, TriangleAlert } from 'lucide-react'
-import { MAX_REPOSICOES, encontrarConflito, rotuloDiaCurto } from './constantes'
+import { MAX_REPOSICOES, encontrarConflito, fazIndividual, rotuloDiaCurto } from './constantes'
 import { useVagas } from './api'
 import { Titulo, Nota, Botao, BarraInferior, Chip, AoVivo, SlotsPorDia, ModalAviso } from './ui'
 
@@ -28,10 +28,24 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
     [slots, dia, nivel],
   )
   const ids = selecionados.map(s => s.slot_id)
+  const podeIndividual = fazIndividual(dados.turmas)
 
   function clicar(slot) {
     if (ids.includes(slot.slot_id)) {
       setSelecionados(sel => sel.filter(s => s.slot_id !== slot.slot_id))
+      return
+    }
+    if (slot.formato === 'individual' && !podeIndividual) {
+      setAviso({
+        titulo: 'Aula individual',
+        texto: 'As reposições em aula individual são para quem faz aula individual. Como a sua turma atual é em grupo, escolha um horário de grupo. Se você também faz aula individual, ajuste a sua turma atual.',
+        acoes: (
+          <>
+            <Botao onClick={() => setAviso(null)}>Voltar para o agendamento</Botao>
+            <Botao variante="secundario" onClick={onVoltar}>Ajustar minha turma atual</Botao>
+          </>
+        ),
+      })
       return
     }
     if (slot.vagas_restantes <= 0) {
@@ -66,7 +80,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
       <Nota cor="var(--color-state-info)" icone={<Info size={16} />} style={{ marginBottom: '14px' }}>
         Por causa da junção das turmas de reposição, as aulas estão classificadas apenas como
         <strong> Iniciante, Intermediário e Avançado</strong> (além das turmas Kids/Juvenil e Individual) — não é possível
-        separar em Iniciante 1, Iniciante 2 etc., pois precisamos preencher as turmas. Escolha o horário que melhor se encaixa na sua rotina.
+        separar em Iniciante 1, Iniciante 2 etc., pois precisamos preencher as turmas. Escolha o horário que melhor se encaixa na sua rotina. Lembrando: quem faz só aula em Grupo repõe em Grupo; quem faz aula Individual pode repor em Individual ou em Grupo.
       </Nota>
 
       <div style={{ marginBottom: '14px' }}><AoVivo /></div>
@@ -94,7 +108,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
 
           {visiveis.length === 0
             ? <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '13px', color: 'var(--color-text-light-muted)' }}>Nenhum horário com esses filtros.</div>
-            : <SlotsPorDia slots={visiveis} selecionadosIds={ids} onClick={clicar} />}
+            : <SlotsPorDia slots={visiveis} selecionadosIds={ids} onClick={clicar} restrito={s => s.formato === 'individual' && !podeIndividual} />}
         </>
       )}
 
@@ -124,7 +138,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
 
       {aviso && (
         <ModalAviso icone={<TriangleAlert size={24} />} titulo={aviso.titulo}
-          acoes={<Botao onClick={() => setAviso(null)}>Voltar para o agendamento</Botao>}>
+          acoes={aviso.acoes || <Botao onClick={() => setAviso(null)}>Voltar para o agendamento</Botao>}>
           {aviso.texto}
         </ModalAviso>
       )}
