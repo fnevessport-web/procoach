@@ -13,7 +13,9 @@
          sócio) — por isso "Pesquisa de Satisfação" sem qualificador de público. Se um link de
          /disponibilidade/:token ou /eventos/:slug for compartilhado, aparece esse mesmo cartão
          (não tem como diferenciar por rota numa SPA sem SSR/edge) — nesses casos o texto fica
-         genérico o bastante pra não ficar claramente errado, mas não é ideal. -->
+         genérico o bastante pra não ficar claramente errado, mas não é ideal.
+         EXCEÇÃO: /reposicao tem preview próprio ("ProCoach Gestão de Esportes"), gerado no build
+         por scripts/vitePreviewReposicao.js em dist/reposicao/index.html. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ProCoach Sport" />
     <meta property="og:title" content="Pesquisa de Satisfação" />
