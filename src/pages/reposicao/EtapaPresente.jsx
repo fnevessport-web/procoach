@@ -94,7 +94,7 @@ export function EtapaPresente({ dados, reposicoes, presentes, setPresentes, onRe
         titulo: `Você já escolheu ${slot.modalidade}`,
         texto: restantes.length
           ? `O presente vale 1 aula por modalidade, e você já agendou ${slot.modalidade} (${rotuloDiaCurto(atual.data_aula)}, ${faixaHorario(atual)}). Vejo aqui que você ainda tem voucher para conhecer: ${restantes.join(', ')}. Gostaria de agendar uma aula?`
-          : `O presente vale 1 aula por modalidade, e você já agendou ${slot.modalidade} (${rotuloDiaCurto(atual.data_aula)}, ${faixaHorario(atual)}). Você já escolheu todas as modalidades — se preferir, pode trocar o horário.`,
+          : `O presente vale 1 aula por modalidade, e você já agendou ${slot.modalidade} (${rotuloDiaCurto(atual.data_aula)}, ${faixaHorario(atual)}). Você já escolheu todas as modalidades. Se preferir, pode trocar o horário.`,
         acoes: (
           <>
             {restantes.length > 0 && <Botao onClick={() => { setAviso(null); setAberta(null) }}>Sim, ver outras modalidades</Botao>}
@@ -139,7 +139,7 @@ export function EtapaPresente({ dados, reposicoes, presentes, setPresentes, onRe
   return (
     <div style={{ animation: 'repoSobe 0.25s ease-out' }}>
       <Titulo kicker="Um presente para você"
-        sub="A Procopio, em parceria com a Beach Arena, presenteia você com 1 aula gratuita em cada uma das nossas outras modalidades. Sair do saibro por uma hora também é jogo — venha descobrir o quanto o esporte pode ser ainda maior.">
+        sub="A Procopio, em parceria com a Beach Arena, presenteia você com 1 aula gratuita em cada uma das nossas outras modalidades. Sair do saibro por uma hora também é jogo. Venha descobrir o quanto o esporte pode ser ainda maior.">
         Que tal aproveitar um pouco mais de esporte?
       </Titulo>
 

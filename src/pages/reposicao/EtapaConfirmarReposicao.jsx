@@ -94,7 +94,7 @@ export function EtapaConfirmarReposicao({ dados, selecionados, onVoltar, onConfi
         </div>
       ) : (
         <Nota icone={<CalendarCheck size={16} />} style={{ marginBottom: '18px' }}>
-          Você não agendou nenhuma reposição agora. Tudo bem — na próxima etapa você ainda pode escolher o seu presente, e depois é só falar com a gente pelo WhatsApp para verificarmos a sua reposição.
+          Você não agendou nenhuma reposição agora. Tudo bem. Na próxima etapa você ainda pode escolher o seu presente, e depois é só falar com a gente pelo WhatsApp para verificarmos a sua reposição.
         </Nota>
       )}
 

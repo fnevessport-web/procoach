@@ -12,7 +12,7 @@ export function EtapaSemHorario({ onVoltar, onContinuar }) {
         <ChevronLeft size={16} /> Voltar aos horários
       </button>
 
-      <Titulo kicker="Antes de continuar" sub="Se nenhum dos horários de reposição se encaixou na sua rotina, tudo bem — a sua reposição não se perde.">
+      <Titulo kicker="Antes de continuar" sub="Se nenhum dos horários de reposição se encaixou na sua rotina, tudo bem, a sua reposição não se perde.">
         Nenhum horário atendeu?
       </Titulo>
 

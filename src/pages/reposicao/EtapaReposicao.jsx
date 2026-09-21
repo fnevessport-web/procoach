@@ -94,7 +94,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
 
       <Nota cor="var(--color-state-info)" icone={<Info size={16} />} style={{ marginBottom: '14px' }}>
         Por causa da junção das turmas de reposição, as aulas estão classificadas apenas como
-        <strong> Iniciante, Intermediário e Avançado</strong> (além das turmas Kids/Juvenil e Individual) — não é possível
+        <strong> Iniciante, Intermediário e Avançado</strong> (além das turmas Kids/Juvenil e Individual). Não é possível
         separar em Iniciante 1, Iniciante 2 etc., pois precisamos preencher as turmas. Escolha o horário que melhor se encaixa na sua rotina. Lembrando: quem faz só aula em Grupo repõe em Grupo; quem faz aula Individual pode repor em Individual ou em Grupo.
       </Nota>
 
@@ -104,7 +104,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
       {isError && <Nota cor="var(--color-state-danger)" icone={<TriangleAlert size={16} />}>Não conseguimos carregar os horários agora. Atualize a página em instantes.</Nota>}
       {slots && slots.length === 0 && (
         <Nota cor="var(--color-state-warning)" icone={<CalendarClock size={16} />}>
-          Ainda não há horários de reposição publicados. Volte em breve — ou fale com a gente pelo WhatsApp.
+          Ainda não há horários de reposição publicados. Volte em breve ou fale com a gente pelo WhatsApp.
         </Nota>
       )}
 
@@ -147,7 +147,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
           {selecionados.length === 0 ? 'Escolha ao menos 1 horário' : `Prosseguir com ${selecionados.length} de ${MAX_REPOSICOES} aulas`}
         </Botao>
         {selecionados.length === 0 && (
-          <Botao variante="suave" onClick={onNenhumHorario} style={{ padding: '4px' }}>Nenhum horário me atende — quero usar meu voucher</Botao>
+          <Botao variante="suave" onClick={onNenhumHorario} style={{ padding: '4px' }}>Nenhum horário me atende, quero usar meu voucher</Botao>
         )}
       </BarraInferior>
 

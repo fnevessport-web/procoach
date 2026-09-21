@@ -133,7 +133,7 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
         mesmo consulta no <strong>app do Beyond</strong>, e o agendamento deve ser feito e confirmado direto com a Procopio, pelo
         WhatsApp{' '}
         <a href={WHATSAPP_LINK_GRADE_REGULAR} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-action-primary)', fontWeight: 700, whiteSpace: 'nowrap' }}>{WHATSAPP_EXIBIDO}</a>.
-        Se depois disso ainda houver aulas a repor, faremos novos agendamentos — ninguém ficará sem a sua reposição.
+        Se depois disso ainda houver aulas a repor, faremos novos agendamentos. Ninguém ficará sem a sua reposição.
       </Nota>
 
       <div style={{

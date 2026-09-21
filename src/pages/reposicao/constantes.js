@@ -71,7 +71,7 @@ export const ordenarSlots = slots =>
   [...slots].sort((a, b) => `${a.data_aula} ${a.horario_inicio}`.localeCompare(`${b.data_aula} ${b.horario_inicio}`))
 
 export function faixaHorario(slot) {
-  return slot.horario_fim ? `${hora(slot.horario_inicio)} – ${hora(slot.horario_fim)}` : hora(slot.horario_inicio)
+  return slot.horario_fim ? `${hora(slot.horario_inicio)} às ${hora(slot.horario_fim)}` : hora(slot.horario_inicio)
 }
 
 // ---- rótulos de exibição -------------------------------------------------------------------
@@ -126,7 +126,7 @@ export function encontrarConflito(slot, { turmas = [], outros = [] }) {
     const [oIni, oFim] = intervaloSlot(o)
     if (oIni < fim && ini < oFim) {
       return {
-        texto: `Você já tem uma aula de ${o.modalidade} agendada em ${rotuloDiaCurto(o.data_aula)} às ${hora(o.horario_inicio)} — e não dá para estar em dois lugares ao mesmo tempo.`,
+        texto: `Você já tem uma aula de ${o.modalidade} agendada em ${rotuloDiaCurto(o.data_aula)} às ${hora(o.horario_inicio)}, e não dá para estar em dois lugares ao mesmo tempo.`,
       }
     }
   }

@@ -234,7 +234,7 @@ begin
       return jsonb_build_object('ok', false, 'codigo', 'limite_reposicao',
         'mensagem', case when v_ja = 0
           then format('Neste primeiro momento o limite é de %s aulas de reposição por pessoa.', c_limite)
-          else format('Você já tem %s reposição(ões) agendada(s). Neste primeiro momento o limite é de %s por pessoa — as demais faremos em um novo agendamento.', v_ja, c_limite) end);
+          else format('Você já tem %s reposição(ões) agendada(s). Neste primeiro momento o limite é de %s por pessoa. As demais faremos em um novo agendamento.', v_ja, c_limite) end);
     end if;
 
     select array_agg(s.id) into v_lotados
