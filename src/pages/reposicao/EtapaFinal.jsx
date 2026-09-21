@@ -1,22 +1,22 @@
 import { format } from 'date-fns'
-import { Camera, CalendarSearch, CalendarX2, Gift, MessageCircle, Phone, RotateCcw } from 'lucide-react'
+import { Camera, CalendarSearch, CalendarX2, CheckCircle2, Gift, MessageCircle, Phone, RotateCcw } from 'lucide-react'
 import { WHATSAPP_EXIBIDO, WHATSAPP_LINK, ordenarSlots, usaCreditoIndividualEmGrupo } from './constantes'
 import { LinhaAula } from './EtapaConfirmarReposicao'
-import { Cartao, Nota } from './ui'
+import { Botao, Cartao, Nota } from './ui'
 
 function BannerPrint() {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: '14px', padding: '16px', borderRadius: '14px', boxSizing: 'border-box',
+      display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', borderRadius: '14px', boxSizing: 'border-box',
       backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)',
       boxShadow: '0 0 0 4px color-mix(in srgb, var(--color-action-primary) 22%, transparent)',
     }}>
-      <span style={{ width: '46px', height: '46px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'color-mix(in srgb, var(--color-action-on-primary) 18%, transparent)' }}>
-        <Camera size={24} />
+      <span style={{ width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'color-mix(in srgb, var(--color-action-on-primary) 18%, transparent)' }}>
+        <Camera size={20} />
       </span>
       <div>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: '21px', fontWeight: 700, lineHeight: 1.15 }}>Tire um print desta tela</div>
-        <div style={{ fontSize: '13px', lineHeight: 1.5, opacity: 0.92, marginTop: '3px' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', fontWeight: 700, lineHeight: 1.15 }}>Tire um print desta tela</div>
+        <div style={{ fontSize: '12px', lineHeight: 1.4, opacity: 0.92, marginTop: '2px' }}>
           Assim você não esquece os horários e sempre terá acesso aos seus agendamentos.
         </div>
       </div>
@@ -27,39 +27,39 @@ function BannerPrint() {
 function Secao({ icone, titulo, children }) {
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-light-muted)', margin: '0 0 8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-light-muted)', margin: '0 0 6px' }}>
         {icone}{titulo}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>{children}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>{children}</div>
     </div>
   )
 }
 
-export function EtapaFinal({ dados, reposicoes, presentes, onNovo }) {
+export function EtapaFinal({ dados, reposicoes, presentes, onNovo, onFinalizar }) {
   const nada = reposicoes.length === 0 && presentes.length === 0
   return (
-    <div style={{ animation: 'repoSobe 0.3s ease-out', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div style={{ animation: 'repoSobe 0.3s ease-out', display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div>
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-state-success)', marginBottom: '6px' }}>
           {nada ? 'Tudo certo' : 'Agendamento concluído'}
         </div>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '29px', lineHeight: 1.2, fontWeight: 700, margin: 0 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', lineHeight: 1.2, fontWeight: 700, margin: 0 }}>
           Obrigado, {dados.nome.trim().split(/\s+/)[0]}!
         </h1>
-        <p style={{ fontSize: '14px', lineHeight: 1.7, color: 'var(--color-text-light-secondary)', margin: '10px 0 0' }}>
+        <p style={{ fontSize: '13px', lineHeight: 1.55, color: 'var(--color-text-light-secondary)', margin: '6px 0 0' }}>
           {nada
             ? 'Registramos as suas informações. Se precisar de qualquer coisa, é só falar com a gente pelo WhatsApp.'
-            : 'Agradecemos o carinho e a confiança na Procopio. Estamos ansiosos para receber você!'}
+            : 'Confira abaixo e guarde o seu print.'}
         </p>
       </div>
 
       {!nada && <BannerPrint />}
 
       {!nada && (
-        <Cartao style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderStyle: 'dashed', borderWidth: '2px', padding: '14px' }}>
+        <Cartao style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderStyle: 'dashed', borderWidth: '2px', padding: '10px' }}>
           <div>
             <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-light-muted)', marginBottom: '2px' }}>Aluno</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700 }}>{dados.nome.trim()}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700 }}>{dados.nome.trim()}</div>
             <div style={{ fontSize: '12px', color: 'var(--color-text-light-muted)', marginTop: '2px' }}>
               Agendado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm")}
             </div>
@@ -78,6 +78,8 @@ export function EtapaFinal({ dados, reposicoes, presentes, onNovo }) {
           )}
         </Cartao>
       )}
+
+      <Botao onClick={onFinalizar} style={{ padding: '15px' }}><CheckCircle2 size={18} /> Finalizar</Botao>
 
       {reposicoes.length === 0 && presentes.length > 0 && (
         <Nota cor="var(--color-state-info)" icone={<CalendarSearch size={16} />}>

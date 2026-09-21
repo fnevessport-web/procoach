@@ -10,6 +10,7 @@ import { EtapaConfirmarReposicao } from './EtapaConfirmarReposicao'
 import { EtapaPresente } from './EtapaPresente'
 import { EtapaResumoPresente } from './EtapaResumoPresente'
 import { EtapaFinal } from './EtapaFinal'
+import { EtapaEncerrado } from './EtapaEncerrado'
 
 const DADOS_VAZIOS = { nome: '', telefone: '', turmas: [] }
 
@@ -99,7 +100,11 @@ export function ReposicaoExtraPage() {
       )}
 
       {etapa === 'final' && (
-        <EtapaFinal dados={dados} reposicoes={reposicoes} presentes={presentes} onNovo={recomecar} />
+        <EtapaFinal dados={dados} reposicoes={reposicoes} presentes={presentes} onNovo={recomecar} onFinalizar={() => setEtapa('encerrado')} />
+      )}
+
+      {etapa === 'encerrado' && (
+        <EtapaEncerrado dados={dados} reposicoes={reposicoes} presentes={presentes} onNovo={recomecar} />
       )}
     </Pagina>
   )

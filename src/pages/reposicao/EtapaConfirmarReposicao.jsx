@@ -7,23 +7,22 @@ import { Titulo, Cartao, Nota, Botao, BarraInferior } from './ui'
 // Linha de uma aula agendada — reaproveitada nas telas de confirmação, resumo e final.
 export function LinhaAula({ slot, destaque, compacta, aviso }) {
   if (compacta) {
-    // Versão enxuta pra tela final — cabe mais aulas numa única captura de tela.
+    // Versão enxuta pra tela final (o "print"): linha 1 = dia + horário e modalidade; linha 2 =
+    // nível, quadra e professor em letra pequena. Cabe bastante aula numa única captura de tela.
+    const detalhes = [rotuloNivel(slot), slot.quadra, rotuloProfessor(slot.professor)].filter(Boolean).join(' · ')
     return (
       <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '10px', boxSizing: 'border-box',
+        padding: '5px 10px', borderRadius: '9px', boxSizing: 'border-box',
         backgroundColor: destaque || 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)',
       }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-action-primary)' }}>{rotuloDiaCurto(slot.data_aula)}</div>
-          <div style={{ fontSize: '13px', fontWeight: 700 }}>
-            {[slot.modalidade, rotuloNivel(slot)].filter(Boolean).join(' · ')}
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>
-            {[slot.quadra, rotuloProfessor(slot.professor)].filter(Boolean).join(' · ')}
-          </div>
-          {aviso && <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-state-warning)', marginTop: '2px' }}>{aviso}</div>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', fontSize: '13px', fontWeight: 800 }}>
+          <span style={{ whiteSpace: 'nowrap' }}>
+            <span style={{ color: 'var(--color-action-primary)' }}>{rotuloDiaCurto(slot.data_aula)}</span> · {faixaHorario(slot)}
+          </span>
+          <span style={{ textAlign: 'right' }}>{slot.modalidade}</span>
         </div>
-        <div style={{ fontSize: '16px', fontWeight: 800, whiteSpace: 'nowrap' }}>{faixaHorario(slot)}</div>
+        {detalhes && <div style={{ fontSize: '11px', lineHeight: 1.3, color: 'var(--color-text-light-secondary)' }}>{detalhes}</div>}
+        {aviso && <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-state-warning)' }}>{aviso}</div>}
       </div>
     )
   }
