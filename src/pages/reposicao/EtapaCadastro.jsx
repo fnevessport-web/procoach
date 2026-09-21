@@ -144,9 +144,10 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
           <Gift size={18} style={{ color: 'var(--color-brand-lima)' }} /> E temos um presente para você
         </div>
         <p style={{ margin: '0 0 12px', fontSize: '13px', lineHeight: 1.65, color: 'var(--color-text-dark-secondary)' }}>
-          Como agradecimento pela paciência, todos os nossos alunos ganham <strong style={{ color: 'var(--color-text-dark-primary)' }}>1 aula gratuita</strong> para
-          conhecer as outras modalidades que a Procopio opera. Você pode experimentar todas elas,
-          mas é <strong style={{ color: 'var(--color-text-dark-primary)' }}>1 aula por modalidade</strong>:
+          Para minimizar o impacto do período sem aulas, a Procopio, em parceria com a Beach Arena, está presenteando
+          todos os nossos alunos de Tênis com <strong style={{ color: 'var(--color-text-dark-primary)' }}>1 aula gratuita em diferentes modalidades</strong>.
+          Você pode escolher quantas modalidades quiser, sendo
+          <strong style={{ color: 'var(--color-text-dark-primary)' }}> 1 aula em cada uma</strong>:
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           {MODALIDADES_PRESENTE.map(m => (

@@ -49,7 +49,7 @@ export function EtapaFinal({ dados, reposicoes, presentes, onNovo }) {
         <p style={{ fontSize: '14px', lineHeight: 1.7, color: 'var(--color-text-light-secondary)', margin: '10px 0 0' }}>
           {nada
             ? 'Registramos as suas informações. Se precisar de qualquer coisa, é só falar com a gente pelo WhatsApp.'
-            : 'Agradecemos a sua paciência e o carinho com a Procopio. Estamos ansiosos para receber você!'}
+            : 'Agradecemos o carinho e a confiança na Procopio. Estamos ansiosos para receber você!'}
         </p>
       </div>
 

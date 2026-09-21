@@ -139,7 +139,7 @@ export function EtapaPresente({ dados, reposicoes, presentes, setPresentes, onRe
   return (
     <div style={{ animation: 'repoSobe 0.25s ease-out' }}>
       <Titulo kicker="Um presente para você"
-        sub="Como agradecimento pela paciência, você ganhou 1 aula gratuita em cada uma das nossas outras modalidades. Sair do saibro por uma hora também é jogo — venha descobrir o quanto o esporte pode ser ainda maior.">
+        sub="A Procopio, em parceria com a Beach Arena, presenteia você com 1 aula gratuita em cada uma das nossas outras modalidades. Sair do saibro por uma hora também é jogo — venha descobrir o quanto o esporte pode ser ainda maior.">
         Que tal aproveitar um pouco mais de esporte?
       </Titulo>
 
