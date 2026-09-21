@@ -37,6 +37,7 @@ import { PesquisaSociosPublicaPage } from './pages/pesquisa/PesquisaSociosPublic
 import { DisponibilidadeTurmasPage } from './pages/disponibilidade/DisponibilidadeTurmasPage'
 import { EventoInscricaoPage } from './pages/eventos/EventoInscricaoPage'
 import { ReposicaoExtraPage } from './pages/reposicao/ReposicaoExtraPage'
+import { ExtraReposicaoPage } from './pages/extras/ExtraReposicaoPage'
 import { PoliticaPrivacidadePage } from './pages/legal/PoliticaPrivacidadePage'
 import { ComoFuncionaAPontuacaoPage } from './pages/legal/ComoFuncionaAPontuacaoPage'
 import { ComoFuncionaORankingPage } from './pages/legal/ComoFuncionaORankingPage'
@@ -163,6 +164,11 @@ function AppRouter() {
             } />
             <Route path="/cadastros/turmas" element={
               <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><CadastrosPage /></RouteGuard>
+            } />
+            {/* Aulas extras da chuva (link público /reposicao): agendas com professor, vagas e inscritos.
+                Separada da grade oficial. Professor tem menu próprio e não entra aqui. */}
+            <Route path="/extra-reposicao" element={
+              <RouteGuard permitido={podeAcessarCadastros && role !== 'professor'} homeRoute={homeRoute}><ExtraReposicaoPage /></RouteGuard>
             } />
             <Route path="/agenda-aluno" element={
               <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><AgendaAluno /></RouteGuard>

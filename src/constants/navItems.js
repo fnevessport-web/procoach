@@ -1,4 +1,4 @@
-import { Home, CalendarDays, Users, DollarSign, FileBarChart, MessageCircle, LayoutDashboard, User, GraduationCap, ClipboardCheck, Trophy } from 'lucide-react'
+import { Home, CalendarDays, CalendarPlus, Users, DollarSign, FileBarChart, MessageCircle, LayoutDashboard, User, GraduationCap, ClipboardCheck, Trophy } from 'lucide-react'
 import { resolverRole, permissoesDoRole } from '../hooks/usePermissions'
 
 // Itens de navegação derivados das flags de usePermissions — uma fonte só de verdade
@@ -51,6 +51,8 @@ export function getNavItems(roleBruto) {
     { path: '/aulas', icon: CalendarDays, label: 'Aulas' },
   ]
   if (permissoes.podeAcessarCadastros) items.push({ path: '/cadastros', icon: Users, label: 'Cadastros' })
+  // labelMobile: a BottomNav já é apertada, então lá o rótulo é curto.
+  if (permissoes.podeAcessarCadastros) items.push({ path: '/extra-reposicao', icon: CalendarPlus, label: 'Extra Reposição', labelMobile: 'Extra' })
   items.push({ path: '/ranking', icon: Trophy, label: 'Ranking' })
   if (permissoes.podeAcessarFinanceiro) items.push({ path: '/financeiro', icon: DollarSign, label: 'Financeiro' })
   if (permissoes.podeAcessarKPIs) items.push({ path: '/kpis', icon: FileBarChart, label: 'Relatório' })

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { ChevronUp } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
@@ -12,6 +13,16 @@ export function BottomNav() {
   const navigate = useNavigate()
 
   const items = getNavItems(role)
+  // Com muitos itens (gestor/coordenador têm 9) a barra não cabe em telas de celular: vira rolável
+  // na horizontal em vez de cortar os últimos itens. Com poucos itens segue distribuída como sempre.
+  const muitos = items.length > 6
+  const barraRef = useRef(null)
+
+  // Mantém o item da tela atual à vista quando a barra está rolável.
+  useEffect(() => {
+    if (!muitos) return
+    barraRef.current?.querySelector('[data-ativo="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' })
+  }, [location.pathname, muitos, navRecolhida])
 
   if (navRecolhida) {
     return (
@@ -36,17 +47,20 @@ export function BottomNav() {
       backgroundColor: 'var(--color-surface-dark-base)',
       borderTop: '1px solid var(--color-border-dark-subtle)',
     }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-        padding: '8px 8px 12px', maxWidth: '1024px', margin: '0 auto'
+      <div ref={barraRef} style={{
+        display: 'flex', alignItems: 'center', justifyContent: muitos ? 'flex-start' : 'space-around',
+        padding: '8px 8px 12px', maxWidth: '1024px', margin: '0 auto',
+        ...(muitos ? { overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } : null),
       }}>
-        {items.map(({ path, icon: Icon, label }) => {
+        {items.map(({ path, icon: Icon, label, labelMobile }) => {
           const active = location.pathname === path || (path !== '/' && location.pathname.startsWith(path))
           return (
             <button
               key={path}
+              data-ativo={active}
               onClick={() => navigate(path)}
               style={{
+                flexShrink: muitos ? 0 : 1,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
                 padding: '8px 12px', borderRadius: '12px', border: 'none',
                 backgroundColor: 'transparent', cursor: 'pointer', minWidth: '52px',
@@ -55,7 +69,7 @@ export function BottomNav() {
               }}
             >
               <Icon size={22} strokeWidth={active ? 2.5 : 2} />
-              <span style={{ fontSize: '10px', fontWeight: '500', lineHeight: 1 }}>{label}</span>
+              <span style={{ fontSize: '10px', fontWeight: '500', lineHeight: 1 }}>{labelMobile || label}</span>
               {active && (
                 <div style={{
                   width: '20px', height: '2px', borderRadius: '1px',
