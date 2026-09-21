@@ -55,7 +55,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
     if (selecionados.length >= MAX_REPOSICOES) {
       setAviso({
         titulo: `Limite de ${MAX_REPOSICOES} aulas`,
-        texto: `Para atendermos toda a nossa demanda, neste primeiro momento cada pessoa agenda até ${MAX_REPOSICOES} aulas de reposição. Se quiser trocar um horário, toque na aula escolhida para desmarcá-la. As demais reposições faremos em um novo agendamento.`,
+        texto: `Para atendermos toda a nossa demanda, cada pessoa agenda até ${MAX_REPOSICOES} aulas de reposição nestas aulas extras. Se quiser trocar um horário, toque na aula escolhida para desmarcá-la. Tem mais aulas a repor? Você também pode repor na grade regular, conforme a disponibilidade de vagas: consulte as vagas no app do Beyond e agende com a Procopio pelo WhatsApp.`,
       })
       return
     }

@@ -6,6 +6,8 @@ export const MAX_REPOSICOES = 2
 export const WHATSAPP_EXIBIDO = '+55 11 96913-0246'
 export const WHATSAPP_LINK = 'https://wa.me/5511969130246?text=' +
   encodeURIComponent('Olá! Fiz o agendamento de aulas extras pelo link e gostaria de falar com a Procopio.')
+export const WHATSAPP_LINK_GRADE_REGULAR = 'https://wa.me/5511969130246?text=' +
+  encodeURIComponent('Olá! Gostaria de agendar uma reposição em uma turma da grade regular, conforme a disponibilidade de vagas.')
 export const WHATSAPP_LINK_SEM_HORARIO = 'https://wa.me/5511969130246?text=' +
   encodeURIComponent('Olá! Nenhum horário de reposição me atendeu. Gostaria de verificar os horários da grade regular para repor as minhas aulas.')
 
