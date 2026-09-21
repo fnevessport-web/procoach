@@ -22,7 +22,7 @@ import {
   dadosPagamentoEmpresa,
 } from '../../hooks/useFinanceiro'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
-import { calcularValorAula, aulaComTodosAusentes, calcularMargensTenis } from '../../constants/modalidades'
+import { calcularValorAula, aulaComTodosAusentes, calcularMargensTenis, participantesForaDoPagamento, aulaCanceladaPorChuva } from '../../constants/modalidades'
 import { useEmpresaVinculada } from '../../hooks/useProfessores'
 import { buscarRelatorioMargem } from '../../hooks/useRelatorioMargem'
 import { exportarRelatorioMargemPDF } from '../../lib/relatorioMargemPdf'
@@ -418,10 +418,10 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
       // 1) busca aulas do dia
       const { data: aulasData, error: e1 } = await supabase
         .from('aulas')
-        .select('id, turma_id, observacoes, data_aula, turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome))')
+        .select('id, turma_id, observacoes, data_aula, status_aula, motivo_cancelamento, turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao)')
         .eq('professor_executou_id', professorId)
         .eq('data_aula', dataStr)
-        .eq('status_aula', 'dada')
+        .in('status_aula', ['dada', 'cancelada']) // cancelada por chuva paga 50% — tem que aparecer aqui pro total do dia bater com o do professor
         .eq('paga_professor', true)
         .order('id')
       if (e1) throw e1
@@ -501,11 +501,22 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
             const presencas = a.presencas || []
             const presentes = presencas.filter(p => p.status_presenca === 'presente').length
             const ausentes = presencas.filter(p => p.status_presenca !== 'presente').length
+            // Reposição e cortesia numa turma em grupo NÃO somam no pagamento (o valor é o da turma
+            // naquele horário) — a aula ganha cor própria (lima) pra dar pra ver de relance. Cancelada
+            // por chuva (paga 50%) ganha a cor de aviso.
+            const fora = participantesForaDoPagamento(a)
+            const chuva = aulaCanceladaPorChuva(a)
+            const corDestaque = chuva ? 'var(--color-state-warning)' : fora.total > 0 ? 'var(--color-brand-lima)' : null
+            const turmaReposicao = !!a.turmas?.eh_turma_reposicao
             return (
               <div
                 key={a.id || i}
                 onClick={() => navigate('/aulas', { state: { data: dataStr, horario: info.horario, from: '/financeiro', financeiroState } })}
-                style={{ backgroundColor: 'var(--color-surface-dark-overlay)', borderRadius: '10px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
+                style={{
+                  backgroundColor: corDestaque ? `color-mix(in srgb, ${corDestaque} 9%, var(--color-surface-dark-overlay))` : 'var(--color-surface-dark-overlay)',
+                  borderRadius: '10px', padding: '10px 12px', cursor: 'pointer',
+                  border: corDestaque ? `1px solid color-mix(in srgb, ${corDestaque} 55%, transparent)` : '1px solid rgba(255,255,255,0.05)',
+                }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: presencas.length > 0 ? '8px' : 0 }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0, backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '700', color: 'var(--color-action-primary)', textAlign: 'center', lineHeight: 1.2 }}>
@@ -535,6 +546,20 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
                     )}
                   </div>
                 </div>
+                {(chuva || fora.total > 0) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', margin: '0 0 8px' }}>
+                    {chuva && (
+                      <span style={{ fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '6px', color: 'var(--color-state-warning)', backgroundColor: 'color-mix(in srgb, var(--color-state-warning) 14%, transparent)' }}>
+                        Cancelada por chuva · 50% do valor da turma
+                      </span>
+                    )}
+                    {fora.total > 0 && (
+                      <span style={{ fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '6px', color: 'var(--color-brand-lima)', backgroundColor: 'color-mix(in srgb, var(--color-brand-lima) 14%, transparent)' }}>
+                        {[fora.reposicao > 0 && `+${fora.reposicao} reposição`, fora.cortesia > 0 && `+${fora.cortesia} cortesia`].filter(Boolean).join(' · ')} · não soma no pagamento
+                      </span>
+                    )}
+                  </div>
+                )}
                 {presencas.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '4px' }}>
                     {presencas.map((p, j) => (
@@ -544,6 +569,11 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
                           : <span style={{ color: 'var(--color-state-danger)', fontSize: '13px', fontWeight: '700', lineHeight: 1, flexShrink: 0 }}>✗</span>
                         }
                         <span style={{ fontSize: '12px', color: p.status_presenca === 'presente' ? 'var(--color-text-dark-secondary)' : 'var(--color-text-dark-secondary)' }}>{p.nomeAluno || '—'}</span>
+                        {!turmaReposicao && (p.tipo_participacao === 'reposicao' || p.tipo_participacao === 'cortesia') && (
+                          <span style={{ fontSize: '9px', fontWeight: '700', padding: '1px 6px', borderRadius: '5px', color: 'var(--color-brand-lima)', backgroundColor: 'color-mix(in srgb, var(--color-brand-lima) 14%, transparent)' }}>
+                            {p.tipo_participacao === 'reposicao' ? 'Reposição' : 'Cortesia'}
+                          </span>
+                        )}
                         {p.status_presenca === 'falta_justificada' && <span style={{ fontSize: '9px', color: 'var(--color-state-warning)', marginLeft: 'auto' }}>just.</span>}
                       </div>
                     ))}
@@ -807,10 +837,15 @@ export function FinanceiroPage() {
   const valorUnitarioProf = empresaId === 'beach_arena' && professorSel?.valor_aula_beach
     ? Number(professorSel.valor_aula_beach)
     : Number(professorSel?.valor_aula || professorSel?.valor_hora_aula || 0)
-  // Cada aula pode valer diferente do valorUnitario "cheio" — turma de Tênis em grupo
-  // com só 1 aluno pagante a partir de 1/8/2026 vale R$100 fixo (ver calcularValorAula).
+  // Cada aula pode valer diferente do valorUnitario "cheio": a partir de 1/9/2026 o Tênis paga pela
+  // turma (grupo: 80/100/120/140 conforme os alunos; individual: 120) e cancelada por chuva paga 50%
+  // (ver calcularValorAula).
   const somaAulasProf = aulasProf.reduce((s, a) => s + (a.valor ?? valorUnitarioProf), 0)
   const temAulaComDesconto = aulasProf.some(a => a.valor != null && a.valor !== valorUnitarioProf)
+  // Aulas em grupo com reposição/cortesia (não somam no valor) e canceladas por chuva (50%) —
+  // só contadores informativos pra destacar no resumo.
+  const qtdAulasComExtrasProf = aulasProf.filter(a => participantesForaDoPagamento(a).total > 0).length
+  const qtdAulasChuvaProf = aulasProf.filter(aulaCanceladaPorChuva).length
   const totalExtrasProf = extrasProfDaEmpresa.reduce((s, e) => s + Number(e.valor || 0), 0)
   const totalPagarProf = somaAulasProf + totalExtrasProf
   // Margem líquida (só Tênis/Procópio) das aulas desse professor no período — visão do
@@ -1321,7 +1356,7 @@ export function FinanceiroPage() {
     const empresasParaExibir = [EMPRESAS[empresaId]]
     const contaFormatada = `${pag.agencia ? `Ag ${pag.agencia} · ` : ''}Conta ${pag.conta}${pag.tipo_conta ? ` (${pag.tipo_conta === 'poupanca' ? 'Poupança' : 'Corrente'})` : ''}`
 
-    // Quebra por valor pago (ex.: R$120 valor cheio x R$100 turma-grupo-1-aluno) —
+    // Quebra por valor pago (ex.: R$120 individual, R$100 turma de 2 alunos, R$60 cancelada por chuva) —
     // conta quantas aulas caíram em cada valor pra auditoria do fechamento. Agrupa pelo
     // valor de fato calculado (a.valor), não hardcoded, pra funcionar com qualquer
     // valor_aula configurado no cadastro do professor.
@@ -1436,7 +1471,7 @@ export function FinanceiroPage() {
           </div>
           <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', marginTop: '4px' }}>
             {temAulaComDesconto
-              ? <>{totalAulasProf} aulas — {fmtBRL(somaAulasProf)} <span style={{ color: 'var(--color-state-warning)' }}>(com turma a R$100)</span></>
+              ? <>{totalAulasProf} aulas — {fmtBRL(somaAulasProf)} <span style={{ color: 'var(--color-state-warning)' }}>(valor por turma)</span></>
               : <>{totalAulasProf} aulas × {fmtBRL(valorUnitarioProf)}</>
             }
             {totalExtrasProf > 0 && (
@@ -1445,6 +1480,20 @@ export function FinanceiroPage() {
               </span>
             )}
           </div>
+          {(qtdAulasComExtrasProf > 0 || qtdAulasChuvaProf > 0) && (
+            <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+              {qtdAulasComExtrasProf > 0 && (
+                <span style={{ fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '6px', color: 'var(--color-brand-lima)', backgroundColor: 'color-mix(in srgb, var(--color-brand-lima) 14%, transparent)' }}>
+                  {qtdAulasComExtrasProf} aula{qtdAulasComExtrasProf !== 1 ? 's' : ''} com reposição/cortesia (não somam)
+                </span>
+              )}
+              {qtdAulasChuvaProf > 0 && (
+                <span style={{ fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '6px', color: 'var(--color-state-warning)', backgroundColor: 'color-mix(in srgb, var(--color-state-warning) 14%, transparent)' }}>
+                  {qtdAulasChuvaProf} cancelada{qtdAulasChuvaProf !== 1 ? 's' : ''} por chuva (50%)
+                </span>
+              )}
+            </div>
+          )}
           {/* Margem líquida (receita da mensalidade − 10% clube − custo do professor), só
               pra aulas de Tênis/Procópio — visão exclusiva do coordenador, o professor não
               tem acesso a esse número em lugar nenhum do app. */}
@@ -1456,7 +1505,7 @@ export function FinanceiroPage() {
         </div>
 
         {/* Filtro por valor da aula — auditoria de quantas aulas caíram em cada valor
-            (ex.: R$120 valor cheio x R$100 turma em grupo com só 1 aluno pagante).
+            (ex.: R$120 individual x R$100 turma em grupo com 2 alunos x R$60 cancelada por chuva).
             Só aparece quando há mais de um valor no período, senão é ruído. */}
         {breakdownValores.length > 1 && (
           <div style={{
@@ -1771,6 +1820,8 @@ export function FinanceiroPage() {
             {diasOrdenados.map(([dataStr, aulasNoDia]) => {
               const dataFmt = format(parseISO(dataStr + 'T12:00:00'), "dd/MM · EEEE", { locale: ptBR })
               const totalDia = aulasNoDia.reduce((s, a) => s + (a.valor ?? valorUnitarioProf), 0)
+              const qtdComExtrasDia = aulasNoDia.filter(a => participantesForaDoPagamento(a).total > 0).length
+              const qtdChuvaDia = aulasNoDia.filter(aulaCanceladaPorChuva).length
               const pct = Math.round((aulasNoDia.length / Math.max(...diasOrdenados.map(([,a]) => a.length), 1)) * 100)
               return (
                 <button
@@ -1797,6 +1848,16 @@ export function FinanceiroPage() {
                     <span style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)' }}>
                       {aulasNoDia.length} {aulasNoDia.length === 1 ? 'aula' : 'aulas'}
                     </span>
+                    {qtdComExtrasDia > 0 && (
+                      <span style={{ fontSize: '10px', fontWeight: '700', marginLeft: '8px', color: 'var(--color-brand-lima)' }}>
+                        {qtdComExtrasDia} c/ reposição/cortesia
+                      </span>
+                    )}
+                    {qtdChuvaDia > 0 && (
+                      <span style={{ fontSize: '10px', fontWeight: '700', marginLeft: '8px', color: 'var(--color-state-warning)' }}>
+                        {qtdChuvaDia} chuva (50%)
+                      </span>
+                    )}
                   </div>
                   <span style={{ fontSize: '13px', color: 'var(--color-action-primary)', fontWeight: '700' }}>
                     {fmtBRL(totalDia)}

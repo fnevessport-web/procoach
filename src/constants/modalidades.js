@@ -122,6 +122,10 @@ function valorGrupoPorQtd(qtd) {
   return TABELA_VALOR_GRUPO_POR_QTD[Math.min(Math.max(qtd, 1), 4)]
 }
 
+// Também a partir de 1/9/2026: aula INDIVIDUAL (mesmo escopo: Tênis, ou Padel do Marcelo) paga R$120
+// fixo, em vez do valor cheio cadastrado no professor. Antes dessa data segue o valor cheio.
+export const VALOR_AULA_INDIVIDUAL = 120
+
 const MODALIDADES_REGRA_VALOR_GRUPO_1_ALUNO = ['Tênis', 'Padel']
 const PROFESSOR_ID_PADEL_REGRA_VALOR_GRUPO_1_ALUNO = '76dafb8e-a18d-4bb4-9d94-eaab055073a7' // Marcelo Villalobo Faria
 
@@ -183,14 +187,22 @@ export function aulaComTodosAusentes(aula) {
 //   quantidade, contando TODOS os alunos não-cortesia (aqui reposição CONTA pra quantidade —
 //   ao contrário do resto da regra, é o próprio propósito dessa turma). Cancelada não paga
 //   nada, qualquer que seja o motivo.
-// - Fora do escopo (outra modalidade, ou Padel de professor que não o Marcelo), ou aula
-//   individual: sempre o valor cheio cadastrado do professor, sem mudança nenhuma.
+// - Fora do escopo (outra modalidade, ou Padel de professor que não o Marcelo): sempre o valor
+//   cheio cadastrado do professor, sem mudança nenhuma.
+// - Individual dentro do escopo: R$120 fixo a partir de DATA_INICIO_TABELA_VALOR_POR_QTD (antes
+//   disso, valor cheio do professor).
 // - Grupo dentro do escopo, a partir de DATA_INICIO_TABELA_VALOR_POR_QTD: valor fixo pela
-//   tabela por quantidade de pagantes (valorGrupoPorQtd).
+//   tabela por quantidade de alunos PAGANTES (valorGrupoPorQtd): 1 = 80, 2 = 100, 3 = 120,
+//   4 = 140. Reposição e cortesia NUNCA somam (o valor é o da turma naquele horário; reposição
+//   e cortesia são esporádicas, daquele dia). Ex.: turma com 2 alunos = R$100, e continua R$100
+//   mesmo que naquele dia entrem 1 reposição + 1 cortesia.
 // - Grupo dentro do escopo, entre DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO e a data acima: regra
 //   antiga (R$100 fixo só no caso de sobrar 1 pagante, ou zero pagante com alguma cortesia).
 // - Cancelada por Chuva dentro do escopo: 50% do valor que a aula pagaria se não tivesse sido
-//   cancelada. Cancelada por qualquer outro motivo (ou chuva fora do escopo): zero.
+//   cancelada (turma de R$80 paga R$40, de R$140 paga R$70, individual paga R$60).
+// - Cancelada por Feriado: 100% do valor (na prática feriado não cancela: a aula segue como
+//   "dada" e já paga o valor normal — isto só protege se algum dia for lançado como cancelada).
+// - Cancelada por qualquer outro motivo (ou chuva fora do escopo): zero.
 export function calcularValorAula(aula, professor, empresa) {
   // Aula sem NENHUM aluno vinculado (nem presente, nem falta, nem cortesia — a lista de
   // presença veio vazia) não conta como aula dada pra fim de pagamento, mesmo que
@@ -209,8 +221,10 @@ export function calcularValorAula(aula, professor, empresa) {
   const emEscopo = emEscopoRegraValorGrupo(aula, professor?.id)
 
   let valorNormal
-  if (!emEscopo || isAulaIndividual(aula) || !aula.data_aula || aula.data_aula < DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO) {
+  if (!emEscopo || !aula.data_aula || aula.data_aula < DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO) {
     valorNormal = valorCheio
+  } else if (isAulaIndividual(aula)) {
+    valorNormal = aula.data_aula >= DATA_INICIO_TABELA_VALOR_POR_QTD ? VALOR_AULA_INDIVIDUAL : valorCheio
   } else if (aula.data_aula < DATA_INICIO_TABELA_VALOR_POR_QTD) {
     valorNormal = (qtdAlunosPagantes(aula) === 1 || ehAulaTodaCortesia(aula)) ? VALOR_AULA_GRUPO_1_ALUNO : valorCheio
   } else {
@@ -218,9 +232,26 @@ export function calcularValorAula(aula, professor, empresa) {
   }
 
   if (aula.status_aula === 'cancelada') {
+    if (aula.motivo_cancelamento === 'Feriado') return valorNormal
     return aula.motivo_cancelamento === 'Chuva' && emEscopo ? valorNormal * 0.5 : 0
   }
   return valorNormal
+}
+
+// Participantes de uma aula em GRUPO que ficam de fora da conta do pagamento (reposição e cortesia:
+// esporádicos, daquele dia — ver calcularValorAula). Serve pra destacar essas aulas no financeiro.
+// Turma especial de reposição e aula individual ficam de fora (lá a regra é outra).
+export function participantesForaDoPagamento(aula) {
+  if (aula.turmas?.eh_turma_reposicao || isAulaIndividual(aula)) return { reposicao: 0, cortesia: 0, total: 0 }
+  const ps = aula.presencas || []
+  const reposicao = ps.filter(p => p.tipo_participacao === 'reposicao').length
+  const cortesia = ps.filter(p => p.tipo_participacao === 'cortesia').length
+  return { reposicao, cortesia, total: reposicao + cortesia }
+}
+
+// Aula cancelada por chuva (paga 50% quando dentro do escopo — ver calcularValorAula).
+export function aulaCanceladaPorChuva(aula) {
+  return aula.status_aula === 'cancelada' && aula.motivo_cancelamento === 'Chuva'
 }
 
 // ──────────────────────────────────────────────────────────────────────
