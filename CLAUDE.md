@@ -50,7 +50,7 @@ só o logo/nome, não o tema).
 - **Escuro**: Dashboard/Home, Ranking (Pontuação Beyond), Conquistas/gamificação, telas de
   análise/métricas (ex: página de modalidade, Relatório Mensal/KPIs), Financeiro, Mensagens, Login.
 - **Claro**: Agenda/grade de aulas, Cadastros (alunos/professores/turmas/níveis/quadras/eventos),
-  ficha do aluno, Match de Aulas, disponibilidade de professores, Reposições, páginas públicas
+  ficha do aluno, Match de Aulas, disponibilidade de professores, Reposições, Extra Reposição (`/extra-reposicao`, aulas extras da chuva), páginas públicas
   (`/disponibilidade/:token`, `/eventos/:slug`), Configurações.
 - **Ilhas escuras dentro de página clara**: o card de Pontuação Beyond
   (`BlocoPontuacaoBeyond.jsx`) e o card de Conquistas (`ConquistasCard.jsx`), mesmo aparecendo
