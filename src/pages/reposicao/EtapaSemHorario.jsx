@@ -22,9 +22,9 @@ export function EtapaSemHorario({ onVoltar, onContinuar }) {
           <div style={{ fontSize: '14px', lineHeight: 1.7, color: 'var(--color-text-light-secondary)' }}>
             <p style={{ margin: '0 0 10px' }}>
               <strong style={{ color: 'var(--color-text-light-primary)' }}>Entre em contato com a nossa equipe</strong> para
-              verificarmos, juntos, os horários que já existem na nossa grade regular. Você pode consultar as
-              vagas dessas turmas no <strong style={{ color: 'var(--color-text-light-primary)' }}>app do Beyond</strong>; o
-              agendamento é confirmado direto com a Procopio, pelo WhatsApp. Assim conseguimos encaixar você e fazer a sua reposição.
+              verificarmos, juntos, os horários que já existem na nossa grade regular, conforme a disponibilidade
+              de vagas. O agendamento é combinado e confirmado direto com a Procopio, pelo WhatsApp. Assim conseguimos encaixar
+              você e fazer a sua reposição.
             </p>
             <p style={{ margin: 0 }}>
               O contato é pelo WhatsApp <strong style={{ color: 'var(--color-text-light-primary)', whiteSpace: 'nowrap' }}>{WHATSAPP_EXIBIDO}</strong>.

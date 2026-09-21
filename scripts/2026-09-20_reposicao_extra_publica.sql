@@ -35,8 +35,8 @@ create table if not exists extras_slots (
 );
 create index if not exists idx_extras_slots_tipo_data on extras_slots(tipo, data_aula);
 
--- Uma linha por envio do formulário. `chave` (nome normalizado + final do telefone) é o que
--- identifica "a mesma pessoa" entre envios — sem CPF/login, é a base dos limites.
+-- Uma linha por envio do formulário. `chave` (nome normalizado; o telefone é opcional e hoje o
+-- link não pede) é o que identifica "a mesma pessoa" entre envios — sem CPF/login, é a base dos limites.
 create table if not exists extras_inscricoes (
   id uuid primary key default gen_random_uuid(),
   nome text not null,
@@ -194,7 +194,9 @@ begin
   if array_length(string_to_array(v_nome, ' '), 1) is null or array_length(string_to_array(v_nome, ' '), 1) < 2 then
     return jsonb_build_object('ok', false, 'codigo', 'dados_invalidos', 'mensagem', 'Informe o nome completo do aluno.');
   end if;
-  if length(v_tel) not between 10 and 11 then
+  -- Telefone é opcional (o link só pede o nome completo). Vazio ou só zeros = "sem telefone".
+  if v_tel ~ '^0*$' then v_tel := ''; end if;
+  if v_tel <> '' and length(v_tel) not between 10 and 11 then
     return jsonb_build_object('ok', false, 'codigo', 'dados_invalidos', 'mensagem', 'Informe um telefone válido com DDD.');
   end if;
   if p_turma_atual is null or jsonb_typeof(p_turma_atual) <> 'array' or jsonb_array_length(p_turma_atual) = 0 then
@@ -205,7 +207,8 @@ begin
   end if;
 
   select coalesce(array_agg(distinct i order by i), '{}') into v_ids from unnest(coalesce(p_slot_ids, '{}')) i;
-  v_chave := extras_norm(v_nome) || '|' || right(v_tel, 8);
+  -- Sem telefone, a chave é só o nome (sufixo fixo, igual ao que o formulário antigo gerava com zeros).
+  v_chave := extras_norm(v_nome) || '|' || case when v_tel = '' then '00000000' else right(v_tel, 8) end;
 
   -- Serializa por pessoa e por horário (sempre em ordem, pra não dar deadlock entre requisições).
   perform pg_advisory_xact_lock(hashtextextended('extras:' || v_chave, 0));

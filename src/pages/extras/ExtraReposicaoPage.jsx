@@ -81,6 +81,8 @@ function SeletorConferencia({ valor, onChange, disabled }) {
 
 function LinkWhats({ telefone }) {
   const d = (telefone || '').replace(/\D/g, '')
+  // O link não pede mais telefone (fica vazio ou só zeros): nada pra mostrar.
+  if (!d || /^0+$/.test(d)) return null
   return (
     <a href={`https://wa.me/55${d}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-action-primary)', fontWeight: 600, fontSize: '12px', textDecoration: 'none' }}>
       <MessageCircle size={13} />{formatarTelefone(telefone)}
@@ -339,7 +341,7 @@ function AbaInscritos({ inscritos, podeEditar, onCancelar }) {
     const digitos = q.replace(/\D/g, '')
     return inscritos.filter(i =>
       (conf === 'todos' || i.conferencia === conf) &&
-      (!q || i.nome.toLowerCase().includes(q) || (digitos && (i.telefone || '').includes(digitos))))
+      (!q || i.nome.toLowerCase().includes(q) || (digitos && !/^0+$/.test(digitos) && (i.telefone || '').includes(digitos))))
   }, [inscritos, busca, conf])
 
   return (
@@ -347,7 +349,7 @@ function AbaInscritos({ inscritos, podeEditar, onCancelar }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
         <div style={{ position: 'relative' }}>
           <Search size={15} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light-muted)' }} />
-          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou telefone"
+          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome"
             style={{ width: '100%', boxSizing: 'border-box', fontSize: '14px', padding: '10px 12px 10px 34px', borderRadius: '10px', border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)' }} />
         </div>
         <div style={{ display: 'flex', gap: '6px', overflowX: 'auto' }}>

@@ -24,10 +24,18 @@ async function chamar(nomeFuncao, args) {
   return data // { ok, codigo?, mensagem?, slot_ids?, ... }
 }
 
-export const confirmarReposicao = ({ nome, telefone, turmas, slotIds }) =>
-  chamar('extras_confirmar_reposicao', {
+// A página não pede mais telefone: só o nome completo identifica a pessoa (limite de 2 reposições e
+// baixa da aula). A função do banco aceita telefone vazio; se o banco ainda estiver na versão antiga
+// (que exigia telefone), tenta de novo com um valor neutro (só zeros), que ela trata como "sem
+// telefone" e gera a mesma chave por nome. Assim o link funciona antes e depois de rodar o SQL novo.
+export async function confirmarReposicao({ nome, turmas, slotIds }) {
+  const enviar = telefone => chamar('extras_confirmar_reposicao', {
     p_nome: nome, p_telefone: telefone, p_turma_atual: turmas, p_declaracao: true, p_slot_ids: slotIds,
   })
+  const r = await enviar('')
+  if (r?.ok === false && r.codigo === 'dados_invalidos' && /telefone/i.test(r.mensagem || '')) return enviar('0000000000')
+  return r
+}
 
 export const confirmarPresente = ({ inscricaoId, slotIds }) =>
   chamar('extras_confirmar_presente', { p_inscricao_id: inscricaoId, p_slot_ids: slotIds })

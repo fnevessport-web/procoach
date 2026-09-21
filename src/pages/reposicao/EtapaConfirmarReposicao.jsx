@@ -61,7 +61,7 @@ export function EtapaConfirmarReposicao({ dados, selecionados, onVoltar, onConfi
     setEnviando(true)
     try {
       const r = await confirmarReposicao({
-        nome: dados.nome, telefone: dados.telefone, turmas: dados.turmas, slotIds: selecionados.map(s => s.slot_id),
+        nome: dados.nome, turmas: dados.turmas, slotIds: selecionados.map(s => s.slot_id),
       })
       if (r?.ok) { onConfirmado(r.inscricao_id); return }
       if (r?.codigo === 'esgotado' || r?.codigo === 'slot_invalido') onSlotsEsgotados(r.slot_ids || [])

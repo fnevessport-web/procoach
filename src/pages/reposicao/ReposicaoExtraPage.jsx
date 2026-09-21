@@ -12,7 +12,7 @@ import { EtapaResumoPresente } from './EtapaResumoPresente'
 import { EtapaFinal } from './EtapaFinal'
 import { EtapaEncerrado } from './EtapaEncerrado'
 
-const DADOS_VAZIOS = { nome: '', telefone: '', turmas: [] }
+const DADOS_VAZIOS = { nome: '', turmas: [] }
 
 // Página pública /reposicao (sem login) — aulas extras por causa da chuva: reposição de Tênis
 // (até 2 por pessoa) + 1 aula de presente em cada uma das outras modalidades. Isolada da agenda

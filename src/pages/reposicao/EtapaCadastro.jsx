@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { CalendarCheck, CloudRain, Gift, Info, Plus, Trash2, User, Users } from 'lucide-react'
-import { mascararTelefoneBR, apenasDigitosTelefone } from '../../lib/telefone'
 import {
   DIAS, HORARIOS, NIVEIS_ADULTO, NIVEIS_KIDS, TURMA_VAZIA, MODALIDADES_PRESENTE, MAX_REPOSICOES,
   COR_ADULTO, COR_KIDS, estiloInput, WHATSAPP_EXIBIDO, WHATSAPP_LINK_GRADE_REGULAR,
@@ -20,7 +19,6 @@ const TIPOS = [
 
 function validar(dados) {
   if (dados.nome.trim().split(/\s+/).filter(Boolean).length < 2) return 'Informe o nome completo do aluno.'
-  if (dados.telefone.length < 10) return 'Informe o telefone com DDD.'
   if (!dados.turmas.length) return 'Marque o tipo da sua aula atual: Individual, Grupo ou os dois.'
   for (const t of dados.turmas) {
     const de = t.formato === 'individual' ? 'da aula Individual' : 'da turma em Grupo'
@@ -112,8 +110,8 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
           <CloudRain size={22} style={{ color: 'var(--color-state-info)', flexShrink: 0, marginTop: '2px' }} />
           <div style={{ fontSize: '14px', lineHeight: 1.7, color: 'var(--color-text-light-secondary)' }}>
             <p style={{ margin: '0 0 10px' }}>
-              Nas últimas semanas a chuva nos impediu de realizar muitas aulas de Tênis. Nós, da Procopio,
-              nos preocupamos com a entrega que fazemos aos nossos alunos e, por isso, estamos abrindo
+              Nas últimas semanas a chuva nos impediu de realizar muitas aulas de Tênis. Nós, do Beyond em
+              parceria com a Procopio, nos preocupamos com a entrega que fazemos aos nossos alunos e, por isso, estamos abrindo
               <strong style={{ color: 'var(--color-text-light-primary)' }}> aulas extras de reposição</strong>.
             </p>
             <p style={{ margin: 0 }}>
@@ -129,9 +127,8 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
 
       <Nota cor="var(--color-state-info)" icone={<CalendarCheck size={18} />} style={{ marginBottom: '12px', fontSize: '14px', lineHeight: 1.7 }}>
         <div style={{ fontWeight: 800, marginBottom: '4px' }}>Tem mais aulas a repor?</div>
-        Você também pode repor nas <strong>turmas da grade regular</strong>, conforme a disponibilidade de vagas. Essas vagas você
-        mesmo consulta no <strong>app do Beyond</strong>, e o agendamento deve ser feito e confirmado direto com a Procopio, pelo
-        WhatsApp{' '}
+        Você também pode repor nas <strong>turmas da grade regular</strong>, conforme a disponibilidade de vagas. O agendamento
+        deve ser feito e confirmado direto com a Procopio, pelo WhatsApp{' '}
         <a href={WHATSAPP_LINK_GRADE_REGULAR} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-action-primary)', fontWeight: 700, whiteSpace: 'nowrap' }}>{WHATSAPP_EXIBIDO}</a>.
         Se depois disso ainda houver aulas a repor, faremos novos agendamentos. Ninguém ficará sem a sua reposição.
       </Nota>
@@ -162,17 +159,9 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '16px' }}>
-        <Campo label="Nome completo do aluno">
+        <Campo label="Nome completo do aluno" dica="Digite o nome completo, como está no seu cadastro, para o sistema identificar o aluno e dar baixa na aula reposta.">
           <input style={estiloInput} value={dados.nome} placeholder="Nome e sobrenome" autoComplete="name"
             onChange={e => setDados(d => ({ ...d, nome: e.target.value }))} />
-        </Campo>
-        <Campo label="Telefone (WhatsApp)">
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <span style={{ ...estiloInput, width: 'auto', flexShrink: 0, color: 'var(--color-text-light-muted)' }}>+55</span>
-            <input style={{ ...estiloInput, flex: 1 }} inputMode="numeric" placeholder="(11) 99999-9999" autoComplete="tel-national"
-              value={mascararTelefoneBR(dados.telefone)}
-              onChange={e => setDados(d => ({ ...d, telefone: apenasDigitosTelefone(e.target.value) }))} />
-          </div>
         </Campo>
       </div>
 
