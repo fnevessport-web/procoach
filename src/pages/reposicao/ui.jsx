@@ -26,18 +26,18 @@ export function Pagina({ children, largura = 560, resetKey }) {
   )
 }
 
-// Procopio + Beyond lado a lado, separados por um traço vertical (mesmo cabeçalho da inscrição do
-// Kids Competitivo, em escala maior). logobeyond_preto.png tem uma margem transparente enorme (o
-// texto ocupa só ~19% da altura do canvas), então a imagem é renderizada grande e recortada por
+// Procopio (empresa por trás do agendamento) em destaque, com o Beyond menor e mais discreto ao
+// lado, separados por um traço vertical. logobeyond_preto.png tem uma margem transparente enorme
+// (o texto ocupa só ~19% da altura do canvas), então a imagem é renderizada maior e recortada por
 // um contêiner com overflow:hidden, em vez de esticar a altura do cabeçalho.
 function Cabecalho() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '24px' }}>
-      <img src="/images/logoprocopio_preto.png" alt="Procopio" style={{ height: '58px', objectFit: 'contain', display: 'block' }} />
-      <div style={{ width: '1px', height: '46px', backgroundColor: 'var(--color-border-light)' }} />
-      <div style={{ height: '46px', width: '172px', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+      <img src="/images/logoprocopio_preto.png" alt="Procopio" style={{ height: '78px', objectFit: 'contain', display: 'block' }} />
+      <div style={{ width: '1px', height: '34px', backgroundColor: 'var(--color-border-light)' }} />
+      <div style={{ height: '26px', width: '96px', overflow: 'hidden', position: 'relative', flexShrink: 0, opacity: 0.7 }}>
         <img src="/images/logobeyond_preto.png" alt="Beyond The Club" style={{
-          position: 'absolute', top: '50%', left: '50%', height: '178px', width: '178px', transform: 'translate(-50%, -50%)',
+          position: 'absolute', top: '50%', left: '50%', height: '100px', width: '100px', transform: 'translate(-50%, -50%)',
         }} />
       </div>
     </div>
