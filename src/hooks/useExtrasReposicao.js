@@ -41,6 +41,22 @@ export function useExtrasInscritos() {
   })
 }
 
+// Nomes de todos os alunos ativos do clube (qualquer modalidade/empresa), só pra cruzar
+// contra o nome que a pessoa digitou no link público e destacar quem não bate com ninguém do
+// cadastro — não altera nada, é comparação client-side em cima de dado que já existe. Query
+// separada da usada em Cadastros (useAlunos) pra não competir com aquele cache.
+export function useNomesAlunosAtivos() {
+  return useQuery({
+    queryKey: ['extras-nomes-alunos-ativos'],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('alunos').select('nome').eq('ativo', true)
+      if (error) throw error
+      return (data || []).map(a => a.nome).filter(Boolean)
+    },
+  })
+}
+
 function useMutacao(fn) {
   const qc = useQueryClient()
   return useMutation({
