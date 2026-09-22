@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Check, Clock, MapPin, User } from 'lucide-react'
+import { CalendarDays, Check, Clock, MapPin, User } from 'lucide-react'
 import { estadoVagas, faixaHorario, rotuloDiaLongo, rotuloNivel, nomeProfessor, COR_ADULTO, COR_KIDS } from './constantes'
 
 // Página pública, contexto Claro (ver CLAUDE.md) — tokens -light-* direto. Como html/body do app
@@ -181,8 +181,11 @@ export function CardSlot({ slot, selecionado, onClick, mostrarModalidade, restri
           <Clock size={14} style={{ color: 'var(--color-text-light-muted)' }} />{faixaHorario(slot)}
         </span>
         {selecionado
-          ? <span style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={13} strokeWidth={3} /></span>
-          : <span style={{ fontSize: '11px', fontWeight: 800, color: estado.cor, whiteSpace: 'nowrap' }}>{estado.texto}</span>}
+          ? <span style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Check size={14} strokeWidth={3} /></span>
+          : <span style={{
+              fontSize: '13px', fontWeight: 800, color: estado.cor, whiteSpace: 'nowrap', flexShrink: 0,
+              padding: '3px 9px', borderRadius: '999px', backgroundColor: `color-mix(in srgb, ${estado.cor} 14%, transparent)`,
+            }}>{estado.texto}</span>}
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center' }}>
@@ -219,11 +222,19 @@ export function SlotsPorDia({ slots, selecionadosIds = [], onClick, mostrarModal
     else grupos.push({ data: s.data_aula, itens: [s] })
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
       {grupos.map(g => (
         <section key={g.data}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: 700, marginBottom: '10px', color: 'var(--color-text-light-primary)' }}>
-            {rotuloDiaLongo(g.data)}
+          {/* Faixa cheia (mesmo verde-court do cabeçalho/tiles de presente) em vez de texto solto —
+              some marcar a virada de dia com a tela rolando rápido era fácil de passar despercebido. */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '9px', padding: '10px 14px', borderRadius: '10px', marginBottom: '12px',
+            backgroundColor: 'var(--color-brand-verde-court)', position: 'sticky', top: '8px', zIndex: 1,
+          }}>
+            <CalendarDays size={16} style={{ color: 'var(--color-brand-lima)', flexShrink: 0 }} />
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: 700, color: 'var(--color-text-dark-primary)' }}>
+              {rotuloDiaLongo(g.data)}
+            </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '10px' }}>
             {g.itens.map(s => (

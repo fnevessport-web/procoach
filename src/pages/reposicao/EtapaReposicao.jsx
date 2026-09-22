@@ -110,14 +110,23 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
 
       {slots && slots.length > 0 && (
         <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
-              <Chip ativo={dia === 'todos'} onClick={() => setDia('todos')} style={{ whiteSpace: 'nowrap' }}>Todos os dias</Chip>
-              {dias.map(d => <Chip key={d} ativo={dia === d} onClick={() => setDia(d)} style={{ whiteSpace: 'nowrap' }}>{rotuloDiaCurto(d)}</Chip>)}
+          {/* flexWrap (não scroll horizontal): no desktop não dá pra arrastar com o dedo, então os
+              chips quebravam linha escondidos fora da tela sem nenhum indício de que havia mais
+              opções — quebrar em várias linhas deixa tudo sempre visível, no mobile e no desktop. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-light-muted)', marginBottom: '6px' }}>Dia</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                <Chip ativo={dia === 'todos'} onClick={() => setDia('todos')}>Todos os dias</Chip>
+                {dias.map(d => <Chip key={d} ativo={dia === d} onClick={() => setDia(d)}>{rotuloDiaCurto(d)}</Chip>)}
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
-              <Chip ativo={nivel === 'todos'} onClick={() => setNivel('todos')} cor="var(--color-brand-verde-court)" corTexto="var(--color-text-dark-primary)" style={{ whiteSpace: 'nowrap' }}>Todos os níveis</Chip>
-              {FILTROS_NIVEL.map(n => <Chip key={n.chave} ativo={nivel === n.chave} onClick={() => setNivel(n.chave)} cor="var(--color-brand-verde-court)" corTexto="var(--color-text-dark-primary)" style={{ whiteSpace: 'nowrap' }}>{n.rotulo}</Chip>)}
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-light-muted)', marginBottom: '6px' }}>Nível</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                <Chip ativo={nivel === 'todos'} onClick={() => setNivel('todos')} cor="var(--color-brand-verde-court)" corTexto="var(--color-text-dark-primary)">Todos os níveis</Chip>
+                {FILTROS_NIVEL.map(n => <Chip key={n.chave} ativo={nivel === n.chave} onClick={() => setNivel(n.chave)} cor="var(--color-brand-verde-court)" corTexto="var(--color-text-dark-primary)">{n.rotulo}</Chip>)}
+              </div>
             </div>
           </div>
 

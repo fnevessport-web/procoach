@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, Copy, Gift, MessageCircle, Pencil, RotateCcw, Search, Users, X } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, ChevronRight, Copy, Gift, MessageCircle, Pencil, RotateCcw, Search, Users, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { usePermissions } from '../../hooks/usePermissions'
 import {
@@ -228,17 +228,19 @@ function AbaAgendas({ slots, podeEditar, onCancelar }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '18px' }}>
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+      {/* flexWrap (não scroll horizontal): no desktop não dá pra arrastar com o dedo, então os
+          chips ficavam cortados fora da tela sem nenhum indício de que havia mais opções. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           <Chip ativo={tipo === 'todos'} onClick={() => setTipo('todos')}>Todas</Chip>
           <Chip ativo={tipo === 'reposicao'} onClick={() => setTipo('reposicao')}>Reposição de Tênis</Chip>
           <Chip ativo={tipo === 'presente'} onClick={() => setTipo('presente')}>Presente</Chip>
         </div>
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           <Chip ativo={modalidade === 'todas'} onClick={() => setModalidade('todas')}>Todas as modalidades</Chip>
           {modalidades.map(m => <Chip key={m} ativo={modalidade === m} onClick={() => setModalidade(m)}>{m}</Chip>)}
         </div>
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           <Chip ativo={dia === 'todos'} onClick={() => setDia('todos')}>Todos os dias</Chip>
           {dias.map(d => <Chip key={d} ativo={dia === d} onClick={() => setDia(d)}>{rotuloDiaCurto(d)}</Chip>)}
         </div>
@@ -251,9 +253,13 @@ function AbaAgendas({ slots, podeEditar, onCancelar }) {
           const inscritosDia = g.itens.reduce((n, s) => n + (s.extras_agendamentos || []).filter(a => a.status === 'confirmado').length, 0)
           return (
             <section key={g.data}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '10px' }}>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '19px', fontWeight: 700, margin: 0, color: 'var(--color-text-light-primary)' }}>{rotuloDiaLongo(g.data)}</h2>
-                <span style={{ fontSize: '12px', color: 'var(--color-text-light-muted)' }}>{g.itens.length} horários · {inscritosDia} agendamentos</span>
+              <div style={{
+                display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px', padding: '9px 14px', borderRadius: '10px', marginBottom: '10px',
+                backgroundColor: 'var(--color-brand-verde-court)',
+              }}>
+                <CalendarDays size={15} style={{ color: 'var(--color-brand-lima)', flexShrink: 0 }} />
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--color-text-dark-primary)' }}>{rotuloDiaLongo(g.data)}</h2>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)' }}>{g.itens.length} horários · {inscritosDia} agendamentos</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '10px', alignItems: 'start' }}>
                 {g.itens.map(s => <CardHorario key={s.id} slot={s} podeEditar={podeEditar} onCancelar={onCancelar} />)}
