@@ -14,27 +14,56 @@ function corVagas(ocupadas, capacidade) {
   return '#4B8B6A'
 }
 
+// "Quadra Coberta" nos 3 dias de semana, "Quadra 3/4 Saibro" no domingo — resume no cabeçalho
+// do dia em vez de repetir em cada card, e deixa claro de cara qual é o piso daquele dia.
+function resumoQuadras(quadras) {
+  const unicas = [...new Set(quadras.filter(Boolean))]
+  if (unicas.length <= 1) return unicas[0] || ''
+  if (unicas.every(q => /saibro/i.test(q))) return `${unicas.length} quadras de saibro`
+  if (unicas.every(q => /coberta/i.test(q))) return 'quadras cobertas'
+  return unicas.join(' · ')
+}
+
 function cardHtml(s, professores) {
   const ocupadas = (s.extras_agendamentos || []).filter(a => a.status === 'confirmado').length
   const nome = nomeProfessor(s.professor)
   const foto = fotoProfessor(s.professor, professores)
   const indefinido = !nome || /a definir/i.test(nome)
   const fotoHtml = foto
-    ? `<img src="${foto}" crossorigin="anonymous" style="width:26px;height:26px;border-radius:50%;object-fit:cover;border:1.5px solid #A54C2E;flex-shrink:0;" />`
-    : `<span style="width:26px;height:26px;border-radius:50%;background:#1E2B24;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${SILHUETA_SVG}</span>`
+    ? `<img src="${foto}" crossorigin="anonymous" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1.5px solid #A54C2E;flex-shrink:0;" />`
+    : `<span style="width:22px;height:22px;border-radius:50%;background:#1E2B24;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${SILHUETA_SVG}</span>`
   return `
-    <div style="background:#FFFFFF;border:1px solid #E8E0CE;border-radius:10px;padding:9px 10px;display:flex;flex-direction:column;gap:5px;break-inside:avoid;">
+    <div style="background:#FFFFFF;border:1px solid #E8E0CE;border-radius:8px;padding:7px 8px;display:flex;flex-direction:column;gap:4px;break-inside:avoid;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;">
-        <span style="font-size:12px;font-weight:800;color:#1E2B24;">${faixaHorario(s)}</span>
-        <span style="font-size:11px;font-weight:800;color:${corVagas(ocupadas, s.capacidade)};">${ocupadas}/${s.capacidade}</span>
+        <span style="font-size:11px;font-weight:800;color:#1E2B24;">${faixaHorario(s)}</span>
+        <span style="font-size:10px;font-weight:800;color:${corVagas(ocupadas, s.capacidade)};">${ocupadas}/${s.capacidade}</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:2px;font-size:9.5px;color:#4A5850;">
-        <span style="display:inline-block;width:fit-content;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.02em;padding:2px 6px;border-radius:5px;background:#EAF1EE;color:#3D6B7A;">${s.formato === 'individual' ? 'Individual' : (rotuloNivel(s) || 'Grupo')}</span>
-        <span>${s.quadra || ''}</span>
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span style="display:inline-block;width:fit-content;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.02em;padding:2px 5px;border-radius:4px;background:#EAF1EE;color:#3D6B7A;">${s.formato === 'individual' ? 'Individual' : (rotuloNivel(s) || 'Grupo')}</span>
+        ${s.quadra ? `<span style="font-size:8px;color:#8A8577;">${s.quadra.replace(/ saibro/i, '')}</span>` : ''}
       </div>
-      <div style="display:flex;align-items:center;gap:7px;margin-top:2px;padding-top:6px;border-top:1px dashed #E8E0CE;">
+      <div style="display:flex;align-items:center;gap:6px;margin-top:1px;padding-top:5px;border-top:1px dashed #E8E0CE;">
         ${fotoHtml}
-        <span style="font-size:10.5px;font-weight:700;color:${indefinido ? '#8A8577' : '#1E2B24'};${indefinido ? 'font-style:italic;font-weight:600;' : ''}">${nome || 'A definir'}</span>
+        <span style="font-size:9.5px;font-weight:700;color:${indefinido ? '#8A8577' : '#1E2B24'};${indefinido ? 'font-style:italic;font-weight:600;' : ''}">${nome || 'A definir'}</span>
+      </div>
+    </div>`
+}
+
+const COLUNAS = 4
+
+// Um bloco (manhã ou tarde/noite): rótulo pequeno + régua fina, depois o grid. Separar por
+// período evita a confusão de ver o professor da manhã e o da noite meio misturados na mesma
+// fileira só porque o grid quebrou linha ali no meio.
+function blocoHtml(rotulo, itens, professores) {
+  if (itens.length === 0) return ''
+  return `
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#8A8577;white-space:nowrap;">${rotulo}</span>
+        <span style="flex:1;height:1px;background:#E8E0CE;"></span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(${COLUNAS},1fr);gap:6px;">
+        ${itens.map(s => cardHtml(s, professores)).join('')}
       </div>
     </div>`
 }
@@ -42,15 +71,17 @@ function cardHtml(s, professores) {
 function diaHtml(data, itens, professores) {
   const totalVagas = itens.reduce((n, s) => n + s.capacidade, 0)
   const totalOcup = itens.reduce((n, s) => n + (s.extras_agendamentos || []).filter(a => a.status === 'confirmado').length, 0)
+  const manha = itens.filter(s => s.horario_inicio < '12:00:00')
+  const tardeNoite = itens.filter(s => s.horario_inicio >= '12:00:00')
+  const quadra = resumoQuadras(itens.map(s => s.quadra))
   return `
-    <section style="margin-bottom:20px; break-inside:avoid-page;">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:#1E2B24;color:#F0EAD8;padding:8px 14px;border-radius:9px;margin-bottom:10px;">
-        <span style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700;">${rotuloDiaLongo(data)}</span>
-        <span style="font-size:11px;color:#B4BFB6;">${itens.length} horários · ${totalOcup}/${totalVagas} vagas ocupadas</span>
+    <section style="margin-bottom:14px; break-inside:avoid-page;">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 10px;background:#1E2B24;color:#F0EAD8;padding:7px 12px;border-radius:8px;margin-bottom:8px;">
+        <span style="font-family:'Playfair Display',serif;font-size:13px;font-weight:700;">${rotuloDiaLongo(data)}</span>
+        <span style="font-size:9.5px;color:#B4BFB6;">${quadra ? quadra + ' · ' : ''}${itens.length} horários · ${totalOcup}/${totalVagas} vagas</span>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
-        ${itens.map(s => cardHtml(s, professores)).join('')}
-      </div>
+      ${blocoHtml('Manhã', manha, professores)}
+      ${blocoHtml('Tarde / noite', tardeNoite, professores)}
     </section>`
 }
 
@@ -68,20 +99,22 @@ export async function gerarPdfGradeReposicao(slots, professores) {
   const primeiroDia = dias[0] ? format(new Date(dias[0] + 'T12:00:00'), 'dd/MM') : ''
   const ultimoDia = dias[dias.length - 1] ? format(new Date(dias[dias.length - 1] + 'T12:00:00'), 'dd/MM/yyyy') : ''
 
+  // Largura de retrato (A4 a ~96dpi): cabe 4 colunas de card sem espremer, e casa com o
+  // formato final em pt (595 x 842) que o jsPDF usa lá embaixo.
   const wrapper = document.createElement('div')
-  wrapper.style.cssText = 'position:fixed; left:-9999px; top:0; width:1200px; background:#F0EAD8; padding:28px 32px; box-sizing:border-box; font-family:Inter,sans-serif; color:#1E2B24;'
+  wrapper.style.cssText = 'position:fixed; left:-9999px; top:0; width:794px; background:#F0EAD8; padding:22px 24px; box-sizing:border-box; font-family:Inter,sans-serif; color:#1E2B24;'
   wrapper.innerHTML = `
-    <div style="display:flex;align-items:center;gap:18px;margin-bottom:6px;">
-      <img src="/images/logo-pc-green.png" style="height:44px;" />
-      <div style="width:1px;height:34px;background:#DED5C0;"></div>
-      <img src="/images/logoprocopio_preto.png" style="height:30px;" />
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:4px;">
+      <img src="/images/logo-pc-green.png" style="height:38px;" />
+      <div style="width:1px;height:44px;background:#DED5C0;"></div>
+      <img src="/images/logoprocopio_preto.png" style="height:52px;" />
     </div>
-    <div style="margin:14px 0 20px;">
-      <h1 style="font-family:'Playfair Display',serif;font-size:26px;margin:0 0 4px;color:#1E2B24;">Grade de Reposição de Tênis</h1>
-      <div style="font-size:12px;color:#4A5850;">Aulas extras · ${primeiroDia} a ${ultimoDia} · para uso interno dos professores</div>
+    <div style="margin:12px 0 16px;">
+      <h1 style="font-family:'Playfair Display',serif;font-size:22px;margin:0 0 3px;color:#1E2B24;">Grade de Reposição de Tênis</h1>
+      <div style="font-size:11px;color:#4A5850;">Aulas extras · ${primeiroDia} a ${ultimoDia} · para uso interno dos professores</div>
     </div>
     ${secoes}
-    <div style="margin-top:18px;font-size:10px;color:#8A8577;text-align:center;">ProCoach e Procópio. Grade sujeita a atualização conforme novos agendamentos pelo link.</div>
+    <div style="margin-top:14px;font-size:9px;color:#8A8577;text-align:center;">ProCoach e Procópio. Grade sujeita a atualização conforme novos agendamentos pelo link.</div>
   `
   document.body.appendChild(wrapper)
 
@@ -92,8 +125,27 @@ export async function gerarPdfGradeReposicao(slots, professores) {
 
   try {
     const canvas = await html2canvas(wrapper, { backgroundColor: '#F0EAD8', scale: 2, useCORS: true })
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: [canvas.width / 2, canvas.height / 2] })
-    doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2)
+
+    // Fatia o canvas (uma tira contínua) em páginas A4-retrato de verdade — em vez de 1 página
+    // gigante — pra abrir/imprimir/mandar como um PDF normal, com o mínimo de páginas possível
+    // dado o conteúdo (o layout compacto de 4 colunas + manhã/tarde já ajuda nisso).
+    const paginaLargura = 595.28, paginaAltura = 841.89
+    const imgLarguraPt = paginaLargura
+    const imgAlturaPt = (canvas.height * imgLarguraPt) / canvas.width
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
+    const imgData = canvas.toDataURL('image/jpeg', 0.92)
+
+    let restante = imgAlturaPt
+    let posY = 0
+    doc.addImage(imgData, 'JPEG', 0, posY, imgLarguraPt, imgAlturaPt)
+    restante -= paginaAltura
+    while (restante > 0) {
+      posY = restante - imgAlturaPt
+      doc.addPage()
+      doc.addImage(imgData, 'JPEG', 0, posY, imgLarguraPt, imgAlturaPt)
+      restante -= paginaAltura
+    }
+
     doc.save(`Grade_Reposicao_Tenis_${format(new Date(), 'yyyy-MM-dd')}.pdf`)
   } finally {
     document.body.removeChild(wrapper)
