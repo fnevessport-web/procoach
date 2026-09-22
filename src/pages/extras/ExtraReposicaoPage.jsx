@@ -7,7 +7,7 @@ import {
   useNomesAlunosAtivos,
 } from '../../hooks/useExtrasReposicao'
 import {
-  DIAS, estadoVagas, faixaHorario, nomeProfessor, rotuloDiaCurto, rotuloDiaLongo, rotuloNivel, usaCreditoIndividualEmGrupo,
+  DIAS, estadoVagas, faixaHorario, nomeProfessor, MODALIDADES_PRESENTE, IMG_MODALIDADE, rotuloDiaCurto, rotuloDiaLongo, rotuloNivel, usaCreditoIndividualEmGrupo,
 } from '../reposicao/constantes'
 import { Loading } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
@@ -439,6 +439,7 @@ function AbaInscritos({ inscritos, podeEditar, onCancelar, nomesAlunos, carregan
   const [busca, setBusca] = useState('')
   const [conf, setConf] = useState('todos')
   const [soForaCadastro, setSoForaCadastro] = useState(false)
+  const [soSemPresente, setSoSemPresente] = useState(false)
 
   // Conjunto de palavras de cada aluno ativo, pra comparar contra o nome digitado no link
   // (ver existeNoCadastro). Recalcula só quando a lista de alunos muda, não a cada tecla.
@@ -449,14 +450,23 @@ function AbaInscritos({ inscritos, podeEditar, onCancelar, nomesAlunos, carregan
     return new Set(inscritos.filter(i => !existeNoCadastro(i.nome, palavrasAlunos)).map(i => i.id))
   }, [inscritos, palavrasAlunos, carregandoCadastro])
 
+  // Quem NÃO tem nenhum presente confirmado — importante lembrar que "pulou o presente" ou
+  // "nenhum horário atendeu" não grava nada no banco (ver EtapaPresente.jsx), então isso só
+  // pega quem passou pela etapa e realmente não escolheu nenhuma aula, não distingue de quem
+  // ainda nem chegou lá ou recusou via WhatsApp.
+  const semPresenteIds = useMemo(() =>
+    new Set(inscritos.filter(i => !(i.extras_agendamentos || []).some(a => a.tipo === 'presente' && a.status === 'confirmado')).map(i => i.id)),
+  [inscritos])
+
   const lista = useMemo(() => {
     const q = busca.trim().toLowerCase()
     const digitos = q.replace(/\D/g, '')
     return inscritos.filter(i =>
       (conf === 'todos' || i.conferencia === conf) &&
       (!soForaCadastro || foraDoCadastroIds.has(i.id)) &&
+      (!soSemPresente || semPresenteIds.has(i.id)) &&
       (!q || i.nome.toLowerCase().includes(q) || (digitos && !/^0+$/.test(digitos) && (i.telefone || '').includes(digitos))))
-  }, [inscritos, busca, conf, soForaCadastro, foraDoCadastroIds])
+  }, [inscritos, busca, conf, soForaCadastro, foraDoCadastroIds, soSemPresente, semPresenteIds])
 
   return (
     <div>
@@ -472,14 +482,22 @@ function AbaInscritos({ inscritos, podeEditar, onCancelar, nomesAlunos, carregan
             <Chip key={k} ativo={conf === k} onClick={() => setConf(k)}>{v.rotulo} ({inscritos.filter(i => i.conferencia === k).length})</Chip>
           ))}
         </div>
-        {!carregandoCadastro && (
-          <button type="button" onClick={() => setSoForaCadastro(v => !v)} style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px', width: 'fit-content', padding: '7px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
-            border: `1px solid ${soForaCadastro ? 'var(--color-state-danger)' : 'var(--color-border-light)'}`,
-            backgroundColor: soForaCadastro ? 'var(--color-state-danger)' : 'var(--color-surface-light-raised)',
-            color: soForaCadastro ? 'white' : 'var(--color-state-danger)',
-          }}><AlertTriangle size={13} />Só fora do cadastro ({foraDoCadastroIds.size})</button>
-        )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+          {!carregandoCadastro && (
+            <button type="button" onClick={() => setSoForaCadastro(v => !v)} style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+              border: `1px solid ${soForaCadastro ? 'var(--color-state-danger)' : 'var(--color-border-light)'}`,
+              backgroundColor: soForaCadastro ? 'var(--color-state-danger)' : 'var(--color-surface-light-raised)',
+              color: soForaCadastro ? 'white' : 'var(--color-state-danger)',
+            }}><AlertTriangle size={13} />Só fora do cadastro ({foraDoCadastroIds.size})</button>
+          )}
+          <button type="button" onClick={() => setSoSemPresente(v => !v)} style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+            border: `1px solid ${soSemPresente ? 'var(--color-brand-verde-card)' : 'var(--color-border-light)'}`,
+            backgroundColor: soSemPresente ? 'var(--color-brand-verde-card)' : 'var(--color-surface-light-raised)',
+            color: soSemPresente ? 'var(--color-text-dark-primary)' : 'var(--color-text-light-secondary)',
+          }}><Gift size={13} />Ainda sem presente ({semPresenteIds.size})</button>
+        </div>
       </div>
 
       {lista.length === 0 && (
@@ -490,6 +508,61 @@ function AbaInscritos({ inscritos, podeEditar, onCancelar, nomesAlunos, carregan
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {lista.map(i => <CardInscrito key={i.id} insc={i} podeEditar={podeEditar} onCancelar={onCancelar} palavrasAlunos={palavrasAlunos} carregandoCadastro={carregandoCadastro} />)}
       </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------
+// Resumo do presente por modalidade
+// ---------------------------------------------------------------------------------------------
+
+// IMPORTANTE: só existe registro de presente quando a pessoa realmente CHEGA a escolher um
+// horário (EtapaResumoPresente grava). Quem clica "Prefiro não experimentar agora" ou "nenhum
+// horário me atende" nessa etapa não deixa nenhum rastro no banco (ver EtapaPresente.jsx) — por
+// isso "sem presente" aqui mistura três casos que a tela não consegue separar: recusou, não achou
+// horário, ou nem chegou nessa etapa ainda. O texto abaixo do painel deixa isso explícito.
+function ResumoPresente({ inscritos }) {
+  const porModalidade = useMemo(() => {
+    const m = Object.fromEntries(MODALIDADES_PRESENTE.map(mod => [mod.nome, 0]))
+    inscritos.forEach(i => (i.extras_agendamentos || [])
+      .filter(a => a.tipo === 'presente' && a.status === 'confirmado')
+      .forEach(a => { if (a.modalidade in m) m[a.modalidade]++ }))
+    return m
+  }, [inscritos])
+
+  const comPresente = useMemo(() =>
+    inscritos.filter(i => (i.extras_agendamentos || []).some(a => a.tipo === 'presente' && a.status === 'confirmado')).length,
+  [inscritos])
+
+  return (
+    <div style={{ ...cartao, padding: '14px 16px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: 700 }}>Presente por modalidade</span>
+        <span style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
+          {comPresente} de {inscritos.length} inscritos já escolheram uma aula de presente
+        </span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', marginBottom: '10px' }}>
+        {MODALIDADES_PRESENTE.map(m => {
+          const n = porModalidade[m.nome]
+          const cor = n > 0 ? 'var(--color-state-success)' : 'var(--color-text-light-muted)'
+          return (
+            <div key={m.nome} style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '10px 6px', borderRadius: '10px', textAlign: 'center',
+              border: `1px solid color-mix(in srgb, ${cor} 35%, transparent)`, backgroundColor: `color-mix(in srgb, ${cor} 8%, var(--color-surface-light-overlay))`,
+            }}>
+              <img src={IMG_MODALIDADE[m.nome]} alt="" style={{ width: '26px', height: '26px', objectFit: 'contain' }} />
+              <span style={{ fontSize: '18px', fontWeight: 800, color: cor }}>{n}</span>
+              <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-light-secondary)' }}>{m.nome}</span>
+            </div>
+          )
+        })}
+      </div>
+      <p style={{ fontSize: '11px', color: 'var(--color-text-light-muted)', margin: 0, lineHeight: 1.5 }}>
+        Só entra aqui quem chegou a escolher um horário de presente. Quem tocou em "prefiro não experimentar agora" ou
+        "nenhum horário me atende" nessa etapa não fica registrado — o sistema hoje não distingue recusa, falta de
+        horário ou quem simplesmente ainda não chegou nessa etapa.
+      </p>
     </div>
   )
 }
@@ -561,6 +634,8 @@ export function ExtraReposicaoPage() {
         {stat('aulas de presente', resumo.presentes, 'var(--color-brand-verde-card)')}
         {stat('a conferir', resumo.pendentes, resumo.pendentes ? 'var(--color-state-warning)' : undefined)}
       </div>
+
+      {inscritos && <ResumoPresente inscritos={inscritos} />}
 
       <div style={{ display: 'flex', gap: '4px', borderBottom: '1px solid var(--color-border-light)', marginBottom: '16px' }}>
         {[['agendas', 'Agendas'], ['inscritos', `Inscritos (${resumo.pessoas})`]].map(([k, r]) => (
