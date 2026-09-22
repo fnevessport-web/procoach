@@ -86,3 +86,11 @@ export const useAtualizarConferenciaExtra = () => useMutacao(async ({ inscricaoI
   const { error } = await supabase.from('extras_inscricoes').update(patch).eq('id', inscricaoId)
   if (error) throw error
 })
+
+// Apaga a inscrição inteira (ex.: duplicidade — alguém se inscreveu 2x). Cascata apaga junto
+// os agendamentos dela (extras_agendamentos.inscricao_id tem ON DELETE CASCADE), liberando as
+// vagas na hora. Irreversível — a tela sempre confirma antes de chamar isso.
+export const useExcluirInscricaoExtra = () => useMutacao(async ({ inscricaoId }) => {
+  const { error } = await supabase.from('extras_inscricoes').delete().eq('id', inscricaoId)
+  if (error) throw error
+})

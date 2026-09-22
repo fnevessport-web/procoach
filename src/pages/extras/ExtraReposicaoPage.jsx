@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, Copy, Gift, Grid3x3, List, MessageCircle, Pencil, RotateCcw, Search, Users, X } from 'lucide-react'
+import { AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, Copy, Gift, Grid3x3, List, MessageCircle, Pencil, RotateCcw, Search, Trash2, Users, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { usePermissions } from '../../hooks/usePermissions'
 import {
   useExtrasAgenda, useExtrasInscritos, useAtualizarProfessorExtra, useCancelarAgendamentoExtra, useAtualizarConferenciaExtra,
-  useNomesAlunosAtivos,
+  useExcluirInscricaoExtra, useNomesAlunosAtivos,
 } from '../../hooks/useExtrasReposicao'
 import {
   DIAS, estadoVagas, faixaHorario, nomeProfessor, MODALIDADES_PRESENTE, IMG_MODALIDADE, rotuloDiaCurto, rotuloDiaLongo, rotuloNivel, usaCreditoIndividualEmGrupo,
@@ -14,8 +14,12 @@ import { Modal } from '../../components/ui/Modal'
 
 const LINK_PUBLICO = 'https://procoachsport.com.br/reposicao'
 
+// "pendente" existiu no início (conferência manual de todo mundo antes de contar como
+// confirmado), mas o cadastro se debita sozinho quando o próprio aluno agenda — não faz mais
+// sentido pedir uma conferência extra pra isso. Toda inscrição nova já nasce "confirmado"
+// (extras_inscricoes.conferencia tem default 'confirmado' no banco); só sobra ajustar pra "não
+// localizado" se, na conferência, o nome não bater com ninguém de verdade.
 const CONFERENCIA = {
-  pendente: { rotulo: 'Pendente', cor: 'var(--color-state-warning)' },
   confirmado: { rotulo: 'Aluno confirmado', cor: 'var(--color-state-success)' },
   nao_localizado: { rotulo: 'Não localizado', cor: 'var(--color-state-danger)' },
 }
@@ -85,7 +89,7 @@ function Selo({ cor, children }) {
 }
 
 function SeletorConferencia({ valor, onChange, disabled }) {
-  const c = CONFERENCIA[valor] || CONFERENCIA.pendente
+  const c = CONFERENCIA[valor] || CONFERENCIA.confirmado
   return (
     <select value={valor} disabled={disabled} onChange={e => onChange(e.target.value)} style={{
       fontSize: '12px', fontWeight: 700, padding: '5px 8px', borderRadius: '8px', cursor: disabled ? 'default' : 'pointer', color: c.cor,
@@ -168,7 +172,7 @@ function ListaAlunosSlot({ slot, podeEditar, onCancelar }) {
           return (
             <div key={a.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 10px', paddingBottom: '8px', borderBottom: '1px dashed var(--color-border-light-subtle)' }}>
               <div style={{ minWidth: 0, flex: '1 1 200px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 700 }}>{i.nome}</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-light-primary)' }}>{i.nome}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', alignItems: 'center' }}>
                   <LinkWhats telefone={i.telefone} />
                   <span style={{ fontSize: '11px', color: 'var(--color-text-light-muted)' }}>{resumoTurma(i.turma_atual)}</span>
@@ -364,7 +368,7 @@ function AbaAgendas({ slots, podeEditar, onCancelar }) {
 // Aba Inscritos
 // ---------------------------------------------------------------------------------------------
 
-function CardInscrito({ insc, podeEditar, onCancelar, palavrasAlunos, carregandoCadastro }) {
+function CardInscrito({ insc, podeEditar, onCancelar, onExcluir, palavrasAlunos, carregandoCadastro }) {
   const atualizar = useAtualizarConferenciaExtra()
   const [obs, setObs] = useState(insc.observacao || '')
   const ags = [...(insc.extras_agendamentos || [])].sort((a, b) =>
@@ -387,13 +391,19 @@ function CardInscrito({ insc, podeEditar, onCancelar, palavrasAlunos, carregando
       )}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 12px', marginBottom: '6px' }}>
         <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: 700 }}>{insc.nome}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: 700, color: 'var(--color-text-light-primary)' }}>{insc.nome}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', alignItems: 'center' }}>
             <LinkWhats telefone={insc.telefone} />
             <span style={{ fontSize: '11px', color: 'var(--color-text-light-muted)' }}>{resumoTurma(insc.turma_atual)}</span>
           </div>
         </div>
         <SeletorConferencia valor={insc.conferencia} disabled={!podeEditar} onChange={v => salvar({ conferencia: v })} />
+        {podeEditar && (
+          <button type="button" onClick={() => onExcluir({ inscricaoId: insc.id, nome: insc.nome })} aria-label={`Excluir inscrição de ${insc.nome}`}
+            style={{ background: 'none', border: '1px solid color-mix(in srgb, var(--color-state-danger) 45%, transparent)', color: 'var(--color-state-danger)', borderRadius: '8px', padding: '7px 8px', cursor: 'pointer', display: 'flex' }}>
+            <Trash2 size={14} />
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '8px 0' }}>
@@ -435,7 +445,7 @@ function CardInscrito({ insc, podeEditar, onCancelar, palavrasAlunos, carregando
   )
 }
 
-function AbaInscritos({ inscritos, podeEditar, onCancelar, nomesAlunos, carregandoCadastro }) {
+function AbaInscritos({ inscritos, podeEditar, onCancelar, onExcluir, nomesAlunos, carregandoCadastro }) {
   const [busca, setBusca] = useState('')
   const [conf, setConf] = useState('todos')
   const [soForaCadastro, setSoForaCadastro] = useState(false)
@@ -506,7 +516,7 @@ function AbaInscritos({ inscritos, podeEditar, onCancelar, nomesAlunos, carregan
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {lista.map(i => <CardInscrito key={i.id} insc={i} podeEditar={podeEditar} onCancelar={onCancelar} palavrasAlunos={palavrasAlunos} carregandoCadastro={carregandoCadastro} />)}
+        {lista.map(i => <CardInscrito key={i.id} insc={i} podeEditar={podeEditar} onCancelar={onCancelar} onExcluir={onExcluir} palavrasAlunos={palavrasAlunos} carregandoCadastro={carregandoCadastro} />)}
       </div>
     </div>
   )
@@ -577,8 +587,10 @@ export function ExtraReposicaoPage() {
   const { data: inscritos, isLoading: carregandoInscritos } = useExtrasInscritos()
   const { data: nomesAlunos, isLoading: carregandoCadastro } = useNomesAlunosAtivos()
   const cancelar = useCancelarAgendamentoExtra()
+  const excluir = useExcluirInscricaoExtra()
   const [aba, setAba] = useState('agendas')
   const [paraCancelar, setParaCancelar] = useState(null)
+  const [paraExcluir, setParaExcluir] = useState(null)
 
   const resumo = useMemo(() => {
     const conf = (slots || []).flatMap(s => (s.extras_agendamentos || []).filter(a => a.status === 'confirmado'))
@@ -586,7 +598,7 @@ export function ExtraReposicaoPage() {
       pessoas: (inscritos || []).length,
       reposicoes: conf.filter(a => a.tipo === 'reposicao').length,
       presentes: conf.filter(a => a.tipo === 'presente').length,
-      pendentes: (inscritos || []).filter(i => i.conferencia === 'pendente').length,
+      naoLocalizados: (inscritos || []).filter(i => i.conferencia === 'nao_localizado').length,
     }
   }, [slots, inscritos])
 
@@ -600,6 +612,14 @@ export function ExtraReposicaoPage() {
       await cancelar.mutateAsync({ agendamentoId: paraCancelar.agendamentoId })
       toast.success('Agendamento cancelado, vaga liberada', { style: toastStyle })
       setParaCancelar(null)
+    } catch (e) { toast.error(e.message, { style: toastStyle }) }
+  }
+
+  async function confirmarExclusao() {
+    try {
+      await excluir.mutateAsync({ inscricaoId: paraExcluir.inscricaoId })
+      toast.success('Inscrição excluída', { style: toastStyle })
+      setParaExcluir(null)
     } catch (e) { toast.error(e.message, { style: toastStyle }) }
   }
 
@@ -632,7 +652,7 @@ export function ExtraReposicaoPage() {
         {stat('pessoas inscritas', resumo.pessoas)}
         {stat('reposições agendadas', resumo.reposicoes, 'var(--color-action-primary)')}
         {stat('aulas de presente', resumo.presentes, 'var(--color-brand-verde-card)')}
-        {stat('a conferir', resumo.pendentes, resumo.pendentes ? 'var(--color-state-warning)' : undefined)}
+        {stat('não localizados', resumo.naoLocalizados, resumo.naoLocalizados ? 'var(--color-state-danger)' : undefined)}
       </div>
 
       {inscritos && <ResumoPresente inscritos={inscritos} />}
@@ -653,7 +673,7 @@ export function ExtraReposicaoPage() {
 
       {slots && aba === 'agendas' && <AbaAgendas slots={slots} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar} />}
       {inscritos && aba === 'inscritos' && (
-        <AbaInscritos inscritos={inscritos} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar}
+        <AbaInscritos inscritos={inscritos} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar} onExcluir={setParaExcluir}
           nomesAlunos={nomesAlunos || []} carregandoCadastro={carregandoCadastro} />
       )}
 
@@ -668,6 +688,25 @@ export function ExtraReposicaoPage() {
               <button type="button" onClick={() => setParaCancelar(null)} style={{ flex: 1, padding: '11px', borderRadius: '10px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>Manter</button>
               <button type="button" onClick={confirmarCancelamento} disabled={cancelar.isPending} style={{ flex: 1, padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: 'var(--color-state-danger)', color: 'white', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                 <Check size={15} /> {cancelar.isPending ? 'Cancelando...' : 'Sim, cancelar'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={!!paraExcluir} onClose={() => setParaExcluir(null)} title="Excluir inscrição" size="sm">
+        {paraExcluir && (
+          <div>
+            <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--text-secondary)', margin: '0 0 16px' }}>
+              Excluir a inscrição de <strong style={{ color: 'var(--text-primary)' }}>{paraExcluir.nome}</strong>? Isso remove o cadastro dela e
+              cancela todas as aulas (reposição e presente) que já tiver agendado, liberando as vagas na hora.
+              <strong style={{ color: 'var(--color-state-danger)' }}> Não pode ser desfeito</strong> — use pra duplicidade (mesma pessoa se
+              inscreveu duas vezes), não pra tirar alguém que só está pendente de conferência.
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button type="button" onClick={() => setParaExcluir(null)} style={{ flex: 1, padding: '11px', borderRadius: '10px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>Manter</button>
+              <button type="button" onClick={confirmarExclusao} disabled={excluir.isPending} style={{ flex: 1, padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: 'var(--color-state-danger)', color: 'white', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                <Trash2 size={15} /> {excluir.isPending ? 'Excluindo...' : 'Sim, excluir'}
               </button>
             </div>
           </div>
