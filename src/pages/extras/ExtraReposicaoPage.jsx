@@ -341,11 +341,18 @@ function AbaAgendas({ slots, podeEditar, onCancelar, inscritos }) {
   const [dia, setDia] = useState('todos')
   const [modo, setModo] = useState('lista')
   const [slotAberto, setSlotAberto] = useState(null)
+  const [buscaAluno, setBuscaAluno] = useState('')
 
   const modalidades = useMemo(() => [...new Set(slots.map(s => s.modalidade))], [slots])
   const dias = useMemo(() => [...new Set(slots.map(s => s.data_aula))], [slots])
+  // Busca por aluno filtra só os horários onde alguém com esse nome tem agendamento confirmado
+  // (reposição ou presente) — pra achar rápido "onde essa pessoa está agendada" sem precisar ir
+  // na aba Inscritos e sair caçando quadrado por quadrado.
+  const nomeBusca = normalizarNome(buscaAluno)
   const visiveis = useMemo(() => slots.filter(s =>
-    (tipo === 'todos' || s.tipo === tipo) && (modalidade === 'todas' || s.modalidade === modalidade) && (dia === 'todos' || s.data_aula === dia)), [slots, tipo, modalidade, dia])
+    (tipo === 'todos' || s.tipo === tipo) && (modalidade === 'todas' || s.modalidade === modalidade) && (dia === 'todos' || s.data_aula === dia) &&
+    (!nomeBusca || (s.extras_agendamentos || []).some(a => a.status === 'confirmado' && normalizarNome(a.extras_inscricoes?.nome).includes(nomeBusca)))
+  ), [slots, tipo, modalidade, dia, nomeBusca])
 
   const grupos = []
   for (const s of visiveis) {
@@ -362,6 +369,11 @@ function AbaAgendas({ slots, podeEditar, onCancelar, inscritos }) {
       {/* flexWrap (não scroll horizontal): no desktop não dá pra arrastar com o dedo, então os
           chips ficavam cortados fora da tela sem nenhum indício de que havia mais opções. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
+        <div style={{ position: 'relative', maxWidth: '360px' }}>
+          <Search size={15} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light-muted)' }} />
+          <input value={buscaAluno} onChange={e => setBuscaAluno(e.target.value)} placeholder="Buscar aluno agendado (nome)"
+            style={{ width: '100%', boxSizing: 'border-box', fontSize: '13px', padding: '9px 11px 9px 34px', borderRadius: '10px', border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)' }} />
+        </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           <Chip ativo={tipo === 'todos'} onClick={() => setTipo('todos')}>Todas</Chip>
           <Chip ativo={tipo === 'reposicao'} onClick={() => setTipo('reposicao')}>Reposição de Tênis</Chip>
@@ -602,11 +614,14 @@ function AbaInscritos({ inscritos, podeEditar, onCancelar, onExcluir, nomesAluno
 // isso "sem presente" aqui mistura três casos que a tela não consegue separar: recusou, não achou
 // horário, ou nem chegou nessa etapa ainda. O texto abaixo do painel deixa isso explícito.
 function ResumoPresente({ inscritos }) {
+  const [modalidadeAberta, setModalidadeAberta] = useState(null)
+
   const porModalidade = useMemo(() => {
-    const m = Object.fromEntries(MODALIDADES_PRESENTE.map(mod => [mod.nome, 0]))
+    const m = Object.fromEntries(MODALIDADES_PRESENTE.map(mod => [mod.nome, []]))
     inscritos.forEach(i => (i.extras_agendamentos || [])
       .filter(a => a.tipo === 'presente' && a.status === 'confirmado')
-      .forEach(a => { if (a.modalidade in m) m[a.modalidade]++ }))
+      .forEach(a => { if (a.modalidade in m) m[a.modalidade].push({ nome: i.nome, slot: a.extras_slots }) }))
+    Object.values(m).forEach(lista => lista.sort((a, b) => `${a.slot?.data_aula} ${a.slot?.horario_inicio}`.localeCompare(`${b.slot?.data_aula} ${b.slot?.horario_inicio}`)))
     return m
   }, [inscritos])
 
@@ -619,22 +634,23 @@ function ResumoPresente({ inscritos }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
         <span style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: 700 }}>Presente por modalidade</span>
         <span style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
-          {comPresente} de {inscritos.length} inscritos já escolheram uma aula de presente
+          {comPresente} de {inscritos.length} inscritos já escolheram uma aula de presente · toque numa modalidade pra ver quem
         </span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', marginBottom: '10px' }}>
         {MODALIDADES_PRESENTE.map(m => {
-          const n = porModalidade[m.nome]
-          const cor = n > 0 ? 'var(--color-state-success)' : 'var(--color-text-light-muted)'
+          const lista = porModalidade[m.nome]
+          const cor = lista.length > 0 ? 'var(--color-state-success)' : 'var(--color-text-light-muted)'
           return (
-            <div key={m.nome} style={{
+            <button key={m.nome} type="button" onClick={() => setModalidadeAberta(m.nome)} disabled={lista.length === 0} style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '10px 6px', borderRadius: '10px', textAlign: 'center',
-              border: `1px solid color-mix(in srgb, ${cor} 35%, transparent)`, backgroundColor: `color-mix(in srgb, ${cor} 8%, var(--color-surface-light-overlay))`,
+              cursor: lista.length > 0 ? 'pointer' : 'default', border: `1px solid color-mix(in srgb, ${cor} 35%, transparent)`,
+              backgroundColor: `color-mix(in srgb, ${cor} 8%, var(--color-surface-light-overlay))`,
             }}>
               <img src={IMG_MODALIDADE[m.nome]} alt="" style={{ width: '26px', height: '26px', objectFit: 'contain' }} />
-              <span style={{ fontSize: '18px', fontWeight: 800, color: cor }}>{n}</span>
+              <span style={{ fontSize: '18px', fontWeight: 800, color: cor }}>{lista.length}</span>
               <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-light-secondary)' }}>{m.nome}</span>
-            </div>
+            </button>
           )
         })}
       </div>
@@ -643,6 +659,21 @@ function ResumoPresente({ inscritos }) {
         "nenhum horário me atende" nessa etapa não fica registrado — o sistema hoje não distingue recusa, falta de
         horário ou quem simplesmente ainda não chegou nessa etapa.
       </p>
+
+      <Modal open={!!modalidadeAberta} onClose={() => setModalidadeAberta(null)} title={modalidadeAberta ? `Presente · ${modalidadeAberta}` : ''} size="sm">
+        {modalidadeAberta && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {porModalidade[modalidadeAberta].map((p, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', padding: '8px 0', borderBottom: i < porModalidade[modalidadeAberta].length - 1 ? '1px dashed var(--color-border-light-subtle)' : 'none' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-light-primary)' }}>{p.nome}</span>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', flexShrink: 0 }}>
+                  {p.slot ? `${rotuloDiaCurto(p.slot.data_aula)} ${faixaHorario(p.slot)}` : 'horário não informado'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
