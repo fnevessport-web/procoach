@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, Copy, Gift, Grid3x3, List, MessageCircle, Pencil, RotateCcw, Search, Trash2, Users, X } from 'lucide-react'
+import { AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, Copy, Gift, Grid3x3, List, MessageCircle, Pencil, RotateCcw, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { usePermissions } from '../../hooks/usePermissions'
 import {
   useExtrasAgenda, useExtrasInscritos, useAtualizarProfessorExtra, useCancelarAgendamentoExtra, useAtualizarConferenciaExtra,
-  useExcluirInscricaoExtra, useNomesAlunosAtivos,
+  useExcluirInscricaoExtra, useIncluirAlunoExtra, useNomesAlunosAtivos,
 } from '../../hooks/useExtrasReposicao'
 import {
   DIAS, estadoVagas, faixaHorario, nomeProfessor, MODALIDADES_PRESENTE, IMG_MODALIDADE, rotuloDiaCurto, rotuloDiaLongo, rotuloNivel, usaCreditoIndividualEmGrupo,
@@ -149,10 +149,79 @@ function ProfessorEditavel({ slot, podeEditar }) {
   )
 }
 
+// Formulário de inclusão manual (botão "Incluir aluno neste horário") — pedido explícito pra
+// corrigir casos como duplicidade sem precisar mandar a pessoa reagendar pelo link. Se o nome
+// digitado bate (por palavras, igual existeNoCadastro) com alguém que já tem inscrição, reusa
+// essa inscrição em vez de criar outro cadastro da mesma pessoa.
+function IncluirAlunoForm({ slot, inscritos }) {
+  const [aberto, setAberto] = useState(false)
+  const [nome, setNome] = useState('')
+  const [telefone, setTelefone] = useState('')
+  const incluir = useIncluirAlunoExtra()
+  const datalistId = `nomes-inscritos-${slot.id}`
+
+  const match = useMemo(() => {
+    const palavras = normalizarNome(nome).split(' ').filter(Boolean)
+    if (palavras.length < 2) return null
+    return inscritos.find(i => {
+      const setNome2 = new Set(normalizarNome(i.nome).split(' ').filter(Boolean))
+      return palavras.every(p => setNome2.has(p))
+    }) || null
+  }, [nome, inscritos])
+
+  async function enviar(e) {
+    e.preventDefault()
+    if (!nome.trim()) return
+    try {
+      await incluir.mutateAsync({
+        slotId: slot.id, tipo: slot.tipo, modalidade: slot.modalidade,
+        inscricaoId: match?.id || null, nome, telefone,
+      })
+      toast.success(match ? `${nome.trim()} incluído neste horário` : `${nome.trim()} cadastrado e incluído`, { style: toastStyle })
+      setNome(''); setTelefone(''); setAberto(false)
+    } catch (err) { toast.error(err.message, { style: toastStyle }) }
+  }
+
+  if (!aberto) {
+    return (
+      <button type="button" onClick={() => setAberto(true)} style={{
+        display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 11px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 700,
+        border: '1px dashed var(--color-action-primary)', backgroundColor: 'transparent', color: 'var(--color-action-primary)',
+      }}><UserPlus size={13} /> Incluir aluno neste horário</button>
+    )
+  }
+
+  return (
+    <form onSubmit={enviar} style={{ ...cartao, padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <datalist id={datalistId}>
+        {inscritos.map(i => <option key={i.id} value={i.nome} />)}
+      </datalist>
+      <input autoFocus value={nome} onChange={e => setNome(e.target.value)} list={datalistId} placeholder="Nome completo"
+        style={{ fontSize: '13px', padding: '7px 9px', borderRadius: '8px', border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-overlay)', color: 'var(--color-text-light-primary)' }} />
+      {!match && (
+        <input value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="Telefone (opcional)"
+          style={{ fontSize: '13px', padding: '7px 9px', borderRadius: '8px', border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-overlay)', color: 'var(--color-text-light-primary)' }} />
+      )}
+      {nome.trim() && (
+        <div style={{ fontSize: '11px', color: match ? 'var(--color-state-success)' : 'var(--color-text-light-muted)' }}>
+          {match ? `Já tem cadastro — vai usar a inscrição de ${match.nome}, sem duplicar.` : 'Nome novo: vamos criar um cadastro pra essa pessoa.'}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button type="submit" disabled={incluir.isPending || !nome.trim()} style={{
+          flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 700,
+          backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', opacity: !nome.trim() ? 0.6 : 1,
+        }}>{incluir.isPending ? 'Incluindo...' : 'Incluir'}</button>
+        <button type="button" onClick={() => setAberto(false)} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
 // Lista de quem está agendado num slot — usada tanto no card expansível (modo Lista) quanto
 // dentro do modal do mapa de quadrados (modo Mapa). Extraído sem mudar nada do que já
 // renderizava dentro do CardHorario, só pra poder reaproveitar no modal novo.
-function ListaAlunosSlot({ slot, podeEditar, onCancelar }) {
+function ListaAlunosSlot({ slot, podeEditar, onCancelar, inscritos }) {
   const atualizarConf = useAtualizarConferenciaExtra()
   const ativos = (slot.extras_agendamentos || []).filter(a => a.status === 'confirmado')
   const cancelados = (slot.extras_agendamentos || []).filter(a => a.status === 'cancelado')
@@ -163,6 +232,7 @@ function ListaAlunosSlot({ slot, podeEditar, onCancelar }) {
 
   return (
     <>
+      {podeEditar && <div style={{ marginBottom: '10px' }}><IncluirAlunoForm slot={slot} inscritos={inscritos} /></div>}
       {ativos.length === 0 && <div style={{ fontSize: '12px', color: 'var(--color-text-light-muted)', padding: '4px 0' }}>Ninguém agendado neste horário.</div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {ativos.map(a => {
@@ -199,7 +269,7 @@ function ListaAlunosSlot({ slot, podeEditar, onCancelar }) {
   )
 }
 
-function CardHorario({ slot, podeEditar, onCancelar }) {
+function CardHorario({ slot, podeEditar, onCancelar, inscritos }) {
   const [aberto, setAberto] = useState(false)
   const ativos = (slot.extras_agendamentos || []).filter(a => a.status === 'confirmado')
   const comVagas = { ...slot, vagas_restantes: slot.capacidade - ativos.length }
@@ -237,7 +307,7 @@ function CardHorario({ slot, podeEditar, onCancelar }) {
 
       {aberto && (
         <div style={{ borderTop: '1px solid var(--color-border-light-subtle)', padding: '10px 14px 12px', backgroundColor: 'var(--color-surface-light-overlay)' }}>
-          <ListaAlunosSlot slot={slot} podeEditar={podeEditar} onCancelar={onCancelar} />
+          <ListaAlunosSlot slot={slot} podeEditar={podeEditar} onCancelar={onCancelar} inscritos={inscritos} />
         </div>
       )}
     </div>
@@ -265,7 +335,7 @@ function QuadradoSlot({ slot, onClick }) {
   )
 }
 
-function AbaAgendas({ slots, podeEditar, onCancelar }) {
+function AbaAgendas({ slots, podeEditar, onCancelar, inscritos }) {
   const [tipo, setTipo] = useState('todos')
   const [modalidade, setModalidade] = useState('todas')
   const [dia, setDia] = useState('todos')
@@ -335,7 +405,7 @@ function AbaAgendas({ slots, podeEditar, onCancelar }) {
               </div>
               {modo === 'lista' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '10px', alignItems: 'start' }}>
-                  {g.itens.map(s => <CardHorario key={s.id} slot={s} podeEditar={podeEditar} onCancelar={onCancelar} />)}
+                  {g.itens.map(s => <CardHorario key={s.id} slot={s} podeEditar={podeEditar} onCancelar={onCancelar} inscritos={inscritos} />)}
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))', gap: '8px' }}>
@@ -356,7 +426,7 @@ function AbaAgendas({ slots, podeEditar, onCancelar }) {
               <span style={{ fontSize: '11px', color: 'var(--color-text-light-muted)' }}>Professor:</span>
               <ProfessorEditavel slot={slotAtual} podeEditar={podeEditar} />
             </div>
-            <ListaAlunosSlot slot={slotAtual} podeEditar={podeEditar} onCancelar={onCancelar} />
+            <ListaAlunosSlot slot={slotAtual} podeEditar={podeEditar} onCancelar={onCancelar} inscritos={inscritos} />
           </div>
         )}
       </Modal>
@@ -671,7 +741,7 @@ export function ExtraReposicaoPage() {
       {(carregandoAgenda || carregandoInscritos) && <Loading />}
       {erroAgenda && <div style={{ ...cartao, padding: '16px', fontSize: '13px', color: 'var(--color-state-danger)' }}>Não foi possível carregar. Confira se o SQL das aulas extras foi aplicado no Supabase.</div>}
 
-      {slots && aba === 'agendas' && <AbaAgendas slots={slots} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar} />}
+      {slots && aba === 'agendas' && <AbaAgendas slots={slots} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar} inscritos={inscritos || []} />}
       {inscritos && aba === 'inscritos' && (
         <AbaInscritos inscritos={inscritos} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar} onExcluir={setParaExcluir}
           nomesAlunos={nomesAlunos || []} carregandoCadastro={carregandoCadastro} />

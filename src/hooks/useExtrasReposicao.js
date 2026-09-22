@@ -33,7 +33,7 @@ export function useExtrasInscritos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('extras_inscricoes')
-        .select('*, extras_agendamentos(id, tipo, status, modalidade, extras_slots(data_aula, horario_inicio, horario_fim, quadra, professor, formato, nivel, publico))')
+        .select('*, extras_agendamentos(id, tipo, status, modalidade, slot_id, extras_slots(data_aula, horario_inicio, horario_fim, quadra, professor, formato, nivel, publico))')
         .order('criado_em', { ascending: false })
       if (error) throw error
       return data || []
@@ -85,6 +85,37 @@ export const useAtualizarConferenciaExtra = () => useMutacao(async ({ inscricaoI
   if (observacao !== undefined) patch.observacao = observacao?.trim() || null
   const { error } = await supabase.from('extras_inscricoes').update(patch).eq('id', inscricaoId)
   if (error) throw error
+})
+
+// Inclusão manual pela equipe (ex.: corrigir duplicidade, encaixar quem não conseguiu pelo
+// link) — sem passar pelas regras do link público (limite de 2, individual/grupo, conflito de
+// horário): é uma exceção deliberada da equipe, não precisa repetir a validação do aluno.
+// Se `inscricaoId` já vem preenchido, só cria o agendamento (reaproveita a inscrição existente,
+// pra não gerar outro cadastro duplicado da mesma pessoa); senão cria a inscrição primeiro.
+export const useIncluirAlunoExtra = () => useMutacao(async ({ slotId, tipo, modalidade, inscricaoId, nome, telefone }) => {
+  let idFinal = inscricaoId
+  let chave
+
+  if (idFinal) {
+    const { data, error } = await supabase.from('extras_inscricoes').select('chave').eq('id', idFinal).single()
+    if (error) throw error
+    chave = data.chave
+  } else {
+    const nomeLimpo = (nome || '').trim().replace(/\s+/g, ' ')
+    if (!nomeLimpo) throw new Error('Informe o nome do aluno.')
+    const tel = (telefone || '').replace(/\D/g, '')
+    const norm = nomeLimpo.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim()
+    chave = `${norm}|${tel ? tel.slice(-8) : '00000000'}`
+    const { data, error } = await supabase.from('extras_inscricoes').insert({
+      nome: nomeLimpo, telefone: tel, chave, turma_atual: [], declaracao_em: new Date().toISOString(), conferencia: 'confirmado',
+    }).select('id').single()
+    if (error) throw error
+    idFinal = data.id
+  }
+
+  const { error: errAg } = await supabase.from('extras_agendamentos')
+    .insert({ inscricao_id: idFinal, slot_id: slotId, chave, tipo, modalidade, status: 'confirmado' })
+  if (errAg) throw errAg
 })
 
 // Apaga a inscrição inteira (ex.: duplicidade — alguém se inscreveu 2x). Cascata apaga junto
