@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ArrowLeftRight, Check, ChevronLeft, Gift, TriangleAlert, X } from 'lucide-react'
 import { MODALIDADES_PRESENTE, IMG_MODALIDADE, encontrarConflito, faixaHorario, rotuloDiaCurto } from './constantes'
-import { useVagas } from './api'
+import { useVagas, useProfessoresPublicoFoto } from './api'
 import { Titulo, Nota, Botao, BarraInferior, AoVivo, SlotsPorDia, ModalAviso } from './ui'
 
 function MiniCard({ slot, onRemover }) {
@@ -52,6 +52,7 @@ function TileModalidade({ modalidade, escolhida, vagasAbertas, carregando, largu
 
 export function EtapaPresente({ dados, reposicoes, presentes, setPresentes, onResumo, onPular }) {
   const { data: slots, isLoading, isError } = useVagas('presente')
+  const { data: professores } = useProfessoresPublicoFoto()
   const [aberta, setAberta] = useState(null) // nome da modalidade em visualização
   const [aviso, setAviso] = useState(null)   // { titulo, texto, acoes? }
 
@@ -129,7 +130,7 @@ export function EtapaPresente({ dados, reposicoes, presentes, setPresentes, onRe
         <div style={{ marginBottom: '16px' }}><AoVivo /></div>
         {lista.length === 0
           ? <Nota cor="var(--color-state-warning)">No momento não há horários abertos de {mod.nome}. Volte em breve ou escolha outra modalidade.</Nota>
-          : <SlotsPorDia slots={lista} selecionadosIds={presentes.map(p => p.slot_id)} onClick={clicarSlot} />}
+          : <SlotsPorDia slots={lista} selecionadosIds={presentes.map(p => p.slot_id)} onClick={clicarSlot} professores={professores} />}
         {aviso && <AvisoPresente aviso={aviso} onFechar={() => setAviso(null)} />}
       </div>
     )

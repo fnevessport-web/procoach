@@ -90,6 +90,31 @@ const ehADefinir = p => /^a definir$/i.test((p || '').trim())
 export const nomeProfessor = p => (!p ? '' : ehADefinir(p) ? 'Professor a definir' : p)
 export const rotuloProfessor = p => (!p ? '' : ehADefinir(p) ? 'Professor a definir' : `Prof. ${p}`)
 
+// Mapa curado "nome curto usado na grade extra" -> "nome completo cadastrado em professores",
+// só pra achar a foto certa. Curado à mão (não é fuzzy-match automático) porque tem professor
+// homônimo no cadastro (3 "Bruno", 2 "Marcelo" — um de Tênis, outro só de Padel) que um match
+// automático por nome pegaria errado. Atualizar aqui quando um professor novo entrar na grade.
+export const MAPA_PROFESSOR_FOTO = {
+  'eric': 'Eric Jun Domiciano Higashi',
+  'nayara': 'Nayara Santos',
+  'joao': 'João Vitor Martins de França',
+  'tiago guedes': 'Tiago Guedes',
+  'charles': 'Charles de Melo Silva',
+  'marcelo': 'Marcelo Ribeiro Rocha', // o de Tênis — tem outro Marcelo que é só de Padel
+  'bruno borges': 'Bruno Borges da Silva', // tem mais 2 "Bruno" no cadastro
+}
+function normalizarTexto(t) {
+  return (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+// `professores` é a lista { id, nome, foto_url } já carregada (view pública ou tabela, conforme
+// o contexto) — devolve null se não achar mapeamento ou foto, pra quem chama cair na silhueta.
+export function fotoProfessor(p, professores) {
+  if (!p || ehADefinir(p)) return null
+  const nomeCompleto = MAPA_PROFESSOR_FOTO[normalizarTexto(p)]
+  if (!nomeCompleto) return null
+  return (professores || []).find(x => x.nome === nomeCompleto)?.foto_url || null
+}
+
 // ---- vagas -------------------------------------------------------------------------------
 
 // Verde com folga, âmbar quando está acabando (≤ 1/3 das vagas), vermelho quando lotou.

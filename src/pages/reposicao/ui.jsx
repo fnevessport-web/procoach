@@ -1,6 +1,29 @@
 import { useEffect, useRef } from 'react'
-import { CalendarDays, Check, Clock, MapPin, User } from 'lucide-react'
-import { estadoVagas, faixaHorario, rotuloDiaLongo, rotuloNivel, nomeProfessor, COR_ADULTO, COR_KIDS } from './constantes'
+import { CalendarDays, Check, Clock, MapPin } from 'lucide-react'
+import { estadoVagas, faixaHorario, rotuloDiaLongo, rotuloNivel, nomeProfessor, fotoProfessor, COR_ADULTO, COR_KIDS } from './constantes'
+
+// Ícone de silhueta (perfil), preenchimento preto — mostrado no lugar da foto quando o
+// professor ainda não foi definido ou não tem foto mapeada (ver fotoProfessor em constantes.js).
+const SILHUETA_SVG = (
+  <svg viewBox="0 0 24 24" width="60%" height="60%" fill="var(--color-surface-light-base)">
+    <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.4h19.6v-2.4c0-3.3-6.5-4.9-9.8-4.9z" />
+  </svg>
+)
+
+// Foto circular do professor (ou silhueta preta se não tiver): `professor` é o nome curto
+// gravado no slot, `professores` a lista { id, nome, foto_url } já carregada.
+export function FotoProfessorMini({ professor, professores, size = 18 }) {
+  const foto = fotoProfessor(professor, professores)
+  if (foto) {
+    return <img src={foto} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+  }
+  return (
+    <span style={{
+      width: size, height: size, borderRadius: '50%', backgroundColor: '#1E2B24', flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>{SILHUETA_SVG}</span>
+  )
+}
 
 // Página pública, contexto Claro (ver CLAUDE.md) — tokens -light-* direto. Como html/body do app
 // têm overflow:hidden global, a tela precisa do próprio contêiner de scroll (mesmo motivo do
@@ -162,7 +185,7 @@ export function BadgePublico({ kids, children }) {
 }
 
 // Um card de horário. A régua de "pips" mostra as vagas: preenchido = ocupada, cor = livre.
-export function CardSlot({ slot, selecionado, onClick, mostrarModalidade, restrito }) {
+export function CardSlot({ slot, selecionado, onClick, mostrarModalidade, restrito, professores }) {
   const estado = estadoVagas(slot)
   const lotado = estado.chave === 'lotado'
   const ocupadas = slot.capacidade - Math.max(0, slot.vagas_restantes)
@@ -195,7 +218,12 @@ export function CardSlot({ slot, selecionado, onClick, mostrarModalidade, restri
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
         {slot.quadra && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={12} />{slot.quadra}</span>}
-        {slot.professor && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><User size={12} />{nomeProfessor(slot.professor)}</span>}
+        {slot.professor && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <FotoProfessorMini professor={slot.professor} professores={professores} size={16} />
+            {nomeProfessor(slot.professor)}
+          </span>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '3px' }}>
@@ -214,7 +242,7 @@ export function CardSlot({ slot, selecionado, onClick, mostrarModalidade, restri
 }
 
 // Lista agrupada por dia, com o cabeçalho de cada data.
-export function SlotsPorDia({ slots, selecionadosIds = [], onClick, mostrarModalidade, restrito }) {
+export function SlotsPorDia({ slots, selecionadosIds = [], onClick, mostrarModalidade, restrito, professores }) {
   const grupos = []
   for (const s of slots) {
     const ultimo = grupos[grupos.length - 1]
@@ -239,7 +267,7 @@ export function SlotsPorDia({ slots, selecionadosIds = [], onClick, mostrarModal
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '10px' }}>
             {g.itens.map(s => (
               <CardSlot key={s.slot_id} slot={s} mostrarModalidade={mostrarModalidade} restrito={restrito ? restrito(s) : false}
-                selecionado={selecionadosIds.includes(s.slot_id)} onClick={onClick} />
+                selecionado={selecionadosIds.includes(s.slot_id)} onClick={onClick} professores={professores} />
             ))}
           </div>
         </section>

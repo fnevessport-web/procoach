@@ -18,6 +18,21 @@ export function useVagas(tipo) {
   })
 }
 
+// Foto dos professores pro card de horário mostrar (view professores_publico — só id/nome/
+// foto_url dos ativos, liberada pro anon; a tabela professores em si continua fechada porque
+// tem telefone/banco/pix/valor_hora_aula, ver scripts/2026-09-23_professores_publico_view.sql).
+export function useProfessoresPublicoFoto() {
+  return useQuery({
+    queryKey: ['professores-publico-foto'],
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('professores_publico').select('*')
+      if (error) throw error
+      return data || []
+    },
+  })
+}
+
 async function chamar(nomeFuncao, args) {
   const { data, error } = await supabase.rpc(nomeFuncao, args)
   if (error) throw new Error('Não foi possível concluir agora. Tente novamente em instantes.')

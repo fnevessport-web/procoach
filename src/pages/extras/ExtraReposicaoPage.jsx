@@ -1,16 +1,18 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, Copy, Gift, Grid3x3, List, MessageCircle, Pencil, RotateCcw, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
+import { AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, Copy, FileDown, Gift, Grid3x3, List, MessageCircle, Pencil, RotateCcw, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { usePermissions } from '../../hooks/usePermissions'
 import {
   useExtrasAgenda, useExtrasInscritos, useAtualizarProfessorExtra, useCancelarAgendamentoExtra, useAtualizarConferenciaExtra,
-  useExcluirInscricaoExtra, useIncluirAlunoExtra, useNomesAlunosAtivos,
+  useExcluirInscricaoExtra, useIncluirAlunoExtra, useNomesAlunosAtivos, useProfessoresFotoExtra,
 } from '../../hooks/useExtrasReposicao'
 import {
   DIAS, estadoVagas, faixaHorario, nomeProfessor, MODALIDADES_PRESENTE, IMG_MODALIDADE, rotuloDiaCurto, rotuloDiaLongo, rotuloNivel, usaCreditoIndividualEmGrupo,
 } from '../reposicao/constantes'
+import { FotoProfessorMini } from '../reposicao/ui'
 import { Loading } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
+import { gerarPdfGradeReposicao } from '../../lib/relatorioReposicaoPdf'
 
 const LINK_PUBLICO = 'https://procoachsport.com.br/reposicao'
 
@@ -115,7 +117,7 @@ function LinkWhats({ telefone }) {
 // Aba Agendas
 // ---------------------------------------------------------------------------------------------
 
-function ProfessorEditavel({ slot, podeEditar }) {
+function ProfessorEditavel({ slot, podeEditar, professores }) {
   const atualizar = useAtualizarProfessorExtra()
   const [editando, setEditando] = useState(false)
   const [valor, setValor] = useState(slot.professor || '')
@@ -137,7 +139,8 @@ function ProfessorEditavel({ slot, podeEditar }) {
   }
   const nome = nomeProfessor(slot.professor)
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: nome ? 'var(--color-text-light-primary)' : 'var(--color-state-warning)', fontWeight: 600 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: nome ? 'var(--color-text-light-primary)' : 'var(--color-state-warning)', fontWeight: 600 }}>
+      <FotoProfessorMini professor={slot.professor} professores={professores} size={20} />
       {nome || 'Sem professor'}
       {podeEditar && (
         <button type="button" onClick={() => { setValor(slot.professor || ''); setEditando(true) }} aria-label="Editar professor"
@@ -269,7 +272,7 @@ function ListaAlunosSlot({ slot, podeEditar, onCancelar, inscritos }) {
   )
 }
 
-function CardHorario({ slot, podeEditar, onCancelar, inscritos }) {
+function CardHorario({ slot, podeEditar, onCancelar, inscritos, professores }) {
   const [aberto, setAberto] = useState(false)
   const ativos = (slot.extras_agendamentos || []).filter(a => a.status === 'confirmado')
   const comVagas = { ...slot, vagas_restantes: slot.capacidade - ativos.length }
@@ -302,7 +305,7 @@ function CardHorario({ slot, podeEditar, onCancelar, inscritos }) {
 
       <div style={{ padding: '0 14px 12px 40px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '11px', color: 'var(--color-text-light-muted)' }}>Professor:</span>
-        <ProfessorEditavel slot={slot} podeEditar={podeEditar} />
+        <ProfessorEditavel slot={slot} podeEditar={podeEditar} professores={professores} />
       </div>
 
       {aberto && (
@@ -316,7 +319,7 @@ function CardHorario({ slot, podeEditar, onCancelar, inscritos }) {
 
 // Um quadrado do mapa (modo Mapa): mesma cor de vagas do slot, clica e abre modal com os
 // alunos. Só leitura de estadoVagas/rotuloNivel — nada de mutação aqui dentro.
-function QuadradoSlot({ slot, onClick }) {
+function QuadradoSlot({ slot, onClick, professores }) {
   const ativos = (slot.extras_agendamentos || []).filter(a => a.status === 'confirmado')
   const comVagas = { ...slot, vagas_restantes: slot.capacidade - ativos.length }
   const estado = estadoVagas(comVagas)
@@ -331,11 +334,17 @@ function QuadradoSlot({ slot, onClick }) {
       <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-light-primary)' }}>{slot.horario_inicio?.slice(0, 5)}</span>
       {rotulo && <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rotulo}</span>}
       <span style={{ fontSize: '11px', fontWeight: 800, color: estado.cor }}>{ativos.length}/{slot.capacidade}</span>
+      {slot.professor && (
+        <span style={{ display: 'flex', alignItems: 'center', gap: '3px', maxWidth: '100%' }}>
+          <FotoProfessorMini professor={slot.professor} professores={professores} size={13} />
+          <span style={{ fontSize: '8px', fontWeight: 600, color: 'var(--color-text-light-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nomeProfessor(slot.professor)}</span>
+        </span>
+      )}
     </button>
   )
 }
 
-function AbaAgendas({ slots, podeEditar, onCancelar, inscritos }) {
+function AbaAgendas({ slots, podeEditar, onCancelar, inscritos, professores }) {
   const [tipo, setTipo] = useState('todos')
   const [modalidade, setModalidade] = useState('todas')
   const [dia, setDia] = useState('todos')
@@ -417,11 +426,11 @@ function AbaAgendas({ slots, podeEditar, onCancelar, inscritos }) {
               </div>
               {modo === 'lista' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '10px', alignItems: 'start' }}>
-                  {g.itens.map(s => <CardHorario key={s.id} slot={s} podeEditar={podeEditar} onCancelar={onCancelar} inscritos={inscritos} />)}
+                  {g.itens.map(s => <CardHorario key={s.id} slot={s} podeEditar={podeEditar} onCancelar={onCancelar} inscritos={inscritos} professores={professores} />)}
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))', gap: '8px' }}>
-                  {g.itens.map(s => <QuadradoSlot key={s.id} slot={s} onClick={() => setSlotAberto(s.id)} />)}
+                  {g.itens.map(s => <QuadradoSlot key={s.id} slot={s} onClick={() => setSlotAberto(s.id)} professores={professores} />)}
                 </div>
               )}
             </section>
@@ -436,7 +445,7 @@ function AbaAgendas({ slots, podeEditar, onCancelar, inscritos }) {
               <span style={{ fontSize: '13px', color: 'var(--color-text-light-secondary)' }}>{slotAtual.quadra}</span>
               <span style={{ fontSize: '11px', color: 'var(--color-text-light-muted)' }}>·</span>
               <span style={{ fontSize: '11px', color: 'var(--color-text-light-muted)' }}>Professor:</span>
-              <ProfessorEditavel slot={slotAtual} podeEditar={podeEditar} />
+              <ProfessorEditavel slot={slotAtual} podeEditar={podeEditar} professores={professores} />
             </div>
             <ListaAlunosSlot slot={slotAtual} podeEditar={podeEditar} onCancelar={onCancelar} inscritos={inscritos} />
           </div>
@@ -687,6 +696,7 @@ export function ExtraReposicaoPage() {
   const { data: slots, isLoading: carregandoAgenda, isError: erroAgenda } = useExtrasAgenda()
   const { data: inscritos, isLoading: carregandoInscritos } = useExtrasInscritos()
   const { data: nomesAlunos, isLoading: carregandoCadastro } = useNomesAlunosAtivos()
+  const { data: professores } = useProfessoresFotoExtra()
   const cancelar = useCancelarAgendamentoExtra()
   const excluir = useExcluirInscricaoExtra()
   const [aba, setAba] = useState('agendas')
@@ -706,6 +716,14 @@ export function ExtraReposicaoPage() {
   async function copiarLink() {
     try { await navigator.clipboard.writeText(LINK_PUBLICO); toast.success('Link copiado', { style: toastStyle }) }
     catch { toast.error('Não foi possível copiar. Link: ' + LINK_PUBLICO, { style: toastStyle }) }
+  }
+
+  const [gerandoPdf, setGerandoPdf] = useState(false)
+  async function baixarPdf() {
+    setGerandoPdf(true)
+    try { await gerarPdfGradeReposicao(slots || [], professores || []); toast.success('PDF gerado', { style: toastStyle }) }
+    catch (e) { toast.error('Não foi possível gerar o PDF: ' + e.message, { style: toastStyle }) }
+    finally { setGerandoPdf(false) }
   }
 
   async function confirmarCancelamento() {
@@ -741,12 +759,20 @@ export function ExtraReposicaoPage() {
             Fica separada da grade oficial de aulas.
           </p>
         </div>
-        <button type="button" onClick={copiarLink} style={{
-          display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '9px 13px', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700,
-          border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
-        }}>
-          <Copy size={14} /> Copiar link do agendamento
-        </button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <button type="button" onClick={baixarPdf} disabled={gerandoPdf || !slots} style={{
+            display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '9px 13px', borderRadius: '10px', cursor: gerandoPdf ? 'default' : 'pointer', fontSize: '12px', fontWeight: 700,
+            border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)', opacity: !slots ? 0.6 : 1,
+          }}>
+            <FileDown size={14} /> {gerandoPdf ? 'Gerando PDF...' : 'Baixar PDF (reposição de Tênis)'}
+          </button>
+          <button type="button" onClick={copiarLink} style={{
+            display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '9px 13px', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700,
+            border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
+          }}>
+            <Copy size={14} /> Copiar link do agendamento
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
@@ -772,7 +798,7 @@ export function ExtraReposicaoPage() {
       {(carregandoAgenda || carregandoInscritos) && <Loading />}
       {erroAgenda && <div style={{ ...cartao, padding: '16px', fontSize: '13px', color: 'var(--color-state-danger)' }}>Não foi possível carregar. Confira se o SQL das aulas extras foi aplicado no Supabase.</div>}
 
-      {slots && aba === 'agendas' && <AbaAgendas slots={slots} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar} inscritos={inscritos || []} />}
+      {slots && aba === 'agendas' && <AbaAgendas slots={slots} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar} inscritos={inscritos || []} professores={professores} />}
       {inscritos && aba === 'inscritos' && (
         <AbaInscritos inscritos={inscritos} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar} onExcluir={setParaExcluir}
           nomesAlunos={nomesAlunos || []} carregandoCadastro={carregandoCadastro} />

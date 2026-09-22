@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ArrowLeftRight, CalendarClock, ChevronLeft, Gift, Info, TriangleAlert } from 'lucide-react'
 import { MAX_REPOSICOES, encontrarConflito, fazIndividual, rotuloDiaCurto, usaCreditoIndividualEmGrupo } from './constantes'
-import { useVagas } from './api'
+import { useVagas, useProfessoresPublicoFoto } from './api'
 import { Titulo, Nota, Botao, BarraInferior, Chip, AoVivo, SlotsPorDia, ModalAviso } from './ui'
 
 const FILTROS_NIVEL = [
@@ -18,6 +18,7 @@ function passaFiltroNivel(slot, filtro) {
 
 export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar, onProsseguir, onNenhumHorario }) {
   const { data: slots, isLoading, isError } = useVagas('reposicao')
+  const { data: professores } = useProfessoresPublicoFoto()
   const [dia, setDia] = useState('todos')
   const [nivel, setNivel] = useState('todos')
   const [aviso, setAviso] = useState(null) // { titulo, texto }
@@ -132,7 +133,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
 
           {visiveis.length === 0
             ? <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '13px', color: 'var(--color-text-light-muted)' }}>Nenhum horário com esses filtros.</div>
-            : <SlotsPorDia slots={visiveis} selecionadosIds={ids} onClick={clicar} restrito={s => s.formato === 'individual' && !podeIndividual} />}
+            : <SlotsPorDia slots={visiveis} selecionadosIds={ids} onClick={clicar} restrito={s => s.formato === 'individual' && !podeIndividual} professores={professores} />}
         </>
       )}
 

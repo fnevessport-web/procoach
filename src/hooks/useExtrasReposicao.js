@@ -57,6 +57,20 @@ export function useNomesAlunosAtivos() {
   })
 }
 
+// Foto dos professores pra tela interna (autenticado, então lê direto da tabela — não precisa
+// da view restrita que o link público usa, ver reposicao/api.js useProfessoresPublicoFoto).
+export function useProfessoresFotoExtra() {
+  return useQuery({
+    queryKey: ['extras-professores-foto'],
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('professores').select('id, nome, foto_url').eq('ativo', true)
+      if (error) throw error
+      return data || []
+    },
+  })
+}
+
 function useMutacao(fn) {
   const qc = useQueryClient()
   return useMutation({
