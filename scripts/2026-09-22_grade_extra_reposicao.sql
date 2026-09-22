@@ -1,7 +1,10 @@
 -- Reforço de horários de reposição de Tênis, pedido pelo clube em 22/09 (além dos já carregados
 -- em 2026-09-21_grade_aulas_extras.sql): mais um horário em quarta e quinta, e o dia inteiro de
 -- sexta-feira 25/09 (novo — sexta ainda não tinha reposição de Tênis, só aulas de presente).
--- Professor "a definir" (mesma convenção já usada na grade: aparece na tela como "Professor a definir").
+-- Professor "a definir" pra quem ainda não tem (aparece na tela como "Professor a definir"); os
+-- dois horários das 9h de quarta/quinta já nascem com o professor confirmado pelo clube (Eric e
+-- João, informado em 22/09 — ver também scripts/2026-09-22_professores_qua_qui.sql, que faz esse
+-- mesmo ajuste em produção via UPDATE, pro caso deste INSERT já ter rodado antes sem o nome).
 --
 -- Idempotente: reaproveita o índice único uq_extras_slots_grade criado em 2026-09-21 — se ele
 -- ainda não existir (script rodado fora de ordem), cria aqui também. Rodar DEPOIS de
@@ -12,8 +15,8 @@ create unique index if not exists uq_extras_slots_grade
 
 insert into extras_slots (tipo, modalidade, data_aula, horario_inicio, horario_fim, quadra, professor, publico, nivel, formato, capacidade)
 values
-  ('reposicao', 'Tênis', '2026-09-23', '09:00', '10:00', 'Quadra Coberta', 'a definir', 'adulto', 'Iniciante', 'grupo', 4),
-  ('reposicao', 'Tênis', '2026-09-24', '09:00', '10:00', 'Quadra Coberta', 'a definir', 'adulto', null, 'individual', 1),
+  ('reposicao', 'Tênis', '2026-09-23', '09:00', '10:00', 'Quadra Coberta', 'Eric', 'adulto', 'Iniciante', 'grupo', 4),
+  ('reposicao', 'Tênis', '2026-09-24', '09:00', '10:00', 'Quadra Coberta', 'João', 'adulto', null, 'individual', 1),
 
   ('reposicao', 'Tênis', '2026-09-25', '06:00', '07:00', 'Quadra Coberta', 'a definir', 'adulto', null, 'individual', 1),
   ('reposicao', 'Tênis', '2026-09-25', '07:00', '08:00', 'Quadra Coberta', 'a definir', 'adulto', 'Avançado', 'grupo', 4),
