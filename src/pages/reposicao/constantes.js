@@ -15,7 +15,6 @@ export const DIAS = [
   { key: 'seg', label: 'SEG' }, { key: 'ter', label: 'TER' }, { key: 'qua', label: 'QUA' },
   { key: 'qui', label: 'QUI' }, { key: 'sex', label: 'SEX' }, { key: 'sab', label: 'SÁB' },
 ]
-const DOW_POR_DIA = { seg: 1, ter: 2, qua: 3, qui: 4, sex: 5, sab: 6, dom: 0 }
 
 // Das 6h às 21h, igual à grade de disponibilidade dos professores.
 export const HORARIOS = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`)
@@ -143,7 +142,14 @@ function intervaloSlot(slot) {
 
 // Retorna { texto } descrevendo com o que a aula choca, ou null. `outros` = slots já escolhidos
 // (reposição + presente) que não sejam o próprio slot testado.
-export function encontrarConflito(slot, { turmas = [], outros = [] }) {
+//
+// Não compara mais contra `turmas` (a aula semanal normal do aluno): as aulas extras são
+// sessões à parte da grade oficial, então cair no mesmo dia-da-semana+horário da turma normal
+// não é um conflito de verdade — é frequentemente o caso mais comum, já que essas reposições
+// existem justamente pra cobrir aulas perdidas no mesmo horário de sempre. Bloquear isso
+// impedia gente como a Anne Brunelli (Iniciante 1, quarta 9h) de agendar a reposição de quarta
+// 9h. `turmas` continua guardado na inscrição só pra fins de relatório.
+export function encontrarConflito(slot, { outros = [] }) {
   const [ini, fim] = intervaloSlot(slot)
 
   for (const o of outros) {
@@ -153,15 +159,6 @@ export function encontrarConflito(slot, { turmas = [], outros = [] }) {
       return {
         texto: `Você já tem uma aula de ${o.modalidade} agendada em ${rotuloDiaCurto(o.data_aula)} às ${hora(o.horario_inicio)}, e não dá para estar em dois lugares ao mesmo tempo.`,
       }
-    }
-  }
-
-  const dow = ini.getDay()
-  for (const t of turmas) {
-    if (!t.horario || !t.dias?.some(d => DOW_POR_DIA[d] === dow)) continue
-    const ti = parse(`${slot.data_aula} ${t.horario}`, 'yyyy-MM-dd HH:mm', new Date())
-    if (ti < fim && ini < addHours(ti, 1)) {
-      return { texto: `Esse horário coincide com a sua aula atual de ${rotuloDiaCurto(slot.data_aula).split(' ')[0]} às ${t.horario}.` }
     }
   }
   return null
