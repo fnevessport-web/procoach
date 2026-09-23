@@ -1,4 +1,4 @@
-import { Home, CalendarDays, CalendarPlus, Users, DollarSign, FileBarChart, MessageCircle, LayoutDashboard, User, GraduationCap, ClipboardCheck, Trophy } from 'lucide-react'
+import { Home, CalendarDays, CalendarPlus, Users, DollarSign, FileBarChart, MessageCircle, LayoutDashboard, User, GraduationCap, ClipboardCheck, Trophy, ShieldCheck } from 'lucide-react'
 import { resolverRole, permissoesDoRole } from '../hooks/usePermissions'
 
 // Itens de navegação derivados das flags de usePermissions — uma fonte só de verdade
@@ -55,6 +55,9 @@ export function getNavItems(roleBruto) {
   if (permissoes.podeAcessarCadastros) items.push({ path: '/extra-reposicao', icon: CalendarPlus, label: 'Extra Reposição', labelMobile: 'Extra' })
   items.push({ path: '/ranking', icon: Trophy, label: 'Ranking' })
   if (permissoes.podeAcessarFinanceiro) items.push({ path: '/financeiro', icon: DollarSign, label: 'Financeiro' })
+  // Fila de aluno incluído por professor aguardando aprovação (não conta no pagamento até
+  // aprovar) — mesmo público que já vê salário de todo mundo.
+  if (permissoes.podeVerTodosSalarios) items.push({ path: '/aprovar-inclusoes', icon: ShieldCheck, label: 'Aprovar Inclusões', labelMobile: 'Aprovar' })
   if (permissoes.podeAcessarKPIs) items.push({ path: '/kpis', icon: FileBarChart, label: 'Relatório' })
   if (permissoes.podeVerDisponibilidade) items.push({ path: '/disponibilidade-turmas', icon: ClipboardCheck, label: 'Disponibilidade' })
   // Recepção não tem podeAcessarKPIs (fica fora do relatório liberado direto pra

@@ -9,7 +9,7 @@ const SELECT_AULAS = `
   id, data_aula, status_aula, motivo_cancelamento, turma_id, observacoes, professor_executou_id, paga_professor,
   professores!professor_executou_id(id, nome, valor_aula, valor_hora_aula, valor_aula_beach),
   turmas(nome, quadra_id, quadras(nome), modalidade_id, modalidades(nome), horario_inicio, nivel_id, niveis(nome), eh_turma_reposicao),
-  presencas(id, aluno_id, status_presenca, tipo_participacao, alunos(nome))
+  presencas(id, aluno_id, status_presenca, tipo_participacao, status_inclusao_professor, alunos(nome))
 `
 
 // O Supabase/PostgREST corta qualquer select em 1000 linhas por padrão (config.toml

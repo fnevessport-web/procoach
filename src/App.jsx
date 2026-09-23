@@ -38,6 +38,7 @@ import { DisponibilidadeTurmasPage } from './pages/disponibilidade/Disponibilida
 import { EventoInscricaoPage } from './pages/eventos/EventoInscricaoPage'
 import { ReposicaoExtraPage } from './pages/reposicao/ReposicaoExtraPage'
 import { ExtraReposicaoPage } from './pages/extras/ExtraReposicaoPage'
+import { AprovarInclusoesPage } from './pages/cadastros/AprovarInclusoesPage'
 import { PoliticaPrivacidadePage } from './pages/legal/PoliticaPrivacidadePage'
 import { ComoFuncionaAPontuacaoPage } from './pages/legal/ComoFuncionaAPontuacaoPage'
 import { ComoFuncionaORankingPage } from './pages/legal/ComoFuncionaORankingPage'
@@ -95,7 +96,7 @@ function AppRouter() {
     return <SelecionarEmpresaPage empresas={empresas} onSelecionar={setEmpresaSelecionada} />
   }
 
-  const { role, homeRoute, podeAcessarCadastros, podeAcessarFinanceiro, podeAcessarKPIs, podeVerDisponibilidade } = permissoes
+  const { role, homeRoute, podeAcessarCadastros, podeAcessarFinanceiro, podeAcessarKPIs, podeVerDisponibilidade, podeVerTodosSalarios } = permissoes
   // Conta Particular (profissional autônomo assinante) — universo de rotas totalmente à parte
   // do clube, nunca importa AulasPage/AulasCoordenador nem nenhuma outra tela de Procópio/Beach
   // Arena/Beyond. Ver src/pages/particular/.
@@ -169,6 +170,11 @@ function AppRouter() {
                 Separada da grade oficial. Professor tem menu próprio e não entra aqui. */}
             <Route path="/extra-reposicao" element={
               <RouteGuard permitido={podeAcessarCadastros && role !== 'professor'} homeRoute={homeRoute}><ExtraReposicaoPage /></RouteGuard>
+            } />
+            {/* Fila de aluno incluído por professor na própria aula, aguardando aprovação antes
+                de contar no pagamento — mesmo público que vê salário de todo mundo. */}
+            <Route path="/aprovar-inclusoes" element={
+              <RouteGuard permitido={podeVerTodosSalarios} homeRoute={homeRoute}><AprovarInclusoesPage /></RouteGuard>
             } />
             <Route path="/agenda-aluno" element={
               <RouteGuard permitido={podeAcessarCadastros} homeRoute={homeRoute}><AgendaAluno /></RouteGuard>

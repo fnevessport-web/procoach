@@ -219,7 +219,7 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
         .select(`
           id, professor_executou_id, turma_id, observacoes, data_aula, status_aula, motivo_cancelamento,
           turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao),
-          presencas(tipo_participacao),
+          presencas(tipo_participacao, status_inclusao_professor),
           professores!professor_executou_id(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular, chave_pix_beach, banco_beach, agencia_beach, conta_beach, tipo_conta_beach, tipo_pagamento_beach, nome_titular_beach, cpf_titular_beach)
         `)
         .gte('data_aula', dataInicio)
@@ -271,7 +271,7 @@ export function useAulasProfessorFinanceiro({ professorId, professor, empresa, d
         .select(`
           id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento,
           turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao),
-          presencas(tipo_participacao, status_presenca)
+          presencas(tipo_participacao, status_presenca, status_inclusao_professor)
         `)
         .eq('professor_executou_id', professorId)
         .gte('data_aula', dataInicio)
@@ -319,7 +319,7 @@ export function useAulasAnoProfessor({ professorId, professor }) {
         .select(`
           id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento,
           turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao),
-          presencas(tipo_participacao)
+          presencas(tipo_participacao, status_inclusao_professor)
         `)
         .eq('professor_executou_id', professorId)
         .eq('paga_professor', true)

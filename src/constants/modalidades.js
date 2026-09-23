@@ -157,8 +157,17 @@ export function valorCheioProfessor(professor, empresa) {
 // verdade. Sem esse filtro, uma turma com 1 mensalista + 1 reposição contava como "2
 // alunos" e pagava o valor cheio ao professor em vez do R$100 fixo — foi a causa dos
 // professores pagos a mais em fechamentos passados.
+//
+// status_inclusao_professor: quando um PROFESSOR (não coordenação/gestor) inclui um aluno
+// numa aula seu, essa presença nasce 'pendente' e não conta pro pagamento até a coordenação
+// aprovar ('aprovado') — protege contra professor inflar o próprio grupo pra subir de tier
+// sozinho. null = presença normal (matriculado de sempre, ou incluída por quem não é
+// professor), sempre conta. Ver AprovarInclusoesPage.jsx e useSalvarPresencas.
 export function qtdAlunosPagantes(aula) {
-  return (aula.presencas || []).filter(p => p.tipo_participacao !== 'cortesia' && p.tipo_participacao !== 'reposicao').length
+  return (aula.presencas || []).filter(p =>
+    p.tipo_participacao !== 'cortesia' && p.tipo_participacao !== 'reposicao' &&
+    (p.status_inclusao_professor == null || p.status_inclusao_professor === 'aprovado')
+  ).length
 }
 
 // Aula 100% cortesia: teve gente na lista de presença, mas ninguém pagante — só cortesia

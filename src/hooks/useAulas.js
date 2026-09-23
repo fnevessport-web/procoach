@@ -25,7 +25,7 @@ export function useAulas({ data, dataInicio, dataFim, professorId, modalidadeId,
           turmas(nome, horario_inicio, horario_fim, horario_dia_semana, professor_titular_id, modalidade_id, quadras(nome), modalidades(nome, icone_emoji, cor_hex), turmas_alunos(id, ativo)),
           professores!professor_executou_id(id, nome, foto_url),
           prof_titular:professores!professor_titular_id(id, nome),
-          presencas(id, aluno_id, presente, status_presenca, tipo_participacao, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof, criado_por, criado_por_nome, criado_em, alunos(id, nome, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof)),
+          presencas(id, aluno_id, presente, status_presenca, tipo_participacao, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof, criado_por, criado_por_nome, criado_em, status_inclusao_professor, motivo_inclusao, alunos(id, nome, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof)),
           contratantes(id, nome, tipo)
         `)
         .order('data_aula', { ascending: false })
@@ -349,17 +349,23 @@ export function useSalvarPresencas() {
     // separado do resto: se o mesmo upsert misturasse linhas com e sem essas chaves, o
     // PostgREST monta um único INSERT com a união das colunas e preenche de NULL quem não
     // mandou a chave, apagando o "quem incluiu" de presenças já existentes a cada salvamento.
-    mutationFn: async ({ aulaId, presencas, idsNovos = [] }) => {
+    //
+    // motivosNovos: { aluno_id: motivo } — só usado quando quem inclui é professor (ver
+    // abaixo). Presença incluída por professor nasce 'pendente' e só conta pro pagamento
+    // depois que a coordenação aprova (AprovarInclusoesPage.jsx) — protege contra professor
+    // inflar sozinho o tier de pagamento da própria turma incluindo aluno extra.
+    mutationFn: async ({ aulaId, presencas, idsNovos = [], motivosNovos = {} }) => {
       const novosSet = new Set(idsNovos)
 
-      let criadoPor = null, criadoPorNome = null
+      let criadoPor = null, criadoPorNome = null, souProfessor = false
       if (novosSet.size > 0) {
         const { data: { session } } = await supabase.auth.getSession()
         criadoPor = session?.user?.email || null
         if (session?.user?.id) {
           const { data: perfil } = await supabase
-            .from('perfis_usuario').select('nome').eq('user_id', session.user.id).maybeSingle()
+            .from('perfis_usuario').select('nome, role').eq('user_id', session.user.id).maybeSingle()
           criadoPorNome = perfil?.nome || null
+          souProfessor = perfil?.role === 'professor'
         }
       }
 
@@ -374,7 +380,11 @@ export function useSalvarPresencas() {
       })
 
       const linhasNovas = presencas.filter(p => novosSet.has(p.aluno_id))
-        .map(p => ({ ...rowBase(p), criado_por: criadoPor, criado_por_nome: criadoPorNome }))
+        .map(p => ({
+          ...rowBase(p), criado_por: criadoPor, criado_por_nome: criadoPorNome,
+          status_inclusao_professor: souProfessor ? 'pendente' : null,
+          motivo_inclusao: souProfessor ? (motivosNovos[p.aluno_id] || null) : null,
+        }))
       const linhasExistentes = presencas.filter(p => !novosSet.has(p.aluno_id)).map(rowBase)
 
       if (linhasNovas.length > 0) {

@@ -227,6 +227,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   const [alunoRecemAdicionado, setAlunoRecemAdicionado] = useState(null)
   const [adicionandoAluno, setAdicionandoAluno] = useState(null)
   const [buscaAdicionando, setBuscaAdicionando] = useState('')
+  // Professor incluindo aluno na própria aula precisa dizer o motivo antes de confirmar (ver
+  // adicionarAlunoNaLista) — a presença nasce pendente e só conta pro pagamento depois que a
+  // coordenação aprova (AprovarInclusoesPage.jsx).
+  const [pedindoMotivo, setPedindoMotivo] = useState(null) // { aulaId, aluno }
+  const [motivoDigitado, setMotivoDigitado] = useState('')
   const [editandoAula, setEditandoAula] = useState(null)
   const [editForm, setEditForm] = useState({})
   const [statusLocal, setStatusLocal] = useState({})
@@ -272,7 +277,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   const [motivoCancelamentoMassa, setMotivoCancelamentoMassa] = useState('')
   const [novoAlunoModal, setNovoAlunoModal] = useState({
     show: false, nome: '', telefone: '', nivel: '',
-    menor_idade: false, nome_responsavel: '', tipo_participacao: 'mensalista',
+    menor_idade: false, nome_responsavel: '', tipo_participacao: 'mensalista', motivo: '',
   })
   // Depois de cadastrar um aluno novo, pergunta se ele também entra em outra turma (ex:
   // matriculou 2x/semana) — evita repetir o fluxo inteiro de "Novo Aluno" pra cada dia.
@@ -623,6 +628,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
         criado_por: p.criado_por || null,
         criado_por_nome: p.criado_por_nome || null,
         criado_em: p.criado_em || null,
+        status_inclusao_professor: p.status_inclusao_professor || null,
+        motivo_inclusao: p.motivo_inclusao || null,
       }
     })
     const alunosOriginaisIds = new Set(Object.keys(inicial))
@@ -675,12 +682,25 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
     }))
   }
 
-  function adicionarAlunoNaLista(aulaId, aluno) {
+  // Professor incluindo em aula própria (professorProprioId) precisa dizer o motivo antes —
+  // some pro modal de motivo em vez de adicionar direto. Coordenação/gestor (professorProprioId
+  // null) continua exatamente como sempre foi, sem essa etapa.
+  function adicionarAlunoNaLista(aulaId, aluno, motivo) {
+    if (professorProprioId && motivo === undefined) {
+      setPedindoMotivo({ aulaId, aluno })
+      setMotivoDigitado('')
+      setAdicionandoAluno(null)
+      setBuscaAdicionando('')
+      return
+    }
     setPresencasLocal(prev => ({
       ...prev,
       [aulaId]: {
         ...prev[aulaId],
-        [aluno.id]: { aluno_id: aluno.id, nome: aluno.nome, status_presenca: 'presente', tipo_participacao: 'mensalista', alerta_nivel: false, nivel_avaliado_prof: '', obs_nivel_prof: '' }
+        [aluno.id]: {
+          aluno_id: aluno.id, nome: aluno.nome, status_presenca: 'presente', tipo_participacao: 'mensalista',
+          alerta_nivel: false, nivel_avaliado_prof: '', obs_nivel_prof: '', motivo_inclusao: motivo || null,
+        }
       }
     }))
     setAlunoRecemAdicionado(aluno.id)
@@ -939,7 +959,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       }
       let reposicoesBaixadas = []
       if (lista.length > 0) {
-        const resultado = await salvarPresencas.mutateAsync({ aulaId, presencas: lista, idsNovos: idsAdicionados })
+        const motivosNovos = Object.fromEntries(lista.filter(p => p.motivo_inclusao).map(p => [p.aluno_id, p.motivo_inclusao]))
+        const resultado = await salvarPresencas.mutateAsync({ aulaId, presencas: lista, idsNovos: idsAdicionados, motivosNovos })
         reposicoesBaixadas = resultado?.reposicoesBaixadas || []
       }
       const mensalistas = lista.filter(p => p.tipo_participacao === 'mensalista')
@@ -1350,9 +1371,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
         aluno_id: result.id, nome: result.nome, status_presenca: 'presente',
         tipo_participacao: novoAlunoModal.tipo_participacao, alerta_nivel: false,
         nivel_avaliado_prof: '', obs_nivel_prof: '',
+        motivo_inclusao: professorProprioId ? novoAlunoModal.motivo.trim() : null,
       }
       const listaAtual = [...Object.values(presencasLocal[aulaId] || {}), novaPresenca]
-      setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '', tipo_participacao: 'mensalista' })
+      setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '', tipo_participacao: 'mensalista', motivo: '' })
       await handleSalvarPresencas(aulaId, listaAtual)
       setPromptOutraTurma({
         alunoId: result.id, alunoNome: result.nome,
@@ -2559,6 +2581,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                 const isReposicao = aluno.tipo_participacao === 'reposicao'
                 const isCortesia = aluno.tipo_participacao === 'cortesia'
                 const ehNovo = alunoRecemAdicionado === aluno.aluno_id && !alunosOriginais.has(String(aluno.aluno_id))
+                // pendente = já salvo no banco esperando aprovação; motivo_inclusao sem status
+                // ainda = acabou de ser incluído nessa sessão, vai nascer pendente ao salvar.
+                const aguardandoAprovacao = aluno.status_inclusao_professor === 'pendente' || (aluno.motivo_inclusao && !aluno.status_inclusao_professor)
                 return (
                   <div key={aluno.aluno_id} style={{
                     borderRadius: '10px', padding: '10px 12px', boxSizing: 'border-box',
@@ -2600,6 +2625,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                           )}
                           {isCortesia && (
                             <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(201,138,60,0.15)', color: COR_CORTESIA, fontWeight: '600' }}>cortesia</span>
+                          )}
+                          {aguardandoAprovacao && (
+                            <span title={aluno.motivo_inclusao ? `Motivo: ${aluno.motivo_inclusao}` : undefined} style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(201,138,60,0.18)', color: 'var(--color-state-warning)', fontWeight: '700' }}>
+                            aguardando aprovação · não conta no pagamento ainda
+                            </span>
                           )}
                           {aluno.criado_por_nome && (
                             <button
@@ -2804,6 +2834,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                         ))}
                       </div>
                     </div>
+                    {professorProprioId && (
+                      <div>
+                        <div style={{ fontSize: '10px', color: 'var(--color-action-primary)', marginBottom: '5px' }}>Motivo da inclusão * — a coordenação revisa antes de contar pro seu pagamento</div>
+                        <input placeholder="Ex.: aluno chegou pra experimentar..." value={novoAlunoModal.motivo} onChange={e => setNovoAlunoModal(n => ({ ...n, motivo: e.target.value }))} style={inputStyle} />
+                      </div>
+                    )}
                     <div>
                       <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '5px' }}>Nível (opcional)</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
@@ -2825,7 +2861,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     )}
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button onClick={() => setNovoAlunoModal(n => ({ ...n, show: false }))} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '11px', cursor: 'pointer' }}>Cancelar</button>
-                      <button onClick={() => handleCadastrarNovoAluno(aula.id)} disabled={salvarAluno.isPending || salvarPresencas.isPending} style={{ flex: 2, padding: '8px', borderRadius: '8px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
+                      <button onClick={() => handleCadastrarNovoAluno(aula.id)} disabled={salvarAluno.isPending || salvarPresencas.isPending || (professorProprioId && !novoAlunoModal.motivo.trim())} style={{ flex: 2, padding: '8px', borderRadius: '8px', border: 'none', background: 'var(--color-action-primary)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer', opacity: (professorProprioId && !novoAlunoModal.motivo.trim()) ? 0.5 : 1 }}>
                         {(salvarAluno.isPending || salvarPresencas.isPending) ? 'Salvando...' : '✓ Cadastrar e Adicionar'}
                       </button>
                     </div>
@@ -2866,6 +2902,33 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
           onConfirmarTurma={handleAdicionarEmOutraTurma}
           onFechar={() => setPromptOutraTurma(null)}
         />
+      )}
+
+      {pedindoMotivo && (
+        <Modal open onClose={() => setPedindoMotivo(null)} title="Motivo da inclusão" size="sm">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+              Por que está incluindo <strong style={{ color: 'var(--text-primary)' }}>{pedindoMotivo.aluno.nome}</strong> nessa aula?
+              A coordenação vai revisar antes de contar pro seu pagamento.
+            </div>
+            <textarea
+              autoFocus value={motivoDigitado} onChange={e => setMotivoDigitado(e.target.value)}
+              placeholder="Ex.: aluno chegou pra experimentar, encaixe combinado com a coordenação..."
+              rows={3}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface-raised)', color: 'var(--text-primary)', fontSize: '13px', resize: 'vertical' }}
+            />
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setPedindoMotivo(null)} style={{ flex: 1, padding: '11px', borderRadius: '10px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+              <button
+                onClick={() => { adicionarAlunoNaLista(pedindoMotivo.aulaId, pedindoMotivo.aluno, motivoDigitado.trim()); setPedindoMotivo(null) }}
+                disabled={!motivoDigitado.trim()}
+                style={{ flex: 1, padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'white', fontWeight: 700, cursor: motivoDigitado.trim() ? 'pointer' : 'default', opacity: motivoDigitado.trim() ? 1 : 0.5 }}
+              >
+                Incluir
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {pinExclusaoPendente && (

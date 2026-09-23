@@ -501,7 +501,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       await confirmarAulasElegiveis({ professorId: cardAberto.id })
       const { data, error } = await supabase
         .from('aulas')
-        .select('id, data_aula, turma_id, status_aula, motivo_cancelamento, paga_professor, status, turmas(niveis(nome), modalidades(nome), eh_turma_reposicao), presencas(tipo_participacao)')
+        .select('id, data_aula, turma_id, status_aula, motivo_cancelamento, paga_professor, status, turmas(niveis(nome), modalidades(nome), eh_turma_reposicao), presencas(tipo_participacao, status_inclusao_professor)')
         .eq('professor_executou_id', cardAberto.id)
         .in('status_aula', ['dada', 'cancelada'])
         .eq('paga_professor', true)
