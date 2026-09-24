@@ -13,6 +13,8 @@ import { useAbrirConversaDoAluno } from '../../hooks/useMensagens'
 import { nivelPorPcScore, REAVALIACAO_PRAZO_DIAS } from '../../lib/pcScore'
 import useAppStore from '../../store/useAppStore'
 import { horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula, diaSemanaDaData, calcularValorAula } from '../../constants/modalidades'
+import { useMostrarValoresProfessor } from '../../hooks/useConfiguracoesApp'
+import { BOLINHAS_VALOR } from '../../lib/valorOculto'
 import { Loading } from '../../components/ui/Loading'
 import { ModalDetalhesDia } from '../cadastros/ProfessoresPage'
 import toast from 'react-hot-toast'
@@ -57,6 +59,11 @@ export function DashboardProfessor({ professorIdProp } = {}) {
   const navigate = useNavigate()
   const { perfil } = useAppStore()
   const professorId = professorIdProp || perfil?.professor_id
+  // Interruptor só esconde a visão do PRÓPRIO professor (dor de cabeça dele reclamando toda
+  // vez que o valor muda em tempo real) — gestor olhando o painel de outra pessoa via
+  // Cadastros (professorIdProp) sempre vê o valor real, igual à tela Financeiro.
+  const { data: mostrarValoresConfig = true } = useMostrarValoresProfessor()
+  const mostrarValores = professorIdProp ? true : mostrarValoresConfig
 
   const [mesExpandido, setMesExpandido] = useState(null)
   const [diaSelecionado, setDiaSelecionado] = useState(null)
@@ -411,7 +418,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
               {MESES[mesAtual - 1]} {anoAtual} · {ganhosMesAtual.qtd} aulas
             </div>
             <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--color-action-primary)' }}>
-              R$ {ganhosMesAtual.valor.toFixed(2).replace('.', ',')}
+              R$ {mostrarValores ? ganhosMesAtual.valor.toFixed(2).replace('.', ',') : BOLINHAS_VALOR}
             </div>
           </div>
           <div style={{ textAlign: 'center' }}>
@@ -688,7 +695,7 @@ function MesExpandidoDetalhe({ mes, ano, aulas, professor, onClose, onSelecionar
                 <span style={{ textTransform: 'capitalize' }}>{format(new Date(dataStr + 'T12:00'), "dd 'de' MMM", { locale: ptBR })}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ color: 'var(--color-text-dark-secondary)' }}>{doDia.length} aula{doDia.length !== 1 ? 's' : ''}</span>
-                  <span style={{ color: 'var(--color-action-primary)', fontWeight: '600' }}>R$ {totalDia.toFixed(2).replace('.', ',')}</span>
+                  <span style={{ color: 'var(--color-action-primary)', fontWeight: '600' }}>R$ {mostrarValores ? totalDia.toFixed(2).replace('.', ',') : BOLINHAS_VALOR}</span>
                   <ChevronRight size={14} color="var(--color-text-dark-secondary)" />
                 </span>
               </button>

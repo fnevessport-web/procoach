@@ -4,6 +4,8 @@ import { Upload, FileText, ChevronDown, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import useAppStore from '../../store/useAppStore'
 import { useAulasAnoProfessor, useBoletosProfessor, useRemoverAnexoBoleto } from '../../hooks/useFinanceiro'
+import { useMostrarValoresProfessor } from '../../hooks/useConfiguracoesApp'
+import { BOLINHAS_VALOR } from '../../lib/valorOculto'
 import { Loading } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
 
@@ -65,6 +67,7 @@ export function MeuFinanceiroProfessor() {
   const [erro, setErro] = useState('')
   const [dialogAnexo, setDialogAnexo] = useState(null) // { acao: 'anexar'|'excluir', tipo: 'boleto'|'nf', file? } | null
   const removerAnexo = useRemoverAnexoBoleto()
+  const { data: mostrarValores = true } = useMostrarValoresProfessor()
 
   const { data: professor, isLoading: carregandoProfessor } = useQuery({
     queryKey: ['meu_financeiro_professor', professorId],
@@ -205,7 +208,7 @@ export function MeuFinanceiroProfessor() {
                 }}>
                   <div style={{ fontSize: '10px', fontWeight: '700', color: isSel ? 'var(--color-action-primary)' : 'var(--color-text-dark-secondary)' }}>{m}</div>
                   <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-dark-primary)', margin: '3px 0' }}>{doMes.length > 0 ? doMes.length : '—'}</div>
-                  {valor > 0 && <div style={{ fontSize: '9px', color: 'var(--color-state-success)' }}>{fmtBRL(valor)}</div>}
+                  {valor > 0 && <div style={{ fontSize: '9px', color: 'var(--color-state-success)' }}>{mostrarValores ? fmtBRL(valor) : `R$ ${BOLINHAS_VALOR}`}</div>}
                 </button>
               )
             })}
@@ -219,7 +222,7 @@ export function MeuFinanceiroProfessor() {
             <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
               {MESES_EXT[mesSel - 1]}/{anoSel}
             </div>
-            <div style={{ fontSize: '30px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{fmtBRL(valorMesSel)}</div>
+            <div style={{ fontSize: '30px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{mostrarValores ? fmtBRL(valorMesSel) : `R$ ${BOLINHAS_VALOR}`}</div>
             <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', marginTop: '4px' }}>
               {aulasMesSel.length} {aulasMesSel.length === 1 ? 'aula' : 'aulas'}
             </div>
@@ -317,7 +320,7 @@ export function MeuFinanceiroProfessor() {
                     {a.horario && <span style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginLeft: '8px' }}>{a.horario.slice(0, 5)}</span>}
                     {a.turmas?.nome && <span style={{ fontSize: '11px', color: 'var(--color-text-dark-muted)', marginLeft: '8px' }}>{a.turmas.nome}</span>}
                   </div>
-                  <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-state-success)' }}>{fmtBRL(a.valor)}</span>
+                  <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-state-success)' }}>{mostrarValores ? fmtBRL(a.valor) : `R$ ${BOLINHAS_VALOR}`}</span>
                 </div>
               ))}
             </div>

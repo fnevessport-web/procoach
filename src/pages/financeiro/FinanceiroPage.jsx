@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, endOfMonth, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash, Search, Ban, Download } from 'lucide-react'
+import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash, Search, Ban, Download, Eye, EyeOff } from 'lucide-react'
 import {
   useCustoProfessores,
   useAulasProfessorFinanceiro,
@@ -24,6 +24,7 @@ import {
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { calcularValorAula, aulaComTodosAusentes, calcularMargensTenis, participantesForaDoPagamento, aulaCanceladaPorChuva } from '../../constants/modalidades'
 import { useEmpresaVinculada } from '../../hooks/useProfessores'
+import { useMostrarValoresProfessor, useAlternarMostrarValoresProfessor } from '../../hooks/useConfiguracoesApp'
 import { buscarRelatorioMargem } from '../../hooks/useRelatorioMargem'
 import { exportarRelatorioMargemPDF } from '../../lib/relatorioMargemPdf'
 import { buscarConfrontoAlunos, MODALIDADES_PROCOPIO } from '../../hooks/useRelatorioConfrontoAlunos'
@@ -613,6 +614,8 @@ export function FinanceiroPage() {
   // Conta vinculada a uma única empresa (ex: "Beach Arena - Financeiro") não pode ver nem
   // acessar por navegação direta os dados financeiros da outra — ver useEmpresaVinculada.
   const empresaVinculada = useEmpresaVinculada()
+  const { data: mostrarValoresProf = true } = useMostrarValoresProfessor()
+  const alternarValoresProf = useAlternarMostrarValoresProfessor()
 
   const [view, setView] = useState(savedFin?.view || 'empresas') // 'empresas' | 'empresa' | 'professor'
   const [empresaId, setEmpresaId] = useState(savedFin?.empresaId || null)
@@ -1284,20 +1287,46 @@ export function FinanceiroPage() {
           <h1 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-dark-primary)', margin: 0 }}>
             Financeiro
           </h1>
-          <button
-            onClick={() => setPinModal({ professorId: null, initialMode: 'config1' })}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '5px',
-              padding: '7px 12px', borderRadius: '9px',
-              border: temPin ? '1px solid rgba(165,76,46,0.3)' : '1px solid var(--color-border-dark)',
-              background: temPin ? 'rgba(165,76,46,0.06)' : 'var(--color-surface-dark-raised)',
-              color: temPin ? 'var(--color-action-primary)' : 'var(--color-text-dark-secondary)',
-              fontSize: '11px', fontWeight: '600', cursor: 'pointer',
-            }}
-          >
-            <Hash size={11} />
-            {temPin ? 'Alterar PIN' : 'Criar PIN'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              title={mostrarValoresProf
+                ? 'Professor vê o próprio valor em tempo real. Clique pra ocultar até o fechamento do mês.'
+                : 'Valor oculto pra professor (só ele — você continua vendo tudo aqui normal). Clique pra mostrar de novo.'}
+              onClick={() => alternarValoresProf.mutate(!mostrarValoresProf, {
+                onSuccess: () => toast.success(
+                  mostrarValoresProf ? 'Valores ocultados da visão do professor' : 'Valores liberados pro professor ver',
+                  { style: toastStyle }
+                ),
+                onError: e => toast.error(e.message, { style: toastStyle }),
+              })}
+              disabled={alternarValoresProf.isPending}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                padding: '7px 12px', borderRadius: '9px',
+                border: mostrarValoresProf ? '1px solid var(--color-border-dark)' : '1px solid rgba(180,71,47,0.35)',
+                background: mostrarValoresProf ? 'var(--color-surface-dark-raised)' : 'rgba(180,71,47,0.1)',
+                color: mostrarValoresProf ? 'var(--color-text-dark-secondary)' : 'var(--color-state-danger)',
+                fontSize: '11px', fontWeight: '600', cursor: alternarValoresProf.isPending ? 'default' : 'pointer',
+              }}
+            >
+              {mostrarValoresProf ? <Eye size={11} /> : <EyeOff size={11} />}
+              {mostrarValoresProf ? 'Professor vê valores' : 'Valores ocultos pro professor'}
+            </button>
+            <button
+              onClick={() => setPinModal({ professorId: null, initialMode: 'config1' })}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                padding: '7px 12px', borderRadius: '9px',
+                border: temPin ? '1px solid rgba(165,76,46,0.3)' : '1px solid var(--color-border-dark)',
+                background: temPin ? 'rgba(165,76,46,0.06)' : 'var(--color-surface-dark-raised)',
+                color: temPin ? 'var(--color-action-primary)' : 'var(--color-text-dark-secondary)',
+                fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+              }}
+            >
+              <Hash size={11} />
+              {temPin ? 'Alterar PIN' : 'Criar PIN'}
+            </button>
+          </div>
         </div>
 
         {pinModal && (
