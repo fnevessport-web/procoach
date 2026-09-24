@@ -83,9 +83,14 @@ export function AulasAdmin() {
     if (location.state?.abrirAoDestacar) setTab('hoje')
   }
 
+  // Clicar num quadrado vazio da grade já sabe dia/quadra/horário — vai direto pro caso mais
+  // comum (criar turma nova ali mesmo, só faltando modalidade/nível/professor). As outras opções
+  // (aula avulsa, posicionar turma existente, aula mensal sem turma nova) continuam disponíveis
+  // como link secundário dentro do próprio ModalCriarTurmaAqui, não sumiram — só pararam de
+  // exigir um menu no meio do caminho pra quem só queria criar a turma.
   function handleCelulaVazia({ horario, quadraNome, data }) {
     setAtalho({ horario, quadraNome, data })
-    setModalGerar('menu_atalho')
+    setModalGerar('criar_turma_atalho')
   }
 
   function fecharTudo() {
@@ -219,18 +224,6 @@ export function AulasAdmin() {
             </div>
             <ChevronRight size={16} color="var(--color-text-light-secondary)" />
           </button>
-          <button onClick={() => setModalGerar('criar_turma_atalho')} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '16px', borderRadius: '12px', border: 'none',
-            backgroundColor: 'var(--color-surface-light-overlay)', outline: '1px solid var(--color-border-light)',
-            cursor: 'pointer', textAlign: 'left', width: '100%',
-          }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '4px' }}><Plus size={13} /> Criar turma nova aqui</div>
-              <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Nível, professor e alunos — quadra/dia/horário já vêm daqui</div>
-            </div>
-            <ChevronRight size={16} color="var(--color-text-light-secondary)" />
-          </button>
           <button onClick={() => setModalGerar('mensal')} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '16px', borderRadius: '12px', border: 'none',
@@ -259,6 +252,7 @@ export function AulasAdmin() {
         onClose={fecharTudo}
         atalho={atalho}
         onCriada={(turmaId) => { setTurmaRecemPosicionada(turmaId); setModalGerar('mensal') }}
+        onEscolherOutra={() => setModalGerar('menu_atalho')}
       />
       <ModalAulaAvulsa
         open={modalGerar === 'avulsa' || modalGerar === 'avulsa_atalho'}
@@ -1024,7 +1018,7 @@ function ModalPosicionarTurma({ open, onClose, atalho, onPosicionado }) {
 
 // "Criar turma nova aqui" — cria a turma já com quadra/dia/horário do clique na grade, só
 // pedindo modalidade (pra escopar nível/professor/aluno), nível, professor e alunos.
-function ModalCriarTurmaAqui({ open, onClose, atalho, onCriada }) {
+function ModalCriarTurmaAqui({ open, onClose, atalho, onCriada, onEscolherOutra }) {
   const { data: todasQuadras } = useQuadras(null)
   const { data: modalidades } = useModalidades()
   const salvarTurma = useSalvarTurma()
@@ -1117,6 +1111,14 @@ function ModalCriarTurmaAqui({ open, onClose, atalho, onCriada }) {
           background: 'var(--color-action-primary)', color: 'white', fontSize: '14px', fontWeight: '600',
           cursor: !nivelId ? 'not-allowed' : 'pointer', opacity: !nivelId ? 0.6 : 1,
         }}>{salvando ? 'Criando...' : 'Criar turma'}</button>
+
+        {onEscolherOutra && (
+          <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--color-text-light-muted)' }}>
+            Não é isso? <button onClick={onEscolherOutra} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--color-action-primary)', fontWeight: '600', cursor: 'pointer', fontSize: '11px', textDecoration: 'underline' }}>
+              Aula avulsa, posicionar turma existente ou aula mensal
+            </button>
+          </div>
+        )}
       </div>
     </Modal>
   )

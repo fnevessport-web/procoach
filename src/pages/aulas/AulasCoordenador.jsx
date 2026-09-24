@@ -1945,24 +1945,27 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     return (
                       <button key={quadra}
                         onClick={() => onCelulaVazia?.({ horario, quadraNome: quadra, data })}
+                        title={onCelulaVazia ? 'Clique para criar uma turma nesse dia/quadra/horário' : undefined}
                         style={{
                           width: '140px', flexShrink: 0, marginRight: '4px',
                           backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px',
-                          border: '1px solid var(--color-border-light-subtle)', minHeight: '72px',
-                          cursor: onCelulaVazia ? 'pointer' : 'default',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          border: onCelulaVazia ? '1.5px dashed color-mix(in srgb, var(--color-action-primary) 40%, transparent)' : '1px solid var(--color-border-light-subtle)',
+                          minHeight: '72px', cursor: onCelulaVazia ? 'pointer' : 'default',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px',
+                          color: onCelulaVazia ? 'var(--color-action-primary)' : 'inherit',
+                          transition: 'all 0.12s',
                         }}
                         onMouseEnter={e => {
                           if (!onCelulaVazia) return
-                          e.currentTarget.style.borderColor = 'rgba(165,76,46,0.2)'
-                          e.currentTarget.style.backgroundColor = 'var(--color-surface-light-overlay)'
+                          e.currentTarget.style.borderColor = 'var(--color-action-primary)'
+                          e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--color-action-primary) 8%, var(--color-surface-light-overlay))'
                         }}
                         onMouseLeave={e => {
-                          e.currentTarget.style.borderColor = 'var(--color-border-light-subtle)'
+                          e.currentTarget.style.borderColor = onCelulaVazia ? 'color-mix(in srgb, var(--color-action-primary) 40%, transparent)' : 'var(--color-border-light-subtle)'
                           e.currentTarget.style.backgroundColor = 'var(--color-surface-light-overlay)'
                         }}
                       >
-                        {onCelulaVazia && <span style={{ fontSize: '20px', color: 'var(--color-border-light)' }}>+</span>}
+                        {onCelulaVazia && <><Plus size={22} strokeWidth={2.5} /><span style={{ fontSize: '10px', fontWeight: 700 }}>Nova turma</span></>}
                       </button>
                     )
                   }
