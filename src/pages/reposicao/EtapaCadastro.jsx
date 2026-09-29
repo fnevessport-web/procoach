@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { CalendarCheck, CloudRain, Gift, Info, Plus, Trash2, User, Users } from 'lucide-react'
 import {
-  DIAS, HORARIOS, NIVEIS_ADULTO, NIVEIS_KIDS, TURMA_VAZIA, MODALIDADES_PRESENTE, MAX_REPOSICOES,
+  DIAS, HORARIOS, NIVEIS_ADULTO, NIVEIS_KIDS, TURMA_VAZIA, MODALIDADES_PRESENTE, MAX_REPOSICOES, OFERECE_PRESENTE,
   COR_ADULTO, COR_KIDS, estiloInput, WHATSAPP_EXIBIDO, WHATSAPP_LINK_GRADE_REGULAR,
 } from './constantes'
 import { Titulo, Cartao, Nota, Botao, Campo, Chip } from './ui'
@@ -133,7 +133,7 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
         Se depois disso ainda houver aulas a repor, faremos novos agendamentos. Ninguém ficará sem a sua reposição.
       </Nota>
 
-      <div style={{
+      {OFERECE_PRESENTE && <div style={{
         borderRadius: '14px', padding: '16px', marginBottom: '22px', boxSizing: 'border-box',
         backgroundColor: 'var(--color-brand-verde-court)', color: 'var(--color-text-dark-primary)',
       }}>
@@ -156,9 +156,9 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
             </span>
           ))}
         </div>
-      </div>
+      </div>}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '16px', marginTop: OFERECE_PRESENTE ? 0 : '22px' }}>
         <Campo label="Nome completo do aluno" dica="Digite o nome completo, como está no seu cadastro, para o sistema identificar o aluno e dar baixa na aula reposta.">
           <input style={estiloInput} value={dados.nome} placeholder="Nome e sobrenome" autoComplete="name"
             onChange={e => setDados(d => ({ ...d, nome: e.target.value }))} />

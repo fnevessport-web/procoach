@@ -1,9 +1,9 @@
-import { CalendarSearch, ChevronLeft, Gift, MessageCircle } from 'lucide-react'
-import { WHATSAPP_EXIBIDO, WHATSAPP_LINK_SEM_HORARIO } from './constantes'
+import { CalendarSearch, Check, ChevronLeft, Gift, MessageCircle } from 'lucide-react'
+import { OFERECE_PRESENTE, WHATSAPP_EXIBIDO, WHATSAPP_LINK_SEM_HORARIO } from './constantes'
 import { Titulo, Cartao, Botao, BarraInferior } from './ui'
 
 // Aparece quando a pessoa diz que nenhum horário de reposição atende: antes de levá-la ao
-// presente, explica que a reposição dela não se perde e que ela deve falar com a Procopio pra
+// presente (ou ao final, se a rodada não tem presente), explica que a reposição dela não se perde e que ela deve falar com a Procopio pra
 // conferirmos os horários da grade regular.
 export function EtapaSemHorario({ onVoltar, onContinuar }) {
   return (
@@ -39,12 +39,16 @@ export function EtapaSemHorario({ onVoltar, onContinuar }) {
         </a>
       </Cartao>
 
-      <div style={{ fontSize: '13px', lineHeight: 1.65, color: 'var(--color-text-light-secondary)' }}>
-        Você também pode continuar agora e escolher o seu <strong style={{ color: 'var(--color-text-light-primary)' }}>presente</strong>: 1 aula gratuita em cada uma das outras modalidades.
-      </div>
+      {OFERECE_PRESENTE && (
+        <div style={{ fontSize: '13px', lineHeight: 1.65, color: 'var(--color-text-light-secondary)' }}>
+          Você também pode continuar agora e escolher o seu <strong style={{ color: 'var(--color-text-light-primary)' }}>presente</strong>: 1 aula gratuita em cada uma das outras modalidades.
+        </div>
+      )}
 
       <BarraInferior>
-        <Botao onClick={onContinuar}><Gift size={17} /> Entendi, quero escolher meu presente</Botao>
+        {OFERECE_PRESENTE
+          ? <Botao onClick={onContinuar}><Gift size={17} /> Entendi, quero escolher meu presente</Botao>
+          : <Botao onClick={onContinuar}><Check size={17} /> Entendi, continuar</Botao>}
       </BarraInferior>
     </div>
   )

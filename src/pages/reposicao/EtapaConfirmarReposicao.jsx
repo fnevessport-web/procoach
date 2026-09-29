@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CalendarCheck, ChevronLeft, Clock, MapPin, TriangleAlert, User } from 'lucide-react'
-import { faixaHorario, rotuloDiaCurto, rotuloDiaLongo, rotuloNivel, rotuloProfessor, ordenarSlots, usaCreditoIndividualEmGrupo, TEXTO_DECLARACAO } from './constantes'
+import { OFERECE_PRESENTE, faixaHorario, rotuloDiaCurto, rotuloDiaLongo, rotuloNivel, rotuloProfessor, ordenarSlots, usaCreditoIndividualEmGrupo, TEXTO_DECLARACAO } from './constantes'
 import { confirmarReposicao } from './api'
 import { Titulo, Cartao, Nota, Botao, BarraInferior } from './ui'
 
@@ -94,7 +94,9 @@ export function EtapaConfirmarReposicao({ dados, selecionados, onVoltar, onConfi
         </div>
       ) : (
         <Nota icone={<CalendarCheck size={16} />} style={{ marginBottom: '18px' }}>
-          Você não agendou nenhuma reposição agora. Tudo bem. Na próxima etapa você ainda pode escolher o seu presente, e depois é só falar com a gente pelo WhatsApp para verificarmos a sua reposição.
+          {OFERECE_PRESENTE
+            ? 'Você não agendou nenhuma reposição agora. Tudo bem. Na próxima etapa você ainda pode escolher o seu presente, e depois é só falar com a gente pelo WhatsApp para verificarmos a sua reposição.'
+            : 'Você não agendou nenhuma reposição agora. Tudo bem. É só falar com a gente pelo WhatsApp para verificarmos a sua reposição.'}
         </Nota>
       )}
 

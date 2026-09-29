@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, Copy, FileDown, Gift, Grid3x3, List, MessageCircle, Pencil, RotateCcw, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
+import { AlertTriangle, CalendarDays, Check, ChevronDown, ChevronRight, Copy, FileDown, Gift, Grid3x3, History, List, MessageCircle, Pencil, RotateCcw, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { usePermissions } from '../../hooks/usePermissions'
 import {
@@ -7,7 +7,7 @@ import {
   useExcluirInscricaoExtra, useIncluirAlunoExtra, useNomesAlunosAtivos, useProfessoresFotoExtra,
 } from '../../hooks/useExtrasReposicao'
 import {
-  DIAS, estadoVagas, faixaHorario, nomeProfessor, MODALIDADES_PRESENTE, IMG_MODALIDADE, rotuloDiaCurto, rotuloDiaLongo, rotuloNivel, usaCreditoIndividualEmGrupo,
+  DIAS, estadoVagas, faixaHorario, nomeProfessor, MODALIDADES_PRESENTE, IMG_MODALIDADE, INICIO_RODADA_ATUAL, rotuloDiaCurto, rotuloDiaLongo, rotuloNivel, usaCreditoIndividualEmGrupo,
 } from '../reposicao/constantes'
 import { FotoProfessorMini } from '../reposicao/ui'
 import { Loading } from '../../components/ui/Loading'
@@ -345,6 +345,7 @@ function QuadradoSlot({ slot, onClick, professores }) {
 }
 
 function AbaAgendas({ slots, podeEditar, onCancelar, inscritos, professores }) {
+  // `inscritos` aqui é a lista completa (todas as rodadas), usada só pra reaproveitar cadastro no "Incluir aluno".
   const [tipo, setTipo] = useState('todos')
   const [modalidade, setModalidade] = useState('todas')
   const [dia, setDia] = useState('todos')
@@ -353,6 +354,7 @@ function AbaAgendas({ slots, podeEditar, onCancelar, inscritos, professores }) {
   const [buscaAluno, setBuscaAluno] = useState('')
 
   const modalidades = useMemo(() => [...new Set(slots.map(s => s.modalidade))], [slots])
+  const variosTipos = useMemo(() => new Set(slots.map(s => s.tipo)).size > 1, [slots])
   const dias = useMemo(() => [...new Set(slots.map(s => s.data_aula))], [slots])
   // Busca por aluno filtra só os horários onde alguém com esse nome tem agendamento confirmado
   // (reposição ou presente) — pra achar rápido "onde essa pessoa está agendada" sem precisar ir
@@ -383,15 +385,19 @@ function AbaAgendas({ slots, podeEditar, onCancelar, inscritos, professores }) {
           <input value={buscaAluno} onChange={e => setBuscaAluno(e.target.value)} placeholder="Buscar aluno agendado (nome)"
             style={{ width: '100%', boxSizing: 'border-box', fontSize: '13px', padding: '9px 11px 9px 34px', borderRadius: '10px', border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)' }} />
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-          <Chip ativo={tipo === 'todos'} onClick={() => setTipo('todos')}>Todas</Chip>
-          <Chip ativo={tipo === 'reposicao'} onClick={() => setTipo('reposicao')}>Reposição de Tênis</Chip>
-          <Chip ativo={tipo === 'presente'} onClick={() => setTipo('presente')}>Presente</Chip>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-          <Chip ativo={modalidade === 'todas'} onClick={() => setModalidade('todas')}>Todas as modalidades</Chip>
-          {modalidades.map(m => <Chip key={m} ativo={modalidade === m} onClick={() => setModalidade(m)}>{m}</Chip>)}
-        </div>
+        {variosTipos && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            <Chip ativo={tipo === 'todos'} onClick={() => setTipo('todos')}>Todas</Chip>
+            <Chip ativo={tipo === 'reposicao'} onClick={() => setTipo('reposicao')}>Reposição de Tênis</Chip>
+            <Chip ativo={tipo === 'presente'} onClick={() => setTipo('presente')}>Presente</Chip>
+          </div>
+        )}
+        {modalidades.length > 1 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            <Chip ativo={modalidade === 'todas'} onClick={() => setModalidade('todas')}>Todas as modalidades</Chip>
+            {modalidades.map(m => <Chip key={m} ativo={modalidade === m} onClick={() => setModalidade(m)}>{m}</Chip>)}
+          </div>
+        )}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           <Chip ativo={dia === 'todos'} onClick={() => setDia('todos')}>Todos os dias</Chip>
           {dias.map(d => <Chip key={d} ativo={dia === d} onClick={() => setDia(d)}>{rotuloDiaCurto(d)}</Chip>)}
@@ -409,7 +415,7 @@ function AbaAgendas({ slots, podeEditar, onCancelar, inscritos, professores }) {
         </div>
       </div>
 
-      {grupos.length === 0 && <div style={{ ...cartao, padding: '24px', textAlign: 'center', fontSize: '13px', color: 'var(--color-text-light-muted)' }}>Nenhum horário com esses filtros.</div>}
+      {grupos.length === 0 && <div style={{ ...cartao, padding: '24px', textAlign: 'center', fontSize: '13px', color: 'var(--color-text-light-muted)' }}>{slots.length ? 'Nenhum horário com esses filtros.' : 'Nenhum horário cadastrado nesta rodada ainda.'}</div>}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
         {grupos.map(g => {
@@ -536,7 +542,7 @@ function CardInscrito({ insc, podeEditar, onCancelar, onExcluir, palavrasAlunos,
   )
 }
 
-function AbaInscritos({ inscritos, podeEditar, onCancelar, onExcluir, nomesAlunos, carregandoCadastro }) {
+function AbaInscritos({ inscritos, podeEditar, onCancelar, onExcluir, nomesAlunos, carregandoCadastro, comPresente }) {
   const [busca, setBusca] = useState('')
   const [conf, setConf] = useState('todos')
   const [soForaCadastro, setSoForaCadastro] = useState(false)
@@ -592,12 +598,12 @@ function AbaInscritos({ inscritos, podeEditar, onCancelar, onExcluir, nomesAluno
               color: soForaCadastro ? 'white' : 'var(--color-state-danger)',
             }}><AlertTriangle size={13} />Só fora do cadastro ({foraDoCadastroIds.size})</button>
           )}
-          <button type="button" onClick={() => setSoSemPresente(v => !v)} style={{
+          {comPresente && <button type="button" onClick={() => setSoSemPresente(v => !v)} style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
             border: `1px solid ${soSemPresente ? 'var(--color-brand-verde-card)' : 'var(--color-border-light)'}`,
             backgroundColor: soSemPresente ? 'var(--color-brand-verde-card)' : 'var(--color-surface-light-raised)',
             color: soSemPresente ? 'var(--color-text-dark-primary)' : 'var(--color-text-light-secondary)',
-          }}><Gift size={13} />Ainda sem presente ({semPresenteIds.size})</button>
+          }}><Gift size={13} />Ainda sem presente ({semPresenteIds.size})</button>}
         </div>
       </div>
 
@@ -702,16 +708,38 @@ export function ExtraReposicaoPage() {
   const [aba, setAba] = useState('agendas')
   const [paraCancelar, setParaCancelar] = useState(null)
   const [paraExcluir, setParaExcluir] = useState(null)
+  // "atual" = rodada em andamento (só reposição de Tênis, a partir de INICIO_RODADA_ATUAL);
+  // "historico" = rodadas anteriores (reposição + presente), mantidas pra consulta de quem agendou.
+  const [visao, setVisao] = useState('atual')
+  const historico = visao === 'historico'
+
+  const naVisao = useMemo(() => {
+    const dataNaVisao = d => (d < INICIO_RODADA_ATUAL) === historico
+    const tipoNaVisao = t => historico || t === 'reposicao'
+    return { slot: s => !!s && dataNaVisao(s.data_aula) && tipoNaVisao(s.tipo), dataNaVisao, tipoNaVisao }
+  }, [historico])
+
+  const slotsVisao = useMemo(() => slots && slots.filter(naVisao.slot), [slots, naVisao])
+
+  // Cada inscrição mostra só os agendamentos da visão. Quem não agendou nada (só cadastro) entra
+  // na visão pela data em que se inscreveu.
+  const inscritosVisao = useMemo(() => inscritos && inscritos.flatMap(i => {
+    const todos = i.extras_agendamentos || []
+    const ags = todos.filter(a => naVisao.slot(a.extras_slots && { ...a.extras_slots, tipo: a.tipo }))
+    if (ags.length) return [{ ...i, extras_agendamentos: ags }]
+    if (!todos.length && naVisao.dataNaVisao(i.criado_em.slice(0, 10))) return [i]
+    return []
+  }), [inscritos, naVisao])
 
   const resumo = useMemo(() => {
-    const conf = (slots || []).flatMap(s => (s.extras_agendamentos || []).filter(a => a.status === 'confirmado'))
+    const conf = (slotsVisao || []).flatMap(s => (s.extras_agendamentos || []).filter(a => a.status === 'confirmado'))
     return {
-      pessoas: (inscritos || []).length,
+      pessoas: (inscritosVisao || []).length,
       reposicoes: conf.filter(a => a.tipo === 'reposicao').length,
       presentes: conf.filter(a => a.tipo === 'presente').length,
-      naoLocalizados: (inscritos || []).filter(i => i.conferencia === 'nao_localizado').length,
+      naoLocalizados: (inscritosVisao || []).filter(i => i.conferencia === 'nao_localizado').length,
     }
-  }, [slots, inscritos])
+  }, [slotsVisao, inscritosVisao])
 
   async function copiarLink() {
     try { await navigator.clipboard.writeText(LINK_PUBLICO); toast.success('Link copiado', { style: toastStyle }) }
@@ -721,7 +749,7 @@ export function ExtraReposicaoPage() {
   const [gerandoPdf, setGerandoPdf] = useState(false)
   async function baixarPdf() {
     setGerandoPdf(true)
-    try { await gerarPdfGradeReposicao(slots || [], professores || []); toast.success('PDF gerado', { style: toastStyle }) }
+    try { await gerarPdfGradeReposicao(slotsVisao || [], professores || []); toast.success('PDF gerado', { style: toastStyle }) }
     catch (e) { toast.error('Não foi possível gerar o PDF: ' + e.message, { style: toastStyle }) }
     finally { setGerandoPdf(false) }
   }
@@ -755,7 +783,7 @@ export function ExtraReposicaoPage() {
         <div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, margin: 0, color: 'var(--color-text-light-primary)' }}>Extra Reposição</h1>
           <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', margin: '4px 0 0', maxWidth: '620px', lineHeight: 1.5 }}>
-            Aulas extras da chuva (reposição de Tênis e aulas de presente), com professor, vagas e quem agendou pelo link.
+            Aulas extras da chuva (reposição de Tênis; na 1ª rodada, também aulas de presente), com professor, vagas e quem agendou pelo link.
             Fica separada da grade oficial de aulas.
           </p>
         </div>
@@ -775,14 +803,24 @@ export function ExtraReposicaoPage() {
         </div>
       </div>
 
+      <div style={{ display: 'inline-flex', gap: '2px', padding: '3px', borderRadius: '10px', marginBottom: '14px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)' }}>
+        {[['atual', 'Rodada atual', RotateCcw], ['historico', 'Histórico (rodadas anteriores)', History]].map(([k, r, Icone]) => (
+          <button key={k} type="button" onClick={() => setVisao(k)} style={{
+            display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 13px', borderRadius: '7px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 700,
+            backgroundColor: visao === k ? 'var(--color-brand-verde-court)' : 'transparent',
+            color: visao === k ? 'var(--color-text-dark-primary)' : 'var(--color-text-light-secondary)',
+          }}><Icone size={14} />{r}</button>
+        ))}
+      </div>
+
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
         {stat('pessoas inscritas', resumo.pessoas)}
         {stat('reposições agendadas', resumo.reposicoes, 'var(--color-action-primary)')}
-        {stat('aulas de presente', resumo.presentes, 'var(--color-brand-verde-card)')}
+        {historico && stat('aulas de presente', resumo.presentes, 'var(--color-brand-verde-card)')}
         {stat('não localizados', resumo.naoLocalizados, resumo.naoLocalizados ? 'var(--color-state-danger)' : undefined)}
       </div>
 
-      {inscritos && <ResumoPresente inscritos={inscritos} />}
+      {historico && inscritosVisao && <ResumoPresente inscritos={inscritosVisao} />}
 
       <div style={{ display: 'flex', gap: '4px', borderBottom: '1px solid var(--color-border-light)', marginBottom: '16px' }}>
         {[['agendas', 'Agendas'], ['inscritos', `Inscritos (${resumo.pessoas})`]].map(([k, r]) => (
@@ -798,10 +836,10 @@ export function ExtraReposicaoPage() {
       {(carregandoAgenda || carregandoInscritos) && <Loading />}
       {erroAgenda && <div style={{ ...cartao, padding: '16px', fontSize: '13px', color: 'var(--color-state-danger)' }}>Não foi possível carregar. Confira se o SQL das aulas extras foi aplicado no Supabase.</div>}
 
-      {slots && aba === 'agendas' && <AbaAgendas slots={slots} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar} inscritos={inscritos || []} professores={professores} />}
-      {inscritos && aba === 'inscritos' && (
-        <AbaInscritos inscritos={inscritos} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar} onExcluir={setParaExcluir}
-          nomesAlunos={nomesAlunos || []} carregandoCadastro={carregandoCadastro} />
+      {slotsVisao && aba === 'agendas' && <AbaAgendas key={visao} slots={slotsVisao} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar} inscritos={inscritos || []} professores={professores} />}
+      {inscritosVisao && aba === 'inscritos' && (
+        <AbaInscritos key={visao} inscritos={inscritosVisao} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar} onExcluir={setParaExcluir}
+          nomesAlunos={nomesAlunos || []} carregandoCadastro={carregandoCadastro} comPresente={historico} />
       )}
 
       <Modal open={!!paraCancelar} onClose={() => setParaCancelar(null)} title="Cancelar agendamento" size="sm">

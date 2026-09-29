@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { fazGrupo, fazIndividual } from './constantes'
+import { OFERECE_PRESENTE, fazGrupo, fazIndividual } from './constantes'
 import { Pagina } from './ui'
 import { EtapaCadastro } from './EtapaCadastro'
 import { EtapaReposicao } from './EtapaReposicao'
@@ -21,7 +21,8 @@ const DADOS_VAZIOS = { nome: '', turmas: [] }
 // Etapas: cadastro → reposicao (grade) → confirmar (declaração; grava a inscrição e reserva as
 // vagas) → presente → resumo (grava o presente) → final. Pular o presente vai direto pro final.
 // "Nenhum horário me atende" passa por sem_horario (orienta a falar com a equipe) e segue pro
-// confirmar sem reposição e depois pro presente.
+// confirmar sem reposição e depois pro presente. Com OFERECE_PRESENTE = false (2ª rodada), o
+// confirmar vai direto pro final.
 export function ReposicaoExtraPage() {
   const qc = useQueryClient()
   const [etapa, setEtapa] = useState('cadastro')
@@ -82,7 +83,7 @@ export function ReposicaoExtraPage() {
       {etapa === 'confirmar' && (
         <EtapaConfirmarReposicao dados={dados} selecionados={reposicoes}
           onVoltar={() => setEtapa(reposicoes.length ? 'reposicao' : 'sem_horario')}
-          onConfirmado={id => { setInscricaoId(id); atualizarVagas(); setEtapa('presente') }}
+          onConfirmado={id => { setInscricaoId(id); atualizarVagas(); setEtapa(OFERECE_PRESENTE ? 'presente' : 'final') }}
           onSlotsEsgotados={ids => voltarPorEsgotado(ids, setReposicoes, 'reposicao')} />
       )}
 

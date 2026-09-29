@@ -81,7 +81,7 @@ export function EtapaFinal({ dados, reposicoes, presentes, onNovo, onFinalizar }
 
       <Botao onClick={onFinalizar} style={{ padding: '15px' }}><CheckCircle2 size={18} /> Finalizar</Botao>
 
-      {reposicoes.length === 0 && presentes.length > 0 && (
+      {reposicoes.length === 0 && (
         <Nota cor="var(--color-state-info)" icone={<CalendarSearch size={16} />}>
           <strong>Sobre a sua reposição:</strong> como nenhum horário atendeu, fale com a gente pelo WhatsApp para
           verificarmos os horários da nossa grade regular e encaixarmos você.

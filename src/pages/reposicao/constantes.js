@@ -3,6 +3,15 @@ import { ptBR } from 'date-fns/locale'
 
 export const MAX_REPOSICOES = 2
 
+// 1ª rodada (até 27/09) oferecia também 1 aula de presente nas outras modalidades. A 2ª rodada
+// (a partir de 30/09, ver scripts/2026-09-28_segunda_rodada_reposicao.sql) é só reposição de
+// Tênis: com false, o link pula a etapa do presente e não fala mais dele.
+export const OFERECE_PRESENTE = false
+
+// Primeiro dia da rodada atual. Na tela interna (/extra-reposicao) o que é anterior a isso fica
+// na visão "Histórico"; o banco usa a mesma data pra contar o limite de reposições por rodada.
+export const INICIO_RODADA_ATUAL = '2026-09-28'
+
 export const WHATSAPP_EXIBIDO = '+55 11 96913-0246'
 export const WHATSAPP_LINK = 'https://wa.me/5511969130246?text=' +
   encodeURIComponent('Olá! Fiz o agendamento de aulas extras pelo link e gostaria de falar com a Procopio.')
