@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { CalendarCheck, CloudRain, Gift, Info, Plus, Trash2, User, Users } from 'lucide-react'
 import {
-  DIAS, HORARIOS, NIVEIS_ADULTO, NIVEIS_KIDS, TURMA_VAZIA, MODALIDADES_PRESENTE, MAX_REPOSICOES, OFERECE_PRESENTE, qtdAulas,
+  DIAS, HORARIOS, NIVEIS_ADULTO, NIVEIS_KIDS, TURMA_VAZIA, MODALIDADES_PRESENTE, MAX_REPOSICOES, OFERECE_PRESENTE, OFERECE_KIDS, qtdAulas,
   COR_ADULTO, COR_KIDS, estiloInput, WHATSAPP_EXIBIDO, WHATSAPP_LINK_GRADE_REGULAR,
 } from './constantes'
 import { Titulo, Cartao, Nota, Botao, Campo, Chip } from './ui'
@@ -68,13 +68,13 @@ function BlocoTurma({ turma, tipo, ordem, total, onChange, onRemover }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {NIVEIS_ADULTO.map(n => <Chip key={n} ativo={turma.nivel === n} onClick={() => set({ nivel: n })} cor={COR_ADULTO}>{n}</Chip>)}
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+          {OFERECE_KIDS && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
             {NIVEIS_KIDS.map(n => <Chip key={n} ativo={turma.nivel === n} onClick={() => set({ nivel: n })} cor={COR_KIDS} corTexto="var(--color-brand-verde-court)">{n}</Chip>)}
-          </div>
-          <div style={{ display: 'flex', gap: '14px', marginTop: '10px', fontSize: '11px', color: 'var(--color-text-light-muted)' }}>
+          </div>}
+          {OFERECE_KIDS && <div style={{ display: 'flex', gap: '14px', marginTop: '10px', fontSize: '11px', color: 'var(--color-text-light-muted)' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><i style={{ width: '9px', height: '9px', borderRadius: '3px', backgroundColor: COR_ADULTO }} />Aulas adulto</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><i style={{ width: '9px', height: '9px', borderRadius: '3px', backgroundColor: COR_KIDS }} />Aulas Kids</span>
-          </div>
+          </div>}
         </Campo>
       )}
     </Cartao>

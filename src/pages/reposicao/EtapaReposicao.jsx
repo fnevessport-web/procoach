@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeftRight, CalendarClock, ChevronLeft, Gift, Info, TriangleAlert } from 'lucide-react'
-import { MAX_REPOSICOES, qtdAulas, encontrarConflito, fazIndividual, rotuloDiaCurto, usaCreditoIndividualEmGrupo } from './constantes'
+import { ArrowLeftRight, CalendarClock, CalendarSearch, ChevronLeft, Gift, Info, TriangleAlert } from 'lucide-react'
+import { MAX_REPOSICOES, OFERECE_KIDS, OFERECE_PRESENTE, qtdAulas, encontrarConflito, fazIndividual, rotuloDiaCurto, usaCreditoIndividualEmGrupo } from './constantes'
 import { useVagas, useProfessoresPublicoFoto } from './api'
 import { Titulo, Nota, Botao, BarraInferior, Chip, AoVivo, SlotsPorDia, ModalAviso } from './ui'
 
 const FILTROS_NIVEL = [
   { chave: 'Iniciante', rotulo: 'Iniciante' }, { chave: 'Intermediário', rotulo: 'Intermediário' },
   { chave: 'Avançado', rotulo: 'Avançado' }, { chave: 'Kids', rotulo: 'Kids / Juvenil' }, { chave: 'Individual', rotulo: 'Individual' },
-]
+].filter(f => OFERECE_KIDS || f.chave !== 'Kids')
 
 function passaFiltroNivel(slot, filtro) {
   if (filtro === 'todos') return true
@@ -99,7 +99,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
 
       <Nota cor="var(--color-state-info)" icone={<Info size={16} />} style={{ marginBottom: '14px' }}>
         Por causa da junção das turmas de reposição, as aulas estão classificadas apenas como
-        <strong> Iniciante, Intermediário e Avançado</strong> (além das turmas Kids/Juvenil e Individual). Não é possível
+        <strong> Iniciante, Intermediário e Avançado</strong> {OFERECE_KIDS ? '(além das turmas Kids/Juvenil e Individual)' : '(além das aulas Individuais)'}. Não é possível
         separar em Iniciante 1, Iniciante 2 etc., pois precisamos preencher as turmas. Escolha o horário que melhor se encaixa na sua rotina. Lembrando: quem faz só aula em Grupo repõe em Grupo; quem faz aula Individual pode repor em Individual ou em Grupo.
       </Nota>
 
@@ -148,10 +148,12 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
           backgroundColor: 'var(--color-brand-verde-court)', color: 'var(--color-text-dark-primary)',
         }}>
           <span style={{ width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-brand-lima)', color: 'var(--color-brand-verde-court)' }}>
-            <Gift size={20} />
+            {OFERECE_PRESENTE ? <Gift size={20} /> : <CalendarSearch size={20} />}
           </span>
           <span style={{ fontSize: '13px', fontWeight: 800, lineHeight: 1.45, letterSpacing: '0.02em', textTransform: 'uppercase' }}>
-            Nenhum horário me atende, mas gostaria de usar meu voucher para conhecer outras modalidades
+            {OFERECE_PRESENTE
+              ? 'Nenhum horário me atende, mas gostaria de usar meu voucher para conhecer outras modalidades'
+              : 'Nenhum horário me atende'}
           </span>
         </button>
       )}
@@ -161,7 +163,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
           {selecionados.length === 0 ? 'Escolha ao menos 1 horário' : (MAX_REPOSICOES === 1 ? 'Prosseguir com 1 aula' : `Prosseguir com ${selecionados.length} de ${MAX_REPOSICOES} aulas`)}
         </Botao>
         {selecionados.length === 0 && (
-          <Botao variante="suave" onClick={onNenhumHorario} style={{ padding: '4px' }}>Nenhum horário me atende, quero usar meu voucher</Botao>
+          <Botao variante="suave" onClick={onNenhumHorario} style={{ padding: '4px' }}>{OFERECE_PRESENTE ? 'Nenhum horário me atende, quero usar meu voucher' : 'Nenhum horário me atende'}</Botao>
         )}
       </BarraInferior>
 
