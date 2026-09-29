@@ -1,7 +1,11 @@
 import { addHours, format, parse } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
-export const MAX_REPOSICOES = 2
+// 2 na 1ª rodada; 1 na 2ª rodada (menos horários). O banco confere o mesmo número
+// (c_limite em extras_confirmar_reposicao, ver scripts/2026-09-28_limite_1_reposicao.sql).
+export const MAX_REPOSICOES = 1
+// "1 aula" / "2 aulas" — os textos do link acompanham o limite sem ficar no plural errado.
+export const qtdAulas = n => `${n} ${n === 1 ? 'aula' : 'aulas'}`
 
 // 1ª rodada (até 27/09) oferecia também 1 aula de presente nas outras modalidades. A 2ª rodada
 // (a partir de 30/09, ver scripts/2026-09-28_segunda_rodada_reposicao.sql) é só reposição de

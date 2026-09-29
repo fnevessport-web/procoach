@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { CalendarCheck, CloudRain, Gift, Info, Plus, Trash2, User, Users } from 'lucide-react'
 import {
-  DIAS, HORARIOS, NIVEIS_ADULTO, NIVEIS_KIDS, TURMA_VAZIA, MODALIDADES_PRESENTE, MAX_REPOSICOES, OFERECE_PRESENTE,
+  DIAS, HORARIOS, NIVEIS_ADULTO, NIVEIS_KIDS, TURMA_VAZIA, MODALIDADES_PRESENTE, MAX_REPOSICOES, OFERECE_PRESENTE, qtdAulas,
   COR_ADULTO, COR_KIDS, estiloInput, WHATSAPP_EXIBIDO, WHATSAPP_LINK_GRADE_REGULAR,
 } from './constantes'
 import { Titulo, Cartao, Nota, Botao, Campo, Chip } from './ui'
@@ -116,7 +116,7 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
             </p>
             <p style={{ margin: 0 }}>
               Para conseguirmos atender toda a nossa demanda, cada pessoa pode agendar até
-              <strong style={{ color: 'var(--color-text-light-primary)' }}> {MAX_REPOSICOES} aulas de reposição</strong> nestas
+              <strong style={{ color: 'var(--color-text-light-primary)' }}> {qtdAulas(MAX_REPOSICOES)} de reposição</strong> nestas
               <strong style={{ color: 'var(--color-text-light-primary)' }}> aulas extras</strong>, que não existem na nossa grade
               de aulas habitual. Elas são uma opção a mais: a ideia é justamente ampliar as possibilidades, e não limitar a
               reposição a estes horários.

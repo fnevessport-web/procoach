@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ArrowLeftRight, CalendarClock, ChevronLeft, Gift, Info, TriangleAlert } from 'lucide-react'
-import { MAX_REPOSICOES, encontrarConflito, fazIndividual, rotuloDiaCurto, usaCreditoIndividualEmGrupo } from './constantes'
+import { MAX_REPOSICOES, qtdAulas, encontrarConflito, fazIndividual, rotuloDiaCurto, usaCreditoIndividualEmGrupo } from './constantes'
 import { useVagas, useProfessoresPublicoFoto } from './api'
 import { Titulo, Nota, Botao, BarraInferior, Chip, AoVivo, SlotsPorDia, ModalAviso } from './ui'
 
@@ -53,14 +53,18 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
       setAviso({ titulo: 'Horário lotado', texto: 'Esse horário já não tem mais vagas. Escolha outro, por favor.' })
       return
     }
-    if (selecionados.length >= MAX_REPOSICOES) {
+    // Limite de 1: tocar em outro horário troca a escolha (sem aviso de limite, nem choque com a
+    // aula que está saindo). Com limite maior, continua avisando.
+    const troca = MAX_REPOSICOES === 1
+    const adicionar = sel => (troca ? [slot] : [...sel, slot])
+    if (!troca && selecionados.length >= MAX_REPOSICOES) {
       setAviso({
-        titulo: `Limite de ${MAX_REPOSICOES} aulas`,
-        texto: `Para atendermos toda a nossa demanda, cada pessoa agenda até ${MAX_REPOSICOES} aulas de reposição nestas aulas extras. Se quiser trocar um horário, toque na aula escolhida para desmarcá-la. Tem mais aulas a repor? Você também pode repor na grade regular, conforme a disponibilidade de vagas. Basta agendar com a Procopio pelo WhatsApp.`,
+        titulo: `Limite de ${qtdAulas(MAX_REPOSICOES)}`,
+        texto: `Para atendermos toda a nossa demanda, cada pessoa agenda até ${qtdAulas(MAX_REPOSICOES)} de reposição nestas aulas extras. Se quiser trocar de horário, toque na aula escolhida para desmarcá-la. Tem mais aulas a repor? Você também pode repor na grade regular, conforme a disponibilidade de vagas. Basta agendar com a Procopio pelo WhatsApp.`,
       })
       return
     }
-    const conflito = encontrarConflito(slot, { turmas: dados.turmas, outros: selecionados })
+    const conflito = encontrarConflito(slot, { turmas: dados.turmas, outros: troca ? [] : selecionados })
     if (conflito) {
       setAviso({ titulo: 'Horário já ocupado', texto: conflito.texto })
       return
@@ -73,14 +77,14 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
         texto: 'A sua aula é individual e este horário é de aula em grupo. Ao agendar, você estará utilizando o seu crédito de aula individual em uma aula em grupo. Tudo bem para você?',
         acoes: (
           <>
-            <Botao onClick={() => { setSelecionados(sel => [...sel, slot]); setAviso(null) }}>Sim, concordo em usar meu crédito</Botao>
+            <Botao onClick={() => { setSelecionados(adicionar); setAviso(null) }}>Sim, concordo em usar meu crédito</Botao>
             <Botao variante="secundario" onClick={() => setAviso(null)}>Não, escolher outro horário</Botao>
           </>
         ),
       })
       return
     }
-    setSelecionados(sel => [...sel, slot])
+    setSelecionados(adicionar)
   }
 
   return (
@@ -89,7 +93,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
         <ChevronLeft size={16} /> Voltar
       </button>
 
-      <Titulo kicker="Reposição de Tênis" sub={`Olá, ${dados.nome.trim().split(/\s+/)[0]}! Escolha até ${MAX_REPOSICOES} horários abaixo.`}>
+      <Titulo kicker="Reposição de Tênis" sub={`Olá, ${dados.nome.trim().split(/\s+/)[0]}! ${MAX_REPOSICOES === 1 ? 'Escolha 1 horário abaixo.' : `Escolha até ${MAX_REPOSICOES} horários abaixo.`}`}>
         Escolha suas aulas de reposição
       </Titulo>
 
@@ -154,7 +158,7 @@ export function EtapaReposicao({ dados, selecionados, setSelecionados, onVoltar,
 
       <BarraInferior>
         <Botao disabled={selecionados.length === 0} onClick={onProsseguir}>
-          {selecionados.length === 0 ? 'Escolha ao menos 1 horário' : `Prosseguir com ${selecionados.length} de ${MAX_REPOSICOES} aulas`}
+          {selecionados.length === 0 ? 'Escolha ao menos 1 horário' : (MAX_REPOSICOES === 1 ? 'Prosseguir com 1 aula' : `Prosseguir com ${selecionados.length} de ${MAX_REPOSICOES} aulas`)}
         </Botao>
         {selecionados.length === 0 && (
           <Botao variante="suave" onClick={onNenhumHorario} style={{ padding: '4px' }}>Nenhum horário me atende, quero usar meu voucher</Botao>
