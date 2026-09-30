@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
 import { nomeCurto } from '../../lib/nomes'
+import { PALETA_PROFESSORES } from '../../constants/paletaProfessores'
 
 const DIAS_SEMANA = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
 const DIAS_LABEL  = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM']
@@ -9,11 +10,7 @@ const HORARIOS    = Array.from({ length: 16 }, (_, i) => `${String(6 + i).padSta
 
 // Paleta categórica à parte (precisa de tons mutuamente distinguíveis pra n professores
 // arbitrário — os tokens semânticos --color-state-* não servem pra isso, só 6 cores).
-const PALETA = [
-  '#f59e0b', '#10b981', '#3b82f6', '#f472b6', '#a78bfa',
-  '#22d3ee', '#fb923c', '#84cc16', '#f87171', '#e879f9',
-  '#34d399', '#60a5fa', '#fbbf24', '#c084fc', '#4ade80', '#818cf8',
-]
+const PALETA = PALETA_PROFESSORES
 
 export function GradeDisponibilidade() {
   const { data: professores = [], isLoading: loadingProfs } = useQuery({

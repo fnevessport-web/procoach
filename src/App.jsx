@@ -38,6 +38,7 @@ import { DisponibilidadeTurmasPage } from './pages/disponibilidade/Disponibilida
 import { EventoInscricaoPage } from './pages/eventos/EventoInscricaoPage'
 import { ReposicaoExtraPage } from './pages/reposicao/ReposicaoExtraPage'
 import { ExtraReposicaoPage } from './pages/extras/ExtraReposicaoPage'
+import { OrganizarGradePage } from './pages/organizar/OrganizarGradePage'
 import { AprovarInclusoesPage } from './pages/cadastros/AprovarInclusoesPage'
 import { PoliticaPrivacidadePage } from './pages/legal/PoliticaPrivacidadePage'
 import { ComoFuncionaAPontuacaoPage } from './pages/legal/ComoFuncionaAPontuacaoPage'
@@ -170,6 +171,11 @@ function AppRouter() {
                 Separada da grade oficial. Professor tem menu próprio e não entra aqui. */}
             <Route path="/extra-reposicao" element={
               <RouteGuard permitido={podeAcessarCadastros && role !== 'professor'} homeRoute={homeRoute}><ExtraReposicaoPage /></RouteGuard>
+            } />
+            {/* Rascunho de redistribuição dos professores na grade de Tênis — mostra quem sai da
+                grade, então é só gestor/coordenador (mesma trava da tabela no banco). */}
+            <Route path="/organizar-grade" element={
+              <RouteGuard permitido={role === 'gestor' || role === 'coordenador'} homeRoute={homeRoute}><OrganizarGradePage /></RouteGuard>
             } />
             {/* Fila de aluno incluído por professor na própria aula, aguardando aprovação antes
                 de contar no pagamento — mesmo público que vê salário de todo mundo. */}
