@@ -23,6 +23,7 @@ import { Loading, EmptyState } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
 import { supabase } from '../../lib/supabase'
 import { logAudit } from '../../lib/audit'
+import { vincularMensalistasNaTurma } from '../../lib/matriculaTurma'
 import { criarAlerta } from '../../hooks/useAlertas'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
@@ -50,6 +51,15 @@ const TIPO_PARTICIPACAO = [
   { value: 'avulso', label: 'Avulso' },
   { value: 'cortesia', label: 'Cortesia' },
   { value: 'reposicao', label: 'Reposição' },
+]
+
+// Opções do professor ao incluir aluno na própria aula (modal de motivo) — reposição primeiro,
+// porque é o caso mais comum; mensalista deixa claro que só vira fixo depois da aprovação.
+const TIPO_PARTICIPACAO_INCLUSAO = [
+  { value: 'reposicao', label: 'Reposição', dica: 'Repondo uma aula perdida' },
+  { value: 'mensalista', label: 'Mensalista', dica: 'Vai ficar fixo na turma (após aprovação)' },
+  { value: 'avulso', label: 'Avulso', dica: 'Aula paga só desta vez' },
+  { value: 'cortesia', label: 'Cortesia', dica: 'Aula experimental / grátis' },
 ]
 
 // Rótulo usado na mensagem do alerta pro professor (ver handleSalvarPresencas)
@@ -231,6 +241,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   // adicionarAlunoNaLista) — a presença nasce pendente e só conta pro pagamento depois que a
   // coordenação aprova (AprovarInclusoesPage.jsx).
   const [pedindoMotivo, setPedindoMotivo] = useState(null) // { aulaId, aluno }
+  const [tipoInclusao, setTipoInclusao] = useState('') // tipo que o professor escolhe junto com o motivo
   const [motivoDigitado, setMotivoDigitado] = useState('')
   const [editandoAula, setEditandoAula] = useState(null)
   const [editForm, setEditForm] = useState({})
@@ -685,10 +696,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   // Professor incluindo em aula própria (professorProprioId) precisa dizer o motivo antes —
   // some pro modal de motivo em vez de adicionar direto. Coordenação/gestor (professorProprioId
   // null) continua exatamente como sempre foi, sem essa etapa.
-  function adicionarAlunoNaLista(aulaId, aluno, motivo) {
+  function adicionarAlunoNaLista(aulaId, aluno, motivo, tipo = 'mensalista') {
     if (professorProprioId && motivo === undefined) {
       setPedindoMotivo({ aulaId, aluno })
       setMotivoDigitado('')
+      setTipoInclusao('')
       setAdicionandoAluno(null)
       setBuscaAdicionando('')
       return
@@ -698,7 +710,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       [aulaId]: {
         ...prev[aulaId],
         [aluno.id]: {
-          aluno_id: aluno.id, nome: aluno.nome, status_presenca: 'presente', tipo_participacao: 'mensalista',
+          aluno_id: aluno.id, nome: aluno.nome, status_presenca: 'presente', tipo_participacao: tipo,
           alerta_nivel: false, nivel_avaliado_prof: '', obs_nivel_prof: '', motivo_inclusao: motivo || null,
         }
       }
@@ -906,42 +918,6 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   // necessariamente a mais próxima), e a aula de hoje/desta semana já pode existir como linha
   // vazia esperando alunos. Usar aula.data_aula como piso deixava essa ocorrência mais próxima
   // de fora do backfill sempre que a aula aberta era uma semana adiante.
-  async function vincularMensalistasNaTurma(aula, mensalistas) {
-    if (!aula.turma_id || mensalistas.length === 0) return
-    const alunoIds = mensalistas.map(p => p.aluno_id)
-
-    await supabase.from('turmas_alunos').upsert(
-      alunoIds.map(aluno_id => ({ turma_id: aula.turma_id, aluno_id, ativo: true })),
-      { onConflict: 'turma_id,aluno_id' }
-    )
-
-    const piso = aula.data_aula < format(new Date(), 'yyyy-MM-dd') ? aula.data_aula : format(new Date(), 'yyyy-MM-dd')
-    const { data: aulasFuturas } = await supabase
-      .from('aulas').select('id')
-      .eq('turma_id', aula.turma_id)
-      .gte('data_aula', piso)
-      .lte('data_aula', '2026-12-31')
-    const idsAulasFuturas = (aulasFuturas || []).map(a => a.id)
-    if (idsAulasFuturas.length === 0) return
-
-    const { data: presencasExistentes } = await supabase
-      .from('presencas').select('aula_id, aluno_id')
-      .in('aula_id', idsAulasFuturas).in('aluno_id', alunoIds)
-    const jaTem = new Set((presencasExistentes || []).map(p => `${p.aula_id}_${p.aluno_id}`))
-
-    const faltantes = []
-    for (const aulaFuturaId of idsAulasFuturas) {
-      for (const alunoId of alunoIds) {
-        if (!jaTem.has(`${aulaFuturaId}_${alunoId}`)) {
-          faltantes.push({ aula_id: aulaFuturaId, aluno_id: alunoId, presente: false, status_presenca: 'presente', tipo_participacao: 'mensalista' })
-        }
-      }
-    }
-    if (faltantes.length > 0) {
-      await supabase.from('presencas').insert(faltantes)
-    }
-  }
-
   // listaOverride: usado por handleCadastrarNovoAluno pra salvar direto (cadastro + inclusão na
   // aula num passo só) sem depender do estado local já ter sido re-renderizado.
   async function handleSalvarPresencas(aulaId, listaOverride) {
@@ -963,7 +939,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
         const resultado = await salvarPresencas.mutateAsync({ aulaId, presencas: lista, idsNovos: idsAdicionados, motivosNovos })
         reposicoesBaixadas = resultado?.reposicoesBaixadas || []
       }
-      const mensalistas = lista.filter(p => p.tipo_participacao === 'mensalista')
+      // Mensalista incluído AGORA por professor (professorProprioId) não é matriculado na turma
+      // aqui: fica só nesta aula, pendente, e a matrícula acontece quando a coordenação aprovar
+      // "como mensalista" (AprovarInclusoesPage). Antes matriculava na hora e as presenças das
+      // aulas seguintes contavam no pagamento sem passar pela aprovação.
+      const mensalistas = lista.filter(p => p.tipo_participacao === 'mensalista' && !(professorProprioId && idsAdicionados.includes(p.aluno_id)))
       if (aula && mensalistas.length > 0) {
         await vincularMensalistasNaTurma(aula, mensalistas)
       }
@@ -1376,7 +1356,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       const listaAtual = [...Object.values(presencasLocal[aulaId] || {}), novaPresenca]
       setNovoAlunoModal({ show: false, nome: '', telefone: '', nivel: '', menor_idade: false, nome_responsavel: '', tipo_participacao: 'mensalista', motivo: '' })
       await handleSalvarPresencas(aulaId, listaAtual)
-      setPromptOutraTurma({
+      // Professor não matricula em outra turma sozinho (vira mensalista sem aprovação) — isso
+      // fica pra coordenação, na aprovação da inclusão.
+      if (!professorProprioId) setPromptOutraTurma({
         alunoId: result.id, alunoNome: result.nome,
         modalidadeId: aulaModal?.turmas?.modalidade_id || null,
         modalidadeNome: aulaModal?.turmas?.modalidades?.nome || null,
@@ -2914,6 +2896,24 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
               Por que está incluindo <strong style={{ color: 'var(--text-primary)' }}>{pedindoMotivo.aluno.nome}</strong> nessa aula?
               A coordenação vai revisar antes de contar pro seu pagamento.
             </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>O aluno vem como:</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                {TIPO_PARTICIPACAO_INCLUSAO.map(t => {
+                  const ativo = tipoInclusao === t.value
+                  return (
+                    <button key={t.value} type="button" onClick={() => setTipoInclusao(t.value)} style={{
+                      padding: '8px 10px', borderRadius: '10px', cursor: 'pointer', textAlign: 'left',
+                      border: `1px solid ${ativo ? 'var(--color-action-primary)' : 'var(--border)'}`,
+                      background: ativo ? 'color-mix(in srgb, var(--color-action-primary) 12%, transparent)' : 'var(--surface-raised)',
+                    }}>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: ativo ? 'var(--color-action-primary)' : 'var(--text-primary)' }}>{t.label}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', lineHeight: 1.35 }}>{t.dica}</div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
             <textarea
               autoFocus value={motivoDigitado} onChange={e => setMotivoDigitado(e.target.value)}
               placeholder="Ex.: aluno chegou pra experimentar, encaixe combinado com a coordenação..."
@@ -2923,9 +2923,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setPedindoMotivo(null)} style={{ flex: 1, padding: '11px', borderRadius: '10px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
               <button
-                onClick={() => { adicionarAlunoNaLista(pedindoMotivo.aulaId, pedindoMotivo.aluno, motivoDigitado.trim()); setPedindoMotivo(null) }}
-                disabled={!motivoDigitado.trim()}
-                style={{ flex: 1, padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'white', fontWeight: 700, cursor: motivoDigitado.trim() ? 'pointer' : 'default', opacity: motivoDigitado.trim() ? 1 : 0.5 }}
+                onClick={() => { adicionarAlunoNaLista(pedindoMotivo.aulaId, pedindoMotivo.aluno, motivoDigitado.trim(), tipoInclusao); setPedindoMotivo(null) }}
+                disabled={!motivoDigitado.trim() || !tipoInclusao}
+                style={{ flex: 1, padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'white', fontWeight: 700, cursor: motivoDigitado.trim() && tipoInclusao ? 'pointer' : 'default', opacity: motivoDigitado.trim() && tipoInclusao ? 1 : 0.5 }}
               >
                 Incluir
               </button>

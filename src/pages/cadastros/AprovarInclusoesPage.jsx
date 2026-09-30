@@ -8,6 +8,14 @@ import { Loading } from '../../components/ui/Loading'
 
 const LABEL_TIPO = { mensalista: 'Mensalista', avulso: 'Avulso', cortesia: 'Cortesia', reposicao: 'Reposição' }
 
+// O que cada tipo faz ao aprovar — mostrado embaixo das opções pra não ter surpresa.
+const TIPOS_APROVACAO = [
+  { value: 'reposicao', label: 'Reposição', efeito: 'Só esta aula. Dá baixa numa reposição pendente do aluno e não conta como aluno pagante.' },
+  { value: 'mensalista', label: 'Mensalista', efeito: 'Aluno fica fixo na turma: entra nas próximas aulas dela e conta no pagamento.' },
+  { value: 'avulso', label: 'Avulso', efeito: 'Só esta aula, conta como aluno pagante.' },
+  { value: 'cortesia', label: 'Cortesia', efeito: 'Só esta aula, não conta como aluno pagante.' },
+]
+
 const toastStyle = {
   background: 'var(--surface-raised)', color: 'var(--text-primary)',
   border: '1px solid var(--border)', borderRadius: '10px', fontSize: '13px',
@@ -20,6 +28,8 @@ const cartao = {
 
 function CardInclusao({ item, onDecidir, decidindo }) {
   const aula = item.aulas
+  const [tipo, setTipo] = useState(item.tipo_participacao || 'mensalista')
+  const efeito = TIPOS_APROVACAO.find(t => t.value === tipo)?.efeito
   const dataFmt = aula?.data_aula ? format(new Date(aula.data_aula + 'T12:00:00'), "EEEE, dd/MM", { locale: ptBR }) : ''
 
   return (
@@ -33,7 +43,7 @@ function CardInclusao({ item, onDecidir, decidindo }) {
             {aula?.turmas?.modalidades?.nome} · {aula?.turmas?.nome || 'turma avulsa'} · {dataFmt} {aula?.turmas?.horario_inicio?.slice(0, 5)}
           </div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-            Professor: <strong>{aula?.professores?.nome || item.criado_por_nome || '—'}</strong> · tipo: {LABEL_TIPO[item.tipo_participacao] || item.tipo_participacao}
+            Professor: <strong>{aula?.professores?.nome || item.criado_por_nome || '—'}</strong> · professor marcou como: {LABEL_TIPO[item.tipo_participacao] || item.tipo_participacao}
           </div>
         </div>
       </div>
@@ -45,17 +55,33 @@ function CardInclusao({ item, onDecidir, decidindo }) {
         <strong>Motivo:</strong> {item.motivo_inclusao || <em style={{ color: 'var(--text-secondary)' }}>não informado</em>}
       </div>
 
+      <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>Aprovar como</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
+        {TIPOS_APROVACAO.map(t => {
+          const ativo = tipo === t.value
+          return (
+            <button key={t.value} type="button" onClick={() => setTipo(t.value)} style={{
+              padding: '7px 13px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+              border: `1px solid ${ativo ? 'var(--color-action-primary)' : 'var(--border)'}`,
+              backgroundColor: ativo ? 'var(--color-action-primary)' : 'var(--surface-raised)',
+              color: ativo ? 'var(--color-action-on-primary)' : 'var(--text-secondary)',
+            }}>{t.label}</button>
+          )
+        })}
+      </div>
+      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px', lineHeight: 1.45 }}>{efeito}</div>
+
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button onClick={() => onDecidir(item.id, false)} disabled={decidindo} style={{
+        <button onClick={() => onDecidir(item, false)} disabled={decidindo} style={{
           flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid color-mix(in srgb, var(--color-state-danger) 45%, transparent)',
           background: 'none', color: 'var(--color-state-danger)', fontWeight: 700, fontSize: '12px', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-        }}><X size={14} /> Não</button>
-        <button onClick={() => onDecidir(item.id, true)} disabled={decidindo} style={{
+        }}><X size={14} /> Recusar</button>
+        <button onClick={() => onDecidir(item, true, tipo)} disabled={decidindo} style={{
           flex: 1, padding: '9px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--color-state-success)',
           color: 'white', fontWeight: 700, fontSize: '12px', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-        }}><Check size={14} /> Sim, conta no pagamento</button>
+        }}><Check size={14} /> Aprovar como {LABEL_TIPO[tipo]}</button>
       </div>
     </div>
   )
@@ -66,11 +92,12 @@ export function AprovarInclusoesPage() {
   const decidir = useDecidirInclusaoPendente()
   const [idDecidindo, setIdDecidindo] = useState(null)
 
-  async function decidirItem(presencaId, aprovar) {
-    setIdDecidindo(presencaId)
+  async function decidirItem(item, aprovar, tipo) {
+    setIdDecidindo(item.id)
     try {
-      await decidir.mutateAsync({ presencaId, aprovar })
-      toast.success(aprovar ? 'Aprovado — já conta no pagamento do professor' : 'Recusado — não conta no pagamento', { style: toastStyle })
+      const r = await decidir.mutateAsync({ item, aprovar, tipo })
+      const extra = r?.matriculaDesfeita ? ` Matrícula automática na turma desfeita (${r.presencasRemovidas} aulas futuras).` : r?.matriculado ? ' Aluno matriculado na turma.' : ''
+      toast.success((aprovar ? `Aprovado como ${LABEL_TIPO[tipo]}.` : 'Recusado, não conta no pagamento.') + extra, { style: toastStyle, duration: 5000 })
     } catch (e) { toast.error(e.message, { style: toastStyle }) }
     finally { setIdDecidindo(null) }
   }
@@ -84,7 +111,9 @@ export function AprovarInclusoesPage() {
         <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '6px 0 0', maxWidth: '640px', lineHeight: 1.5 }}>
           Quando um professor inclui um aluno na própria aula, essa presença fica pendente aqui e <strong>não conta no
           pagamento dele</strong> até você aprovar. Protege contra alguém inflar sozinho a quantidade de alunos da
-          turma (o valor por hora-aula sobe conforme a quantidade).
+          turma (o valor por hora-aula sobe conforme a quantidade). Ao aprovar, confira o tipo: só <strong>Mensalista</strong> deixa
+          o aluno fixo na turma; Reposição, Avulso e Cortesia valem só para aquela aula. Recusar também tira da turma
+          a matrícula que a inclusão tenha criado.
         </p>
       </div>
 
