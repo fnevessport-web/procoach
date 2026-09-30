@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Check, CloudOff, Eraser, Hand, Pencil, Plus, RotateCcw, Trash2, UserMinus, UserPlus } from 'lucide-react'
+import { AlertTriangle, CalendarRange, Check, ChevronLeft, ChevronRight, CloudOff, Eraser, Hand, Pencil, Plus, RotateCcw, Trash2, UserMinus, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { addDays, endOfMonth, format, parseISO, previousMonday, isMonday } from 'date-fns'
 import { useModalidadeTenisId } from '../../hooks/useModalidadeTenisId'
 import {
-  CENARIO_VAZIO, useCenarioGrade, useProfessoresOrganizacao, useSalvarCenarioGrade, useTurmasTenisGrade,
+  CENARIO_VAZIO, useAlunosDaSemana, useCenarioGrade, useProfessoresOrganizacao, useSalvarCenarioGrade, useTurmasTenisGrade,
 } from '../../hooks/useCenarioGrade'
 import { PALETA_PROFESSORES_SUAVE as PALETA } from '../../constants/paletaProfessores'
 import { VAGAS_GRUPO, VAGAS_INDIVIDUAL } from '../../constants/modalidades'
@@ -37,7 +38,15 @@ const toastStyle = {
 const hora = t => (t.horario_inicio || '').slice(0, 5)
 const quadraCurta = q => (q || '').replace(/^Quadra\s*/i, 'Q')
 const capacidade = t => (t.niveis?.nome === 'Individual' ? VAGAS_INDIVIDUAL : VAGAS_GRUPO)
-const ocupacao = t => (t.turmas_alunos || []).filter(a => a.ativo).length
+// Alunos na lista da aula dessa turma na semana de referência (ver useAlunosDaSemana).
+const ocupacao = t => t.semana?.alunos.length || 0
+
+// Padrão: a última semana do mês atual (segunda da última semana até o sábado).
+function ultimaSemanaDoMes(hoje = new Date()) {
+  const fim = endOfMonth(hoje)
+  return format(isMonday(fim) ? fim : previousMonday(fim), 'yyyy-MM-dd')
+}
+const fmtDia = d => format(parseISO(d), 'dd/MM')
 const ehTenis = (p, tenisId) => p.modalidade_id === tenisId || (p.modalidades_ids || []).includes(tenisId)
 const tem = (obj, k) => Object.prototype.hasOwnProperty.call(obj, k)
 
@@ -161,7 +170,7 @@ function CardTurma({ turma, prof, alterado, antes, conflito, apagado, destacado,
 export function OrganizarGradePage() {
   const desktop = useDesktop()
   const tenisId = useModalidadeTenisId()
-  const { data: turmas, isLoading: carregandoTurmas, isError: erroTurmas } = useTurmasTenisGrade(tenisId)
+  const { data: turmasTodas, isLoading: carregandoTurmas, isError: erroTurmas } = useTurmasTenisGrade(tenisId)
   const { data: professores, isLoading: carregandoProfs } = useProfessoresOrganizacao()
   const { data: salvo, isLoading: carregandoCenario, isError: erroCenario } = useCenarioGrade()
   const salvar = useSalvarCenarioGrade()
@@ -205,6 +214,18 @@ export function OrganizarGradePage() {
   }, [])
 
   const c = cenario || CENARIO_VAZIO
+  const semanaInicio = c.semana || ultimaSemanaDoMes()
+  const semanaFim = format(addDays(parseISO(semanaInicio), 5), 'yyyy-MM-dd')
+  const { data: alunosSemana, isLoading: carregandoSemana } = useAlunosDaSemana(semanaInicio, semanaFim)
+  const [mostrarVazias, setMostrarVazias] = useState(false)
+  const mudarSemana = dias => setCenario(a => ({ ...a, semana: format(addDays(parseISO(a.semana || ultimaSemanaDoMes()), dias), 'yyyy-MM-dd') }))
+
+  // Só as turmas que têm aula com aluno na semana de referência (ou todas as ativas, se pedir).
+  const { turmas, vazias } = useMemo(() => {
+    const todas = (turmasTodas || []).map(t => ({ ...t, semana: alunosSemana?.[t.id] || null }))
+    const comAluno = todas.filter(t => ocupacao(t) > 0)
+    return { turmas: mostrarVazias ? todas : comAluno, vazias: todas.length - comAluno.length }
+  }, [turmasTodas, alunosSemana, mostrarVazias])
 
   // Professores: Tênis primeiro (cores fixas pela ordem do nome), depois os demais, depois os novos.
   const { tenis, outros, mapaProf } = useMemo(() => {
@@ -218,12 +239,12 @@ export function OrganizarGradePage() {
     o.forEach(p => add(p.id, p.apelido || nomeCurto(p.nome), { nomeCompleto: p.nome }))
     c.novos.forEach(n => add(n.id, n.nome, { novo: true }))
     // Titular que não está mais na lista de ativos (inativado) continua aparecendo na grade.
-    ;(turmas || []).forEach(tu => {
+    ;(turmasTodas || []).forEach(tu => {
       const k = tu.professor_titular_id
       if (k && !mapa[k]) add(k, tu.professores?.apelido || nomeCurto(tu.professores?.nome) || 'Professor inativo', { inativo: true })
     })
     return { tenis: t, outros: o, mapaProf: mapa }
-  }, [professores, tenisId, c.novos, turmas])
+  }, [professores, tenisId, c.novos, turmasTodas])
 
   const desligados = useMemo(() => new Set(c.desligados), [c.desligados])
   const original = t => t.professor_titular_id || null
@@ -287,7 +308,7 @@ export function OrganizarGradePage() {
   const alternarPincel = chave => setPincel(p => (p === chave ? null : chave))
 
   // ---- render --------------------------------------------------------------------------------
-  if (carregandoTurmas || carregandoProfs || carregandoCenario || !tenisId || (!cenario && !erroCenario)) return <Loading />
+  if (carregandoTurmas || carregandoProfs || carregandoCenario || carregandoSemana || !tenisId || (!cenario && !erroCenario)) return <Loading />
   if (erroTurmas || erroCenario) {
     return <div style={{ ...cartao, padding: '16px', fontSize: '13px', color: 'var(--color-state-danger)' }}>Não foi possível carregar a grade. Atualize a página.</div>
   }
@@ -416,6 +437,20 @@ export function OrganizarGradePage() {
         </div>
       )}
 
+      <div style={{ ...cartao, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 12px', padding: '8px 10px', marginBottom: '10px' }}>
+        <CalendarRange size={15} style={{ color: 'var(--color-text-light-muted)' }} />
+        <span style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>Alunos da semana</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+          <BotaoIcone titulo="Semana anterior" onClick={() => mudarSemana(-7)}><ChevronLeft size={15} /></BotaoIcone>
+          <strong style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', whiteSpace: 'nowrap' }}>{fmtDia(semanaInicio)} a {fmtDia(semanaFim)}</strong>
+          <BotaoIcone titulo="Próxima semana" onClick={() => mudarSemana(7)}><ChevronRight size={15} /></BotaoIcone>
+        </span>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-text-light-muted)', cursor: 'pointer', marginLeft: 'auto' }}>
+          <input type="checkbox" checked={mostrarVazias} onChange={e => setMostrarVazias(e.target.checked)} style={{ accentColor: 'var(--color-action-primary)' }} />
+          Mostrar turmas sem aluno nesta semana ({vazias})
+        </label>
+      </div>
+
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
         <Chip ativo={dia === 'todos'} onClick={() => setDia('todos')}>Semana toda</Chip>
         {DIAS.map(d => <Chip key={d.chave} ativo={dia === d.chave} onClick={() => setDia(d.chave)}>{d.longo}</Chip>)}
@@ -449,12 +484,12 @@ export function OrganizarGradePage() {
         </div>
       </div>
       <p style={{ fontSize: '11px', color: 'var(--color-text-light-muted)', margin: '8px 0 0', lineHeight: 1.5 }}>
-        O número em cada turma é alunos ativos / vagas (individual 1, grupo 4). O pontinho indica professor diferente do que está hoje na grade oficial.
+        O número em cada turma é alunos na lista da aula na semana escolhida / vagas (individual 1, grupo 4). Atualiza sozinho conforme a agenda é preenchida. O pontinho indica professor diferente do que está hoje na grade oficial.
       </p>
     </div>
   )
 
-  const turmaModal = turmaAberta ? (turmas || []).find(t => t.id === turmaAberta) : null
+  const turmaModal = turmaAberta ? turmas.find(t => t.id === turmaAberta) : null
   const kModal = turmaModal ? efetivo(turmaModal) : null
   const escolhiveis = [...tenis, ...c.novos.map(n => ({ id: n.id })), ...(mostrarOutros ? outros : [])].filter(p => !desligados.has(p.id) && mapaProf[p.id])
 
@@ -502,7 +537,7 @@ export function OrganizarGradePage() {
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
               <div><strong style={{ color: 'var(--text-primary)' }}>{turmaModal.niveis?.nome || 'Sem nível'}</strong> · {ocupacao(turmaModal)}/{capacidade(turmaModal)} alunos</div>
               {ocupacao(turmaModal) > 0 && (
-                <div style={{ fontSize: '12px' }}>{turmaModal.turmas_alunos.filter(a => a.ativo).map(a => a.alunos?.nome).filter(Boolean).join(', ')}</div>
+                <div style={{ fontSize: '12px' }}>{turmaModal.semana.alunos.join(', ')}</div>
               )}
               <div style={{ fontSize: '12px', marginTop: '4px' }}>
                 Grade oficial: <strong>{original(turmaModal) ? mapaProf[original(turmaModal)]?.nome : 'sem professor'}</strong>

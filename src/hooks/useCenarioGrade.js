@@ -85,3 +85,30 @@ export function useSalvarCenarioGrade() {
     },
   })
 }
+
+// Alunos de cada turma numa semana de referência (seg a sáb), pela lista de presença das aulas
+// geradas — é isso que diz se a turma existe na prática. `turmas.ativo` sozinho não serve: sobra
+// turma ativa sem aula nem aluno (ex.: sexta 7h tinha 8 ativas e só 3 com aula de verdade).
+// Devolve { [turma_id]: { data_aula, alunos: [nome] } }.
+export function useAlunosDaSemana(inicio, fim) {
+  return useQuery({
+    queryKey: ['organizar-grade-semana', inicio, fim],
+    enabled: !!inicio && !!fim,
+    refetchInterval: 60000, // a coordenação vai atualizando a agenda da semana enquanto planeja
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('aulas')
+        .select('turma_id, data_aula, presencas(status_inclusao_professor, alunos(nome))')
+        .not('turma_id', 'is', null)
+        .gte('data_aula', inicio).lte('data_aula', fim)
+      if (error) throw error
+      const mapa = {}
+      for (const a of data || []) {
+        const alunos = (a.presencas || []).filter(p => p.status_inclusao_professor !== 'rejeitado').map(p => p.alunos?.nome).filter(Boolean)
+        const atual = mapa[a.turma_id]
+        if (!atual || alunos.length > atual.alunos.length) mapa[a.turma_id] = { data_aula: a.data_aula, alunos }
+      }
+      return mapa
+    },
+  })
+}
