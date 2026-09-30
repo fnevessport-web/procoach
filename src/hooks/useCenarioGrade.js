@@ -9,7 +9,9 @@ import { supabase } from '../lib/supabase'
 const CHAVE_CENARIO = 'principal'
 const CHAVE_LOCAL = 'procoach-cenario-grade'
 
-export const CENARIO_VAZIO = { atribuicoes: {}, novos: [], desligados: [] }
+// base 'vazia' = toda turma começa sem professor (padrão, pedido em 30/09); 'oficial' = parte do professor
+// titular de hoje e só guarda as trocas.
+export const CENARIO_VAZIO = { base: 'vazia', atribuicoes: {}, novos: [], desligados: [] }
 
 // Grade de Tênis do clube (sem tenant Particular), com nível, quadra e quantos alunos ativos.
 export function useTurmasTenisGrade(tenisId) {

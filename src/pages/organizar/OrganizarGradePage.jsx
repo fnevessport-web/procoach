@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Check, CloudOff, Eraser, Hand, Pencil, Plus, RotateCcw, Trash2, UserMinus, UserPlus, X } from 'lucide-react'
+import { AlertTriangle, Check, CloudOff, Eraser, Hand, Pencil, Plus, RotateCcw, Trash2, UserMinus, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useModalidadeTenisId } from '../../hooks/useModalidadeTenisId'
 import {
   CENARIO_VAZIO, useCenarioGrade, useProfessoresOrganizacao, useSalvarCenarioGrade, useTurmasTenisGrade,
 } from '../../hooks/useCenarioGrade'
-import { PALETA_PROFESSORES } from '../../constants/paletaProfessores'
+import { PALETA_PROFESSORES_SUAVE as PALETA } from '../../constants/paletaProfessores'
 import { VAGAS_GRUPO, VAGAS_INDIVIDUAL } from '../../constants/modalidades'
 import { nomeCurto } from '../../lib/nomes'
 import { Loading } from '../../components/ui/Loading'
@@ -69,16 +69,20 @@ function Chip({ ativo, onClick, children, cor = 'var(--color-action-primary)' })
 }
 
 // Nome arrastável do professor (paleta e card). `chave` = id do professor, id de "novo" ou VAZIO.
-function Etiqueta({ chave, nome, cor, pequena, onDragStart }) {
+// Visual discreto: bolinha na cor do professor + nome, fundo quase neutro.
+function Etiqueta({ chave, nome, cor, pequena }) {
+  const vazio = chave === VAZIO
   return (
-    <span draggable onDragStart={e => { e.dataTransfer.setData('text/plain', chave); e.dataTransfer.effectAllowed = 'copy'; onDragStart?.() }}
+    <span draggable onDragStart={e => { e.dataTransfer.setData('text/plain', chave); e.dataTransfer.effectAllowed = 'copy' }}
       title="Arraste para uma turma"
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: '5px', maxWidth: '100%', cursor: 'grab', boxSizing: 'border-box',
-        padding: pequena ? '2px 7px' : '4px 9px', borderRadius: '999px', fontSize: pequena ? '11px' : '12px', fontWeight: 700,
-        backgroundColor: chave === VAZIO ? 'transparent' : cor, border: chave === VAZIO ? `1px dashed ${COR_SEM_PROF}` : 'none',
-        color: chave === VAZIO ? COR_SEM_PROF : 'var(--color-brand-verde-court)',
+        display: 'inline-flex', alignItems: 'center', gap: '6px', maxWidth: '100%', cursor: 'grab', boxSizing: 'border-box',
+        padding: pequena ? '1px 8px 1px 6px' : '3px 10px 3px 8px', borderRadius: '999px', fontSize: pequena ? '11px' : '12px', fontWeight: 600,
+        backgroundColor: vazio ? 'transparent' : `color-mix(in srgb, ${cor} 14%, var(--color-surface-light-overlay))`,
+        border: vazio ? '1px dashed var(--color-border-light)' : `1px solid color-mix(in srgb, ${cor} 40%, transparent)`,
+        color: vazio ? COR_SEM_PROF : 'var(--color-text-light-primary)',
       }}>
+      {!vazio && <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: cor, flexShrink: 0 }} />}
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nome}</span>
     </span>
   )
@@ -88,8 +92,8 @@ function ItemPaleta({ chave, nome, cor, qtd, qtdAntes, ativo, onPincel, acoes })
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 6px', borderRadius: '10px',
-      backgroundColor: ativo ? `color-mix(in srgb, ${cor} 22%, var(--color-surface-light-overlay))` : 'transparent',
-      outline: ativo ? `2px solid ${cor}` : 'none',
+      backgroundColor: ativo ? `color-mix(in srgb, ${cor} 12%, var(--color-surface-light-overlay))` : 'transparent',
+      outline: ativo ? `1.5px solid color-mix(in srgb, ${cor} 70%, transparent)` : 'none',
     }}>
       <button type="button" onClick={onPincel} title="Tocar para colocar nas turmas (ou arraste o nome)"
         style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
@@ -127,11 +131,11 @@ function CardTurma({ turma, prof, alterado, antes, conflito, apagado, destacado,
       onDrop={e => { e.preventDefault(); setSobre(false); const k = e.dataTransfer.getData('text/plain'); if (k) onDrop(k) }}
       style={{
         position: 'relative', padding: '5px 6px 6px', borderRadius: '8px', boxSizing: 'border-box', cursor: pincelAtivo ? 'copy' : 'pointer',
-        backgroundColor: cor ? `color-mix(in srgb, ${cor} 20%, var(--color-surface-light-overlay))` : 'var(--color-surface-light-raised)',
-        border: `1px ${cor ? 'solid' : 'dashed'} ${conflito ? 'var(--color-state-danger)' : cor ? `color-mix(in srgb, ${cor} 55%, transparent)` : 'var(--color-border-light)'}`,
-        borderLeft: `4px solid ${cor || 'var(--color-border-light)'}`,
+        backgroundColor: cor ? 'var(--color-surface-light-overlay)' : 'transparent',
+        border: `1px ${cor ? 'solid' : 'dashed'} ${conflito ? 'color-mix(in srgb, var(--color-state-danger) 55%, transparent)' : 'var(--color-border-light)'}`,
+        borderLeft: cor ? `3px solid ${cor}` : '1px dashed var(--color-border-light)',
         opacity: apagado ? 0.25 : 1,
-        outline: sobre ? '2px solid var(--color-action-primary)' : destacado ? `2px solid ${cor}` : 'none',
+        outline: sobre ? '2px solid var(--color-action-primary)' : destacado ? `1.5px solid ${cor}` : 'none',
         outlineOffset: '1px', transition: 'opacity 0.15s',
       }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', fontSize: '10px', lineHeight: 1.3 }}>
@@ -142,9 +146,9 @@ function CardTurma({ turma, prof, alterado, antes, conflito, apagado, destacado,
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px', minHeight: '20px' }}>
         {prof
           ? <Etiqueta chave={prof.chave} nome={prof.nome} cor={cor} pequena />
-          : <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-state-warning)' }}>Sem professor</span>}
+          : <span style={{ fontSize: '11px', color: 'var(--color-text-light-muted)' }}>sem professor</span>}
         {conflito && <AlertTriangle size={12} style={{ color: 'var(--color-state-danger)', flexShrink: 0 }} />}
-        {alterado && <span title={`Na grade oficial: ${antes}`} style={{ width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, marginLeft: 'auto', backgroundColor: 'var(--color-action-primary)' }} />}
+        {alterado && <span title={`Na grade oficial: ${antes}`} style={{ width: '5px', height: '5px', borderRadius: '50%', flexShrink: 0, marginLeft: 'auto', backgroundColor: 'var(--color-action-primary)' }} />}
       </div>
     </div>
   )
@@ -209,7 +213,7 @@ export function OrganizarGradePage() {
     const o = lista.filter(p => !ehTenis(p, tenisId))
     const mapa = {}
     let i = 0
-    const add = (chave, nome, extra) => { mapa[chave] = { chave, nome, cor: PALETA_PROFESSORES[i++ % PALETA_PROFESSORES.length], ...extra } }
+    const add = (chave, nome, extra) => { mapa[chave] = { chave, nome, cor: PALETA[i++ % PALETA.length], ...extra } }
     t.forEach(p => add(p.id, p.apelido || nomeCurto(p.nome), { nomeCompleto: p.nome }))
     o.forEach(p => add(p.id, p.apelido || nomeCurto(p.nome), { nomeCompleto: p.nome }))
     c.novos.forEach(n => add(n.id, n.nome, { novo: true }))
@@ -223,8 +227,9 @@ export function OrganizarGradePage() {
 
   const desligados = useMemo(() => new Set(c.desligados), [c.desligados])
   const original = t => t.professor_titular_id || null
+  const baseVazia = c.base !== 'oficial'
   const efetivo = t => {
-    const k = tem(c.atribuicoes, t.id) ? c.atribuicoes[t.id] : original(t)
+    const k = tem(c.atribuicoes, t.id) ? c.atribuicoes[t.id] : baseVazia ? null : original(t)
     return k && !desligados.has(k) && mapaProf[k] ? k : null
   }
 
@@ -236,7 +241,8 @@ export function OrganizarGradePage() {
       const ant = original(t)
       if (k) { porProf[k] = (porProf[k] || 0) + 1; const s = `${k}|${t.horario_dia_semana}|${hora(t)}`; ocupado[s] = (ocupado[s] || 0) + 1 }
       if (ant) porProfAntes[ant] = (porProfAntes[ant] || 0) + 1
-      return { turma: t, k, ant, alterado: k !== ant }
+      // Montando do zero, turma ainda vazia não conta como "mudou": só quem já tem professor diferente do oficial.
+      return { turma: t, k, ant, alterado: baseVazia ? !!k && k !== ant : k !== ant }
     })
     linhas.forEach(l => { l.conflito = !!l.k && ocupado[`${l.k}|${l.turma.horario_dia_semana}|${hora(l.turma)}`] > 1 })
     const horas = [...new Set(lista.map(hora))].sort()
@@ -254,7 +260,8 @@ export function OrganizarGradePage() {
     if (k && !mapaProf[k]) return
     setCenario(atual => {
       const at = { ...atual.atribuicoes }
-      if (k === original(turma)) delete at[turma.id]; else at[turma.id] = k
+      const padrao = atual.base === 'oficial' ? original(turma) : null
+      if (k === padrao) delete at[turma.id]; else at[turma.id] = k
       // Colocar de volta alguém que estava fora da grade o traz de volta pra lista.
       const des = k ? atual.desligados.filter(x => x !== k) : atual.desligados
       return { ...atual, atribuicoes: at, desligados: des }
@@ -442,7 +449,7 @@ export function OrganizarGradePage() {
         </div>
       </div>
       <p style={{ fontSize: '11px', color: 'var(--color-text-light-muted)', margin: '8px 0 0', lineHeight: 1.5 }}>
-        O número em cada turma é alunos ativos / vagas (individual 1, grupo 4). A bolinha laranja indica turma com professor diferente da grade oficial.
+        O número em cada turma é alunos ativos / vagas (individual 1, grupo 4). O pontinho indica professor diferente do que está hoje na grade oficial.
       </p>
     </div>
   )
@@ -467,7 +474,7 @@ export function OrganizarGradePage() {
           <button type="button" onClick={() => setConfirmarReset(true)} style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700,
             border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
-          }}><RotateCcw size={13} /> Voltar à grade oficial</button>
+          }}><RotateCcw size={13} /> Recomeçar</button>
         </div>
       </div>
 
@@ -479,8 +486,8 @@ export function OrganizarGradePage() {
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
         {stat('turmas de Tênis', dados.linhas.length, 'var(--color-text-light-primary)', 'todas')}
-        {stat('sem professor', dados.semProf, dados.semProf ? 'var(--color-state-warning)' : 'var(--color-text-light-primary)', 'sem')}
-        {stat('mudaram de professor', dados.alteradas, 'var(--color-action-primary)', 'alteradas')}
+        {stat('sem professor', dados.semProf, 'var(--color-text-light-primary)', 'sem')}
+        {stat(baseVazia ? 'com professor diferente do oficial' : 'mudaram de professor', dados.alteradas, 'var(--color-action-primary)', 'alteradas')}
         {stat('choques de horário', dados.conflitos, dados.conflitos ? 'var(--color-state-danger)' : 'var(--color-text-light-primary)', 'conflitos')}
       </div>
 
@@ -509,9 +516,10 @@ export function OrganizarGradePage() {
                 return (
                   <button key={p.id} type="button" onClick={() => { atribuir(turmaModal, p.id); setTurmaAberta(null) }} style={{
                     padding: '6px 11px', borderRadius: '999px', cursor: 'pointer', fontSize: '12px', fontWeight: 700,
-                    border: sel ? '2px solid var(--text-primary)' : '2px solid transparent',
-                    backgroundColor: info.cor, color: 'var(--color-brand-verde-court)',
-                  }}>{info.nome}</button>
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    border: sel ? `1.5px solid ${info.cor}` : '1px solid var(--border)',
+                    backgroundColor: sel ? `color-mix(in srgb, ${info.cor} 16%, var(--surface-overlay))` : 'var(--surface-raised)', color: 'var(--text-primary)',
+                  }}><span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: info.cor }} />{info.nome}</button>
                 )
               })}
             </div>
@@ -525,14 +533,11 @@ export function OrganizarGradePage() {
                 flex: 1, padding: '10px', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                 border: '1px dashed var(--border)', background: 'none', color: 'var(--text-secondary)',
               }}><Eraser size={13} /> Deixar sem professor</button>
-              {kModal !== original(turmaModal) && (
-                <button type="button" onClick={() => {
-                  setCenario(a => { const at = { ...a.atribuicoes }; delete at[turmaModal.id]; return { ...a, atribuicoes: at } })
-                  setTurmaAberta(null)
-                }} style={{
+              {kModal !== original(turmaModal) && !(original(turmaModal) && desligados.has(original(turmaModal))) && (
+                <button type="button" onClick={() => { atribuir(turmaModal, original(turmaModal) || VAZIO); setTurmaAberta(null) }} style={{
                   flex: 1, padding: '10px', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                   border: '1px solid var(--border)', background: 'none', color: 'var(--text-primary)',
-                }}><RotateCcw size={13} /> Voltar ao da grade oficial</button>
+                }}><RotateCcw size={13} /> Usar o da grade oficial</button>
               )}
             </div>
           </div>
@@ -555,16 +560,25 @@ export function OrganizarGradePage() {
         )}
       </Modal>
 
-      <Modal open={confirmarReset} onClose={() => setConfirmarReset(false)} size="sm" title="Voltar à grade oficial">
-        <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--text-secondary)', margin: '0 0 16px' }}>
-          Isso apaga o cenário (trocas, professores novos e quem foi tirado da grade) e volta tudo para os professores da agenda oficial.
+      <Modal open={confirmarReset} onClose={() => setConfirmarReset(false)} size="sm" title="Recomeçar o cenário">
+        <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--text-secondary)', margin: '0 0 14px' }}>
+          Apaga as trocas feitas até agora. Os professores novos e quem você tirou da grade continuam na lista.
         </p>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button type="button" onClick={() => setConfirmarReset(false)} style={{ flex: 1, padding: '11px', borderRadius: '10px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>Manter</button>
-          <button type="button" onClick={() => { setCenario(CENARIO_VAZIO); setPincel(null); setConfirmarReset(false) }} style={{
-            flex: 1, padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: 'var(--color-state-danger)', color: 'var(--color-action-on-primary)', fontWeight: 700, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-          }}><X size={14} /> Apagar cenário</button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {[
+            ['vazia', 'Tudo sem professor', 'Grade limpa, para montar do zero.'],
+            ['oficial', 'Copiar a grade oficial', 'Cada turma começa com o professor de hoje.'],
+          ].map(([base, titulo, sub]) => (
+            <button key={base} type="button" onClick={() => { setCenario(a => ({ ...a, base, atribuicoes: {} })); setPincel(null); setConfirmarReset(false) }} style={{
+              padding: '11px 13px', borderRadius: '10px', textAlign: 'left', cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface-raised)',
+            }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{titulo}</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{sub}</div>
+            </button>
+          ))}
+          <button type="button" onClick={() => setConfirmarReset(false)} style={{ padding: '10px', borderRadius: '10px', border: 'none', background: 'none', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: '12px' }}>
+            Cancelar
+          </button>
         </div>
       </Modal>
     </div>
