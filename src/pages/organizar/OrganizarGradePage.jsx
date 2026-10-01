@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, CalendarRange, Check, FileDown, ChevronLeft, ChevronRight, CloudOff, Eraser, Hand, Pencil, Plus, RotateCcw, Trash2, UserMinus, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { addDays, endOfMonth, format, parseISO, previousMonday, isMonday } from 'date-fns'
+import { addDays, endOfMonth, format, parseISO, previousMonday, isMonday, subMonths } from 'date-fns'
 import { useModalidadeTenisId } from '../../hooks/useModalidadeTenisId'
 import { useQuadras } from '../../hooks/useQuadras'
 import { useHorariosGrade } from '../../hooks/useHorariosGrade'
+import { useNiveis } from '../../hooks/useNiveis'
 import {
   CENARIO_VAZIO, useAlunosDaSemana, useCenarioGrade, useProfessoresOrganizacao, useSalvarCenarioGrade, useTurmasTenisGrade,
 } from '../../hooks/useCenarioGrade'
@@ -46,8 +47,11 @@ const ocupacao = t => t.semana?.alunos.length || 0
 
 // Padrão: a última semana do mês atual (segunda da última semana até o sábado).
 function ultimaSemanaDoMes(hoje = new Date()) {
-  const fim = endOfMonth(hoje)
-  return format(isMonday(fim) ? fim : previousMonday(fim), 'yyyy-MM-dd')
+  const segundaFinal = ref => { const fim = endOfMonth(ref); return isMonday(fim) ? fim : previousMonday(fim) }
+  let seg = segundaFinal(hoje)
+  // Ainda não começou (ex.: dia 1º): usa a última semana do mês anterior, que é a que tem dado.
+  if (seg > hoje) seg = segundaFinal(subMonths(hoje, 1))
+  return format(seg, 'yyyy-MM-dd')
 }
 const fmtDia = d => format(parseISO(d), 'dd/MM')
 const ehTenis = (p, tenisId) => p.modalidade_id === tenisId || (p.modalidades_ids || []).includes(tenisId)
@@ -152,8 +156,10 @@ function CardTurma({ turma, prof, alterado, antes, conflito, apagado, destacado,
       }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', fontSize: '10px', lineHeight: 1.3 }}>
         <strong style={{ color: 'var(--color-text-light-primary)', flexShrink: 0 }}>{quadraCurta(turma.quadras?.nome)}</strong>
-        <span style={{ color: turma.livre ? 'var(--color-text-light-muted)' : 'var(--color-text-light-secondary)', fontStyle: turma.livre ? 'italic' : 'normal', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{turma.livre ? 'Livre' : turma.niveis?.nome || 'Sem nível'}</span>
-        {!turma.livre && <span style={{ fontWeight: 800, flexShrink: 0, color: ocup === 0 ? 'var(--color-text-light-muted)' : 'var(--color-text-light-primary)' }}>{ocup}/{cap}</span>}
+        <span style={{ color: turma.livre ? 'var(--color-text-light-muted)' : 'var(--color-text-light-secondary)', fontStyle: turma.livre && !turma.nivelPlanejado ? 'italic' : 'normal', fontWeight: turma.nivelPlanejado ? 700 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+          {turma.livre && !turma.nivelPlanejado ? 'Livre' : turma.niveis?.nome || 'Sem nível'}{turma.livre && turma.nivelPlanejado ? ' · nova' : ''}
+        </span>
+        {(!turma.livre || turma.nivelPlanejado) && <span style={{ fontWeight: 800, flexShrink: 0, color: ocup === 0 ? 'var(--color-text-light-muted)' : 'var(--color-text-light-primary)' }}>{ocup}/{cap}</span>}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px', minHeight: '20px' }}>
         {prof
@@ -224,6 +230,7 @@ export function OrganizarGradePage() {
   const [mostrarLivres, setMostrarLivres] = useState(true)
   const { data: quadrasTenis } = useQuadras(tenisId)
   const { data: horariosGrade } = useHorariosGrade()
+  const { data: niveisTenis } = useNiveis(tenisId)
   const mudarSemana = dias => setCenario(a => ({ ...a, semana: format(addDays(parseISO(a.semana || ultimaSemanaDoMes()), dias), 'yyyy-MM-dd') }))
 
   // A grade é montada por VAGA: dia × horário (Cadastro > Horários) × quadra de Tênis ativa. Cada
@@ -254,8 +261,11 @@ export function OrganizarGradePage() {
         }
       }
     }
-    return { turmas: vagas, livres: qtdLivres }
-  }, [turmasTodas, alunosSemana, quadrasTenis, horariosGrade, mostrarLivres])
+    // Nível escolhido no cenário pra vaga (ex.: Livre das 6h vira "Individual") sobrepõe o da turma.
+    const planejados = c.niveis || {}
+    const comNivel = vagas.map(v => (planejados[v.id] ? { ...v, niveis: { nome: planejados[v.id] }, nivelPlanejado: true } : v))
+    return { turmas: comNivel, livres: qtdLivres }
+  }, [turmasTodas, alunosSemana, quadrasTenis, horariosGrade, mostrarLivres, c.niveis])
 
   // Professores: Tênis primeiro (cores fixas pela ordem do nome), depois os demais, depois os novos.
   const { tenis, outros, mapaProf } = useMemo(() => {
@@ -371,7 +381,8 @@ export function OrganizarGradePage() {
     try {
       const itens = dados.linhas.map(l => ({
         dia: l.turma.horario_dia_semana, hora: hora(l.turma), quadra: l.turma.quadras?.nome || 'Sem quadra',
-        nivel: l.turma.livre ? 'Livre' : l.turma.niveis?.nome || 'Sem nível', livre: !!l.turma.livre, ocup: ocupacao(l.turma), cap: capacidade(l.turma),
+        nivel: l.turma.livre && !l.turma.nivelPlanejado ? 'Livre' : `${l.turma.niveis?.nome || 'Sem nível'}${l.turma.livre ? ' (nova)' : ''}`,
+        livre: !!l.turma.livre && !l.turma.nivelPlanejado, ocup: ocupacao(l.turma), cap: capacidade(l.turma),
         prof: l.k && mapaProf[l.k] ? { nome: mapaProf[l.k].nome, cor: mapaProf[l.k].cor } : null,
       }))
       await gerarPdfOrganizarGrade({ itens, dias: diasVisiveis, semanaInicio, semanaFim })
@@ -593,6 +604,16 @@ export function OrganizarGradePage() {
                 Grade oficial: <strong>{original(turmaModal) ? mapaProf[original(turmaModal)]?.nome : 'sem professor'}</strong>
               </div>
             </div>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Nível nesta vaga</span>
+              <select value={c.niveis?.[turmaModal.id] || ''} onChange={e => {
+                const v = e.target.value
+                setCenario(a => { const n = { ...(a.niveis || {}) }; if (v) n[turmaModal.id] = v; else delete n[turmaModal.id]; return { ...a, niveis: n } })
+              }} style={{ padding: '9px 10px', borderRadius: '10px', fontSize: '13px', border: '1px solid var(--border)', backgroundColor: 'var(--surface-overlay)', color: 'var(--text-primary)' }}>
+                <option value="">{turmaModal.livre ? 'Livre (sem turma)' : `Manter o atual (${(turmasTodas || []).find(t => t.id === turmaModal.turmaId)?.niveis?.nome || 'sem nível'})`}</option>
+                {(niveisTenis || []).map(n => <option key={n.id} value={n.nome.trim()}>{n.nome.trim()}</option>)}
+              </select>
+            </label>
             <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Escolha o professor</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {escolhiveis.map(p => {
@@ -654,7 +675,7 @@ export function OrganizarGradePage() {
             ['vazia', 'Tudo sem professor', 'Grade limpa, para montar do zero.'],
             ['oficial', 'Copiar a grade oficial', 'Cada turma começa com o professor de hoje.'],
           ].map(([base, titulo, sub]) => (
-            <button key={base} type="button" onClick={() => { setCenario(a => ({ ...a, base, atribuicoes: {} })); setPincel(null); setConfirmarReset(false) }} style={{
+            <button key={base} type="button" onClick={() => { setCenario(a => ({ ...a, base, atribuicoes: {}, niveis: {} })); setPincel(null); setConfirmarReset(false) }} style={{
               padding: '11px 13px', borderRadius: '10px', textAlign: 'left', cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface-raised)',
             }}>
               <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{titulo}</div>
