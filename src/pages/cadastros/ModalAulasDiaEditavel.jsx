@@ -9,6 +9,7 @@ import { logAudit } from '../../lib/audit'
 import { Modal } from '../../components/ui/Modal'
 import { useSalvarPresencas, useAtualizarStatusAula } from '../../hooks/useAulas'
 import { useAlunos } from '../../hooks/useAlunos'
+import { QUADRAS_EMPRESA } from '../../hooks/useFinanceiro'
 import { calcularValorAula, emEscopoRegraValorGrupo, diaSemanaDaData } from '../../constants/modalidades'
 
 // Aulas de um professor numa data, editáveis — aberto pelo gestor/coordenador no card do professor
@@ -42,7 +43,7 @@ const botao = (cor, cheio) => ({
 })
 
 function invalidar(qc) {
-  ;['aulas', 'aulas_professor', 'aulas_dia_prof_detalhe', 'aulas-dia-editavel', 'fin_custos_prof', 'fin_aulas_prof', 'fin_aulas_ano_prof', 'relatorio_repos']
+  ;['aulas', 'aulas_professor', 'aulas_dia_prof_detalhe', 'aulas-dia-editavel', 'fin_detalhe_dia', 'fin_custos_prof', 'fin_aulas_prof', 'fin_aulas_ano_prof', 'relatorio_repos']
     .forEach(k => qc.invalidateQueries({ queryKey: [k] }))
 }
 
@@ -278,24 +279,28 @@ function NovaAula({ professor, dataStr, onCriada, onCancelar }) {
   )
 }
 
-export function ModalAulasDiaEditavel({ professor, dataStr: dataInicial, onClose }) {
+// `empresa` (opcional, 'procopio' | 'beach_arena'): vindo do Financeiro, mostra só as aulas das
+// quadras daquela empresa e calcula o valor com a regra dela — igual à lista do Financeiro.
+export function ModalAulasDiaEditavel({ professor, dataStr: dataInicial, onClose, empresa = null }) {
   const [dataStr, setDataStr] = useState(dataInicial)
   const [aberta, setAberta] = useState(null)
   const [incluindo, setIncluindo] = useState(false)
   const { data: alunos } = useAlunos()
 
   const { data: aulas = [], isLoading } = useQuery({
-    queryKey: ['aulas-dia-editavel', professor.id, dataStr],
+    queryKey: ['aulas-dia-editavel', professor.id, dataStr, empresa],
     queryFn: async () => {
       const { data, error } = await supabase.from('aulas')
         .select('id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao), presencas(aluno_id, status_presenca, tipo_participacao, presente, status_inclusao_professor, alunos(nome))')
         .eq('professor_executou_id', professor.id).eq('data_aula', dataStr)
       if (error) throw error
-      return (data || []).sort((a, b) => horaAula(a).localeCompare(horaAula(b)))
+      const quadras = empresa ? QUADRAS_EMPRESA[empresa] || [] : null
+      const daEmpresa = a => !quadras || quadras.includes(a.turma_id ? a.turmas?.quadras?.nome || '' : parteObs(a.observacoes)[1])
+      return (data || []).filter(daEmpresa).sort((a, b) => horaAula(a).localeCompare(horaAula(b)))
     },
   })
 
-  const valor = a => (a.paga_professor && ['dada', 'cancelada'].includes(a.status_aula) ? calcularValorAula(a, professor) : 0)
+  const valor = a => (a.paga_professor && ['dada', 'cancelada'].includes(a.status_aula) ? calcularValorAula(a, professor, empresa) : 0)
   const totalDia = aulas.reduce((s, a) => s + valor(a), 0)
 
   return (

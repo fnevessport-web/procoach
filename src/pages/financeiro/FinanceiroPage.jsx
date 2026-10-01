@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, endOfMonth, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash, Search, Ban, Download, Eye, EyeOff } from 'lucide-react'
+import { ChevronLeft, X, Upload, Copy, Check, Plus, Trash2, FileText, ExternalLink, Lock, LockOpen, Hash, Search, Ban, Download, Eye, EyeOff, Pencil } from 'lucide-react'
 import {
   useCustoProfessores,
   useAulasProfessorFinanceiro,
@@ -35,6 +35,8 @@ import { exportarAlunosSemClubeParaClubePDF, exportarAlunosSemClubeParaDonoPDF }
 import { supabase } from '../../lib/supabase'
 import { Loading } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
+import { usePermissions } from '../../hooks/usePermissions'
+import { ModalAulasDiaEditavel } from '../cadastros/ModalAulasDiaEditavel'
 import toast from 'react-hot-toast'
 
 // ──────────────────────────────────────────────────────────────────────
@@ -408,7 +410,7 @@ function PinModal({ initialMode, professorId, mes, ano, onClose, onAutorizado })
 // DetalhesDiaModal — aulas de um dia específico do professor
 // ──────────────────────────────────────────────────────────────────────
 
-function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAulas, valorUnitario, onClose, financeiroState }) {
+function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAulas, valorUnitario, onClose, financeiroState, onEditar }) {
   const dataFmt = format(parseISO(dataStr + 'T12:00:00'), "EEEE, dd 'de' MMMM", { locale: ptBR })
   const navigate = useNavigate()
 
@@ -585,6 +587,16 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
           })}
         </div>
 
+        {onEditar && (
+          <button onClick={onEditar} style={{
+            marginTop: '12px', width: '100%', padding: '10px', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: '700',
+            border: '1px dashed var(--color-action-primary)', backgroundColor: 'transparent', color: 'var(--color-action-primary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+          }}>
+            <Pencil size={13} /> Editar, incluir ou excluir aulas deste dia
+          </button>
+        )}
+
         <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--color-border-dark)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)' }}>Total do dia</span>
           <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{fmtBRL(totalDia)}</span>
@@ -626,6 +638,8 @@ export function FinanceiroPage() {
   const [professorSel, setProfessorSel] = useState(savedFin?.professorSel || null)
   const [pinModal, setPinModal] = useState(null)   // { professorId, initialMode }
   const [detalhesDia, setDetalhesDia] = useState(null) // { dataStr, aulas }
+  const [editandoDia, setEditandoDia] = useState(null) // dataStr aberta na edição das aulas do dia
+  const { podeEditarFinanceiro } = usePermissions()
   const [buscaProf, setBuscaProf] = useState('')
   const [filtroValorAula, setFiltroValorAula] = useState(null) // null = todas; ou um valor específico (120, 100, ...)
   const [filtroSoFalta100, setFiltroSoFalta100] = useState(false) // true = só aulas com 100% de falta na turma
@@ -1852,7 +1866,14 @@ export function FinanceiroPage() {
             valorUnitario={valorUnitarioProf}
             onClose={() => setDetalhesDia(null)}
             financeiroState={{ view, empresaId, mesSel, anoSel, professorSel }}
+            onEditar={podeEditarFinanceiro ? () => { setEditandoDia(detalhesDia.dataStr); setDetalhesDia(null) } : undefined}
           />
+        )}
+
+        {/* Edição das aulas do dia (mesma janela do card do professor), só da empresa vista agora. */}
+        {editandoDia && (
+          <ModalAulasDiaEditavel professor={professorSel} dataStr={editandoDia} empresa={empresaId}
+            onClose={() => { setDetalhesDia({ dataStr: editandoDia, aulas: [] }); setEditandoDia(null) }} />
         )}
 
         {loadingAulasProf ? <Loading /> : diasOrdenados.length === 0 ? (
