@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { format, addDays, addMonths, startOfMonth, getDaysInMonth, getDay } from 'date-fns'
+import { format, addDays, addMonths, startOfMonth, getDaysInMonth, getDay, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Plus, Calendar, UserPlus, X, ChevronRight, ChevronLeft, Copy, Check, CheckCircle2, Zap, Lightbulb, AlertTriangle, User, School } from 'lucide-react'
 import { useAulas, useGerarAulas, useRelatorioReposicoes } from '../../hooks/useAulas'
@@ -240,7 +240,7 @@ export function AulasAdmin() {
       </Modal>
 
       <ModalCopiarGrade open={modalGerar === 'copiar'} onClose={fecharTudo} />
-      <ModalGerarAulas open={modalGerar === 'mensal'} onClose={fecharTudo} turmaIdInicial={turmaRecemPosicionada} />
+      <ModalGerarAulas open={modalGerar === 'mensal'} onClose={fecharTudo} turmaIdInicial={turmaRecemPosicionada} dataInicioInicial={atalho?.data || null} />
       <ModalPosicionarTurma
         open={modalGerar === 'posicionar_atalho'}
         onClose={fecharTudo}
@@ -877,7 +877,10 @@ function ModalReposicao({ aluno, onClose }) {
 // turmaIdInicial: quando vem de "Posicionar turma existente"/"Criar turma nova aqui" no atalho
 // da grade, a turma já foi acabada de posicionar — abre esse modal com ela já escolhida, só
 // falta confirmar o período.
-function ModalGerarAulas({ open, onClose, turmaIdInicial = null }) {
+// dataInicioInicial: dia clicado na grade — o período começa nele, não em "hoje". Antes vinha
+// sempre hoje: criando em 30/09 uma turma pra começar em 17/09, as aulas nasciam a partir de
+// 01/10, o dia clicado continuava vazio e parecia erro (a turma acabou criada 3x).
+function ModalGerarAulas({ open, onClose, turmaIdInicial = null, dataInicioInicial = null }) {
   const { data: turmas } = useTurmas()
   const gerar = useGerarAulas()
   const [form, setForm] = useState({
@@ -896,7 +899,10 @@ function ModalGerarAulas({ open, onClose, turmaIdInicial = null }) {
   if (open && turmaIdInicial && turmaIdInicial !== turmaIdInicialAplicado) {
     setTurmaIdInicialAplicado(turmaIdInicial)
     const turma = turmas?.find(t => t.id === turmaIdInicial)
-    setForm(f => ({ ...f, turma_id: turmaIdInicial, professor_id: turma?.professor_titular_id || f.professor_id }))
+    setForm(f => ({
+      ...f, turma_id: turmaIdInicial, professor_id: turma?.professor_titular_id || f.professor_id,
+      ...(dataInicioInicial ? { data_inicio: dataInicioInicial, data_fim: format(addDays(parseISO(dataInicioInicial), 30), 'yyyy-MM-dd') } : {}),
+    }))
   }
   if (!open && turmaIdInicialAplicado) setTurmaIdInicialAplicado(null)
 
@@ -1043,6 +1049,16 @@ function ModalCriarTurmaAqui({ open, onClose, atalho, onCriada, onEscolherOutra 
     if (!nivelId) return toast.error('Escolha o nível', { style: toastStyle })
     setSalvando(true)
     try {
+      // Mesma turma (modalidade, nível, quadra, dia, horário) já existe ativa: reaproveita em vez
+      // de criar outra — evita turma duplicada quando a pessoa tenta de novo.
+      const { data: iguais } = await supabase.from('turmas').select('id')
+        .eq('ativo', true).eq('modalidade_id', modalidadeId).eq('nivel_id', nivelId).eq('quadra_id', quadraId)
+        .eq('horario_dia_semana', diaSemana).eq('horario_inicio', atalho.horario).limit(1)
+      if (iguais?.length) {
+        toast('Essa turma já existe, vamos usar ela', { style: toastStyle })
+        onCriada(iguais[0].id)
+        return
+      }
       const quadraNome = todasQuadras?.find(q => q.id === quadraId)?.nome || ''
       const nivelNome = niveis?.find(n => n.id === nivelId)?.nome || ''
       const nome = [LABEL_DIA_SEMANA[diaSemana], atalho.horario, quadraNome, nivelNome].filter(Boolean).join(' · ')
