@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, CalendarRange, Check, ChevronLeft, ChevronRight, CloudOff, Eraser, Hand, Pencil, Plus, RotateCcw, Trash2, UserMinus, UserPlus } from 'lucide-react'
+import { AlertTriangle, CalendarRange, Check, FileDown, ChevronLeft, ChevronRight, CloudOff, Eraser, Hand, Pencil, Plus, RotateCcw, Trash2, UserMinus, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { addDays, endOfMonth, format, parseISO, previousMonday, isMonday } from 'date-fns'
 import { useModalidadeTenisId } from '../../hooks/useModalidadeTenisId'
@@ -11,6 +11,7 @@ import { VAGAS_GRUPO, VAGAS_INDIVIDUAL } from '../../constants/modalidades'
 import { nomeCurto } from '../../lib/nomes'
 import { Loading } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
+import { gerarPdfOrganizarGrade } from '../../lib/organizarGradePdf'
 
 // Organizar Grade: tabuleiro da grade de Tênis (seg a sáb) pra planejar a distribuição dos
 // professores — arrastar (ou "pincel": toca no professor e depois nas turmas) o nome pra turma,
@@ -184,6 +185,7 @@ export function OrganizarGradePage() {
   const [turmaAberta, setTurmaAberta] = useState(null)
   const [novoAberto, setNovoAberto] = useState(null) // { id?, nome }
   const [confirmarReset, setConfirmarReset] = useState(false)
+  const [gerandoPdf, setGerandoPdf] = useState(false)
 
   // Carrega o cenário salvo uma vez; daí em diante a tela é a dona do estado e só grava.
   const carregado = useRef(false)
@@ -334,6 +336,20 @@ export function OrganizarGradePage() {
     )
   }
   const tituloSecao = t => <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-text-light-muted)', margin: '10px 0 4px' }}>{t}</div>
+
+  // PDF do cenário como está na tela (dia filtrado ou a semana toda). Sem professor = linha em branco.
+  async function baixarPdf() {
+    setGerandoPdf(true)
+    try {
+      const itens = dados.linhas.map(l => ({
+        dia: l.turma.horario_dia_semana, hora: hora(l.turma), quadra: l.turma.quadras?.nome || 'Sem quadra',
+        nivel: l.turma.niveis?.nome || 'Sem nível', ocup: ocupacao(l.turma), cap: capacidade(l.turma),
+        prof: l.k && mapaProf[l.k] ? { nome: mapaProf[l.k].nome, cor: mapaProf[l.k].cor } : null,
+      }))
+      await gerarPdfOrganizarGrade({ itens, dias: diasVisiveis, semanaInicio, semanaFim })
+    } catch (e) { toast.error('Não foi possível gerar o PDF: ' + e.message, { style: toastStyle }) }
+    finally { setGerandoPdf(false) }
+  }
 
   const statusTexto = salvo?.local
     ? 'Salvo só neste navegador'
@@ -510,6 +526,10 @@ export function OrganizarGradePage() {
             display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700,
             border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
           }}><RotateCcw size={13} /> Recomeçar</button>
+          <button type="button" onClick={baixarPdf} disabled={gerandoPdf} style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '10px', cursor: gerandoPdf ? 'default' : 'pointer', fontSize: '12px', fontWeight: 700,
+            border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', opacity: gerandoPdf ? 0.7 : 1,
+          }}><FileDown size={13} /> {gerandoPdf ? 'Gerando PDF...' : 'Baixar PDF'}</button>
         </div>
       </div>
 
