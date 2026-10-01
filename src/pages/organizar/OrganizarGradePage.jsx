@@ -133,9 +133,16 @@ function BotaoIcone({ onClick, titulo, children, cor = 'var(--color-text-light-m
   )
 }
 
+// Saibro translúcido: vaga que TEM aula (turma com aluno, ou Livre com nível planejado) e ficou sem
+// professor — ou com o marcador "SEM PROFESSOR" criado como professor novo. Livre sem nível fica neutra.
+const SAIBRO_SUAVE = 'color-mix(in srgb, var(--color-action-primary) 9%, var(--color-surface-light-overlay))'
+const SAIBRO_BORDA = 'color-mix(in srgb, var(--color-action-primary) 38%, transparent)'
+
 function CardTurma({ turma, prof, alterado, antes, conflito, apagado, destacado, pincelAtivo, onDrop, onClick }) {
   const [sobre, setSobre] = useState(false)
-  const cor = prof?.cor
+  const temAula = !turma.livre || turma.nivelPlanejado
+  const faltaProf = temAula && (!prof || /sem\s*prof/i.test(prof.nome))
+  const cor = faltaProf ? null : prof?.cor
   const ocup = ocupacao(turma)
   const cap = capacidade(turma)
   const titulo = [turma.nome, alterado ? `Na grade oficial: ${antes}` : null, conflito ? 'Professor em duas turmas no mesmo horário' : null].filter(Boolean).join('\n')
@@ -147,9 +154,9 @@ function CardTurma({ turma, prof, alterado, antes, conflito, apagado, destacado,
       onDrop={e => { e.preventDefault(); setSobre(false); const k = e.dataTransfer.getData('text/plain'); if (k) onDrop(k) }}
       style={{
         position: 'relative', padding: '5px 6px 6px', borderRadius: '8px', boxSizing: 'border-box', cursor: pincelAtivo ? 'copy' : 'pointer',
-        backgroundColor: cor ? 'var(--color-surface-light-overlay)' : 'transparent',
-        border: `1px ${cor ? 'solid' : 'dashed'} ${conflito ? 'color-mix(in srgb, var(--color-state-danger) 55%, transparent)' : 'var(--color-border-light)'}`,
-        borderLeft: cor ? `3px solid ${cor}` : '1px dashed var(--color-border-light)',
+        backgroundColor: faltaProf ? SAIBRO_SUAVE : cor ? 'var(--color-surface-light-overlay)' : 'transparent',
+        border: `1px ${cor || faltaProf ? 'solid' : 'dashed'} ${conflito ? 'color-mix(in srgb, var(--color-state-danger) 55%, transparent)' : faltaProf ? SAIBRO_BORDA : 'var(--color-border-light)'}`,
+        borderLeft: faltaProf ? '3px solid var(--color-action-primary)' : cor ? `3px solid ${cor}` : '1px dashed var(--color-border-light)',
         opacity: apagado ? 0.25 : 1,
         outline: sobre ? '2px solid var(--color-action-primary)' : destacado ? `1.5px solid ${cor}` : 'none',
         outlineOffset: '1px', transition: 'opacity 0.15s',
@@ -163,8 +170,8 @@ function CardTurma({ turma, prof, alterado, antes, conflito, apagado, destacado,
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px', minHeight: '20px' }}>
         {prof
-          ? <Etiqueta chave={prof.chave} nome={prof.nome} cor={cor} pequena />
-          : <span style={{ fontSize: '11px', color: 'var(--color-text-light-muted)' }}>sem professor</span>}
+          ? <Etiqueta chave={prof.chave} nome={prof.nome} cor={prof.cor} pequena />
+          : <span style={{ fontSize: '11px', fontWeight: faltaProf ? 700 : 400, color: faltaProf ? 'var(--color-action-primary)' : 'var(--color-text-light-muted)' }}>sem professor</span>}
         {conflito && <AlertTriangle size={12} style={{ color: 'var(--color-state-danger)', flexShrink: 0 }} />}
         {alterado && <span title={`Na grade oficial: ${antes}`} style={{ width: '5px', height: '5px', borderRadius: '50%', flexShrink: 0, marginLeft: 'auto', backgroundColor: 'var(--color-action-primary)' }} />}
       </div>
