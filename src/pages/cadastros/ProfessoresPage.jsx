@@ -19,6 +19,7 @@ import { nomeCurto } from '../../lib/nomes'
 import { BANCOS, ESTADOS } from '../../constants/geografia'
 import { calcularValorAula } from '../../constants/modalidades'
 import { DashboardProfessor } from '../professor/DashboardProfessor'
+import { ModalAulasDiaEditavel } from './ModalAulasDiaEditavel'
 
 const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']
 
@@ -1639,6 +1640,11 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                         )
                       })()}
 
+                      {podeEditarCadastros && (
+                        <button onClick={() => setDiaSelecionado({ dataStr: `${mesSelecionado.ano}-${String(mesSelecionado.mes).padStart(2, '0')}-01`, professorId: cardAberto.id })} style={{ width: '100%', marginBottom: '6px', padding: '7px 10px', borderRadius: '8px', border: '1px dashed var(--color-action-primary)', backgroundColor: 'transparent', color: 'var(--color-action-primary)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                          <Plus size={13} /> Incluir ou ajustar aula em outro dia
+                        </button>
+                      )}
                       {diasComAula.length === 0 ? (
                         <div style={{ fontSize: '12px', color: 'var(--color-text-light-muted)', textAlign: 'center', marginBottom: '8px' }}>Nenhuma aula confirmada</div>
                       ) : (
@@ -2205,13 +2211,15 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       ), document.body)}
 
       {/* MODAL DETALHES DIA */}
-      {diaSelecionado && (
-        <ModalDetalhesDia
-          professorId={diaSelecionado.professorId}
-          dataStr={diaSelecionado.dataStr}
-          onClose={() => setDiaSelecionado(null)}
-        />
-      )}
+      {/* Gestor/coordenador edita as aulas do dia (status, alunos, incluir/excluir) direto daqui;
+          quem só lê continua com a janela de leitura de sempre. */}
+      {diaSelecionado && (podeEditarCadastros && cardAberto
+        ? <ModalAulasDiaEditavel professor={cardAberto} dataStr={diaSelecionado.dataStr} onClose={() => setDiaSelecionado(null)} />
+        : <ModalDetalhesDia
+            professorId={diaSelecionado.professorId}
+            dataStr={diaSelecionado.dataStr}
+            onClose={() => setDiaSelecionado(null)}
+          />)}
 
       {/* MODAL CRIAR */}
       {modalCriar && createPortal((
