@@ -850,6 +850,10 @@ export function FinanceiroPage() {
   const qtdAulasComExtrasProf = aulasProf.filter(a => participantesForaDoPagamento(a).total > 0).length
   const qtdAulasChuvaProf = aulasProf.filter(aulaCanceladaPorChuva).length
   const totalExtrasProf = extrasProfDaEmpresa.reduce((s, e) => s + Number(e.valor || 0), 0)
+  // Desconto = lançamento negativo em pagamentos_extras (botão "−" no card do professor). O total
+  // acima já é líquido; aqui só separa pra mostrar "+ extras" e "− descontos" lado a lado.
+  const somaExtrasPositivos = extrasProfDaEmpresa.filter(e => Number(e.valor) > 0).reduce((s, e) => s + Number(e.valor), 0)
+  const somaDescontosProf = -extrasProfDaEmpresa.filter(e => Number(e.valor) < 0).reduce((s, e) => s + Number(e.valor), 0)
   const totalPagarProf = somaAulasProf + totalExtrasProf
   // Margem líquida (só Tênis/Procópio) das aulas desse professor no período — visão do
   // coordenador, nunca exposta ao professor. Ver calcularMargensTenis em modalidades.js.
@@ -1503,9 +1507,14 @@ export function FinanceiroPage() {
               ? <>{totalAulasProf} aulas — {fmtBRL(somaAulasProf)} <span style={{ color: 'var(--color-state-warning)' }}>(valor por turma)</span></>
               : <>{totalAulasProf} aulas × {fmtBRL(valorUnitarioProf)}</>
             }
-            {totalExtrasProf > 0 && (
+            {somaExtrasPositivos > 0 && (
               <span style={{ color: 'var(--color-state-info)', marginLeft: '6px' }}>
-                + {fmtBRL(totalExtrasProf)} extra{extrasProfDaEmpresa.length > 1 ? 's' : ''}
+                + {fmtBRL(somaExtrasPositivos)} extra{extrasProfDaEmpresa.filter(e => Number(e.valor) > 0).length > 1 ? 's' : ''}
+              </span>
+            )}
+            {somaDescontosProf > 0 && (
+              <span style={{ color: 'var(--color-state-danger)', marginLeft: '6px' }}>
+                − {fmtBRL(somaDescontosProf)} desconto{extrasProfDaEmpresa.filter(e => Number(e.valor) < 0).length > 1 ? 's' : ''}
               </span>
             )}
           </div>

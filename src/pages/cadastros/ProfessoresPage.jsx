@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil, Lock, KeyRound, Eye, EyeOff, MoreVertical, Ban, RotateCcw, Save, TriangleAlert } from 'lucide-react'
+import { MessageCircle, FileText, Star, Upload, Copy, Check, Camera, X, Plus, Trash2, Pencil, Lock, KeyRound, Eye, EyeOff, MoreVertical, Ban, RotateCcw, Save, TriangleAlert, Minus } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { usePermissions } from '../../hooks/usePermissions'
@@ -402,7 +402,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
   const [empresaBoletoSel, setEmpresaBoletoSel] = useState('procopio')
   const [diaSelecionado, setDiaSelecionado] = useState(null)
   const [modalExtra, setModalExtra] = useState(false)
-  const [formExtra, setFormExtra] = useState({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '', empresa: '' })
+  const [formExtra, setFormExtra] = useState({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '', empresa: '', desconto: false })
   const [salvandoExtra, setSalvandoExtra] = useState(false)
   const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear())
   const [filtroFuncao, setFiltroFuncao] = useState('todos')
@@ -833,8 +833,8 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       await supabase.from('professores').update({ foto_url: publicUrl }).eq('id', cardAberto.id)
       setCardAberto(prev => ({ ...prev, foto_url: publicUrl }))
       qc.invalidateQueries({ queryKey: ['professores'] })
-      toast.success('Foto atualizada!', { style: toastStyle })
-    } catch (err) { toast.error('Erro ao subir foto: ' + err.message, { style: toastStyle }) }
+      toast.success('Foto atualizada!')
+    } catch (err) { toast.error('Erro ao subir foto: ' + err.message) }
     finally { setUploadandoFoto(false) }
   }
 
@@ -931,16 +931,21 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
     })
     const qtd = doMes.length
     const valorAulas = doMes.reduce((acc, a) => acc + calcularValorAula(a, cardAberto), 0)
-    const valorExtras = pagamentosExtras
-      .filter(p => p.mes === mes && p.ano === ano)
-      .reduce((acc, p) => acc + (p.valor || 0), 0)
-    return { qtd, valor: valorAulas + valorExtras, valorAulas, valorExtras }
+    // Desconto é um lançamento com valor negativo na mesma tabela (pagamentos_extras): já sai do
+    // total em todo lugar que soma os extras (Financeiro, painel do professor) sem regra à parte.
+    const lancamentos = pagamentosExtras.filter(p => p.mes === mes && p.ano === ano).map(p => Number(p.valor || 0))
+    const valorExtras = lancamentos.filter(v => v > 0).reduce((a, v) => a + v, 0)
+    const valorDescontos = -lancamentos.filter(v => v < 0).reduce((a, v) => a + v, 0)
+    return { qtd, valor: valorAulas + valorExtras - valorDescontos, valorAulas, valorExtras, valorDescontos }
   }
 
   const extraEhMultiEmpresa = !!(cardAberto?.trabalha_procopio && cardAberto?.trabalha_beach)
 
   async function handleSalvarExtra() {
     if (!formExtra.descricao.trim() || !formExtra.valor) return alert('Preencha todos os campos')
+    const valorDigitado = Math.abs(parseFloat(String(formExtra.valor).replace(',', '.')))
+    if (!valorDigitado) return alert('Informe um valor maior que zero')
+    const valorFinal = formExtra.desconto ? -valorDigitado : valorDigitado
     if (extraEhMultiEmpresa && !formExtra.empresa) return alert('Selecione a empresa (Procópio ou Beach Arena)')
     setSalvandoExtra(true)
     const d = new Date(formExtra.data_pagamento + 'T12:00')
@@ -950,7 +955,9 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
         await supabase.from('pagamentos_extras').update({
           data_pagamento: formExtra.data_pagamento,
           descricao: formExtra.descricao,
-          valor: parseFloat(String(formExtra.valor).replace(',', '.')),
+          valor: valorFinal,
+          mes: d.getMonth() + 1,
+          ano: d.getFullYear(),
           empresa: empresaFinal,
         }).eq('id', formExtra.id)
       } else {
@@ -958,14 +965,14 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
         professor_id: cardAberto.id,
         data_pagamento: formExtra.data_pagamento,
         descricao: formExtra.descricao,
-        valor: parseFloat(String(formExtra.valor).replace(',', '.')),
+        valor: valorFinal,
         mes: d.getMonth() + 1,
         ano: d.getFullYear(),
         empresa: empresaFinal,
       })
       }
       qc.invalidateQueries({ queryKey: ['pagamentos_extras', cardAberto.id] })
-      setFormExtra({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '', empresa: '' })
+      setFormExtra({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '', empresa: '', desconto: false })
       setModalExtra(false)
     } catch (err) { alert('Erro: ' + err.message) }
     finally { setSalvandoExtra(false) }
@@ -1468,16 +1475,23 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{labelMesMostrar} · {ganhosMostrar.qtd} aulas</div>
                   <div style={{ fontSize: '24px', fontWeight: '800', color: 'var(--color-action-primary)' }}>R$ {ganhosMostrar.valor.toFixed(2).replace('.', ',')}</div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '9px', color: 'var(--color-text-light-secondary)', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Receita Extra</div>
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: ganhosMostrar.valorExtras > 0 ? 'var(--color-state-info)' : 'var(--color-text-light-muted)' }}>
-                      {ganhosMostrar.valorExtras > 0 ? `R$ ${ganhosMostrar.valorExtras.toFixed(2).replace('.', ',')}` : '—'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  {[
+                    { rotulo: 'Receita Extra', valor: ganhosMostrar.valorExtras, cor: 'var(--color-state-info)', sinal: '', desconto: false, Icone: Plus },
+                    { rotulo: 'Desconto', valor: ganhosMostrar.valorDescontos, cor: 'var(--color-state-danger)', sinal: '− ', desconto: true, Icone: Minus },
+                  ].map(b => (
+                    <div key={b.rotulo} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '9px', color: 'var(--color-text-light-secondary)', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{b.rotulo}</div>
+                        <div style={{ fontSize: '15px', fontWeight: '600', color: b.valor > 0 ? b.cor : 'var(--color-text-light-muted)' }}>
+                          {b.valor > 0 ? `${b.sinal}R$ ${b.valor.toFixed(2).replace('.', ',')}` : '—'}
+                        </div>
+                      </div>
+                      <button title={b.desconto ? 'Lançar desconto' : 'Lançar receita extra'} onClick={() => { setFormExtra({ data_pagamento: format(new Date(), 'yyyy-MM-dd'), descricao: '', valor: '', empresa: '', desconto: b.desconto }); setModalExtra(true) }} style={{ width: '28px', height: '28px', borderRadius: '8px', border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-overlay)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <b.Icone size={14} color={b.desconto ? 'var(--color-state-danger)' : 'var(--color-text-light-secondary)'} />
+                      </button>
                     </div>
-                  </div>
-                  <button onClick={() => setModalExtra(true)} style={{ width: '28px', height: '28px', borderRadius: '8px', border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-overlay)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Plus size={14} color="var(--color-text-light-secondary)" />
-                  </button>
+                  ))}
                 </div>
               </div>
               <div style={{ height: '3px', borderRadius: '2px', backgroundColor: 'var(--color-border-light)', overflow: 'hidden', marginBottom: '4px' }}>
@@ -1492,14 +1506,16 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                 <div onClick={e => e.stopPropagation()} style={{ width: '100%', backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '20px 20px 0 0', padding: '20px 16px', boxSizing: 'border-box' }}>
                   <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--color-text-light-muted)', borderRadius: '2px', margin: '0 auto 16px' }} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', fontWeight: '700', color: 'var(--color-text-light-primary)', marginBottom: '16px' }}>
-                    {formExtra.id ? <><Pencil size={14} /> Editar Extra</> : '+ Pagamento Extra'}
+                    {formExtra.id
+                      ? <><Pencil size={14} /> {formExtra.desconto ? 'Editar Desconto' : 'Editar Extra'}</>
+                      : formExtra.desconto ? <span style={{ color: 'var(--color-state-danger)' }}>− Desconto</span> : '+ Pagamento Extra'}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div><div style={labelStyle}>Data</div>
                       <input type="date" style={inputStyle} value={formExtra.data_pagamento} onChange={e => setFormExtra(f => ({ ...f, data_pagamento: e.target.value }))} /></div>
                     <div><div style={labelStyle}>Descrição</div>
-                      <input style={inputStyle} placeholder="Ex: Evento, Diária, Bônus..." value={formExtra.descricao} onChange={e => setFormExtra(f => ({ ...f, descricao: e.target.value }))} /></div>
-                    <div><div style={labelStyle}>Valor (R$)</div>
+                      <input style={inputStyle} placeholder={formExtra.desconto ? 'Ex: Adiantamento, ajuste, aula não dada...' : 'Ex: Evento, Diária, Bônus...'} value={formExtra.descricao} onChange={e => setFormExtra(f => ({ ...f, descricao: e.target.value }))} /></div>
+                    <div><div style={labelStyle}>{formExtra.desconto ? 'Valor a descontar (R$)' : 'Valor (R$)'}</div>
                       <input type="number" style={inputStyle} placeholder="0,00" value={formExtra.valor} onChange={e => setFormExtra(f => ({ ...f, valor: e.target.value }))} /></div>
                     {extraEhMultiEmpresa && (
                       <div><div style={labelStyle}>Empresa</div>
@@ -1645,7 +1661,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                       )}
                       {extrasDoMes.length > 0 && (
                         <>
-                          <div style={{ fontSize: '10px', color: 'var(--color-state-info)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '8px 0 6px' }}>Extras</div>
+                          <div style={{ fontSize: '10px', color: 'var(--color-state-info)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '8px 0 6px' }}>Extras e descontos</div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             {extrasDoMes.map(ex => (
                               <div key={ex.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', backgroundColor: 'rgba(61,107,122,0.06)', borderRadius: '8px', border: '1px solid rgba(61,107,122,0.15)' }}>
@@ -1654,12 +1670,12 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                                   <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)' }}>{format(new Date(ex.data_pagamento + 'T12:00'), 'dd/MM/yyyy')}</div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-state-info)' }}>R${Number(ex.valor).toFixed(2).replace('.', ',')}</span>
-                                    <button onClick={() => { setFormExtra({ id: ex.id, data_pagamento: ex.data_pagamento, descricao: ex.descricao, valor: ex.valor, empresa: ex.empresa || '' }); setModalExtra(true) }} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(165,76,46,0.1)', color: 'var(--color-action-primary)', cursor: 'pointer' }}>
+                                    <span style={{ fontSize: '12px', fontWeight: '600', color: ex.valor < 0 ? 'var(--color-state-danger)' : 'var(--color-state-info)' }}>{ex.valor < 0 ? '− ' : ''}R${Math.abs(Number(ex.valor)).toFixed(2).replace('.', ',')}</span>
+                                    <button onClick={() => { setFormExtra({ id: ex.id, data_pagamento: ex.data_pagamento, descricao: ex.descricao, valor: Math.abs(Number(ex.valor)), empresa: ex.empresa || '', desconto: ex.valor < 0 }); setModalExtra(true) }} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(165,76,46,0.1)', color: 'var(--color-action-primary)', cursor: 'pointer' }}>
                                       <Pencil size={11} />
                                     </button>
                                     <button onClick={async () => {
-                                      if (!confirm('Excluir este extra?')) return
+                                      if (!confirm(ex.valor < 0 ? 'Excluir este desconto?' : 'Excluir este extra?')) return
                                       await supabase.from('pagamentos_extras').delete().eq('id', ex.id)
                                       qc.invalidateQueries({ queryKey: ['pagamentos_extras', cardAberto.id] })
                                     }} style={{ padding: '3px 6px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(180,71,47,0.1)', color: 'var(--color-state-danger)', cursor: 'pointer' }}>
