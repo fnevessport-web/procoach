@@ -3,6 +3,8 @@ import { AlertTriangle, CalendarRange, Check, FileDown, ChevronLeft, ChevronRigh
 import toast from 'react-hot-toast'
 import { addDays, endOfMonth, format, parseISO, previousMonday, isMonday } from 'date-fns'
 import { useModalidadeTenisId } from '../../hooks/useModalidadeTenisId'
+import { useQuadras } from '../../hooks/useQuadras'
+import { useHorariosGrade } from '../../hooks/useHorariosGrade'
 import {
   CENARIO_VAZIO, useAlunosDaSemana, useCenarioGrade, useProfessoresOrganizacao, useSalvarCenarioGrade, useTurmasTenisGrade,
 } from '../../hooks/useCenarioGrade'
@@ -150,8 +152,8 @@ function CardTurma({ turma, prof, alterado, antes, conflito, apagado, destacado,
       }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', fontSize: '10px', lineHeight: 1.3 }}>
         <strong style={{ color: 'var(--color-text-light-primary)', flexShrink: 0 }}>{quadraCurta(turma.quadras?.nome)}</strong>
-        <span style={{ color: 'var(--color-text-light-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{turma.niveis?.nome || 'Sem nível'}</span>
-        <span style={{ fontWeight: 800, flexShrink: 0, color: ocup === 0 ? 'var(--color-text-light-muted)' : 'var(--color-text-light-primary)' }}>{ocup}/{cap}</span>
+        <span style={{ color: turma.livre ? 'var(--color-text-light-muted)' : 'var(--color-text-light-secondary)', fontStyle: turma.livre ? 'italic' : 'normal', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{turma.livre ? 'Livre' : turma.niveis?.nome || 'Sem nível'}</span>
+        {!turma.livre && <span style={{ fontWeight: 800, flexShrink: 0, color: ocup === 0 ? 'var(--color-text-light-muted)' : 'var(--color-text-light-primary)' }}>{ocup}/{cap}</span>}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px', minHeight: '20px' }}>
         {prof
@@ -219,15 +221,41 @@ export function OrganizarGradePage() {
   const semanaInicio = c.semana || ultimaSemanaDoMes()
   const semanaFim = format(addDays(parseISO(semanaInicio), 5), 'yyyy-MM-dd')
   const { data: alunosSemana, isLoading: carregandoSemana } = useAlunosDaSemana(semanaInicio, semanaFim)
-  const [mostrarVazias, setMostrarVazias] = useState(false)
+  const [mostrarLivres, setMostrarLivres] = useState(true)
+  const { data: quadrasTenis } = useQuadras(tenisId)
+  const { data: horariosGrade } = useHorariosGrade()
   const mudarSemana = dias => setCenario(a => ({ ...a, semana: format(addDays(parseISO(a.semana || ultimaSemanaDoMes()), dias), 'yyyy-MM-dd') }))
 
-  // Só as turmas que têm aula com aluno na semana de referência (ou todas as ativas, se pedir).
-  const { turmas, vazias } = useMemo(() => {
-    const todas = (turmasTodas || []).map(t => ({ ...t, semana: alunosSemana?.[t.id] || null }))
-    const comAluno = todas.filter(t => ocupacao(t) > 0)
-    return { turmas: mostrarVazias ? todas : comAluno, vazias: todas.length - comAluno.length }
-  }, [turmasTodas, alunosSemana, mostrarVazias])
+  // A grade é montada por VAGA: dia × horário (Cadastro > Horários) × quadra de Tênis ativa. Cada
+  // quadra comporta uma aula por horário — o cadastro tem várias turmas antigas "ativas" na mesma
+  // vaga (sexta 7h tinha 8 pra 3 quadras), então turma só entra se tiver aluno na semana de
+  // referência; vaga sem turma rodando vira "Livre", pra planejar turma nova. A chave da
+  // atribuição de professor é a própria vaga (dia|hora|quadra), não o id da turma.
+  const { turmas, livres } = useMemo(() => {
+    const comAluno = (turmasTodas || []).map(t => ({ ...t, semana: alunosSemana?.[t.id] || null })).filter(t => ocupacao(t) > 0)
+    const quadras = [...new Set([...(quadrasTenis || []).map(q => q.nome), ...comAluno.map(t => t.quadras?.nome).filter(Boolean)])]
+    const vagas = []
+    let qtdLivres = 0
+    for (const d of DIAS) {
+      const horasDia = new Set([
+        ...(horariosGrade || []).filter(h => h.dias_semana?.includes(d.chave)).map(h => h.horario.slice(0, 5)),
+        ...comAluno.filter(t => t.horario_dia_semana === d.chave).map(hora),
+      ])
+      for (const h of horasDia) {
+        for (const q of quadras) {
+          const chave = `${d.chave}|${h}|${q}`
+          const reais = comAluno.filter(t => t.horario_dia_semana === d.chave && hora(t) === h && t.quadras?.nome === q)
+          if (reais.length) {
+            reais.forEach((t, i) => vagas.push({ ...t, id: i === 0 ? chave : `${chave}#${t.id}`, turmaId: t.id }))
+          } else {
+            qtdLivres++
+            if (mostrarLivres) vagas.push({ id: chave, livre: true, horario_dia_semana: d.chave, horario_inicio: `${h}:00`, quadras: { nome: q }, niveis: null, semana: null, professor_titular_id: null, nome: `${d.longo} · ${h} · ${q} · Livre` })
+          }
+        }
+      }
+    }
+    return { turmas: vagas, livres: qtdLivres }
+  }, [turmasTodas, alunosSemana, quadrasTenis, horariosGrade, mostrarLivres])
 
   // Professores: Tênis primeiro (cores fixas pela ordem do nome), depois os demais, depois os novos.
   const { tenis, outros, mapaProf } = useMemo(() => {
@@ -343,7 +371,7 @@ export function OrganizarGradePage() {
     try {
       const itens = dados.linhas.map(l => ({
         dia: l.turma.horario_dia_semana, hora: hora(l.turma), quadra: l.turma.quadras?.nome || 'Sem quadra',
-        nivel: l.turma.niveis?.nome || 'Sem nível', ocup: ocupacao(l.turma), cap: capacidade(l.turma),
+        nivel: l.turma.livre ? 'Livre' : l.turma.niveis?.nome || 'Sem nível', livre: !!l.turma.livre, ocup: ocupacao(l.turma), cap: capacidade(l.turma),
         prof: l.k && mapaProf[l.k] ? { nome: mapaProf[l.k].nome, cor: mapaProf[l.k].cor } : null,
       }))
       await gerarPdfOrganizarGrade({ itens, dias: diasVisiveis, semanaInicio, semanaFim })
@@ -462,8 +490,8 @@ export function OrganizarGradePage() {
           <BotaoIcone titulo="Próxima semana" onClick={() => mudarSemana(7)}><ChevronRight size={15} /></BotaoIcone>
         </span>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-text-light-muted)', cursor: 'pointer', marginLeft: 'auto' }}>
-          <input type="checkbox" checked={mostrarVazias} onChange={e => setMostrarVazias(e.target.checked)} style={{ accentColor: 'var(--color-action-primary)' }} />
-          Mostrar turmas sem aluno nesta semana ({vazias})
+          <input type="checkbox" checked={mostrarLivres} onChange={e => setMostrarLivres(e.target.checked)} style={{ accentColor: 'var(--color-action-primary)' }} />
+          Mostrar horários livres ({livres})
         </label>
       </div>
 
@@ -540,7 +568,7 @@ export function OrganizarGradePage() {
       )}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
-        {stat('turmas de Tênis', dados.linhas.length, 'var(--color-text-light-primary)', 'todas')}
+        {stat('turmas de Tênis com aluno', dados.linhas.filter(l => !l.turma.livre).length, 'var(--color-text-light-primary)', 'todas')}
         {stat('sem professor', dados.semProf, 'var(--color-text-light-primary)', 'sem')}
         {stat(baseVazia ? 'com professor diferente do oficial' : 'mudaram de professor', dados.alteradas, 'var(--color-action-primary)', 'alteradas')}
         {stat('choques de horário', dados.conflitos, dados.conflitos ? 'var(--color-state-danger)' : 'var(--color-text-light-primary)', 'conflitos')}
@@ -555,7 +583,9 @@ export function OrganizarGradePage() {
         {turmaModal && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              <div><strong style={{ color: 'var(--text-primary)' }}>{turmaModal.niveis?.nome || 'Sem nível'}</strong> · {ocupacao(turmaModal)}/{capacidade(turmaModal)} alunos</div>
+              {turmaModal.livre
+                ? <div><strong style={{ color: 'var(--text-primary)' }}>Horário livre</strong> · nenhuma turma com aluno nesta vaga na semana de referência</div>
+                : <div><strong style={{ color: 'var(--text-primary)' }}>{turmaModal.niveis?.nome || 'Sem nível'}</strong> · {ocupacao(turmaModal)}/{capacidade(turmaModal)} alunos</div>}
               {ocupacao(turmaModal) > 0 && (
                 <div style={{ fontSize: '12px' }}>{turmaModal.semana.alunos.join(', ')}</div>
               )}

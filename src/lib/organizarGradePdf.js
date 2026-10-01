@@ -7,7 +7,7 @@ import { format, parseISO } from 'date-fns'
 const C = { fundo: '#F7F3E8', texto: '#1E2B24', sec: '#4A5850', muted: '#8A8577', borda: '#DED5C0', cabecalho: '#1E2B24', cabTexto: '#F0EAD8', vazio: '#FFFFFF', saibro: '#A54C2E' }
 const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 
-function cartao({ nivel, ocup, cap, prof }) {
+function cartao({ nivel, ocup, cap, prof, livre }) {
   const linhaProf = prof
     ? `<div style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11px;font-weight:600;color:${C.texto};">
          <span style="width:8px;height:8px;border-radius:50%;background:${prof.cor};flex-shrink:0;"></span>${esc(prof.nome)}</div>`
@@ -15,8 +15,8 @@ function cartao({ nivel, ocup, cap, prof }) {
   return `
     <div style="border:1px solid ${C.borda};border-left:3px solid ${prof ? prof.cor : C.borda};border-radius:6px;background:${C.vazio};padding:4px 6px 5px;margin-bottom:3px;">
       <div style="display:flex;justify-content:space-between;gap:6px;font-size:10px;">
-        <span style="color:${C.sec};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(nivel)}</span>
-        <strong style="color:${C.texto};flex-shrink:0;">${ocup}/${cap}</strong>
+        <span style="color:${livre ? C.muted : C.sec};${livre ? 'font-style:italic;' : ''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(nivel)}</span>
+        ${livre ? '' : `<strong style="color:${C.texto};flex-shrink:0;">${ocup}/${cap}</strong>`}
       </div>
       ${linhaProf}
     </div>`
@@ -26,6 +26,7 @@ function htmlDia({ dia, itens, semana }) {
   const quadras = [...new Set(itens.map(i => i.quadra))].sort((a, b) => a.localeCompare(b, 'pt', { numeric: true }))
   const horas = [...new Set(itens.map(i => i.hora))].sort()
   const comProf = itens.filter(i => i.prof).length
+  const reais = itens.filter(i => !i.livre).length
   const colunas = `56px repeat(${quadras.length}, 1fr)`
   const cab = quadras.map(q => `<div style="background:${C.cabecalho};color:${C.cabTexto};font-size:11px;font-weight:700;text-align:center;padding:6px;border-radius:6px;">${esc(q)}</div>`).join('')
   const linhas = horas.map(h => {
@@ -41,7 +42,7 @@ function htmlDia({ dia, itens, semana }) {
         <img src="/images/logo-pc-green.png" style="height:34px;" />
         <div>
           <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:${C.texto};">Organização da Grade · ${esc(dia.longo)}</div>
-          <div style="font-size:11px;color:${C.sec};">Tênis · ${itens.length} turmas · ${comProf} com professor · alunos da semana ${esc(semana)}</div>
+          <div style="font-size:11px;color:${C.sec};">Tênis · ${reais} turmas com aluno · ${itens.length - reais} horários livres · ${comProf} com professor · alunos da semana ${esc(semana)}</div>
         </div>
       </div>
       <div style="font-size:10px;color:${C.muted};">Rascunho interno · ${format(new Date(), 'dd/MM/yyyy')}</div>
@@ -50,7 +51,7 @@ function htmlDia({ dia, itens, semana }) {
       <div></div>${cab}
       ${linhas}
     </div>
-    <div style="margin-top:8px;font-size:9px;color:${C.muted};">Número = alunos na lista da aula na semana de referência / vagas (individual 1, grupo 4). Linha em branco = professor a definir.</div>`
+    <div style="margin-top:8px;font-size:9px;color:${C.muted};">Número = alunos na lista da aula na semana de referência / vagas (individual 1, grupo 4). Livre = vaga sem turma na semana. Linha em branco = professor a definir.</div>`
 }
 
 // itens: [{ dia: 'segunda', hora: '07:00', quadra: 'Quadra 4', nivel, ocup, cap, prof: {nome, cor} | null }]
