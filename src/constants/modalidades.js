@@ -126,6 +126,21 @@ function valorGrupoPorQtd(qtd) {
 // fixo, em vez do valor cheio cadastrado no professor. Antes dessa data segue o valor cheio.
 export const VALOR_AULA_INDIVIDUAL = 120
 
+// Aula individual em que o aluno veio de REPOSIÇÃO (não é o mensalista/avulso daquela turma) paga 50%
+// do valor individual — mesma lógica de meio valor da turma de reposição e da chuva. Pedido do
+// clube em 30/09/2026, valendo desde o início da tabela nova (setembro). Em grupo não muda nada:
+// lá reposição já fica fora da contagem de pagantes (qtdAlunosPagantes).
+export const PCT_AULA_INDIVIDUAL_REPOSICAO = 0.5
+
+// Individual: só conta quem não está esperando/recusado na aprovação de inclusão. Sem ninguém válido
+// → 0 (inclusão do professor ainda pendente); todos de reposição → 50%; senão valor cheio.
+function valorAulaIndividual(aula) {
+  const validas = (aula.presencas || []).filter(p => p.status_inclusao_professor == null || p.status_inclusao_professor === 'aprovado')
+  if (validas.length === 0) return 0
+  if (validas.every(p => p.tipo_participacao === 'reposicao')) return VALOR_AULA_INDIVIDUAL * PCT_AULA_INDIVIDUAL_REPOSICAO
+  return VALOR_AULA_INDIVIDUAL
+}
+
 const MODALIDADES_REGRA_VALOR_GRUPO_1_ALUNO = ['Tênis', 'Padel']
 const PROFESSOR_ID_PADEL_REGRA_VALOR_GRUPO_1_ALUNO = '76dafb8e-a18d-4bb4-9d94-eaab055073a7' // Marcelo Villalobo Faria
 
@@ -233,7 +248,7 @@ export function calcularValorAula(aula, professor, empresa) {
   if (!emEscopo || !aula.data_aula || aula.data_aula < DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO) {
     valorNormal = valorCheio
   } else if (isAulaIndividual(aula)) {
-    valorNormal = aula.data_aula >= DATA_INICIO_TABELA_VALOR_POR_QTD ? VALOR_AULA_INDIVIDUAL : valorCheio
+    valorNormal = aula.data_aula >= DATA_INICIO_TABELA_VALOR_POR_QTD ? valorAulaIndividual(aula) : valorCheio
   } else if (aula.data_aula < DATA_INICIO_TABELA_VALOR_POR_QTD) {
     valorNormal = (qtdAlunosPagantes(aula) === 1 || ehAulaTodaCortesia(aula)) ? VALOR_AULA_GRUPO_1_ALUNO : valorCheio
   } else {

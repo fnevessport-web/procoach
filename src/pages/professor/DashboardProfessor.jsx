@@ -210,7 +210,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
         .select(`
           id, data_aula, turma_id,
           turmas(nome, horario_inicio, niveis(nome), quadras(nome)),
-          presencas(id, status_presenca, tipo_participacao, alunos(nome))
+          presencas(id, status_presenca, tipo_participacao, status_inclusao_professor, alunos(nome))
         `)
         .eq('professor_executou_id', professorId)
         .gte('data_aula', inicioSemanaStr)
