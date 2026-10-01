@@ -134,8 +134,18 @@ export const PCT_AULA_INDIVIDUAL_REPOSICAO = 0.5
 
 // Individual: só conta quem não está esperando/recusado na aprovação de inclusão. Sem ninguém válido
 // → 0 (inclusão do professor ainda pendente); todos de reposição → 50%; senão valor cheio.
+const presencasValidas = aula => (aula.presencas || []).filter(p => p.status_inclusao_professor == null || p.status_inclusao_professor === 'aprovado')
+
+// Turma em GRUPO onde o aluno ficou sozinho e veio de reposição: na prática virou uma aula
+// individual de reposição, então paga o mesmo (50% do valor individual = R$60) em vez do mínimo
+// de grupo (R$80). Pedido do clube em 30/09/2026. Com 2+ alunos segue a tabela por quantidade.
+function ehReposicaoSozinhoNoGrupo(aula) {
+  const validas = presencasValidas(aula)
+  return validas.length === 1 && validas[0].tipo_participacao === 'reposicao'
+}
+
 function valorAulaIndividual(aula) {
-  const validas = (aula.presencas || []).filter(p => p.status_inclusao_professor == null || p.status_inclusao_professor === 'aprovado')
+  const validas = presencasValidas(aula)
   if (validas.length === 0) return 0
   if (validas.every(p => p.tipo_participacao === 'reposicao')) return VALOR_AULA_INDIVIDUAL * PCT_AULA_INDIVIDUAL_REPOSICAO
   return VALOR_AULA_INDIVIDUAL
@@ -251,6 +261,8 @@ export function calcularValorAula(aula, professor, empresa) {
     valorNormal = aula.data_aula >= DATA_INICIO_TABELA_VALOR_POR_QTD ? valorAulaIndividual(aula) : valorCheio
   } else if (aula.data_aula < DATA_INICIO_TABELA_VALOR_POR_QTD) {
     valorNormal = (qtdAlunosPagantes(aula) === 1 || ehAulaTodaCortesia(aula)) ? VALOR_AULA_GRUPO_1_ALUNO : valorCheio
+  } else if (ehReposicaoSozinhoNoGrupo(aula)) {
+    valorNormal = VALOR_AULA_INDIVIDUAL * PCT_AULA_INDIVIDUAL_REPOSICAO
   } else {
     valorNormal = valorGrupoPorQtd(qtdAlunosPagantes(aula))
   }
