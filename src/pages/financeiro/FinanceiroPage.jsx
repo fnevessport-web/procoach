@@ -829,6 +829,12 @@ export function FinanceiroPage() {
   const outrosCustos = lancamentos.filter(l => l.tipo === 'custo_extra')
   const totalProfessores = allProfs.reduce((s, p) => s + p.totalValor + (extrasMapGeral[p.id] || 0), 0)
   const totalOutros = outrosCustos.reduce((s, c) => s + Number(c.valor), 0)
+  // Quebra do custo de professores: aulas de chuva (pagas a 50%) separadas das dadas, e extras
+  // (salário fixo, premiação, reposição avulsa, descontos). "Sem chuva" = essas aulas a 100%.
+  const totalChuvaProf = custosProf.reduce((s, p) => s + (p.totalChuva || 0), 0)
+  const qtdChuvaProf = custosProf.reduce((s, p) => s + (p.qtdChuva || 0), 0)
+  const totalExtrasGeral = Object.values(extrasMapGeral).reduce((s, v) => s + v, 0)
+  const totalAulasDadasProf = totalProfessores - totalChuvaProf - totalExtrasGeral
   const totalCustos = totalProfessores + totalOutros
   const maxValorProf = Math.max(...allProfs.map(p => p.totalValor + (extrasMapGeral[p.id] || 0)), 1)
   // boletos_professor é único por (professor, mês, ano, EMPRESA) — quem trabalha nas duas
@@ -2119,6 +2125,22 @@ export function FinanceiroPage() {
             {fmtBRL(totalProfessores)}
           </div>
         </div>
+
+        {totalProfessores > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', marginBottom: '14px' }}>
+            {[
+              { rotulo: 'Aulas dadas', valor: totalAulasDadasProf, cor: 'var(--color-text-dark-primary)' },
+              { rotulo: `Canceladas por chuva · ${qtdChuvaProf} aulas (50%)`, valor: totalChuvaProf, cor: 'var(--color-state-info)' },
+              { rotulo: 'Extras, salários e descontos', valor: totalExtrasGeral, cor: 'var(--color-text-dark-primary)' },
+              ...(totalChuvaProf > 0 ? [{ rotulo: 'Se não tivesse chuva (aulas a 100%)', valor: totalProfessores + totalChuvaProf, cor: 'var(--color-text-dark-secondary)' }] : []),
+            ].map(b => (
+              <div key={b.rotulo} style={{ padding: '9px 11px', borderRadius: '10px', backgroundColor: 'var(--color-surface-dark-overlay)', border: '1px solid var(--color-border-dark-subtle)' }}>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-dark-muted)', marginBottom: '3px', lineHeight: 1.3 }}>{b.rotulo}</div>
+                <div style={{ fontSize: '15px', fontWeight: '700', color: b.cor }}>{fmtBRL(b.valor)}</div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Campo de busca */}
         <div style={{ position: 'relative', marginBottom: '12px' }}>

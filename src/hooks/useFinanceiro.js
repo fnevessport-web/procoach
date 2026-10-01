@@ -244,10 +244,16 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
           const valorUnitario = empresa === 'beach_arena' && p.valor_aula_beach
             ? Number(p.valor_aula_beach)
             : valorBase
-          por[p.id] = { ...p, valorUnitario, totalAulas: 0, totalValor: 0 }
+          por[p.id] = { ...p, valorUnitario, totalAulas: 0, totalValor: 0, totalChuva: 0, qtdChuva: 0 }
         }
+        const valor = calcularValorAula(a, p, empresa)
         por[p.id].totalAulas++
-        por[p.id].totalValor += calcularValorAula(a, p, empresa)
+        por[p.id].totalValor += valor
+        // Quanto do total é aula cancelada por chuva (paga 50%) — o Financeiro mostra separado.
+        if (a.status_aula === 'cancelada' && a.motivo_cancelamento === 'Chuva') {
+          por[p.id].totalChuva += valor
+          por[p.id].qtdChuva++
+        }
       })
 
       return Object.values(por).sort((a, b) => b.totalValor - a.totalValor)
