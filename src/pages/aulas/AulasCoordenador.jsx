@@ -2002,14 +2002,17 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     : (!ehFeriadoComAluno && st === 'dada') ? 'var(--color-surface-light-overlay)'
                     : 'var(--color-surface-light-raised)'
                   const textoApagado = semAluno
+                  // Turma com aluno e sem professor: cartão inteiro em saibro translúcido (mesmo
+                  // destaque da Organizar Grade), pra coordenação achar rápido o que falta escalar.
+                  const destaqueSemProf = semProfessor && !semAluno
 
                   const isHighlighted = highlightedAulaId === aulaCelula.id
 
                   return (
                     <button key={quadra} id={`aula-cel-${aulaCelula.id}`} onClick={() => abrirAula(aulaCelula)} style={{
                       width: '140px', flexShrink: 0, marginRight: '4px',
-                      backgroundColor: isHighlighted ? 'rgba(165,76,46,0.15)' : bgColor,
-                      borderRadius: '10px', border: `1px solid ${isHighlighted ? 'var(--color-action-primary)' : borderColor}`,
+                      backgroundColor: isHighlighted ? 'rgba(165,76,46,0.15)' : destaqueSemProf ? 'rgba(165,76,46,0.10)' : bgColor,
+                      borderRadius: '10px', border: `1px ${destaqueSemProf && !isHighlighted ? 'dashed' : 'solid'} ${isHighlighted ? 'var(--color-action-primary)' : destaqueSemProf ? 'rgba(165,76,46,0.45)' : borderColor}`,
                       padding: '8px 10px', cursor: 'pointer', textAlign: 'left',
                       minHeight: '72px', boxSizing: 'border-box',
                       display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
@@ -2036,9 +2039,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                       <div style={{ fontSize: '11px', fontWeight: '600', color: textoApagado ? 'var(--color-text-light-faded)' : 'var(--color-text-light-primary)', lineHeight: '1.3', marginBottom: '4px' }}>
                         {nivel || (isAv ? 'Avulsa' : aulaCelula.turmas?.nome || '—')}
                       </div>
-                      <div style={{ fontSize: '10px', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: semProfessor ? 'var(--color-state-warning)' : (textoApagado ? 'var(--color-text-light-faded)' : 'var(--color-text-light-secondary)') }}>
+                      <div style={{ fontSize: '10px', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: semProfessor ? 'var(--color-action-primary)' : (textoApagado ? 'var(--color-text-light-faded)' : 'var(--color-text-light-secondary)') }}>
                         {semProfessor
-                          ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><AlertTriangle size={9} /> sem professor</span>
+                          ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: 700 }}><AlertTriangle size={9} /> sem professor</span>
                           : <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                               {aulaCelula.eh_substituicao && <Repeat size={9} title="Substituição" style={{ flexShrink: 0 }} />}
                               {nomeCurto(aulaCelula.professores?.nome)}
