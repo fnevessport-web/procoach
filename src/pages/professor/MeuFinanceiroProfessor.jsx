@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Upload, FileText, ChevronDown, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import useAppStore from '../../store/useAppStore'
-import { useAulasAnoProfessor, useBoletosProfessor, useRemoverAnexoBoleto } from '../../hooks/useFinanceiro'
+import { useAulasAnoProfessor, useBoletosProfessor, useRemoverAnexoBoleto, extraPertenceAEmpresa } from '../../hooks/useFinanceiro'
 import { useMostrarValoresProfessor } from '../../hooks/useConfiguracoesApp'
 import { BOLINHAS_VALOR } from '../../lib/valorOculto'
 import { Loading } from '../../components/ui/Loading'
@@ -85,7 +85,23 @@ export function MeuFinanceiroProfessor() {
   const { data: aulasAno = [], isLoading: carregandoAulas } = useAulasAnoProfessor({ professorId, professor })
   const { data: boletos = [] } = useBoletosProfessor(professorId)
 
+  // Extras e descontos lançados pelo gestor (pagamentos_extras; desconto = valor negativo). Antes
+  // essa tela somava só as aulas e o total do professor ficava menor que o do Financeiro do gestor.
+  const { data: extrasTodos = [] } = useQuery({
+    queryKey: ['meu_financeiro_extras', professorId],
+    enabled: !!professorId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('pagamentos_extras')
+        .select('id, descricao, valor, mes, ano, empresa').eq('professor_id', professorId)
+      if (error) throw error
+      return data || []
+    },
+  })
+
   const aulasDaEmpresa = aulasAno.filter(a => a.empresa === empresaAtual)
+  const extrasDaEmpresa = extrasTodos.filter(e => extraPertenceAEmpresa(e.empresa, professor, empresaAtual))
+  const extrasDoMes = (mes, ano) => extrasDaEmpresa.filter(e => e.mes === mes && e.ano === ano)
+  const somaExtras = lista => lista.reduce((acc, e) => acc + Number(e.valor || 0), 0)
 
   function aulasDoMes(mes, ano) {
     return aulasDaEmpresa.filter(a => {
@@ -95,7 +111,9 @@ export function MeuFinanceiroProfessor() {
   }
 
   const aulasMesSel = aulasDoMes(mesSel, anoSel)
-  const valorMesSel = aulasMesSel.reduce((acc, a) => acc + (a.valor || 0), 0)
+  const valorAulasMesSel = aulasMesSel.reduce((acc, a) => acc + (a.valor || 0), 0)
+  const extrasMesSel = extrasDoMes(mesSel, anoSel)
+  const valorMesSel = valorAulasMesSel + somaExtras(extrasMesSel)
   const boletoMesSel = boletos.find(b => b.mes === mesSel && b.ano === anoSel && b.empresa === empresaAtual)
 
   const carregando = carregandoProfessor || (!!professorId && carregandoAulas)
@@ -197,7 +215,8 @@ export function MeuFinanceiroProfessor() {
             {MESES.map((m, i) => {
               const mes = i + 1
               const doMes = aulasDoMes(mes, anoSel)
-              const valor = doMes.reduce((acc, a) => acc + (a.valor || 0), 0)
+              const extrasMes = extrasDoMes(mes, anoSel)
+              const valor = doMes.reduce((acc, a) => acc + (a.valor || 0), 0) + somaExtras(extrasMes)
               const isSel = mesSel === mes
               const isAtual = mes === hoje.getMonth() + 1 && anoSel === hoje.getFullYear()
               return (
@@ -208,7 +227,7 @@ export function MeuFinanceiroProfessor() {
                 }}>
                   <div style={{ fontSize: '10px', fontWeight: '700', color: isSel ? 'var(--color-action-primary)' : 'var(--color-text-dark-secondary)' }}>{m}</div>
                   <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-dark-primary)', margin: '3px 0' }}>{doMes.length > 0 ? doMes.length : '—'}</div>
-                  {valor > 0 && <div style={{ fontSize: '9px', color: 'var(--color-state-success)' }}>{mostrarValores ? fmtBRL(valor) : `R$ ${BOLINHAS_VALOR}`}</div>}
+                  {valor !== 0 && <div style={{ fontSize: '9px', color: 'var(--color-state-success)' }}>{mostrarValores ? fmtBRL(valor) : `R$ ${BOLINHAS_VALOR}`}</div>}
                 </button>
               )
             })}
@@ -225,7 +244,23 @@ export function MeuFinanceiroProfessor() {
             <div style={{ fontSize: '30px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{mostrarValores ? fmtBRL(valorMesSel) : `R$ ${BOLINHAS_VALOR}`}</div>
             <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', marginTop: '4px' }}>
               {aulasMesSel.length} {aulasMesSel.length === 1 ? 'aula' : 'aulas'}
+              {extrasMesSel.length > 0 && mostrarValores && <> · {fmtBRL(valorAulasMesSel)} em aulas</>}
             </div>
+            {extrasMesSel.length > 0 && (
+              <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--color-border-dark-subtle)', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+                {extrasMesSel.map(e => {
+                  const desconto = Number(e.valor) < 0
+                  return (
+                    <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '12px' }}>
+                      <span style={{ color: 'var(--color-text-dark-secondary)' }}>{desconto ? 'Desconto' : 'Extra'}{e.descricao ? ` · ${e.descricao}` : ''}</span>
+                      <span style={{ fontWeight: '700', color: desconto ? 'var(--color-state-danger)' : 'var(--color-state-success)', whiteSpace: 'nowrap' }}>
+                        {mostrarValores ? `${desconto ? '− ' : '+ '}${fmtBRL(Math.abs(Number(e.valor)))}` : `R$ ${BOLINHAS_VALOR}`}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
             {boletoMesSel?.status === 'pago' && (
               <div style={{ display: 'inline-block', marginTop: '8px', padding: '2px 10px', borderRadius: '6px', backgroundColor: 'rgba(75,139,106,0.15)', color: 'var(--color-state-success)', fontSize: '11px', fontWeight: '700' }}>
                 ✓ Pago

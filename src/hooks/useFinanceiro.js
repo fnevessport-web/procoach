@@ -12,6 +12,15 @@ const CAMPOS_PAGAMENTO = ['banco', 'tipo_pagamento', 'agencia', 'conta', 'tipo_c
 // os campos sem sufixo são os da Procópio, os "_beach" são os da Beach Arena. Cai pros campos
 // sem sufixo quando os "_beach" estão vazios, pra colaborador cadastrado só na Beach Arena antes
 // dessa separação existir continuar funcionando sem precisar reeditar o cadastro.
+// Extra/desconto (pagamentos_extras) pertence a qual empresa: usa a gravada no lançamento; sem ela,
+// professor só-Beach vai pra Beach Arena e o resto pra Procópio. Usada no Financeiro do gestor e
+// no do próprio professor — mesma regra nos dois, senão os totais divergem.
+export function extraPertenceAEmpresa(extraEmpresa, prof, empresaAlvo) {
+  if (extraEmpresa) return extraEmpresa === empresaAlvo
+  if (empresaAlvo === 'beach_arena') return !!prof?.trabalha_beach
+  return !(prof?.trabalha_beach === true && prof?.trabalha_procopio === false)
+}
+
 export function dadosPagamentoEmpresa(professor, empresa) {
   if (empresa !== 'beach_arena') {
     return Object.fromEntries(CAMPOS_PAGAMENTO.map(c => [c, professor?.[c] ?? null]))
@@ -94,6 +103,14 @@ function parseQuadraObs(obs) {
   if (!obs) return ''
   const partes = obs.split('·').map(s => s.trim())
   return partes[1] || ''
+}
+
+// Empresa da aula pela quadra (turma) ou, sem turma, pela observação — mesma regra do Financeiro.
+// Precisa de turmas(quadras(nome)) e observacoes no select. Sem isso o valor de quem tem preço
+// próprio na Beach Arena (valor_aula_beach) saía com o valor do Procópio (ou R$0 pra quem é só Beach).
+export function empresaDaAula(aula) {
+  const q = aula.turma_id ? (aula.turmas?.quadras?.nome || '') : parseQuadraObs(aula.observacoes)
+  return QUADRAS_EMPRESA.procopio.includes(q) ? 'procopio' : QUADRAS_EMPRESA.beach_arena.includes(q) ? 'beach_arena' : undefined
 }
 
 function parseHorarioObs(obs) {

@@ -12,6 +12,7 @@ import { useAlertaFaltasConsecutivas } from '../../hooks/useAlertaFaltas'
 import { useAbrirConversaDoAluno } from '../../hooks/useMensagens'
 import { nivelPorPcScore, REAVALIACAO_PRAZO_DIAS } from '../../lib/pcScore'
 import useAppStore from '../../store/useAppStore'
+import { empresaDaAula } from '../../hooks/useFinanceiro'
 import { horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula, diaSemanaDaData, calcularValorAula } from '../../constants/modalidades'
 import { useMostrarValoresProfessor } from '../../hooks/useConfiguracoesApp'
 import { BOLINHAS_VALOR } from '../../lib/valorOculto'
@@ -161,7 +162,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
       await confirmarAulasElegiveis({ professorId, dataFim: hoje })
       const { data, error } = await supabase
         .from('aulas')
-        .select('id, data_aula, turma_id, status_aula, motivo_cancelamento, paga_professor, turmas(niveis(nome), modalidades(nome), eh_turma_reposicao), presencas(tipo_participacao, status_inclusao_professor)')
+        .select('id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, turmas(niveis(nome), modalidades(nome), quadras(nome), eh_turma_reposicao), presencas(tipo_participacao, status_inclusao_professor)')
         .eq('professor_executou_id', professorId)
         .in('status_aula', ['dada', 'cancelada'])
         .eq('paga_professor', true)
@@ -237,10 +238,10 @@ export function DashboardProfessor({ professorIdProp } = {}) {
       return d.getMonth() + 1 === mes && d.getFullYear() === ano
     })
     const qtd = doMes.length
-    const valorAulas = doMes.reduce((acc, a) => acc + calcularValorAula(a, professor), 0)
+    const valorAulas = doMes.reduce((acc, a) => acc + calcularValorAula(a, professor, empresaDaAula(a)), 0)
     const valorExtras = pagamentosExtras
       .filter(p => p.mes === mes && p.ano === ano)
-      .reduce((acc, p) => acc + (p.valor || 0), 0)
+      .reduce((acc, p) => acc + Number(p.valor || 0), 0)
     return { qtd, valor: valorAulas + valorExtras }
   }
 
@@ -476,6 +477,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
             mes={mesExpandido.mes}
             ano={mesExpandido.ano}
             professor={professor}
+            mostrarValores={mostrarValores}
             aulas={aulasHistorico.filter(a => {
               const d = new Date(a.data_aula + 'T12:00')
               return d.getMonth() + 1 === mesExpandido.mes && d.getFullYear() === mesExpandido.ano
@@ -668,7 +670,7 @@ function Legenda({ cor, label, tipo }) {
   )
 }
 
-function MesExpandidoDetalhe({ mes, ano, aulas, professor, onClose, onSelecionarDia }) {
+function MesExpandidoDetalhe({ mes, ano, aulas, professor, mostrarValores, onClose, onSelecionarDia }) {
   const porDia = {}
   aulas.forEach(a => { (porDia[a.data_aula] ||= []).push(a) })
   const dias = Object.keys(porDia).sort((a, b) => b.localeCompare(a))
@@ -685,7 +687,7 @@ function MesExpandidoDetalhe({ mes, ano, aulas, professor, onClose, onSelecionar
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
           {dias.map(dataStr => {
             const doDia = porDia[dataStr]
-            const totalDia = doDia.reduce((acc, a) => acc + calcularValorAula(a, professor), 0)
+            const totalDia = doDia.reduce((acc, a) => acc + calcularValorAula(a, professor, empresaDaAula(a)), 0)
             return (
               <button key={dataStr} onClick={() => onSelecionarDia(dataStr)} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',

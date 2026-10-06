@@ -18,6 +18,7 @@ import { buscarCep } from '../../lib/cep'
 import { nomeCurto } from '../../lib/nomes'
 import { BANCOS, ESTADOS } from '../../constants/geografia'
 import { calcularValorAula } from '../../constants/modalidades'
+import { empresaDaAula } from '../../hooks/useFinanceiro'
 import { DashboardProfessor } from '../professor/DashboardProfessor'
 import { ModalAulasDiaEditavel } from './ModalAulasDiaEditavel'
 
@@ -502,7 +503,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       await confirmarAulasElegiveis({ professorId: cardAberto.id })
       const { data, error } = await supabase
         .from('aulas')
-        .select('id, data_aula, turma_id, status_aula, motivo_cancelamento, paga_professor, status, turmas(niveis(nome), modalidades(nome), eh_turma_reposicao), presencas(tipo_participacao, status_inclusao_professor)')
+        .select('id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, status, turmas(niveis(nome), modalidades(nome), quadras(nome), eh_turma_reposicao), presencas(tipo_participacao, status_inclusao_professor)')
         .eq('professor_executou_id', cardAberto.id)
         .in('status_aula', ['dada', 'cancelada'])
         .eq('paga_professor', true)
@@ -931,7 +932,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       return d.getMonth() + 1 === mes && d.getFullYear() === ano
     })
     const qtd = doMes.length
-    const valorAulas = doMes.reduce((acc, a) => acc + calcularValorAula(a, cardAberto), 0)
+    const valorAulas = doMes.reduce((acc, a) => acc + calcularValorAula(a, cardAberto, empresaDaAula(a)), 0)
     // Desconto é um lançamento com valor negativo na mesma tabela (pagamentos_extras): já sai do
     // total em todo lugar que soma os extras (Financeiro, painel do professor) sem regra à parte.
     const lancamentos = pagamentosExtras.filter(p => p.mes === mes && p.ano === ano).map(p => Number(p.valor || 0))

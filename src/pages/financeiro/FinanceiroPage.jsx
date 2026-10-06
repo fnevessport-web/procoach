@@ -19,8 +19,7 @@ import {
   useLiberar,
   useDesautorizar,
   useRemoverAnexoBoleto,
-  dadosPagamentoEmpresa,
-} from '../../hooks/useFinanceiro'
+  dadosPagamentoEmpresa, extraPertenceAEmpresa } from '../../hooks/useFinanceiro'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { calcularValorAula, aulaComTodosAusentes, calcularMargensTenis, participantesForaDoPagamento, aulaCanceladaPorChuva } from '../../constants/modalidades'
 import { useEmpresaVinculada } from '../../hooks/useProfessores'
@@ -119,11 +118,6 @@ function fimMes(mes, ano) {
 // Lançamentos antigos (de antes dessa coluna existir) não têm essa marcação —
 // pra esses, cai no mesmo critério que já era usado: Beach Arena só se o
 // colaborador trabalha lá, Procópio pra todo o resto.
-function extraPertenceAEmpresa(extraEmpresa, prof, empresaAlvo) {
-  if (extraEmpresa) return extraEmpresa === empresaAlvo
-  if (empresaAlvo === 'beach_arena') return !!prof?.trabalha_beach
-  return !(prof?.trabalha_beach === true && prof?.trabalha_procopio === false)
-}
 
 // ──────────────────────────────────────────────────────────────────────
 // Sub-componentes pequenos
