@@ -677,12 +677,23 @@ export function useGerarAulas() {
       }
       const diaSemanaNum = diasSemana[turma.horario_dia_semana?.toLowerCase()] ?? 1
 
+      // Datas que a turma já tem aula: pula. Antes gerar de novo (ex.: depois de trocar o
+      // professor) criava uma 2ª aula na mesma data e o professor recebia em dobro (caso do
+      // Sábado 17h Kids Iniciante, set/2026). Pra trocar o professor de aulas já geradas, usar a
+      // edição da turma/aula, não gerar de novo.
+      const { data: existentes } = await supabase
+        .from('aulas').select('data_aula')
+        .eq('turma_id', turmaId)
+        .gte('data_aula', dataInicio)
+        .lte('data_aula', dataFim)
+      const datasExistentes = new Set((existentes || []).map(a => a.data_aula))
+
       const aulasParaInserir = []
       const inicio = new Date(dataInicio)
       const fim = new Date(dataFim)
 
       for (let d = new Date(inicio); d <= fim; d.setDate(d.getDate() + 1)) {
-        if (d.getDay() === diaSemanaNum) {
+        if (d.getDay() === diaSemanaNum && !datasExistentes.has(format(new Date(d), 'yyyy-MM-dd'))) {
           aulasParaInserir.push({
             turma_id: turmaId,
             empresa_id: turma.empresa_id || null, // propaga o escopo da turma pra aula gerada —
