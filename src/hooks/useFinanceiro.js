@@ -139,6 +139,15 @@ async function buscarTodasAsAulas(construirQuery) {
 }
 
 // Retorna true se a aula já começou (para o dia de hoje, filtra por horário)
+// Mesmo critério do Financeiro do gestor pra uma aula entrar no total: quadra de uma das empresas
+// e (se for hoje) já ter começado. Painel do professor e card em Cadastros usam isso pra o número
+// que o professor vê ser exatamente o que o gestor vê. Precisa de turmas(horario_inicio, quadras(nome))
+// e observacoes no select.
+export function aulaContaNoFinanceiro(aula) {
+  if (!empresaDaAula(aula)) return false
+  return aulaJaComecou(aula.data_aula, aula.turmas?.horario_inicio || parseHorarioObs(aula.observacoes))
+}
+
 function aulaJaComecou(dataAula, horarioInicio) {
   const hoje = format(new Date(), 'yyyy-MM-dd')
   if (dataAula !== hoje) return true  // dias passados ou futuros: nao filtra por horario

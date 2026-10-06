@@ -18,7 +18,7 @@ import { buscarCep } from '../../lib/cep'
 import { nomeCurto } from '../../lib/nomes'
 import { BANCOS, ESTADOS } from '../../constants/geografia'
 import { calcularValorAula } from '../../constants/modalidades'
-import { empresaDaAula } from '../../hooks/useFinanceiro'
+import { empresaDaAula, aulaContaNoFinanceiro } from '../../hooks/useFinanceiro'
 import { DashboardProfessor } from '../professor/DashboardProfessor'
 import { ModalAulasDiaEditavel } from './ModalAulasDiaEditavel'
 
@@ -503,14 +503,14 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       await confirmarAulasElegiveis({ professorId: cardAberto.id })
       const { data, error } = await supabase
         .from('aulas')
-        .select('id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, status, turmas(niveis(nome), modalidades(nome), quadras(nome), eh_turma_reposicao), presencas(tipo_participacao, status_inclusao_professor)')
+        .select('id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, status, turmas(horario_inicio, niveis(nome), modalidades(nome), quadras(nome), eh_turma_reposicao), presencas(tipo_participacao, status_inclusao_professor)')
         .eq('professor_executou_id', cardAberto.id)
         .in('status_aula', ['dada', 'cancelada'])
         .eq('paga_professor', true)
         .lte('data_aula', hoje)
         .order('data_aula', { ascending: true })
       if (error) throw error
-      return data || []
+      return (data || []).filter(aulaContaNoFinanceiro)
     },
   })
 

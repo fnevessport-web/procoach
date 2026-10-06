@@ -12,7 +12,7 @@ import { useAlertaFaltasConsecutivas } from '../../hooks/useAlertaFaltas'
 import { useAbrirConversaDoAluno } from '../../hooks/useMensagens'
 import { nivelPorPcScore, REAVALIACAO_PRAZO_DIAS } from '../../lib/pcScore'
 import useAppStore from '../../store/useAppStore'
-import { empresaDaAula } from '../../hooks/useFinanceiro'
+import { empresaDaAula, aulaContaNoFinanceiro } from '../../hooks/useFinanceiro'
 import { horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula, diaSemanaDaData, calcularValorAula } from '../../constants/modalidades'
 import { useMostrarValoresProfessor } from '../../hooks/useConfiguracoesApp'
 import { BOLINHAS_VALOR } from '../../lib/valorOculto'
@@ -162,13 +162,13 @@ export function DashboardProfessor({ professorIdProp } = {}) {
       await confirmarAulasElegiveis({ professorId, dataFim: hoje })
       const { data, error } = await supabase
         .from('aulas')
-        .select('id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, turmas(niveis(nome), modalidades(nome), quadras(nome), eh_turma_reposicao), presencas(tipo_participacao, status_inclusao_professor)')
+        .select('id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, turmas(horario_inicio, niveis(nome), modalidades(nome), quadras(nome), eh_turma_reposicao), presencas(tipo_participacao, status_inclusao_professor)')
         .eq('professor_executou_id', professorId)
         .in('status_aula', ['dada', 'cancelada'])
         .eq('paga_professor', true)
         .lte('data_aula', hoje)
       if (error) throw error
-      return data || []
+      return (data || []).filter(aulaContaNoFinanceiro)
     },
   })
 
