@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, CalendarRange, Check, FileDown, ChevronLeft, ChevronRight, CloudOff, Eraser, Hand, Pencil, Plus, RotateCcw, Trash2, UserMinus, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { addDays, endOfMonth, format, parseISO, previousMonday, isMonday, subMonths } from 'date-fns'
+import { addDays, endOfMonth, format, parseISO, previousMonday, isMonday, startOfWeek } from 'date-fns'
 import { useModalidadeTenisId } from '../../hooks/useModalidadeTenisId'
 import { useQuadras } from '../../hooks/useQuadras'
 import { useHorariosGrade } from '../../hooks/useHorariosGrade'
@@ -15,6 +15,7 @@ import { nomeCurto } from '../../lib/nomes'
 import { Loading } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
 import { gerarPdfOrganizarGrade } from '../../lib/organizarGradePdf'
+import { aplicarAjustesAlunos, NOMES_PROFESSOR_GRADE } from '../../constants/ajustesOrganizarGrade'
 
 // Organizar Grade: tabuleiro da grade de Tênis (seg a sáb) pra planejar a distribuição dos
 // professores — arrastar (ou "pincel": toca no professor e depois nas turmas) o nome pra turma,
@@ -49,8 +50,10 @@ const ocupacao = t => t.semana?.alunos.length || 0
 function ultimaSemanaDoMes(hoje = new Date()) {
   const segundaFinal = ref => { const fim = endOfMonth(ref); return isMonday(fim) ? fim : previousMonday(fim) }
   let seg = segundaFinal(hoje)
-  // Ainda não começou (ex.: dia 1º): usa a última semana do mês anterior, que é a que tem dado.
-  if (seg > hoje) seg = segundaFinal(subMonths(hoje, 1))
+  // Ainda não começou: usa a semana atual (no sábado/domingo, a próxima), que já tem as aulas
+  // geradas com as matrículas mais recentes. Antes caía na última semana do mês anterior, que
+  // ficava desatualizada depois de uma sincronização com o clube.
+  if (seg > hoje) seg = addDays(startOfWeek(hoje, { weekStartsOn: 1 }), hoje.getDay() === 6 || hoje.getDay() === 0 ? 7 : 0)
   return format(seg, 'yyyy-MM-dd')
 }
 const fmtDia = d => format(parseISO(d), 'dd/MM')
@@ -233,7 +236,9 @@ export function OrganizarGradePage() {
   const c = cenario || CENARIO_VAZIO
   const semanaInicio = c.semana || ultimaSemanaDoMes()
   const semanaFim = format(addDays(parseISO(semanaInicio), 5), 'yyyy-MM-dd')
-  const { data: alunosSemana, isLoading: carregandoSemana } = useAlunosDaSemana(semanaInicio, semanaFim)
+  const { data: alunosSemanaBanco, isLoading: carregandoSemana } = useAlunosDaSemana(semanaInicio, semanaFim)
+  // Ajustes da lista do clube que valem só nesta tela (ver ajustesOrganizarGrade.js).
+  const alunosSemana = useMemo(() => alunosSemanaBanco && aplicarAjustesAlunos(alunosSemanaBanco), [alunosSemanaBanco])
   const [mostrarLivres, setMostrarLivres] = useState(true)
   const { data: quadrasTenis } = useQuadras(tenisId)
   const { data: horariosGrade } = useHorariosGrade()
@@ -282,13 +287,14 @@ export function OrganizarGradePage() {
     const mapa = {}
     let i = 0
     const add = (chave, nome, extra) => { mapa[chave] = { chave, nome, cor: PALETA[i++ % PALETA.length], ...extra } }
-    t.forEach(p => add(p.id, p.apelido || nomeCurto(p.nome), { nomeCompleto: p.nome }))
-    o.forEach(p => add(p.id, p.apelido || nomeCurto(p.nome), { nomeCompleto: p.nome }))
+    const nomeTela = p => NOMES_PROFESSOR_GRADE[p.id] || p.apelido || nomeCurto(p.nome)
+    t.forEach(p => add(p.id, nomeTela(p), { nomeCompleto: p.nome }))
+    o.forEach(p => add(p.id, nomeTela(p), { nomeCompleto: p.nome }))
     c.novos.forEach(n => add(n.id, n.nome, { novo: true }))
     // Titular que não está mais na lista de ativos (inativado) continua aparecendo na grade.
     ;(turmasTodas || []).forEach(tu => {
       const k = tu.professor_titular_id
-      if (k && !mapa[k]) add(k, tu.professores?.apelido || nomeCurto(tu.professores?.nome) || 'Professor inativo', { inativo: true })
+      if (k && !mapa[k]) add(k, NOMES_PROFESSOR_GRADE[k] || tu.professores?.apelido || nomeCurto(tu.professores?.nome) || 'Professor inativo', { inativo: true })
     })
     return { tenis: t, outros: o, mapaProf: mapa }
   }, [professores, tenisId, c.novos, turmasTodas])
