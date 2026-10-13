@@ -29,6 +29,9 @@ const DIAS = [
   { chave: 'sexta', curto: 'SEX', longo: 'Sexta' }, { chave: 'sabado', curto: 'SÁB', longo: 'Sábado' },
 ]
 const VAZIO = '__vazio__' // "sem professor" como alvo de arrastar/pincel
+// Aulas Kids de sábado têm espaço pra dois professores (Prof 1 e Prof 2), pedido de 13/10/2026.
+// O Prof 2 fica em cenario.atribuicoes2, com a mesma chave de vaga de atribuicoes.
+const ehKidsSabado = t => t.horario_dia_semana === 'sabado' && /kids/i.test(t.niveis?.nome || '')
 const COR_SEM_PROF = 'var(--color-text-light-muted)'
 
 const cartao = {
@@ -138,11 +141,13 @@ function BotaoIcone({ onClick, titulo, children, cor = 'var(--color-text-light-m
 
 // Saibro translúcido: vaga que TEM aula (turma com aluno, ou Livre com nível planejado) e ficou sem
 // professor — ou com o marcador "SEM PROFESSOR" criado como professor novo. Livre sem nível fica neutra.
+const rotuloProf = { fontSize: '9px', fontWeight: 700, color: 'var(--color-text-light-muted)', flexShrink: 0, width: '30px' }
 const SAIBRO_SUAVE = 'color-mix(in srgb, var(--color-action-primary) 9%, var(--color-surface-light-overlay))'
 const SAIBRO_BORDA = 'color-mix(in srgb, var(--color-action-primary) 38%, transparent)'
 
-function CardTurma({ turma, prof, alterado, antes, conflito, apagado, destacado, pincelAtivo, onDrop, onClick }) {
+function CardTurma({ turma, prof, prof2, duplo, alterado, antes, conflito, apagado, destacado, pincelAtivo, onDrop, onClick, onDrop2, onClick2 }) {
   const [sobre, setSobre] = useState(false)
+  const [sobre2, setSobre2] = useState(false)
   const temAula = !turma.livre || turma.nivelPlanejado
   const faltaProf = temAula && (!prof || /sem\s*prof/i.test(prof.nome))
   const cor = faltaProf ? null : prof?.cor
@@ -172,12 +177,31 @@ function CardTurma({ turma, prof, alterado, antes, conflito, apagado, destacado,
         {(!turma.livre || turma.nivelPlanejado) && <span style={{ fontWeight: 800, flexShrink: 0, color: ocup === 0 ? 'var(--color-text-light-muted)' : 'var(--color-text-light-primary)' }}>{ocup}/{cap}</span>}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px', minHeight: '20px' }}>
+        {duplo && <span style={rotuloProf}>Prof 1</span>}
         {prof
           ? <Etiqueta chave={prof.chave} nome={prof.nome} cor={prof.cor} pequena />
           : <span style={{ fontSize: '11px', fontWeight: faltaProf ? 700 : 400, color: faltaProf ? 'var(--color-action-primary)' : 'var(--color-text-light-muted)' }}>sem professor</span>}
         {conflito && <AlertTriangle size={12} style={{ color: 'var(--color-state-danger)', flexShrink: 0 }} />}
         {alterado && <span title={`Na grade oficial: ${antes}`} style={{ width: '5px', height: '5px', borderRadius: '50%', flexShrink: 0, marginLeft: 'auto', backgroundColor: 'var(--color-action-primary)' }} />}
       </div>
+      {duplo && (
+        // Linha do Prof 2: recebe o arrastar/pincel só pra ela (não cai no Prof 1 do card).
+        <div title="Prof 2"
+          onClick={e => { e.stopPropagation(); onClick2() }}
+          onDragOver={e => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; if (!sobre2) setSobre2(true); if (sobre) setSobre(false) }}
+          onDragLeave={e => { e.stopPropagation(); setSobre2(false) }}
+          onDrop={e => { e.preventDefault(); e.stopPropagation(); setSobre2(false); const k = e.dataTransfer.getData('text/plain'); if (k) onDrop2(k) }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px', minHeight: '20px', paddingTop: '3px',
+            borderTop: '1px dashed var(--color-border-light)', borderRadius: '4px',
+            outline: sobre2 ? '2px solid var(--color-action-primary)' : 'none',
+          }}>
+          <span style={rotuloProf}>Prof 2</span>
+          {prof2
+            ? <Etiqueta chave={prof2.chave} nome={prof2.nome} cor={prof2.cor} pequena />
+            : <span style={{ fontSize: '11px', color: 'var(--color-text-light-muted)' }}>a definir</span>}
+        </div>
+      )}
     </div>
   )
 }
@@ -306,19 +330,27 @@ export function OrganizarGradePage() {
     const k = tem(c.atribuicoes, t.id) ? c.atribuicoes[t.id] : baseVazia ? null : original(t)
     return k && !desligados.has(k) && mapaProf[k] ? k : null
   }
+  const efetivo2 = t => {
+    const k = ehKidsSabado(t) ? (c.atribuicoes2 || {})[t.id] : null
+    return k && !desligados.has(k) && mapaProf[k] ? k : null
+  }
 
   const dados = useMemo(() => {
     const lista = (turmas || []).filter(t => DIAS.some(d => d.chave === t.horario_dia_semana))
     const porProf = {}, porProfAntes = {}, ocupado = {}
     const linhas = lista.map(t => {
       const k = efetivo(t)
+      const k2 = efetivo2(t)
       const ant = original(t)
-      if (k) { porProf[k] = (porProf[k] || 0) + 1; const s = `${k}|${t.horario_dia_semana}|${hora(t)}`; ocupado[s] = (ocupado[s] || 0) + 1 }
+      for (const p of [k, k2]) {
+        if (p) { porProf[p] = (porProf[p] || 0) + 1; const s = `${p}|${t.horario_dia_semana}|${hora(t)}`; ocupado[s] = (ocupado[s] || 0) + 1 }
+      }
       if (ant) porProfAntes[ant] = (porProfAntes[ant] || 0) + 1
       // Montando do zero, turma ainda vazia não conta como "mudou": só quem já tem professor diferente do oficial.
-      return { turma: t, k, ant, alterado: baseVazia ? !!k && k !== ant : k !== ant }
+      return { turma: t, k, k2, ant, alterado: baseVazia ? !!k && k !== ant : k !== ant }
     })
-    linhas.forEach(l => { l.conflito = !!l.k && ocupado[`${l.k}|${l.turma.horario_dia_semana}|${hora(l.turma)}`] > 1 })
+    const choca = (p, t) => !!p && ocupado[`${p}|${t.horario_dia_semana}|${hora(t)}`] > 1
+    linhas.forEach(l => { l.conflito = choca(l.k, l.turma) || choca(l.k2, l.turma) })
     const horas = [...new Set(lista.map(hora))].sort()
     return {
       linhas, horas, porProf, porProfAntes,
@@ -329,9 +361,18 @@ export function OrganizarGradePage() {
   }, [turmas, c, mapaProf]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- ações ---------------------------------------------------------------------------------
-  function atribuir(turma, chave) {
+  function atribuir(turma, chave, slot = 1) {
     const k = chave === VAZIO ? null : chave
     if (k && !mapaProf[k]) return
+    if (slot === 2) {
+      setCenario(atual => {
+        const at2 = { ...(atual.atribuicoes2 || {}) }
+        if (k) at2[turma.id] = k; else delete at2[turma.id]
+        const des = k ? atual.desligados.filter(x => x !== k) : atual.desligados
+        return { ...atual, atribuicoes2: at2, desligados: des }
+      })
+      return
+    }
     setCenario(atual => {
       const at = { ...atual.atribuicoes }
       const padrao = atual.base === 'oficial' ? original(turma) : null
@@ -354,7 +395,8 @@ export function OrganizarGradePage() {
   function removerNovo(id) {
     setCenario(a => {
       const at = Object.fromEntries(Object.entries(a.atribuicoes).filter(([, v]) => v !== id))
-      return { ...a, novos: a.novos.filter(x => x.id !== id), atribuicoes: at, desligados: a.desligados.filter(x => x !== id) }
+      const at2 = Object.fromEntries(Object.entries(a.atribuicoes2 || {}).filter(([, v]) => v !== id))
+      return { ...a, novos: a.novos.filter(x => x.id !== id), atribuicoes: at, atribuicoes2: at2, desligados: a.desligados.filter(x => x !== id) }
     })
     if (pincel === id) setPincel(null)
   }
@@ -397,6 +439,7 @@ export function OrganizarGradePage() {
         nivel: l.turma.livre && !l.turma.nivelPlanejado ? 'Livre' : `${l.turma.niveis?.nome || 'Sem nível'}${l.turma.livre ? ' (nova)' : ''}`,
         livre: !!l.turma.livre && !l.turma.nivelPlanejado, ocup: ocupacao(l.turma), cap: capacidade(l.turma),
         prof: l.k && mapaProf[l.k] ? { nome: mapaProf[l.k].nome, cor: mapaProf[l.k].cor } : null,
+        duplo: ehKidsSabado(l.turma), prof2: l.k2 && mapaProf[l.k2] ? { nome: mapaProf[l.k2].nome, cor: mapaProf[l.k2].cor } : null,
       }))
       await gerarPdfOrganizarGrade({ itens, dias: diasVisiveis, semanaInicio, semanaFim })
     } catch (e) { toast.error('Não foi possível gerar o PDF: ' + e.message, { style: toastStyle }) }
@@ -542,8 +585,11 @@ export function OrganizarGradePage() {
               const prof = l.k ? mapaProf[l.k] : null
               return (
                 <CardTurma key={l.turma.id} turma={l.turma} prof={prof} alterado={l.alterado} conflito={l.conflito}
+                  duplo={ehKidsSabado(l.turma)} prof2={l.k2 ? mapaProf[l.k2] : null}
+                  onDrop2={k => atribuir(l.turma, k, 2)}
+                  onClick2={() => (pincel ? atribuir(l.turma, pincel, 2) : setTurmaAberta(l.turma.id))}
                   antes={l.ant ? mapaProf[l.ant]?.nome || 'professor' : 'sem professor'}
-                  apagado={!passaFiltro(l)} destacado={!!pincel && pincel !== VAZIO && l.k === pincel} pincelAtivo={!!pincel}
+                  apagado={!passaFiltro(l)} destacado={!!pincel && pincel !== VAZIO && (l.k === pincel || l.k2 === pincel)} pincelAtivo={!!pincel}
                   onDrop={k => atribuir(l.turma, k)}
                   onClick={() => (pincel ? atribuir(l.turma, pincel) : setTurmaAberta(l.turma.id))} />
               )
@@ -559,6 +605,8 @@ export function OrganizarGradePage() {
 
   const turmaModal = turmaAberta ? turmas.find(t => t.id === turmaAberta) : null
   const kModal = turmaModal ? efetivo(turmaModal) : null
+  const k2Modal = turmaModal ? efetivo2(turmaModal) : null
+  const duploModal = !!turmaModal && ehKidsSabado(turmaModal)
   const escolhiveis = [...tenis, ...c.novos.map(n => ({ id: n.id })), ...(mostrarOutros ? outros : [])].filter(p => !desligados.has(p.id) && mapaProf[p.id])
 
   return (
@@ -627,7 +675,7 @@ export function OrganizarGradePage() {
                 {(niveisTenis || []).map(n => <option key={n.id} value={n.nome.trim()}>{n.nome.trim()}</option>)}
               </select>
             </label>
-            <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Escolha o professor</div>
+            <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{duploModal ? 'Prof 1' : 'Escolha o professor'}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {escolhiveis.map(p => {
                 const info = mapaProf[p.id]
@@ -659,6 +707,31 @@ export function OrganizarGradePage() {
                 }}><RotateCcw size={13} /> Usar o da grade oficial</button>
               )}
             </div>
+            {duploModal && (
+              <>
+                <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '4px' }}>Prof 2</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {escolhiveis.map(p => {
+                    const info = mapaProf[p.id]
+                    const sel = k2Modal === p.id
+                    return (
+                      <button key={p.id} type="button" onClick={() => { atribuir(turmaModal, p.id, 2); setTurmaAberta(null) }} style={{
+                        padding: '6px 11px', borderRadius: '999px', cursor: 'pointer', fontSize: '12px', fontWeight: 700,
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        border: sel ? `1.5px solid ${info.cor}` : '1px solid var(--border)',
+                        backgroundColor: sel ? `color-mix(in srgb, ${info.cor} 16%, var(--surface-overlay))` : 'var(--surface-raised)', color: 'var(--text-primary)',
+                      }}><span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: info.cor }} />{info.nome}</button>
+                    )
+                  })}
+                </div>
+                {k2Modal && (
+                  <button type="button" onClick={() => { atribuir(turmaModal, VAZIO, 2); setTurmaAberta(null) }} style={{
+                    padding: '10px', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    border: '1px dashed var(--border)', background: 'none', color: 'var(--text-secondary)',
+                  }}><Eraser size={13} /> Deixar sem Prof 2</button>
+                )}
+              </>
+            )}
           </div>
         )}
       </Modal>
@@ -688,7 +761,7 @@ export function OrganizarGradePage() {
             ['vazia', 'Tudo sem professor', 'Grade limpa, para montar do zero.'],
             ['oficial', 'Copiar a grade oficial', 'Cada turma começa com o professor de hoje.'],
           ].map(([base, titulo, sub]) => (
-            <button key={base} type="button" onClick={() => { setCenario(a => ({ ...a, base, atribuicoes: {}, niveis: {} })); setPincel(null); setConfirmarReset(false) }} style={{
+            <button key={base} type="button" onClick={() => { setCenario(a => ({ ...a, base, atribuicoes: {}, atribuicoes2: {}, niveis: {} })); setPincel(null); setConfirmarReset(false) }} style={{
               padding: '11px 13px', borderRadius: '10px', textAlign: 'left', cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface-raised)',
             }}>
               <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>{titulo}</div>

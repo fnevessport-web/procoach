@@ -7,11 +7,17 @@ import { format, parseISO } from 'date-fns'
 const C = { fundo: '#F7F3E8', texto: '#1E2B24', sec: '#4A5850', muted: '#8A8577', borda: '#DED5C0', cabecalho: '#1E2B24', cabTexto: '#F0EAD8', vazio: '#FFFFFF', saibro: '#A54C2E' }
 const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 
-function cartao({ nivel, ocup, cap, prof, livre }) {
-  const linhaProf = prof
+function linhaDoProf(prof, rotulo = 'prof.') {
+  return prof
     ? `<div style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11px;font-weight:600;color:${C.texto};">
+         ${rotulo !== 'prof.' ? `<span style="font-size:8px;font-weight:400;color:${C.muted};">${rotulo}</span>` : ''}
          <span style="width:8px;height:8px;border-radius:50%;background:${prof.cor};flex-shrink:0;"></span>${esc(prof.nome)}</div>`
-    : `<div style="margin-top:6px;border-bottom:1px solid ${C.muted};height:20px;display:flex;align-items:flex-end;font-size:8px;color:${C.muted};">prof.</div>`
+    : `<div style="margin-top:6px;border-bottom:1px solid ${C.muted};height:20px;display:flex;align-items:flex-end;font-size:8px;color:${C.muted};">${rotulo}</div>`
+}
+
+// duplo: aula Kids de sábado, que tem espaço pra dois professores (Prof 1 e Prof 2).
+function cartao({ nivel, ocup, cap, prof, prof2, duplo, livre }) {
+  const linhaProf = duplo ? linhaDoProf(prof, 'Prof 1') + linhaDoProf(prof2, 'Prof 2') : linhaDoProf(prof)
   return `
     <div style="border:1px solid ${C.borda};border-left:3px solid ${prof ? prof.cor : C.borda};border-radius:6px;background:${C.vazio};padding:4px 6px 5px;margin-bottom:3px;">
       <div style="display:flex;justify-content:space-between;gap:6px;font-size:10px;">
