@@ -166,9 +166,23 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
       </div>
 
       <div style={{ fontFamily: 'var(--font-display)', fontSize: '19px', fontWeight: 700, margin: '26px 0 4px' }}>Sua turma atual de Tênis</div>
-      <p style={{ fontSize: '12px', lineHeight: 1.6, color: 'var(--color-text-light-muted)', margin: '0 0 12px' }}>
+      <p style={{ fontSize: '12px', lineHeight: 1.6, color: 'var(--color-text-light-muted)', margin: '0 0 10px' }}>
         Usamos essas informações para nos organizarmos e para evitar choque com as aulas que você já tem.
       </p>
+      {/* Destaque minimalista: aqui é a turma de sempre; a reposição em si é escolhida na próxima etapa
+          (sócios confundiam as duas e marcavam aqui o horário que queriam repor). */}
+      <div style={{
+        display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', margin: '0 0 14px', borderRadius: '10px',
+        borderLeft: '3px solid var(--color-action-primary)', backgroundColor: 'color-mix(in srgb, var(--color-action-primary) 7%, transparent)',
+      }}>
+        <CalendarCheck size={16} style={{ color: 'var(--color-action-primary)', flexShrink: 0, marginTop: '1px' }} />
+        <div style={{ fontSize: '12.5px', lineHeight: 1.55, color: 'var(--color-text-light-primary)' }}>
+          Aqui marque o <strong>dia e horário da turma em que você já está inscrito</strong>.
+          <span style={{ display: 'block', color: 'var(--color-text-light-secondary)' }}>
+            O dia e horário da reposição você escolhe na próxima etapa, em "Ver horários disponíveis".
+          </span>
+        </div>
+      </div>
 
       <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-light-secondary)', marginBottom: '6px' }}>
         Que tipo de aula você faz? <span style={{ fontWeight: 500, color: 'var(--color-text-light-muted)' }}>(pode marcar os dois)</span>
