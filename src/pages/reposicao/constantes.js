@@ -17,7 +17,7 @@ export const OFERECE_KIDS = false
 
 // Primeiro dia da rodada atual. Na tela interna (/extra-reposicao) o que é anterior a isso fica
 // na visão "Histórico"; o banco usa a mesma data pra contar o limite de reposições por rodada.
-export const INICIO_RODADA_ATUAL = '2026-09-28'
+export const INICIO_RODADA_ATUAL = '2026-10-14'
 
 export const WHATSAPP_EXIBIDO = '+55 11 96913-0246'
 export const WHATSAPP_LINK = 'https://wa.me/5511969130246?text=' +
