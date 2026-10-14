@@ -11,9 +11,9 @@ export const qtdAulas = n => `${n} ${n === 1 ? 'aula' : 'aulas'}`
 // (a partir de 30/09, ver scripts/2026-09-28_segunda_rodada_reposicao.sql) é só reposição de
 // Tênis: com false, o link pula a etapa do presente e não fala mais dele.
 export const OFERECE_PRESENTE = false
-// 1ª rodada tinha turmas Kids/Juvenil; a 2ª é só adulto. Com false, o link esconde o filtro
+// 1ª rodada tinha turmas Kids/Juvenil; a 2ª era só adulto; a 3ª (22-23/10) tem Kids Competitivo. Com false, o link esconde o filtro
 // "Kids / Juvenil" e os níveis Kids da turma atual.
-export const OFERECE_KIDS = false
+export const OFERECE_KIDS = true
 
 // Primeiro dia da rodada atual. Na tela interna (/extra-reposicao) o que é anterior a isso fica
 // na visão "Histórico"; o banco usa a mesma data pra contar o limite de reposições por rodada.
@@ -37,7 +37,7 @@ export const HORARIOS = Array.from({ length: 16 }, (_, i) => `${String(6 + i).pa
 
 // Mesma lista de níveis do cadastro de alunos (AlunosPage/AvaliarAluno).
 export const NIVEIS_ADULTO = ['Iniciante 1', 'Iniciante 2', 'Intermediário 1', 'Intermediário 2', 'Avançado']
-export const NIVEIS_KIDS = ['Kids Iniciante', 'Kids Intermediário', 'Kids Avançado']
+export const NIVEIS_KIDS = ['Kids Iniciante', 'Kids Intermediário', 'Kids Avançado', 'Kids Competitivo']
 
 // Ícones são traços brancos — sempre exibidos sobre fundo verde-court.
 export const MODALIDADES_PRESENTE = [
