@@ -27,7 +27,10 @@ export function Header() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const fromRoute = location.state?.from
+  // Agenda aberta pela ficha do aluno (AlunoCard → aula do mês): volta pra ficha reabrindo a
+  // mesma modalidade/mês, mesmo depois de fechar a aula.
+  const voltarAluno = location.state?.voltarAluno
+  const fromRoute = location.state?.from || voltarAluno?.path
   const backState = location.state?.financeiroState
   const mostrarVoltarAulas = location.pathname === '/' && !!origemAulas
 
@@ -65,7 +68,11 @@ export function Header() {
 
         {fromRoute && (
           <button
-            onClick={() => navigate(fromRoute, { state: backState ? { financeiroState: backState } : null })}
+            onClick={() => navigate(fromRoute, {
+              state: backState ? { financeiroState: backState }
+                : voltarAluno ? { retornoAluno: { modalidadeId: voltarAluno.modalidadeId, mes: voltarAluno.mes } } : null,
+            })}
+            title={voltarAluno ? `Voltar para ${voltarAluno.nome}` : 'Voltar'}
             style={{
               display: 'flex', alignItems: 'center', gap: '5px',
               background: 'none', border: 'none',

@@ -201,6 +201,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   const fromHome = location.state?.fromHome
   const abrirAoDestacar = location.state?.abrirAoDestacar
   const alunoParaRepor = location.state?.alunoParaRepor
+  // Veio da ficha do aluno (lista de presenças do mês): botão pra voltar pra lá, reabrindo a
+  // mesma modalidade e mês (ver abrirAula em AlunoCard.jsx).
+  const voltarAluno = location.state?.voltarAluno
+  const irParaAluno = () => navigate(voltarAluno.path, { state: { retornoAluno: { modalidadeId: voltarAluno.modalidadeId, mes: voltarAluno.mes } } })
 
   // location.state.data só é lido uma vez, na inicialização do state acima (useState lazy) —
   // se essa tela já estiver montada (ex: dentro da aba "Por Dia" de AulasAdmin) e chegar um
@@ -2108,9 +2112,19 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                   )}
                 </div>
               </div>
-              <button onClick={fecharModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light-secondary)', padding: '4px' }}>
-                <X size={20} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                {voltarAluno && (
+                  <button onClick={irParaAluno} title={`Voltar para ${voltarAluno.nome}`} style={{
+                    display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer',
+                    border: '1px solid var(--color-action-primary)', background: 'none', color: 'var(--color-action-primary)', fontSize: '12px', fontWeight: 700,
+                  }}>
+                    <ChevronLeft size={14} /> Voltar para o aluno
+                  </button>
+                )}
+                <button onClick={fecharModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light-secondary)', padding: '4px' }}>
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: editandoNivelTurma ? '10px' : '14px' }}>

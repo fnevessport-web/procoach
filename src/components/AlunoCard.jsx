@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -95,7 +95,17 @@ export function AlunoCard({ alunoId }) {
   const qc = useQueryClient()
   const { data: aluno, isLoading } = useAlunoCompleto(alunoId)
   const [uploadandoFoto, setUploadandoFoto] = useState(false)
+  const location = useLocation()
   const [modalidadeSel, setModalidadeSel] = useState(null)
+  // Volta da agenda (botão "Voltar para o aluno" da aula aberta pela lista de presenças do mês):
+  // reabre a mesma modalidade e o mesmo mês que estavam abertos antes de ir pra agenda.
+  const retorno = location.state?.retornoAluno
+  const [retornoAplicado, setRetornoAplicado] = useState(false)
+  if (retorno && !retornoAplicado && aluno?.modalidadesDetalhe) {
+    setRetornoAplicado(true)
+    const m = aluno.modalidadesDetalhe.find(x => x.id === retorno.modalidadeId)
+    if (m) setModalidadeSel(m)
+  }
   const [adicionandoModalidade, setAdicionandoModalidade] = useState(false)
   const fotoInputRef = useRef(null)
 
@@ -350,6 +360,7 @@ export function AlunoCard({ alunoId }) {
         <ModalDetalheModalidade
           aluno={aluno}
           modalidade={modalidadeSel}
+          mesInicial={retorno?.modalidadeId === modalidadeSel.id ? retorno.mes : null}
           onClose={() => setModalidadeSel(null)}
         />
       )}
@@ -519,7 +530,8 @@ function SecaoProfessoresModalidade({ aluno, modalidadeId, onClose }) {
   )
 }
 
-function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
+function ModalDetalheModalidade({ aluno, modalidade, mesInicial = null, onClose }) {
+  const location = useLocation()
   const navigate = useNavigate()
   const cor = modalidade.cor_hex || 'var(--color-action-primary)'
 
@@ -528,7 +540,7 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
   const { data: avaliacoes, isLoading: loadingAvaliacoes } = useAvaliacoesModalidade(aluno.id, modalidade.id)
   const { data: presencas, isLoading: loadingPresencas } = useHistoricoPresencaModalidade(aluno.id, modalidade.id, modalidade.nome)
   const { data: reposicoesTodas } = useReposicoesDoAluno(aluno.id)
-  const [mesSelecionado, setMesSelecionado] = useState(null)
+  const [mesSelecionado, setMesSelecionado] = useState(mesInicial)
   const [agendando, setAgendando] = useState(null)
 
   const ultimaAvaliacao = avaliacoes?.length ? avaliacoes[avaliacoes.length - 1] : null
@@ -551,7 +563,14 @@ function ModalDetalheModalidade({ aluno, modalidade, onClose }) {
   function abrirAula(dataStr, aulaId) {
     if (!dataStr || !aulaId) return
     onClose()
-    navigate('/aulas', { state: { data: dataStr, highlightAulaId: aulaId } })
+    // Abre a aula direto na agenda (abrirAoDestacar) e leva o caminho de volta pra ficha do aluno,
+    // com a modalidade e o mês que estavam abertos (botão "Voltar para o aluno" na aula e no topo).
+    navigate('/aulas', {
+      state: {
+        data: dataStr, highlightAulaId: aulaId, abrirAoDestacar: true,
+        voltarAluno: { path: location.pathname, nome: aluno.nome, modalidadeId: modalidade.id, mes: mesSelecionado },
+      },
+    })
   }
 
   const radarData = (dimensoes || []).map(d => ({
