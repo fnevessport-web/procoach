@@ -501,7 +501,7 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
             // Reposição e cortesia numa turma em grupo NÃO somam no pagamento (o valor é o da turma
             // naquele horário) — a aula ganha cor própria (lima) pra dar pra ver de relance. Cancelada
             // por chuva (paga 50%) ganha a cor de aviso.
-            const fora = participantesForaDoPagamento(a)
+            const fora = participantesForaDoPagamento(a, professorId)
             const chuva = aulaCanceladaPorChuva(a)
             const corDestaque = chuva ? 'var(--color-state-warning)' : fora.total > 0 ? 'var(--color-brand-lima)' : null
             const turmaReposicao = !!a.turmas?.eh_turma_reposicao
@@ -861,7 +861,7 @@ export function FinanceiroPage() {
   const temAulaComDesconto = aulasProf.some(a => a.valor != null && a.valor !== valorUnitarioProf)
   // Aulas em grupo com reposição/cortesia (não somam no valor) e canceladas por chuva (50%) —
   // só contadores informativos pra destacar no resumo.
-  const qtdAulasComExtrasProf = aulasProf.filter(a => participantesForaDoPagamento(a).total > 0).length
+  const qtdAulasComExtrasProf = aulasProf.filter(a => participantesForaDoPagamento(a, professorSel?.id).total > 0).length
   const qtdAulasChuvaProf = aulasProf.filter(aulaCanceladaPorChuva).length
   const totalExtrasProf = extrasProfDaEmpresa.reduce((s, e) => s + Number(e.valor || 0), 0)
   // Desconto = lançamento negativo em pagamentos_extras (botão "−" no card do professor). O total
@@ -1879,7 +1879,7 @@ export function FinanceiroPage() {
             {diasOrdenados.map(([dataStr, aulasNoDia]) => {
               const dataFmt = format(parseISO(dataStr + 'T12:00:00'), "dd/MM · EEEE", { locale: ptBR })
               const totalDia = aulasNoDia.reduce((s, a) => s + (a.valor ?? valorUnitarioProf), 0)
-              const qtdComExtrasDia = aulasNoDia.filter(a => participantesForaDoPagamento(a).total > 0).length
+              const qtdComExtrasDia = aulasNoDia.filter(a => participantesForaDoPagamento(a, professorSel?.id).total > 0).length
               const qtdChuvaDia = aulasNoDia.filter(aulaCanceladaPorChuva).length
               const pct = Math.round((aulasNoDia.length / Math.max(...diasOrdenados.map(([,a]) => a.length), 1)) * 100)
               return (

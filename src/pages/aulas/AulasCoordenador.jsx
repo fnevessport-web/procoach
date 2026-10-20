@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown, Info, History, Repeat, CloudRain, Trash2, Save, User, MessageSquareText, DollarSign, Plus, Minus, CalendarDays, PartyPopper, StickyNote } from 'lucide-react'
-import { horarioParaMinutos, emEscopoRegraValorGrupo } from '../../constants/modalidades'
+import { horarioParaMinutos, chuvaPagaProfessor } from '../../constants/modalidades'
 import { nomeCurto } from '../../lib/nomes'
 import { getFeriado } from '../../constants/feriados'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas, confirmarAulasElegiveis, gerarReposicoesPorCancelamento, useAvisarFalta } from '../../hooks/useAulas'
@@ -324,11 +324,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
 
       for (const a of alvo) {
         // Mesma regra do cancelamento individual (handleStatusAula): cancelar por Chuva
-        // dentro do escopo (Tênis, ou Padel só do Marcelo) já nasce pago a 50% — calculado
-        // por calcularValorAula(). Qualquer outro motivo continua sem pagar nada.
+        // que paga o professor (até 30/09/2026 todos do escopo; a partir de 1/10/2026 só o Guedes,
+        // ver chuvaPagaProfessor) já nasce pago a 50%. Qualquer outro motivo continua sem pagar nada.
         const pagaProfessor = acaoMassa !== 'cancelar'
           ? true
-          : (motivoCancelamentoMassa === 'Chuva' && emEscopoRegraValorGrupo(a, a.professor_executou_id))
+          : (motivoCancelamentoMassa === 'Chuva' && chuvaPagaProfessor(a, a.professor_executou_id))
         await supabase.from('aulas').update({
           status_aula: statusAula,
           paga_professor: pagaProfessor,
@@ -1032,12 +1032,11 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
 
   async function handleStatusAula(aulaId, statusAula, motivoCancelamento) {
     const aula = aulas?.find(a => a.id === aulaId)
-    // Cancelamento por Chuva dentro do escopo (Tênis, ou Padel só do Marcelo — ver
-    // emEscopoRegraValorGrupo) já nasce paga: calcularValorAula() sabe reduzir pra 50% do
-    // valor normal nesse caso. Qualquer outro motivo de cancelamento continua sem pagar nada.
+    // Cancelamento por Chuva que paga o professor (ver chuvaPagaProfessor: a partir de 1/10/2026
+    // só o Guedes) já nasce paga: calcularValorAula() sabe reduzir pra 50% do valor normal. Qualquer outro motivo de cancelamento continua sem pagar nada.
     const pagaProfessor = statusAula !== 'cancelada'
       ? (STATUS_AULA.find(s => s.value === statusAula)?.paga ?? true)
-      : (motivoCancelamento === 'Chuva' && emEscopoRegraValorGrupo(aula, aula?.professor_executou_id))
+      : (motivoCancelamento === 'Chuva' && chuvaPagaProfessor(aula, aula?.professor_executou_id))
     setStatusLocal(prev => ({ ...prev, [aulaId]: statusAula }))
     setMostrarMotivoCancelamento(false)
     try {

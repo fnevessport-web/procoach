@@ -139,16 +139,32 @@ const presencasValidas = aula => (aula.presencas || []).filter(p => p.status_inc
 // Turma em GRUPO onde o aluno ficou sozinho e veio de reposição: na prática virou uma aula
 // individual de reposição, então paga o mesmo (50% do valor individual = R$60) em vez do mínimo
 // de grupo (R$80). Pedido do clube em 30/09/2026. Com 2+ alunos segue a tabela por quantidade.
+// A partir de 1/10/2026 (pedido do coordenador em 19/10/2026) isso só vale pro Tiago Guedes: pros
+// demais, a reposição soma na turma e o grupo com 1 aluno de reposição paga o tier de 1 (R$80).
 function ehReposicaoSozinhoNoGrupo(aula) {
   const validas = presencasValidas(aula)
   return validas.length === 1 && validas[0].tipo_participacao === 'reposicao'
 }
 
-function valorAulaIndividual(aula) {
+function valorAulaIndividual(aula, reposicaoPagaCheio) {
   const validas = presencasValidas(aula)
   if (validas.length === 0) return 0
-  if (validas.every(p => p.tipo_participacao === 'reposicao')) return VALOR_AULA_INDIVIDUAL * PCT_AULA_INDIVIDUAL_REPOSICAO
+  if (!reposicaoPagaCheio && validas.every(p => p.tipo_participacao === 'reposicao')) return VALOR_AULA_INDIVIDUAL * PCT_AULA_INDIVIDUAL_REPOSICAO
   return VALOR_AULA_INDIVIDUAL
+}
+
+// Regra nova a partir de 1/10/2026 (pedido do coordenador em 19/10/2026, valendo pro mês de outubro
+// inteiro), dentro do mesmo escopo (Tênis, ou Padel do Marcelo):
+// - Cancelada por chuva volta a NÃO pagar nada. Exceção: Tiago Guedes continua recebendo 50%.
+// - Aluno de reposição encaixado numa turma em grupo SOMA na quantidade (turma de 2 + 1 reposição
+//   = 3 alunos = R$120). Cortesia continua sem somar. Exceção: Tiago Guedes (já ganha os 50% da
+//   chuva), na turma dele a reposição segue sem somar.
+// - Individual de reposição paga R$120 cheio. Exceção: Tiago Guedes segue com 50% (R$60).
+export const DATA_INICIO_REGRA_CHUVA_ZERO = '2026-10-01'
+export const PROFESSOR_ID_GUEDES = 'e0ed20c3-8b40-437e-a156-bb4bc10ba2d9' // Tiago Guedes
+
+function regraChuvaZero(aula, professorId) {
+  return !!aula.data_aula && aula.data_aula >= DATA_INICIO_REGRA_CHUVA_ZERO && professorId !== PROFESSOR_ID_GUEDES
 }
 
 const MODALIDADES_REGRA_VALOR_GRUPO_1_ALUNO = ['Tênis', 'Padel']
@@ -163,6 +179,13 @@ export function emEscopoRegraValorGrupo(aula, professorId) {
   if (!MODALIDADES_REGRA_VALOR_GRUPO_1_ALUNO.includes(modalidade)) return false
   if (modalidade === 'Padel' && professorId !== PROFESSOR_ID_PADEL_REGRA_VALOR_GRUPO_1_ALUNO) return false
   return true
+}
+
+// Se uma aula cancelada por chuva paga o professor (50%, ver calcularValorAula): dentro do escopo,
+// até 30/09/2026 pra todos; a partir de 1/10/2026 só pro Tiago Guedes. Também decide se a aula já
+// nasce com paga_professor no cancelamento (AulasCoordenador.jsx, ModalAulasDiaEditavel.jsx).
+export function chuvaPagaProfessor(aula, professorId) {
+  return emEscopoRegraValorGrupo(aula, professorId) && !regraChuvaZero(aula, professorId)
 }
 
 // Valor cheio configurado pro professor (valor_aula, ou valor_aula_beach se a aula for
@@ -188,9 +211,11 @@ export function valorCheioProfessor(professor, empresa) {
 // aprovar ('aprovado') — protege contra professor inflar o próprio grupo pra subir de tier
 // sozinho. null = presença normal (matriculado de sempre, ou incluída por quem não é
 // professor), sempre conta. Ver AprovarInclusoesPage.jsx e useSalvarPresencas.
-export function qtdAlunosPagantes(aula) {
+// `contarReposicao`: a partir de 1/10/2026 a reposição soma na turma (menos pro Guedes), ver
+// regraChuvaZero.
+export function qtdAlunosPagantes(aula, contarReposicao = false) {
   return (aula.presencas || []).filter(p =>
-    p.tipo_participacao !== 'cortesia' && p.tipo_participacao !== 'reposicao' &&
+    p.tipo_participacao !== 'cortesia' && (contarReposicao || p.tipo_participacao !== 'reposicao') &&
     (p.status_inclusao_professor == null || p.status_inclusao_professor === 'aprovado')
   ).length
 }
@@ -233,7 +258,10 @@ export function aulaComTodosAusentes(aula) {
 // - Grupo dentro do escopo, entre DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO e a data acima: regra
 //   antiga (R$100 fixo só no caso de sobrar 1 pagante, ou zero pagante com alguma cortesia).
 // - Cancelada por Chuva dentro do escopo: 50% do valor que a aula pagaria se não tivesse sido
-//   cancelada (turma de R$80 paga R$40, de R$140 paga R$70, individual paga R$60).
+//   cancelada (turma de R$80 paga R$40, de R$140 paga R$70, individual paga R$60). A partir de
+//   1/10/2026 só pro Tiago Guedes; os demais não recebem (ver chuvaPagaProfessor).
+// - A partir de 1/10/2026 (menos Guedes): reposição soma na quantidade do grupo e individual de
+//   reposição paga R$120 cheio (ver regraChuvaZero).
 // - Cancelada por Feriado: 100% do valor (na prática feriado não cancela: a aula segue como
 //   "dada" e já paga o valor normal — isto só protege se algum dia for lançado como cancelada).
 // - Cancelada por qualquer outro motivo (ou chuva fora do escopo): zero.
@@ -253,23 +281,24 @@ export function calcularValorAula(aula, professor, empresa) {
 
   const valorCheio = valorCheioProfessor(professor, empresa)
   const emEscopo = emEscopoRegraValorGrupo(aula, professor?.id)
+  const regraNova = regraChuvaZero(aula, professor?.id)
 
   let valorNormal
   if (!emEscopo || !aula.data_aula || aula.data_aula < DATA_INICIO_REGRA_VALOR_GRUPO_1_ALUNO) {
     valorNormal = valorCheio
   } else if (isAulaIndividual(aula)) {
-    valorNormal = aula.data_aula >= DATA_INICIO_TABELA_VALOR_POR_QTD ? valorAulaIndividual(aula) : valorCheio
+    valorNormal = aula.data_aula >= DATA_INICIO_TABELA_VALOR_POR_QTD ? valorAulaIndividual(aula, regraNova) : valorCheio
   } else if (aula.data_aula < DATA_INICIO_TABELA_VALOR_POR_QTD) {
     valorNormal = (qtdAlunosPagantes(aula) === 1 || ehAulaTodaCortesia(aula)) ? VALOR_AULA_GRUPO_1_ALUNO : valorCheio
-  } else if (ehReposicaoSozinhoNoGrupo(aula)) {
+  } else if (!regraNova && ehReposicaoSozinhoNoGrupo(aula)) {
     valorNormal = VALOR_AULA_INDIVIDUAL * PCT_AULA_INDIVIDUAL_REPOSICAO
   } else {
-    valorNormal = valorGrupoPorQtd(qtdAlunosPagantes(aula))
+    valorNormal = valorGrupoPorQtd(qtdAlunosPagantes(aula, regraNova))
   }
 
   if (aula.status_aula === 'cancelada') {
     if (aula.motivo_cancelamento === 'Feriado') return valorNormal
-    return aula.motivo_cancelamento === 'Chuva' && emEscopo ? valorNormal * 0.5 : 0
+    return aula.motivo_cancelamento === 'Chuva' && chuvaPagaProfessor(aula, professor?.id) ? valorNormal * 0.5 : 0
   }
   return valorNormal
 }
@@ -277,10 +306,11 @@ export function calcularValorAula(aula, professor, empresa) {
 // Participantes de uma aula em GRUPO que ficam de fora da conta do pagamento (reposição e cortesia:
 // esporádicos, daquele dia — ver calcularValorAula). Serve pra destacar essas aulas no financeiro.
 // Turma especial de reposição e aula individual ficam de fora (lá a regra é outra).
-export function participantesForaDoPagamento(aula) {
+// A partir de 1/10/2026 a reposição soma (menos pro Guedes), então só a cortesia fica de fora.
+export function participantesForaDoPagamento(aula, professorId) {
   if (aula.turmas?.eh_turma_reposicao || isAulaIndividual(aula)) return { reposicao: 0, cortesia: 0, total: 0 }
   const ps = aula.presencas || []
-  const reposicao = ps.filter(p => p.tipo_participacao === 'reposicao').length
+  const reposicao = regraChuvaZero(aula, professorId) ? 0 : ps.filter(p => p.tipo_participacao === 'reposicao').length
   const cortesia = ps.filter(p => p.tipo_participacao === 'cortesia').length
   return { reposicao, cortesia, total: reposicao + cortesia }
 }

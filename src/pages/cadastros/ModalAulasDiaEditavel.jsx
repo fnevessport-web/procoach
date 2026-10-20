@@ -10,7 +10,7 @@ import { Modal } from '../../components/ui/Modal'
 import { useSalvarPresencas, useAtualizarStatusAula } from '../../hooks/useAulas'
 import { useAlunos } from '../../hooks/useAlunos'
 import { QUADRAS_EMPRESA } from '../../hooks/useFinanceiro'
-import { calcularValorAula, emEscopoRegraValorGrupo, diaSemanaDaData } from '../../constants/modalidades'
+import { calcularValorAula, chuvaPagaProfessor, diaSemanaDaData } from '../../constants/modalidades'
 
 // Aulas de um professor numa data, editáveis — aberto pelo gestor/coordenador no card do professor
 // (Cadastros > Professores) pra ajustar o fechamento sem ir até a agenda: status da aula, alunos
@@ -85,9 +85,9 @@ function EditorAula({ aula, professor, alunos, onFechar }) {
       if (status !== statusDe(aula)) {
         const statusAula = status === 'dada' ? 'dada' : 'cancelada'
         const motivo = status === 'chuva' ? 'Chuva' : status === 'cancelada' ? 'Outro' : null
-        // Mesma regra da agenda: chuva dentro do escopo (Tênis / Padel do Marcelo) paga 50%,
+        // Mesma regra da agenda: chuva que paga o professor (chuvaPagaProfessor) paga 50%,
         // outro cancelamento não paga, confirmada paga.
-        const pagaProfessor = status === 'dada' ? true : status === 'chuva' && emEscopoRegraValorGrupo(aula, professor?.id)
+        const pagaProfessor = status === 'dada' ? true : status === 'chuva' && chuvaPagaProfessor(aula, professor?.id)
         await atualizarStatus.mutateAsync({ aulaId: aula.id, statusAula, pagaProfessor, motivoCancelamento: motivo })
       }
       await logAudit('aulas', aula.id, 'UPDATE',
