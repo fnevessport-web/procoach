@@ -5,7 +5,7 @@ import { ptBR } from 'date-fns/locale'
 import {
   MODALIDADE_EMPRESA, getModalidadeDaAula,
   horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula,
-  DIAS_HEATMAP, construirHeatmapOcupacao, VAGAS_GRUPO, VAGAS_INDIVIDUAL,
+  DIAS_HEATMAP, construirHeatmapOcupacao, capacidadeDoNivel,
 } from '../constants/modalidades'
 
 const HORAS_HEATMAP = Array.from({ length: 16 }, (_, i) => 6 + i) // 06h..21h
@@ -217,7 +217,7 @@ export function useModalidadeDashboard(nomeModalidade, { mesAtual, mesComparacao
   const ocupacaoTurmas = turmasModalidade
     .map(t => {
       const ocupacao = t.turmas_alunos?.filter(ta => ta.ativo && ta.alunos?.ativo !== false).length || 0
-      const capacidade = t.niveis?.nome === 'Individual' ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
+      const capacidade = capacidadeDoNivel(t.niveis?.nome)
       const nivel = ocupacao >= capacidade ? 'cheio' : ocupacao >= 2 ? 'medio' : 'baixo'
       return {
         id: t.id,

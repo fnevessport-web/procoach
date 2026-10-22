@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
-import { getQuadraNome, getModalidadeDaAula, construirHeatmapOcupacao, calcularValorAula, aulaComTodosAusentes, MODALIDADE_EMPRESA, VAGAS_GRUPO, VAGAS_INDIVIDUAL } from '../constants/modalidades'
+import { getQuadraNome, getModalidadeDaAula, construirHeatmapOcupacao, calcularValorAula, aulaComTodosAusentes, MODALIDADE_EMPRESA, capacidadeDoNivel } from '../constants/modalidades'
 import { QUADRAS_EMPRESA } from './useFinanceiro'
 import { getFeriado } from '../constants/feriados'
 
@@ -533,8 +533,7 @@ const SELECT_TURMAS_COM_ALUNOS = `
 
 function mapearTurmaParaDetalhe(t) {
   const ativos = (t.turmas_alunos || []).filter(ta => ta.ativo && ta.alunos?.ativo !== false).length
-  const individual = t.niveis?.nome === 'Individual'
-  const capacidade = individual ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
+  const capacidade = capacidadeDoNivel(t.niveis?.nome)
   return {
     turmaId: t.id,
     turma: t.nome,

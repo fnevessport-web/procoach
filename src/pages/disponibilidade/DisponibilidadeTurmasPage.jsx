@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { useTurmas } from '../../hooks/useTurmas'
 import { useModalidades } from '../../hooks/useModalidades'
-import { ICONES_MODALIDADES } from '../../constants/modalidades'
+import { ICONES_MODALIDADES, capacidadeDoNivel } from '../../constants/modalidades'
 import { Loading } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
 
@@ -92,7 +92,7 @@ function GradeModalidade({ modalidade, onVoltar }) {
     if (!t.horario_dia_semana || !t.horario_inicio) return
     const chave = `${t.horario_dia_semana}-${t.horario_inicio.slice(0, 5)}`
     if (!porDiaHorario[chave]) porDiaHorario[chave] = []
-    const capacidade = t.niveis?.nome === 'Individual' ? 1 : 4
+    const capacidade = capacidadeDoNivel(t.niveis?.nome)
     const ocupacao = t.turmas_alunos?.filter(ta => ta.ativo).length || 0
     porDiaHorario[chave].push({ ...t, capacidade, ocupacao })
   })

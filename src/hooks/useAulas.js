@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { logAudit } from '../lib/audit'
 import { format, addDays } from 'date-fns'
-import { horarioInicioDaAula, horarioParaMinutos, isAulaIndividual, getModalidadeDaAula, VAGAS_INDIVIDUAL, VAGAS_GRUPO } from '../constants/modalidades'
+import { horarioInicioDaAula, horarioParaMinutos, isAulaIndividual, getModalidadeDaAula, capacidadeDaAula } from '../constants/modalidades'
 import { getFeriado } from '../constants/feriados'
 
 // Motivos de cancelamento (de MOTIVOS_CANCELAMENTO em AulasCoordenador.jsx) que dão
@@ -229,7 +229,7 @@ export async function expirarReposicoesPendentesVencidas() {
   }
 }
 
-// Agenda um aluno numa aula respeitando a capacidade (individual = 1, grupo = 4), com
+// Agenda um aluno numa aula respeitando a capacidade (individual = 1, grupo = 4, Kids com limite próprio, ver capacidadeDoNivel), com
 // proteção contra dois cliques simultâneos reservarem a mesma vaga: cada presença de
 // agendamento self-service recebe um vaga_numero sequencial, com índice único parcial em
 // presencas(aula_id, vaga_numero) — o segundo insert que tentar o mesmo número perde a
@@ -253,7 +253,7 @@ export async function agendarSlotAtomico({ aulaId, alunoId, tipoParticipacao, va
     )
   }
 
-  const capacidade = isAulaIndividual(aula) ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
+  const capacidade = capacidadeDaAula(aula)
 
   for (let tentativa = 0; tentativa < 3; tentativa++) {
     const { data: presencasAtuais, error: erroConsulta } = await supabase

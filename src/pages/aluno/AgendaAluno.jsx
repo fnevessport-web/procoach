@@ -6,7 +6,7 @@ import { ChevronLeft } from 'lucide-react'
 import { useAulasDiaParaReposicao, useReposicoesDoAluno, useAgendarSlotAluno } from '../../hooks/useAulas'
 import { useAlunos } from '../../hooks/useAlunos'
 import { supabase } from '../../lib/supabase'
-import { isAulaIndividual, VAGAS_INDIVIDUAL, VAGAS_GRUPO } from '../../constants/modalidades'
+import { capacidadeDaAula, VAGAS_INDIVIDUAL } from '../../constants/modalidades'
 import { calcStatusPorPrazo } from '../../constants/reposicao'
 import { Loading } from '../../components/ui/Loading'
 import toast from 'react-hot-toast'
@@ -64,7 +64,7 @@ export function AgendaAluno() {
     .filter(a => modalidadesAluno.length === 0 || modalidadesAluno.includes(a.turmas?.modalidade_id))
     .filter(a => !modalidadeFiltro || a.turmas?.modalidade_id === modalidadeFiltro)
     .map(a => {
-      const capacidade = isAulaIndividual(a) ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
+      const capacidade = capacidadeDaAula(a)
       const ocupacao = a.presencas?.length || 0
       const jaEsta = a.presencas?.some(p => p.aluno_id === alunoId)
       const vagas = capacidade - ocupacao

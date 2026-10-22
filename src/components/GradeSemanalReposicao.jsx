@@ -4,6 +4,7 @@ import { format, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAulasSemanaParaReposicao } from '../hooks/useAulas'
+import { capacidadeDoNivel } from '../constants/modalidades'
 import { Modal } from './ui/Modal'
 import { Loading } from './ui/Loading'
 
@@ -69,7 +70,7 @@ export function GradeSemanalReposicao({ aluno, modalidadeId, proximaFalta, onVol
     if (!a.turmas?.horario_inicio) return
     const chave = `${a.data_aula}-${a.turmas.horario_inicio.slice(0, 5)}`
     if (!porDiaHorario[chave]) porDiaHorario[chave] = []
-    const capacidade = a.turmas?.niveis?.nome === 'Individual' ? 1 : 4
+    const capacidade = capacidadeDoNivel(a.turmas?.niveis?.nome)
     const ocupacao = a.presencas?.length || 0
     const jaEsta = a.presencas?.some(p => p.aluno_id === aluno.id)
     porDiaHorario[chave].push({ ...a, capacidade, ocupacao, jaEsta })

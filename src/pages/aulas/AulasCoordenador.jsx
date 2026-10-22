@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown, Info, History, Repeat, CloudRain, Trash2, Save, User, MessageSquareText, DollarSign, Plus, Minus, CalendarDays, PartyPopper, StickyNote } from 'lucide-react'
-import { horarioParaMinutos, chuvaPagaProfessor } from '../../constants/modalidades'
+import { horarioParaMinutos, chuvaPagaProfessor, capacidadeDoNivel } from '../../constants/modalidades'
 import { nomeCurto } from '../../lib/nomes'
 import { getFeriado } from '../../constants/feriados'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas, confirmarAulasElegiveis, gerarReposicoesPorCancelamento, useAvisarFalta } from '../../hooks/useAulas'
@@ -3090,7 +3090,7 @@ function ModalOutraTurma({ alunoNome, modalidadeId, modalidadeNome, todasTurmas,
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '320px', overflowY: 'auto' }}>
             {turmasNoDia.map(t => {
-              const capacidade = t.niveis?.nome === 'Individual' ? 1 : 4
+              const capacidade = capacidadeDoNivel(t.niveis?.nome)
               const ocupacao = t.turmas_alunos?.filter(ta => ta.ativo).length || 0
               const vagas = capacidade - ocupacao
               return (

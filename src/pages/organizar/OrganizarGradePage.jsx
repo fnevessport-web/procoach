@@ -10,7 +10,7 @@ import {
   CENARIO_VAZIO, useAlunosDaSemana, useCenarioGrade, useProfessoresOrganizacao, useSalvarCenarioGrade, useTurmasTenisGrade,
 } from '../../hooks/useCenarioGrade'
 import { PALETA_PROFESSORES_SUAVE as PALETA } from '../../constants/paletaProfessores'
-import { VAGAS_GRUPO, VAGAS_INDIVIDUAL } from '../../constants/modalidades'
+import { capacidadeDoNivel } from '../../constants/modalidades'
 import { nomeCurto } from '../../lib/nomes'
 import { Loading } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
@@ -29,9 +29,16 @@ const DIAS = [
   { chave: 'sexta', curto: 'SEX', longo: 'Sexta' }, { chave: 'sabado', curto: 'SÁB', longo: 'Sábado' },
 ]
 const VAZIO = '__vazio__' // "sem professor" como alvo de arrastar/pincel
-// Aulas Kids de sábado têm espaço pra dois professores (Prof 1 e Prof 2), pedido de 13/10/2026.
+// Aulas com espaço pra dois professores (Prof 1 e Prof 2): Kids de sábado (pedido de 13/10/2026) e,
+// desde 22/10/2026, Kids 1 (4 a 6 anos) e Kids 2 (7 a 10 anos) de sexta às 16h e 17h.
 // O Prof 2 fica em cenario.atribuicoes2, com a mesma chave de vaga de atribuicoes.
-const ehKidsSabado = t => t.horario_dia_semana === 'sabado' && /kids/i.test(t.niveis?.nome || '')
+const KIDS_SEXTA_DOIS_PROF = /4 a 6|7 a 10/i
+const temDoisProfessores = t => {
+  const nivel = t.niveis?.nome || ''
+  if (!/kids/i.test(nivel)) return false
+  if (t.horario_dia_semana === 'sabado') return true
+  return t.horario_dia_semana === 'sexta' && ['16:00', '17:00'].includes(t.horario_inicio?.slice(0, 5)) && KIDS_SEXTA_DOIS_PROF.test(nivel)
+}
 const COR_SEM_PROF = 'var(--color-text-light-muted)'
 
 const cartao = {
@@ -45,7 +52,7 @@ const toastStyle = {
 
 const hora = t => (t.horario_inicio || '').slice(0, 5)
 const quadraCurta = q => (q || '').replace(/^Quadra\s*/i, 'Q')
-const capacidade = t => (t.niveis?.nome === 'Individual' ? VAGAS_INDIVIDUAL : VAGAS_GRUPO)
+const capacidade = t => capacidadeDoNivel(t.niveis?.nome)
 // Alunos na lista da aula dessa turma na semana de referência (ver useAlunosDaSemana).
 const ocupacao = t => t.semana?.alunos.length || 0
 
@@ -60,6 +67,7 @@ function ultimaSemanaDoMes(hoje = new Date()) {
   return format(seg, 'yyyy-MM-dd')
 }
 const fmtDia = d => format(parseISO(d), 'dd/MM')
+const CAMPOS_DA_SEMANA = ['base', 'atribuicoes', 'atribuicoes2', 'niveis']
 const ehTenis = (p, tenisId) => p.modalidade_id === tenisId || (p.modalidades_ids || []).includes(tenisId)
 const tem = (obj, k) => Object.prototype.hasOwnProperty.call(obj, k)
 
@@ -267,7 +275,16 @@ export function OrganizarGradePage() {
   const { data: quadrasTenis } = useQuadras(tenisId)
   const { data: horariosGrade } = useHorariosGrade()
   const { data: niveisTenis } = useNiveis(tenisId)
-  const mudarSemana = dias => setCenario(a => ({ ...a, semana: format(addDays(parseISO(a.semana || ultimaSemanaDoMes()), dias), 'yyyy-MM-dd') }))
+  // Cada semana tem o próprio rascunho (pedido em 21/10: a de 12/10 guardada e a de 19/10 montada
+  // do zero). O cenário de cima é sempre o da semana na tela; ao trocar, ele vai pra porSemana e a
+  // outra semana sai de lá (ou começa vazia). Professores novos e desligados valem pra todas.
+  const mudarSemana = dias => setCenario(a => {
+    const atual = a.semana || ultimaSemanaDoMes()
+    const nova = format(addDays(parseISO(atual), dias), 'yyyy-MM-dd')
+    const porSemana = { ...(a.porSemana || {}), [atual]: Object.fromEntries(CAMPOS_DA_SEMANA.map(k => [k, a[k]])) }
+    const destino = porSemana[nova] || { base: 'vazia', atribuicoes: {}, atribuicoes2: {}, niveis: {} }
+    return { ...a, ...destino, porSemana, semana: nova }
+  })
 
   // A grade é montada por VAGA: dia × horário (Cadastro > Horários) × quadra de Tênis ativa. Cada
   // quadra comporta uma aula por horário — o cadastro tem várias turmas antigas "ativas" na mesma
@@ -331,7 +348,7 @@ export function OrganizarGradePage() {
     return k && !desligados.has(k) && mapaProf[k] ? k : null
   }
   const efetivo2 = t => {
-    const k = ehKidsSabado(t) ? (c.atribuicoes2 || {})[t.id] : null
+    const k = temDoisProfessores(t) ? (c.atribuicoes2 || {})[t.id] : null
     return k && !desligados.has(k) && mapaProf[k] ? k : null
   }
 
@@ -439,7 +456,7 @@ export function OrganizarGradePage() {
         nivel: l.turma.livre && !l.turma.nivelPlanejado ? 'Livre' : `${l.turma.niveis?.nome || 'Sem nível'}${l.turma.livre ? ' (nova)' : ''}`,
         livre: !!l.turma.livre && !l.turma.nivelPlanejado, ocup: ocupacao(l.turma), cap: capacidade(l.turma),
         prof: l.k && mapaProf[l.k] ? { nome: mapaProf[l.k].nome, cor: mapaProf[l.k].cor } : null,
-        duplo: ehKidsSabado(l.turma), prof2: l.k2 && mapaProf[l.k2] ? { nome: mapaProf[l.k2].nome, cor: mapaProf[l.k2].cor } : null,
+        duplo: temDoisProfessores(l.turma), prof2: l.k2 && mapaProf[l.k2] ? { nome: mapaProf[l.k2].nome, cor: mapaProf[l.k2].cor } : null,
       }))
       await gerarPdfOrganizarGrade({ itens, dias: diasVisiveis, semanaInicio, semanaFim })
     } catch (e) { toast.error('Não foi possível gerar o PDF: ' + e.message, { style: toastStyle }) }
@@ -585,7 +602,7 @@ export function OrganizarGradePage() {
               const prof = l.k ? mapaProf[l.k] : null
               return (
                 <CardTurma key={l.turma.id} turma={l.turma} prof={prof} alterado={l.alterado} conflito={l.conflito}
-                  duplo={ehKidsSabado(l.turma)} prof2={l.k2 ? mapaProf[l.k2] : null}
+                  duplo={temDoisProfessores(l.turma)} prof2={l.k2 ? mapaProf[l.k2] : null}
                   onDrop2={k => atribuir(l.turma, k, 2)}
                   onClick2={() => (pincel ? atribuir(l.turma, pincel, 2) : setTurmaAberta(l.turma.id))}
                   antes={l.ant ? mapaProf[l.ant]?.nome || 'professor' : 'sem professor'}
@@ -598,7 +615,7 @@ export function OrganizarGradePage() {
         </div>
       </div>
       <p style={{ fontSize: '11px', color: 'var(--color-text-light-muted)', margin: '8px 0 0', lineHeight: 1.5 }}>
-        O número em cada turma é alunos na lista da aula na semana escolhida / vagas (individual 1, grupo 4). Atualiza sozinho conforme a agenda é preenchida. O pontinho indica professor diferente do que está hoje na grade oficial.
+        O número em cada turma é alunos na lista da aula na semana escolhida / vagas (individual 1, grupo 4, Kids 4 a 6 anos 8, demais Kids 6, Kids Competitivo 4). Atualiza sozinho conforme a agenda é preenchida. O pontinho indica professor diferente do que está hoje na grade oficial.
       </p>
     </div>
   )
@@ -606,7 +623,7 @@ export function OrganizarGradePage() {
   const turmaModal = turmaAberta ? turmas.find(t => t.id === turmaAberta) : null
   const kModal = turmaModal ? efetivo(turmaModal) : null
   const k2Modal = turmaModal ? efetivo2(turmaModal) : null
-  const duploModal = !!turmaModal && ehKidsSabado(turmaModal)
+  const duploModal = !!turmaModal && temDoisProfessores(turmaModal)
   const escolhiveis = [...tenis, ...c.novos.map(n => ({ id: n.id })), ...(mostrarOutros ? outros : [])].filter(p => !desligados.has(p.id) && mapaProf[p.id])
 
   return (
@@ -754,7 +771,7 @@ export function OrganizarGradePage() {
 
       <Modal open={confirmarReset} onClose={() => setConfirmarReset(false)} size="sm" title="Recomeçar o cenário">
         <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--text-secondary)', margin: '0 0 14px' }}>
-          Apaga as trocas feitas até agora. Os professores novos e quem você tirou da grade continuam na lista.
+          Apaga as trocas feitas nesta semana ({fmtDia(semanaInicio)} a {fmtDia(semanaFim)}). As outras semanas não mudam. Os professores novos e quem você tirou da grade continuam na lista.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {[

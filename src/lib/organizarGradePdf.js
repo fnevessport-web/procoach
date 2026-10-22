@@ -15,7 +15,7 @@ function linhaDoProf(prof, rotulo = 'prof.') {
     : `<div style="margin-top:6px;border-bottom:1px solid ${C.muted};height:20px;display:flex;align-items:flex-end;font-size:8px;color:${C.muted};">${rotulo}</div>`
 }
 
-// duplo: aula Kids de sábado, que tem espaço pra dois professores (Prof 1 e Prof 2).
+// duplo: aula com espaço pra dois professores (Prof 1 e Prof 2): Kids de sábado e Kids 4 a 6 / 7 a 10 de sexta 16h e 17h.
 function cartao({ nivel, ocup, cap, prof, prof2, duplo, livre }) {
   const linhaProf = duplo ? linhaDoProf(prof, 'Prof 1') + linhaDoProf(prof2, 'Prof 2') : linhaDoProf(prof)
   return `

@@ -100,6 +100,25 @@ export function isAulaIndividual(aula) {
   return parseObservacoes(aula.observacoes).nivel === 'Individual'
 }
 
+// A partir de 21/10/2026 as turmas Kids ganharam limite próprio (pedido da coordenação):
+// Kids 1 (4 a 6 anos) até 8 inscritos, Kids 2 (7 a 10) e Kids 11 a 13 anos até 6, e o
+// Kids Competitivo continua com o limite padrão de grupo (4).
+export const VAGAS_KIDS_4_A_6 = 8
+export const VAGAS_KIDS = 6
+
+export function capacidadeDoNivel(nomeNivel) {
+  const nome = (nomeNivel || '').trim()
+  if (nome === 'Individual') return VAGAS_INDIVIDUAL
+  if (!nome.startsWith('Kids') || nome.includes('Competitivo')) return VAGAS_GRUPO
+  if (nome.includes('4 a 6')) return VAGAS_KIDS_4_A_6
+  return VAGAS_KIDS
+}
+
+export function capacidadeDaAula(aula) {
+  if (aula.turma_id) return capacidadeDoNivel(aula.turmas?.niveis?.nome)
+  return capacidadeDoNivel(parseObservacoes(aula.observacoes).nivel)
+}
+
 // De 1/8/2026 a 31/8/2026, aula de Tênis em GRUPO com só 1 aluno pagante (ou 100% cortesia —
 // zero pagante, só cortesia) virou deficitária pro clube no valor cheio — decisão do
 // coordenador foi pagar R$100 fixo nesse caso, em vez do valor normal do professor. A partir de
@@ -521,7 +540,7 @@ export function construirHeatmapOcupacao(aulas, periodoInicio, periodoFim, nomeM
     const chave = `${a.data_aula}_${hora}`
     const inscritos = (a.presencas || []).length
     const individual = isAulaIndividual(a)
-    const vagas = individual ? VAGAS_INDIVIDUAL : VAGAS_GRUPO
+    const vagas = capacidadeDaAula(a)
     if (!porDataHora[chave]) porDataHora[chave] = { data: a.data_aula, hora, total: 0, grupo: 0, individual: 0, vagasTotal: 0 }
     porDataHora[chave].total += inscritos
     porDataHora[chave].vagasTotal += vagas
