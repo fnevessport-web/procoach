@@ -12,6 +12,7 @@ import { Modal } from '../../components/ui/Modal'
 import { Input, Select } from '../../components/ui/Input'
 import { Loading } from '../../components/ui/Loading'
 import { supabase } from '../../lib/supabase'
+import { abrirWhatsApp } from '../../lib/telefone'
 import toast from 'react-hot-toast'
 
 const inputStyle = {
@@ -173,9 +174,6 @@ export function AlunosPage() {
     }
   }
 
-  function abrirWhatsApp(telefone) {
-    window.open(`https://wa.me/55${telefone.replace(/\D/g, '')}`, '_blank')
-  }
 
   const filtrados = alunos?.filter(a =>
     a.nome.toLowerCase().includes(busca.toLowerCase())

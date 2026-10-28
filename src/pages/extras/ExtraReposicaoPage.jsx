@@ -13,6 +13,7 @@ import { FotoProfessorMini } from '../reposicao/ui'
 import { Loading } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
 import { gerarPdfGradeReposicao } from '../../lib/relatorioReposicaoPdf'
+import { abrirWhatsApp } from '../../lib/telefone'
 
 const LINK_PUBLICO = 'https://procoachsport.com.br/reposicao'
 
@@ -107,9 +108,9 @@ function LinkWhats({ telefone }) {
   // O link não pede mais telefone (fica vazio ou só zeros): nada pra mostrar.
   if (!d || /^0+$/.test(d)) return null
   return (
-    <a href={`https://wa.me/55${d}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-action-primary)', fontWeight: 600, fontSize: '12px', textDecoration: 'none' }}>
+    <button onClick={() => abrirWhatsApp(d)} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-action-primary)', fontWeight: 600, fontSize: '12px', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
       <MessageCircle size={13} />{formatarTelefone(telefone)}
-    </a>
+    </button>
   )
 }
 

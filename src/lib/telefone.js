@@ -6,6 +6,23 @@ export function apenasDigitosTelefone(v) {
   return (v || '').replace(/\D/g, '').slice(0, 11)
 }
 
+// No computador, whatsapp:// abre direto o app instalado, sem a página intermediária do
+// api.whatsapp.com a cada contato (o navegador só pergunta na 1ª vez; marcar "Sempre permitir").
+// No celular wa.me já abre o app sozinho. Aceita telefone com ou sem "55" na frente.
+export function linkWhatsApp(telefone) {
+  const d = (telefone || '').replace(/\D/g, '')
+  const comDdi = d.length > 11 ? d : `55${d}`
+  const ehCelular = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  return ehCelular ? `https://wa.me/${comDdi}` : `whatsapp://send?phone=${comDdi}`
+}
+
+// whatsapp:// não precisa (nem deve) abrir aba nova — ficaria uma aba em branco pra trás.
+export function abrirWhatsApp(telefone) {
+  const link = linkWhatsApp(telefone)
+  if (link.startsWith('whatsapp:')) window.location.href = link
+  else window.open(link, '_blank')
+}
+
 export function mascararTelefoneBR(v) {
   const d = apenasDigitosTelefone(v)
   if (!d) return ''

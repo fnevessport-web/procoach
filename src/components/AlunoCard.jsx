@@ -18,6 +18,7 @@ import { useAbrirConversaDoAluno } from '../hooks/useMensagens'
 import { calcStatusPorPrazo } from '../constants/reposicao'
 import { ICONES_MODALIDADES } from '../constants/modalidades'
 import { supabase } from '../lib/supabase'
+import { abrirWhatsApp } from '../lib/telefone'
 import useAppStore from '../store/useAppStore'
 import { Modal } from './ui/Modal'
 import { Loading, EmptyState } from './ui/Loading'
@@ -422,9 +423,9 @@ function BotoesContato({ telefone }) {
   }
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-      <a href={`https://wa.me/${comDdi}`} target="_blank" rel="noreferrer" style={{ ...estiloBotao, backgroundColor: 'rgba(37,211,102,0.12)', color: '#25D166' }}>
+      <button onClick={() => abrirWhatsApp(telefone)} style={{ ...estiloBotao, border: 'none', cursor: 'pointer', backgroundColor: 'rgba(37,211,102,0.12)', color: '#25D166' }}>
         <MessageCircle size={13} /> {telefone}
-      </a>
+      </button>
       <a href={`tel:+${comDdi}`} style={{ ...estiloBotao, backgroundColor: 'var(--color-surface-light-overlay)', color: 'var(--color-text-light-primary)', border: '1px solid var(--color-border-light)' }}>
         <Phone size={13} /> Ligar
       </a>
