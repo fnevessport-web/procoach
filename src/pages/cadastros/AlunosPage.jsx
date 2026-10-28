@@ -36,6 +36,7 @@ const TIPOS_VINCULO = [
 const FORM_VAZIO = {
   nome: '', telefone: '', multiclubes_id: '',
   menor_idade: false, nome_responsavel: '', nivel: '',
+  telefone_responsavel: '', nome_responsavel_2: '', telefone_responsavel_2: '',
   cpf: '', data_nascimento: '', email: '', foto_url: '',
 }
 
@@ -80,6 +81,9 @@ export function AlunosPage() {
       multiclubes_id: aluno.multiclubes_id || '',
       menor_idade: aluno.menor_idade || false,
       nome_responsavel: aluno.nome_responsavel || '',
+      telefone_responsavel: aluno.telefone_responsavel || '',
+      nome_responsavel_2: aluno.nome_responsavel_2 || '',
+      telefone_responsavel_2: aluno.telefone_responsavel_2 || '',
       nivel: aluno.nivel || '',
       cpf: aluno.cpf || '',
       data_nascimento: aluno.data_nascimento || '',
@@ -96,7 +100,9 @@ export function AlunosPage() {
 
   async function handleSalvar() {
     if (!form.nome.trim()) return toast.error('Nome é obrigatório')
-    if (form.menor_idade && !form.nome_responsavel.trim()) return toast.error('Nome do responsável é obrigatório')
+    // Muitos menores vieram do relatório do clube só com o telefone do responsável (sem nome) —
+    // basta um dos dois pra ter como contatar a família.
+    if (form.menor_idade && !form.nome_responsavel.trim() && !form.telefone_responsavel.trim()) return toast.error('Informe o nome ou o telefone do responsável')
     setSalvandoMods(true)
     try {
       const result = await salvar.mutateAsync({
@@ -106,6 +112,9 @@ export function AlunosPage() {
         multiclubes_id: form.multiclubes_id,
         menor_idade: form.menor_idade,
         nome_responsavel: form.menor_idade ? form.nome_responsavel : null,
+        telefone_responsavel: form.menor_idade ? form.telefone_responsavel || null : null,
+        nome_responsavel_2: form.menor_idade ? form.nome_responsavel_2 || null : null,
+        telefone_responsavel_2: form.menor_idade ? form.telefone_responsavel_2 || null : null,
         nivel: form.nivel || null,
         cpf: form.cpf || null,
         data_nascimento: form.data_nascimento || null,
@@ -344,8 +353,16 @@ export function AlunosPage() {
           </button>
 
           {form.menor_idade && (
-            <Input label="Nome do responsável *" placeholder="Nome do pai/mãe/responsável"
-              value={form.nome_responsavel} onChange={e => update('nome_responsavel', e.target.value)} />
+            <>
+              <Input label="Responsável 1 · nome" placeholder="Nome do pai/mãe/responsável"
+                value={form.nome_responsavel} onChange={e => update('nome_responsavel', e.target.value)} />
+              <Input label="Responsável 1 · telefone" placeholder="(11) 99999-9999"
+                value={form.telefone_responsavel} onChange={e => update('telefone_responsavel', e.target.value)} />
+              <Input label="Responsável 2 · nome" placeholder="Opcional"
+                value={form.nome_responsavel_2} onChange={e => update('nome_responsavel_2', e.target.value)} />
+              <Input label="Responsável 2 · telefone" placeholder="Opcional"
+                value={form.telefone_responsavel_2} onChange={e => update('telefone_responsavel_2', e.target.value)} />
+            </>
           )}
 
           <div>

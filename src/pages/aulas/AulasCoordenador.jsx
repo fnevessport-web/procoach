@@ -21,6 +21,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
 import { Loading, EmptyState } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
+import { ModalCardAluno } from '../../components/ModalCardAluno'
 import { supabase } from '../../lib/supabase'
 import { logAudit } from '../../lib/audit'
 import { vincularMensalistasNaTurma } from '../../lib/matriculaTurma'
@@ -261,6 +262,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   // Rastreabilidade: quem incluiu cada aluno na aula (aluno.aula_id => bool) e histórico
   // completo da aula (audit_log), ambos abertos sob demanda pra não poluir a tela.
   const [origemAberta, setOrigemAberta] = useState(null)
+  // Ficha do aluno em pop-up (clique no nome dentro da aula) — contato rápido sem sair da agenda.
+  const [alunoFicha, setAlunoFicha] = useState(null)
   // Edição rápida do nome do aluno direto na lista de presenças — corrigir um erro de
   // digitação não deveria exigir ir até Cadastros > Alunos.
   const [editandoNome, setEditandoNome] = useState(null) // aluno_id | null
@@ -2613,7 +2616,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                         </div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
-                          <span style={{
+                          <span onClick={() => setAlunoFicha(aluno.aluno_id)} title="Abrir ficha do aluno" style={{
+                            cursor: 'pointer',
                             fontSize: '13px', fontWeight: isCortesia ? '700' : '500', color: isCortesia ? COR_CORTESIA : 'var(--color-text-light-primary)',
                             backgroundColor: temAlerta ? 'rgba(165,76,46,0.12)' : 'transparent',
                             borderRadius: '4px', padding: temAlerta ? '1px 6px' : '0',
@@ -2892,6 +2896,14 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
           </div>
         </div>,
         document.body
+      )}
+
+      {alunoFicha && (
+        <ModalCardAluno
+          alunoId={alunoFicha}
+          onClose={() => setAlunoFicha(null)}
+          onVoltarGrade={() => { setAlunoFicha(null); fecharModal() }}
+        />
       )}
 
       {promptOutraTurma && (

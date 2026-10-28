@@ -512,9 +512,10 @@ export function useRelatorioReposicoes() {
       return Object.values(porAluno).map(a => {
         const pendentes = a.faltas.filter(f => !f.reposicao || f.reposicao.status === 'pendente')
         // Concluída (já aconteceu ou é hoje) vs. ainda vai acontecer — mesmo status 'agendada',
-        // separadas pela data da aula de destino.
+        // separadas pela data da aula de destino. 'agendada' sem aula de destino = reposta na
+        // grade extra da chuva (extras_slots, fora da agenda oficial), baixada à mão — já aconteceu.
         const resolvidas = a.faltas.filter(f => f.reposicao?.status === 'agendada')
-        const agendadas = resolvidas.filter(f => (f.reposicao.aula_reposicao?.data_aula || '9999-99-99') > dataFim)
+        const agendadas = resolvidas.filter(f => (f.reposicao.aula_reposicao?.data_aula || '') > dataFim)
         const repostas = resolvidas.filter(f => (f.reposicao.aula_reposicao?.data_aula || '') <= dataFim)
         return { ...a, tiposAula: [...a.tiposAula], pendentes, agendadas, repostas }
       }).sort((a, b) => b.pendentes.length - a.pendentes.length)

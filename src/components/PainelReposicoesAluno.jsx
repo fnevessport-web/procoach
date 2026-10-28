@@ -94,7 +94,8 @@ export function PainelReposicoesAluno({ alunoId, alunoNome }) {
                   {r.status === 'pendente' ? 'Ainda por repor' : 'Repôs em'}
                 </div>
                 <div style={{ color: 'var(--color-text-light-primary)', fontWeight: '600', marginTop: '2px' }}>
-                  {temDestino ? fmtData(r.aula_reposicao.data_aula) : '—'}
+                  {/* 'agendada' sem aula de destino = reposta na grade extra da chuva */}
+                  {temDestino ? fmtData(r.aula_reposicao.data_aula) : r.status === 'agendada' ? 'Grade extra' : '—'}
                 </div>
                 {temDestino && (r.aula_reposicao?.turmas?.nome || r.aula_reposicao?.turmas?.quadras?.nome) && (
                   <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '11px', marginTop: '1px' }}>

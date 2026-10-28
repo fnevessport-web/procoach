@@ -785,8 +785,9 @@ function CardReposicaoPar({ item, concluida }) {
           <div style={{ fontSize: '9px', color: concluida ? 'var(--color-state-success)' : 'var(--color-state-info)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
             {concluida ? 'Repôs em' : 'Vai repor em'}
           </div>
-          <div style={{ color: 'var(--color-text-light-primary)', fontWeight: '600', marginTop: '2px' }}>{fmtData(destino?.data_aula)}</div>
-          <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '11px', marginTop: '1px' }}>{destino?.turmas?.nome || destino?.turmas?.quadras?.nome || '—'}</div>
+          {/* Sem aula de destino = reposta na grade extra da chuva (fora da agenda oficial) */}
+          <div style={{ color: 'var(--color-text-light-primary)', fontWeight: '600', marginTop: '2px' }}>{destino ? fmtData(destino.data_aula) : 'Grade extra'}</div>
+          <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '11px', marginTop: '1px' }}>{destino?.turmas?.nome || destino?.turmas?.quadras?.nome || (destino ? '—' : 'Reposição da chuva')}</div>
         </div>
       </div>
     </div>

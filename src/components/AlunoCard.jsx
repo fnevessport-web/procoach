@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Camera, MessageCircle, ChevronRight, ClipboardList, Plus, Trophy, UserX } from 'lucide-react'
+import { Camera, MessageCircle, ChevronRight, ClipboardList, Plus, Trophy, UserX, Phone, UserPlus } from 'lucide-react'
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -90,8 +90,12 @@ function fmtData(d) {
   return d ? format(new Date(d + 'T12:00'), 'dd/MM/yyyy', { locale: ptBR }) : '—'
 }
 
-export function AlunoCard({ alunoId }) {
+// `onAbrirAluno` (opcional): quem embute o card num pop-up (ex: agenda) troca o aluno exibido
+// ali mesmo em vez de navegar pra outra página ao clicar num familiar.
+export function AlunoCard({ alunoId, onAbrirAluno }) {
   const navigate = useNavigate()
+  const abrirAluno = id => (onAbrirAluno ? onAbrirAluno(id) : navigate(`/cadastros/alunos/${id}`))
+  const [cadastrandoVinculo, setCadastrandoVinculo] = useState(false)
   const qc = useQueryClient()
   const { data: aluno, isLoading } = useAlunoCompleto(alunoId)
   const [uploadandoFoto, setUploadandoFoto] = useState(false)
@@ -130,10 +134,6 @@ export function AlunoCard({ alunoId }) {
     } finally {
       setUploadandoFoto(false)
     }
-  }
-
-  function abrirWhatsApp(telefone) {
-    window.open(`https://wa.me/55${telefone.replace(/\D/g, '')}`, '_blank')
   }
 
   if (isLoading) return <Loading />
@@ -210,13 +210,9 @@ export function AlunoCard({ alunoId }) {
           </div>
 
           {aluno.telefone && (
-            <button onClick={() => abrirWhatsApp(aluno.telefone)} style={{
-              display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px',
-              padding: '5px 10px', borderRadius: '8px', border: 'none',
-              backgroundColor: 'rgba(37,211,102,0.12)', color: '#25D166', cursor: 'pointer', fontSize: '12px',
-            }}>
-              <MessageCircle size={13} /> {aluno.telefone}
-            </button>
+            <div style={{ marginTop: '8px' }}>
+              <BotoesContato telefone={aluno.telefone} />
+            </div>
           )}
         </div>
       </div>
@@ -230,8 +226,27 @@ export function AlunoCard({ alunoId }) {
           <DadoLinha label="CPF" valor={aluno.cpf} />
           <DadoLinha label="Data de nascimento" valor={fmtData(aluno.data_nascimento)} placeholder="—" mostrarSempre={!!aluno.data_nascimento} />
           <DadoLinha label="E-mail" valor={aluno.email} />
-          {aluno.menor_idade && <DadoLinha label="Responsável" valor={aluno.nome_responsavel} />}
+          {aluno.menor_idade && !aluno.nome_responsavel && !aluno.telefone_responsavel && (
+            <DadoLinha label="Responsável" valor={null} />
+          )}
         </div>
+
+        {(aluno.nome_responsavel || aluno.telefone_responsavel || aluno.nome_responsavel_2 || aluno.telefone_responsavel_2) && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--color-border-light)' }}>
+            {[[aluno.nome_responsavel, aluno.telefone_responsavel], [aluno.nome_responsavel_2, aluno.telefone_responsavel_2]]
+              .filter(([nome, tel]) => nome || tel)
+              .map(([nome, tel], i) => (
+                <div key={i}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginBottom: '4px' }}>
+                    Responsável {i + 1}{nome && <span style={{ color: 'var(--color-text-light-primary)', fontWeight: '600' }}> · {nome}</span>}
+                  </div>
+                  {tel
+                    ? <BotoesContato telefone={tel} />
+                    : <span style={{ fontSize: '12px', color: 'var(--color-text-light-muted)' }}>Sem telefone</span>}
+                </div>
+              ))}
+          </div>
+        )}
 
         {!aluno.data_nascimento && (
           <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--color-border-light)' }}>
@@ -246,8 +261,16 @@ export function AlunoCard({ alunoId }) {
 
       {/* Família */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', fontWeight: '700' }}>
-          Família
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+          <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>
+            Família
+          </div>
+          <button onClick={() => setCadastrandoVinculo(true)} style={{
+            display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '7px', border: 'none',
+            backgroundColor: 'rgba(165,76,46,0.12)', color: 'var(--color-action-primary)', cursor: 'pointer', fontSize: '11px', fontWeight: '600',
+          }}>
+            <UserPlus size={12} /> {aluno.menor_idade ? 'Cadastrar Pai/Mãe' : 'Cadastrar Filhos'}
+          </button>
         </div>
         {aluno.familia.length === 0 ? (
           <div style={{ fontSize: '12px', color: 'var(--color-text-light-muted)' }}>Nenhum vínculo cadastrado</div>
@@ -265,7 +288,7 @@ export function AlunoCard({ alunoId }) {
                 </>
               )
               return clicavel ? (
-                <button key={v.id} onClick={() => navigate(`/cadastros/alunos/${v.vinculo_aluno_id}`)} style={{
+                <button key={v.id} onClick={() => abrirAluno(v.vinculo_aluno_id)} style={{
                   display: 'flex', alignItems: 'center', gap: '8px',
                   backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)', borderRadius: '10px',
                   padding: '10px 12px', cursor: 'pointer', textAlign: 'left', width: '100%',
@@ -340,6 +363,14 @@ export function AlunoCard({ alunoId }) {
         )}
       </div>
 
+      {cadastrandoVinculo && (
+        <ModalCadastrarVinculo
+          aluno={aluno}
+          idsJaVinculados={aluno.familia.map(v => v.vinculo_aluno_id).filter(Boolean)}
+          onClose={() => setCadastrandoVinculo(false)}
+        />
+      )}
+
       {adicionandoModalidade && (
         <ModalAdicionarModalidade
           alunoId={aluno.id}
@@ -377,6 +408,135 @@ function DadoLinha({ label, valor, placeholder = 'Não informado', mostrarSempre
         {temValor ? valor : placeholder}
       </span>
     </div>
+  )
+}
+
+// WhatsApp + ligação direta pro mesmo número — contato rápido a partir da ficha (inclusive
+// aberta como pop-up na agenda, no meio da aula).
+function BotoesContato({ telefone }) {
+  const digitos = telefone.replace(/\D/g, '')
+  const comDdi = digitos.length > 11 ? digitos : `55${digitos}`
+  const estiloBotao = {
+    display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 10px', borderRadius: '8px',
+    fontSize: '12px', textDecoration: 'none', fontWeight: '600',
+  }
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+      <a href={`https://wa.me/${comDdi}`} target="_blank" rel="noreferrer" style={{ ...estiloBotao, backgroundColor: 'rgba(37,211,102,0.12)', color: '#25D166' }}>
+        <MessageCircle size={13} /> {telefone}
+      </a>
+      <a href={`tel:+${comDdi}`} style={{ ...estiloBotao, backgroundColor: 'var(--color-surface-light-overlay)', color: 'var(--color-text-light-primary)', border: '1px solid var(--color-border-light)' }}>
+        <Phone size={13} /> Ligar
+      </a>
+    </div>
+  )
+}
+
+// "Cadastrar Pai/Mãe" (ficha de menor) / "Cadastrar Filhos" (ficha de adulto). Vínculo com outro
+// aluno grava os dois lados em aluno_familia (o pai passa a ver o filho e vice-versa); quem não
+// é aluno entra só pelo nome, sem link.
+function ModalCadastrarVinculo({ aluno, idsJaVinculados, onClose }) {
+  const qc = useQueryClient()
+  const ehMenor = !!aluno.menor_idade
+  const [busca, setBusca] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const termo = busca.trim()
+
+  const { data: resultados, isFetching } = useQuery({
+    queryKey: ['busca_vinculo_aluno', termo],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('alunos').select('id, nome, data_nascimento, menor_idade')
+        .ilike('nome', `%${termo}%`).eq('ativo', true).order('nome').limit(8)
+      if (error) throw error
+      return data || []
+    },
+    enabled: termo.length >= 2,
+  })
+  const candidatos = (resultados || []).filter(a => a.id !== aluno.id && !idsJaVinculados.includes(a.id))
+
+  function atualizar(ids) {
+    ids.forEach(id => {
+      qc.invalidateQueries({ queryKey: ['aluno_completo', id] })
+      qc.invalidateQueries({ queryKey: ['aluno_familia', id] })
+    })
+  }
+
+  async function vincularAluno(outro) {
+    setSalvando(true)
+    try {
+      const [responsavel, filho] = ehMenor ? [outro, aluno] : [aluno, outro]
+      const { error } = await supabase.from('aluno_familia').insert([
+        { aluno_id: responsavel.id, vinculo_aluno_id: filho.id, nome_vinculo: filho.nome, tipo_vinculo: 'filho' },
+        { aluno_id: filho.id, vinculo_aluno_id: responsavel.id, nome_vinculo: responsavel.nome, tipo_vinculo: 'responsavel' },
+      ])
+      if (error) throw error
+      atualizar([aluno.id, outro.id])
+      toast.success(`${outro.nome} vinculado(a)!`, { style: toastStyle })
+      onClose()
+    } catch (err) {
+      toast.error('Erro ao vincular: ' + err.message, { style: toastStyle })
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function salvarSoNome() {
+    if (!termo) return
+    setSalvando(true)
+    try {
+      const { error } = await supabase.from('aluno_familia').insert({
+        aluno_id: aluno.id, vinculo_aluno_id: null, nome_vinculo: termo, tipo_vinculo: ehMenor ? 'responsavel' : 'filho',
+      })
+      if (error) throw error
+      atualizar([aluno.id])
+      toast.success('Vínculo cadastrado!', { style: toastStyle })
+      onClose()
+    } catch (err) {
+      toast.error('Erro ao salvar: ' + err.message, { style: toastStyle })
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title={ehMenor ? 'Cadastrar Pai/Mãe' : 'Cadastrar Filhos'} size="sm">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <input
+          autoFocus
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          placeholder={ehMenor ? 'Nome do pai ou da mãe' : 'Nome do filho ou da filha'}
+          style={{
+            width: '100%', padding: '10px 12px', borderRadius: '10px', boxSizing: 'border-box', outline: 'none',
+            border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)',
+            color: 'var(--color-text-light-primary)', fontSize: '13px',
+          }}
+        />
+        {termo.length >= 2 && (
+          <>
+            <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>
+              {isFetching ? 'Buscando...' : candidatos.length ? 'Alunos cadastrados — toque pra vincular:' : 'Nenhum aluno encontrado com esse nome.'}
+            </div>
+            {candidatos.map(a => (
+              <button key={a.id} disabled={salvando} onClick={() => vincularAluno(a)} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%', textAlign: 'left',
+                padding: '10px 12px', borderRadius: '10px', cursor: 'pointer',
+                backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)',
+              }}>
+                <span style={{ fontSize: '13px', color: 'var(--color-text-light-primary)', fontWeight: '600' }}>{a.nome}</span>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>{a.data_nascimento ? fmtData(a.data_nascimento) : ''}</span>
+              </button>
+            ))}
+            <button disabled={salvando} onClick={salvarSoNome} style={{
+              padding: '9px', borderRadius: '10px', border: '1px dashed var(--color-border-light)', background: 'none',
+              color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer',
+            }}>
+              Não é aluno: salvar só o nome "{termo}"
+            </button>
+          </>
+        )}
+      </div>
+    </Modal>
   )
 }
 
@@ -774,7 +934,8 @@ function ModalDetalheModalidade({ aluno, modalidade, mesInicial = null, onClose 
                             {r.status === 'pendente' ? 'Ainda por repor' : 'Repôs em'}
                           </div>
                           <div style={{ color: 'var(--color-text-light-primary)', fontWeight: '600', marginTop: '2px' }}>
-                            {temDestino ? fmtData(r.aula_reposicao.data_aula) : '—'}
+                            {/* 'agendada' sem aula de destino = reposta na grade extra da chuva */}
+                            {temDestino ? fmtData(r.aula_reposicao.data_aula) : r.status === 'agendada' ? 'Grade extra' : '—'}
                           </div>
                         </div>
                       </div>
