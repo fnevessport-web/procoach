@@ -18,7 +18,7 @@ function fmtData(d) {
 }
 
 // Painel "Minhas Reposições" (Fase 2) — embutido no card do aluno. Mostra os créditos de
-// reposição gerados por cancelamento de aula (força maior), com prazo de 60 dias.
+// reposição gerados por cancelamento de aula (força maior), com prazo de 30 dias (regra do clube).
 export function PainelReposicoesAluno({ alunoId, alunoNome }) {
   const navigate = useNavigate()
   const { data: reposicoes, isLoading } = useReposicoesDoAluno(alunoId)

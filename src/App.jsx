@@ -37,6 +37,7 @@ import { PesquisaSociosPublicaPage } from './pages/pesquisa/PesquisaSociosPublic
 import { DisponibilidadeTurmasPage } from './pages/disponibilidade/DisponibilidadeTurmasPage'
 import { EventoInscricaoPage } from './pages/eventos/EventoInscricaoPage'
 import { ReposicaoExtraPage } from './pages/reposicao/ReposicaoExtraPage'
+import { ReposicaoOficialPage } from './pages/reposicaoOficial/ReposicaoOficialPage'
 import { ExtraReposicaoPage } from './pages/extras/ExtraReposicaoPage'
 import { OrganizarGradePage } from './pages/organizar/OrganizarGradePage'
 import { AprovarInclusoesPage } from './pages/cadastros/AprovarInclusoesPage'
@@ -215,7 +216,8 @@ export default function App() {
           <Route path="/pesquisa/:token" element={<PesquisaSatisfacaoPage />} />
           <Route path="/pesquisa-socios/:token" element={<PesquisaSociosPublicaPage />} />
           <Route path="/eventos/:slug" element={<EventoInscricaoPage />} />
-          <Route path="/reposicao" element={<ReposicaoExtraPage />} />
+          <Route path="/reposicao" element={<ReposicaoOficialPage />} />
+          <Route path="/reposicao-rodada-chuva" element={<ReposicaoExtraPage />} />
           <Route path="/reuniao-equipe-2026" element={<ReuniaoEquipe2026Page />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/politica-de-privacidade" element={<PoliticaPrivacidadePage />} />

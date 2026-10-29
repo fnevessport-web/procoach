@@ -23,6 +23,7 @@ import useAppStore from '../store/useAppStore'
 import { Modal } from './ui/Modal'
 import { Loading, EmptyState } from './ui/Loading'
 import { PainelReposicoesAluno } from './PainelReposicoesAluno'
+import { ResumoReposicaoAluno } from './ResumoReposicaoAluno'
 import { GradeSemanalReposicao } from './GradeSemanalReposicao'
 import { EvolucaoTecnicaTenis } from './EvolucaoTecnicaTenis'
 import { BlocoPontuacaoBeyond } from './BlocoPontuacaoBeyond'
@@ -379,6 +380,14 @@ export function AlunoCard({ alunoId, onAbrirAluno }) {
           onClose={() => setAdicionandoModalidade(false)}
         />
       )}
+
+      {/* Frequência + saldo de reposição de chuva (mesma leitura do link /reposicao) */}
+      <div style={{ marginTop: '20px' }}>
+        <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', fontWeight: '700' }}>
+          Frequência e reposições de chuva
+        </div>
+        <ResumoReposicaoAluno alunoId={alunoId} />
+      </div>
 
       {/* Minhas Reposições */}
       <div style={{ marginTop: '20px' }}>

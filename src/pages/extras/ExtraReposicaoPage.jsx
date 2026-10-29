@@ -14,6 +14,7 @@ import { Loading } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
 import { gerarPdfGradeReposicao } from '../../lib/relatorioReposicaoPdf'
 import { abrirWhatsApp } from '../../lib/telefone'
+import { PainelLinkOficial } from './PainelLinkOficial'
 
 const LINK_PUBLICO = 'https://procoachsport.com.br/reposicao'
 
@@ -707,6 +708,8 @@ export function ExtraReposicaoPage() {
   const cancelar = useCancelarAgendamentoExtra()
   const excluir = useExcluirInscricaoExtra()
   const [aba, setAba] = useState('agendas')
+  // 'link' = link oficial na grade regular (desde 29/10/2026); 'rodadas' = grade extra antiga (extras_*).
+  const [secao, setSecao] = useState('link')
   const [paraCancelar, setParaCancelar] = useState(null)
   const [paraExcluir, setParaExcluir] = useState(null)
   // "atual" = rodada em andamento (só reposição de Tênis, a partir de INICIO_RODADA_ATUAL);
@@ -784,17 +787,19 @@ export function ExtraReposicaoPage() {
         <div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, margin: 0, color: 'var(--color-text-light-primary)' }}>Extra Reposição</h1>
           <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', margin: '4px 0 0', maxWidth: '620px', lineHeight: 1.5 }}>
-            Aulas extras da chuva (reposição de Tênis; na 1ª rodada, também aulas de presente), com professor, vagas e quem agendou pelo link.
-            Fica separada da grade oficial de aulas.
+            Reposição das aulas de Tênis canceladas por chuva: quem agendou pelo link oficial (direto na grade regular), a lista de
+            espera para abrir aulas extras e o histórico das rodadas de chuva antigas.
           </p>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          {secao === 'rodadas' && (
           <button type="button" onClick={baixarPdf} disabled={gerandoPdf || !slots} style={{
             display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '9px 13px', borderRadius: '10px', cursor: gerandoPdf ? 'default' : 'pointer', fontSize: '12px', fontWeight: 700,
             border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)', opacity: !slots ? 0.6 : 1,
           }}>
             <FileDown size={14} /> {gerandoPdf ? 'Gerando PDF...' : 'Baixar PDF (reposição de Tênis)'}
           </button>
+          )}
           <button type="button" onClick={copiarLink} style={{
             display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '9px 13px', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700,
             border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-raised)', color: 'var(--color-text-light-primary)',
@@ -804,6 +809,20 @@ export function ExtraReposicaoPage() {
         </div>
       </div>
 
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        {[['link', 'Link oficial (grade regular)'], ['rodadas', 'Rodadas de chuva (grade extra antiga)']].map(([k, r]) => (
+          <button key={k} type="button" onClick={() => setSecao(k)} style={{
+            padding: '9px 14px', borderRadius: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: 700,
+            border: `1px solid ${secao === k ? 'var(--color-action-primary)' : 'var(--color-border-light)'}`,
+            backgroundColor: secao === k ? 'var(--color-action-primary)' : 'var(--color-surface-light-raised)',
+            color: secao === k ? 'var(--color-action-on-primary)' : 'var(--color-text-light-secondary)',
+          }}>{r}</button>
+        ))}
+      </div>
+
+      {secao === 'link' && <PainelLinkOficial podeEditar={podeEditarCadastros} />}
+
+      {secao === 'rodadas' && <>
       <div style={{ display: 'inline-flex', gap: '2px', padding: '3px', borderRadius: '10px', marginBottom: '14px', backgroundColor: 'var(--color-surface-light-overlay)', border: '1px solid var(--color-border-light)' }}>
         {[['atual', 'Rodada atual', RotateCcw], ['historico', 'Histórico (rodadas anteriores)', History]].map(([k, r, Icone]) => (
           <button key={k} type="button" onClick={() => setVisao(k)} style={{
@@ -842,6 +861,7 @@ export function ExtraReposicaoPage() {
         <AbaInscritos key={visao} inscritos={inscritosVisao} podeEditar={podeEditarCadastros} onCancelar={setParaCancelar} onExcluir={setParaExcluir}
           nomesAlunos={nomesAlunos || []} carregandoCadastro={carregandoCadastro} comPresente={historico} />
       )}
+      </>}
 
       <Modal open={!!paraCancelar} onClose={() => setParaCancelar(null)} title="Cancelar agendamento" size="sm">
         {paraCancelar && (

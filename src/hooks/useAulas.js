@@ -160,17 +160,24 @@ export async function resolverReposicaoFIFO({ alunoId, aulaDestinoId }) {
   return { dataFaltaResolvida: maisAntiga.aulas?.data_aula }
 }
 
+// Prazo da reposição de chuva (regra do clube): 30 dias contados da aula cancelada.
+export const PRAZO_REPOSICAO_DIAS = 30
+
 // Cancelamento por força maior (ver MOTIVOS_FORCA_MAIOR): todo aluno matriculado na aula
 // ganha crédito de reposição automático — falta_justificada + reposicoes pendente, prazo
-// de 60 dias. Chamada pelos dois fluxos de cancelamento em AulasCoordenador.jsx (individual
-// e em massa) — nenhum dos dois passa por useSalvarPresencas, que é onde isso já acontece
-// hoje pra faltas justificadas marcadas manualmente.
+// de 30 dias a partir da aula. Chamada pelos dois fluxos de cancelamento em AulasCoordenador.jsx
+// (individual e em massa) — nenhum dos dois passa por useSalvarPresencas, que é onde isso já
+// acontece hoje pra faltas justificadas marcadas manualmente.
+//
+// Quem estava nessa aula REPONDO outra (crédito já agendado pra cá) não ganha crédito novo: o
+// crédito original volta a ficar pendente, com esta aula registrada em `historico` (a origem
+// continua sendo a aula cancelada lá atrás) e o prazo renovado a partir de hoje.
 export async function gerarReposicoesPorCancelamento(aulaId, motivoCancelamento) {
   if (!MOTIVOS_FORCA_MAIOR.includes(motivoCancelamento)) return
 
   const { data: aula } = await supabase
     .from('aulas')
-    .select('id, turma_id, turmas(modalidade_id)')
+    .select('id, data_aula, turma_id, turmas(modalidade_id)')
     .eq('id', aulaId)
     .single()
   if (!aula) return
@@ -187,7 +194,27 @@ export async function gerarReposicoesPorCancelamento(aulaId, motivoCancelamento)
     .update({ status_presenca: 'falta_justificada', presente: false })
     .eq('aula_id', aulaId)
 
-  const alunoIds = presencasAula.map(p => p.aluno_id)
+  const dataLimite = format(addDays(new Date((aula.data_aula || format(new Date(), 'yyyy-MM-dd')) + 'T12:00'), PRAZO_REPOSICAO_DIAS), 'yyyy-MM-dd')
+
+  const { data: reposDevolver } = await supabase
+    .from('reposicoes')
+    .select('id, aluno_id, data_limite, historico')
+    .eq('aula_reposicao_id', aulaId)
+    .eq('status', 'agendada')
+  for (const r of reposDevolver || []) {
+    const historico = [...(Array.isArray(r.historico) ? r.historico : []),
+      { aula_id: aulaId, data_aula: aula.data_aula, motivo: motivoCancelamento, em: new Date().toISOString() }]
+    await supabase.from('reposicoes').update({
+      status: 'pendente',
+      aula_reposicao_id: null,
+      historico,
+      data_limite: r.data_limite && r.data_limite > dataLimite ? r.data_limite : dataLimite,
+    }).eq('id', r.id)
+  }
+  const devolvidos = new Set((reposDevolver || []).map(r => r.aluno_id))
+
+  const alunoIds = presencasAula.map(p => p.aluno_id).filter(id => !devolvidos.has(id))
+  if (alunoIds.length === 0) return
   const { data: reposExistentes } = await supabase
     .from('reposicoes')
     .select('aluno_id')
@@ -200,7 +227,6 @@ export async function gerarReposicoesPorCancelamento(aulaId, motivoCancelamento)
   const faltantes = alunoIds.filter(id => !jaTem.has(id))
   if (faltantes.length === 0) return
 
-  const dataLimite = format(addDays(new Date(), 60), 'yyyy-MM-dd')
   const { error } = await supabase.from('reposicoes').insert(
     faltantes.map(alunoId => ({
       aluno_id: alunoId,
