@@ -8,6 +8,7 @@ import { Pagina, Titulo, Cartao, Nota, Botao, Campo, Chip, BarraInferior, ModalA
 import { estiloInput } from '../reposicao/constantes'
 import { mascararTelefoneBR, apenasDigitosTelefone } from '../../lib/telefone'
 import { PainelFrequenciaMeses } from '../../components/PainelFrequenciaMeses'
+import { modoDemo } from './demo'
 import { identificar, agendar, entrarListaEspera, atualizarTelefone, usePainel, useGrade } from './api'
 import { GradeReposicao } from './GradeReposicao'
 import {
@@ -638,6 +639,12 @@ export function ReposicaoOficialPage() {
 
   return (
     <Pagina resetKey={etapa} largura={640}>
+      {modoDemo() && (
+        <Nota cor="var(--color-state-info)" icone={<AlertCircle size={16} />} style={{ marginBottom: '14px' }}>
+          <strong>Modo demonstração.</strong> Aluno fictício, nada é gravado na agenda. Digite qualquer nome; telefone
+          terminado em 9999 entra direto, outro número mostra a confirmação de telefone.
+        </Nota>
+      )}
       {etapa === 'identificar' && <EtapaIdentificar form={form} setForm={setForm} onResultado={aoIdentificar} />}
 
       {etapa === 'confirmar' && (

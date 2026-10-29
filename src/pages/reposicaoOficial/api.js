@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
+import { demo, modoDemo } from './demo'
 
 // Link oficial de reposição (/reposicao): tudo passa pelas funções repo_* do banco
 // (scripts/2026-10-29_reposicao_link_oficial.sql e 2026-10-29b), que revalidam aluno + chave de
@@ -12,13 +13,13 @@ async function chamar(nomeFuncao, args) {
   return data
 }
 
-export const identificar = ({ nome, telefone }) =>
+export const identificar = ({ nome, telefone }) => modoDemo() ? demo.identificar({ telefone }) :
   chamar('repo_identificar', { p_nome: nome, p_telefone: telefone })
 
-export const agendar = ({ alunoId, telefone, aulaIds }) =>
+export const agendar = ({ alunoId, telefone, aulaIds }) => modoDemo() ? demo.agendar({ aulaIds }) :
   chamar('repo_agendar', { p_aluno_id: alunoId, p_telefone: telefone, p_aula_ids: aulaIds })
 
-export const entrarListaEspera = ({ alunoId, telefone, dias, faixas, observacao }) =>
+export const entrarListaEspera = ({ alunoId, telefone, dias, faixas, observacao }) => modoDemo() ? demo.ok() :
   chamar('repo_lista_espera', { p_aluno_id: alunoId, p_telefone: telefone, p_dias: dias, p_faixas: faixas, p_observacao: observacao })
 
 export function usePainel(alunoId, telefone) {
@@ -26,7 +27,7 @@ export function usePainel(alunoId, telefone) {
     queryKey: ['repo-painel', alunoId],
     enabled: !!alunoId,
     staleTime: 10000,
-    queryFn: () => chamar('repo_painel', { p_aluno_id: alunoId, p_telefone: telefone }),
+    queryFn: () => modoDemo() ? demo.painel() : chamar('repo_painel', { p_aluno_id: alunoId, p_telefone: telefone }),
   })
 }
 
@@ -39,11 +40,11 @@ export function useGrade(alunoId, telefone) {
     refetchInterval: 20000,
     refetchOnWindowFocus: true,
     staleTime: 5000,
-    queryFn: () => chamar('repo_grade', { p_aluno_id: alunoId, p_telefone: telefone }),
+    queryFn: () => modoDemo() ? demo.grade() : chamar('repo_grade', { p_aluno_id: alunoId, p_telefone: telefone }),
   })
 }
 
 // Aluno entrou pelo nome e o telefone digitado não bate com o cadastro: o número novo vai pra
 // fila da equipe aplicar (repo_telefone_atualizacoes), não sobrescreve o cadastro direto.
-export const atualizarTelefone = ({ alunoId, chave, telefoneNovo }) =>
+export const atualizarTelefone = ({ alunoId, chave, telefoneNovo }) => modoDemo() ? demo.ok() :
   chamar('repo_atualizar_telefone', { p_aluno_id: alunoId, p_telefone: chave, p_telefone_novo: telefoneNovo })
