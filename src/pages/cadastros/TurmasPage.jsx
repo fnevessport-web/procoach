@@ -255,7 +255,7 @@ export function TurmasPage({ onIrParaProfessores }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <Select label="Professor Titular (opcional)" value={form.professor_titular_id} onChange={e => update('professor_titular_id', e.target.value)}>
               <option value="">Sem professor definido ainda</option>
-              {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              {professores?.filter(p => p.ativo !== false).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
             </Select>
             {!professores?.length && form.modalidade_id && (
               <p style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', margin: 0 }}>

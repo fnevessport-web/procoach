@@ -944,7 +944,7 @@ function ModalGerarAulas({ open, onClose, turmaIdInicial = null, dataInicioInici
             <Select label="Professor (opcional — substitui o titular)" value={form.professor_id}
               onChange={e => setForm(f => ({ ...f, professor_id: e.target.value }))}>
               <option value="">Professor titular da turma</option>
-              {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              {professores?.filter(p => p.ativo !== false).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
             </Select>
             <Input label="Data Início" type="date" value={form.data_inicio}
               onChange={e => setForm(f => ({ ...f, data_inicio: e.target.value }))} />
@@ -1095,7 +1095,7 @@ function ModalCriarTurmaAqui({ open, onClose, atalho, onCriada, onEscolherOutra 
         </Select>
         <Select label="Professor Titular (opcional)" value={professorId} onChange={e => setProfessorId(e.target.value)}>
           <option value="">Sem professor definido ainda</option>
-          {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+          {professores?.filter(p => p.ativo !== false).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
         </Select>
         <div>
           <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text-light-primary)', marginBottom: '8px' }}>
@@ -1528,7 +1528,7 @@ function ModalAulaAvulsa({ open, onClose, atalho }) {
 
         <Select label="Professor" value={form.professor_id} onChange={e => setForm(f => ({ ...f, professor_id: e.target.value }))}>
           <option value="">Selecione...</option>
-          {professores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+          {professores?.filter(p => p.ativo !== false).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
         </Select>
 
         <div>

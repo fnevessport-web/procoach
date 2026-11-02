@@ -2008,17 +2008,24 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     : (!ehFeriadoComAluno && st === 'dada') ? 'var(--color-surface-light-overlay)'
                     : 'var(--color-surface-light-raised)'
                   const textoApagado = semAluno
-                  // Turma com aluno e sem professor: cartão inteiro em saibro translúcido (mesmo
-                  // destaque da Organizar Grade), pra coordenação achar rápido o que falta escalar.
+                  // Turma com aluno e sem professor: fonte e borda saibro + triângulo, pra
+                  // coordenação achar rápido o que falta escalar. Sem professor e sem aluno
+                  // (turma inativa): fonte cinza, pra não competir com as que precisam de professor.
                   const destaqueSemProf = semProfessor && !semAluno
+                  const semProfInativa = semProfessor && semAluno
 
                   const isHighlighted = highlightedAulaId === aulaCelula.id
 
                   return (
                     <button key={quadra} id={`aula-cel-${aulaCelula.id}`} onClick={() => abrirAula(aulaCelula)} style={{
                       width: '140px', flexShrink: 0, marginRight: '4px',
-                      backgroundColor: isHighlighted ? 'rgba(165,76,46,0.15)' : destaqueSemProf ? 'rgba(165,76,46,0.10)' : bgColor,
-                      borderRadius: '10px', border: `1px ${destaqueSemProf && !isHighlighted ? 'dashed' : 'solid'} ${isHighlighted ? 'var(--color-action-primary)' : destaqueSemProf ? 'rgba(165,76,46,0.45)' : borderColor}`,
+                      // Sem professor: fundo claro normal (branco), o destaque fica só na fonte
+                      // (nome da turma + "sem professor" com triângulo). Pedido explícito: fundo
+                      // colorido/translúcido ficava escuro sobre o verde do app e ruim de ler.
+                      backgroundColor: isHighlighted ? 'color-mix(in srgb, var(--color-action-primary) 22%, var(--color-surface-light-overlay))'
+                        : semProfessor ? 'var(--color-surface-light-overlay)'
+                        : bgColor,
+                      borderRadius: '10px', border: `1px solid ${isHighlighted ? 'var(--color-action-primary)' : destaqueSemProf ? 'var(--color-action-primary)' : borderColor}`,
                       padding: '8px 10px', cursor: 'pointer', textAlign: 'left',
                       minHeight: '72px', boxSizing: 'border-box',
                       display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
@@ -2042,12 +2049,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                           <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dotColor, flexShrink: 0 }} />
                         </div>
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: '600', color: textoApagado ? 'var(--color-text-light-faded)' : 'var(--color-text-light-primary)', lineHeight: '1.3', marginBottom: '4px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: destaqueSemProf ? '700' : '600', color: destaqueSemProf ? 'var(--color-action-primary)' : textoApagado ? 'var(--color-text-light-faded)' : 'var(--color-text-light-primary)', lineHeight: '1.3', marginBottom: '4px' }}>
                         {nivel || (isAv ? 'Avulsa' : aulaCelula.turmas?.nome || '—')}
                       </div>
-                      <div style={{ fontSize: '10px', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: semProfessor ? 'var(--color-action-primary)' : (textoApagado ? 'var(--color-text-light-faded)' : 'var(--color-text-light-secondary)') }}>
+                      <div style={{ fontSize: '10px', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: destaqueSemProf ? 'var(--color-action-primary)' : semProfInativa ? 'var(--color-text-light-muted)' : (textoApagado ? 'var(--color-text-light-faded)' : 'var(--color-text-light-secondary)') }}>
                         {semProfessor
-                          ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: 700 }}><AlertTriangle size={9} /> sem professor</span>
+                          ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: 700, fontSize: '11px' }}><AlertTriangle size={12} strokeWidth={2.5} /> sem professor</span>
                           : <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                               {aulaCelula.eh_substituicao && <Repeat size={9} title="Substituição" style={{ flexShrink: 0 }} />}
                               {nomeCurto(aulaCelula.professores?.nome)}
@@ -2289,7 +2296,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                 <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Professor</div>
                 <select value={novoProfessorTurmaId} onChange={e => setNovoProfessorTurmaId(e.target.value)} style={inputStyle}>
                   <option value="">{aula.turmas?.professor_titular_id ? (todoProfessores?.find(p => p.id === aula.turmas.professor_titular_id)?.nome || 'Professor atual') : 'Selecione...'} (manter)</option>
-                  {todoProfessores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  {todoProfessores?.filter(p => p.ativo !== false).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button onClick={() => handleEditarNivelTurma(aula, false)} disabled={salvandoNivelTurma} style={{
@@ -2350,7 +2357,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                 </div>
                 <select value={novoProfessorSubstitutoId} onChange={e => setNovoProfessorSubstitutoId(e.target.value)} style={inputStyle}>
                   <option value="">Selecione o substituto...</option>
-                  {todoProfessores?.filter(p => p.id !== aula.professores?.id).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  {todoProfessores?.filter(p => p.id !== aula.professores?.id && p.ativo !== false).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button onClick={() => handleSubstituirProfessor(aula)} disabled={salvandoSubstituicao} style={{
@@ -2422,7 +2429,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                       <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginBottom: '4px' }}>Professor</div>
                       <select value={editForm.professor_id} onChange={e => setEditForm(f => ({ ...f, professor_id: e.target.value }))} style={inputStyle}>
                         <option value="">Selecione...</option>
-                        {todoProfessores?.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                        {todoProfessores?.filter(p => p.ativo !== false || p.id === editForm.professor_id).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                       </select>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
