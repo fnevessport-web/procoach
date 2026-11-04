@@ -954,8 +954,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
     const aula = aulas?.find(a => a.id === aulaId)
     try {
       const { data: presencasAnteriores } = await supabase
-        .from('presencas').select('aluno_id').eq('aula_id', aulaId)
+        .from('presencas').select('aluno_id, tipo_participacao').eq('aula_id', aulaId)
       const idsAnteriores = presencasAnteriores?.map(p => p.aluno_id) || []
+      const eraMensalista = new Set((presencasAnteriores || []).filter(p => p.tipo_participacao === 'mensalista').map(p => p.aluno_id))
       const idsAtuais = lista.map(p => p.aluno_id)
       const idsRemovidos = idsAnteriores.filter(id => !idsAtuais.includes(id))
       const idsAdicionados = idsAtuais.filter(id => !idsAnteriores.includes(id))
@@ -972,7 +973,14 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       // aqui: fica só nesta aula, pendente, e a matrícula acontece quando a coordenação aprovar
       // "como mensalista" (AprovarInclusoesPage). Antes matriculava na hora e as presenças das
       // aulas seguintes contavam no pagamento sem passar pela aprovação.
-      const mensalistas = lista.filter(p => p.tipo_participacao === 'mensalista' && !(professorProprioId && idsAdicionados.includes(p.aluno_id)))
+      //
+      // Só matricula quem VIROU mensalista neste salvamento (incluído agora, ou trocado de avulso/
+      // reposição para mensalista). Antes ia a lista inteira: salvar a chamada de uma aula antiga
+      // reativava na turma quem já tinha saído (ex.: aluno retirado pela lista do clube em 02/11
+      // voltava sozinho quando alguém salvava a chamada de 30/10) e recriava as aulas futuras dele.
+      const mensalistas = lista.filter(p => p.tipo_participacao === 'mensalista'
+        && !eraMensalista.has(p.aluno_id)
+        && !(professorProprioId && idsAdicionados.includes(p.aluno_id)))
       if (aula && mensalistas.length > 0) {
         await vincularMensalistasNaTurma(aula, mensalistas)
       }
