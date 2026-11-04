@@ -184,7 +184,7 @@ export function useCalcularFechamento() {
       const { data: aulas, error } = await supabase
         .from('aulas')
         .select('id, data_aula, turmas(horario_inicio, horario_fim)')
-        .eq('professor_executou_id', professorId)
+        .or(`professor_executou_id.eq.${professorId},professor_auxiliar_id.eq.${professorId}`)
         .eq('status', 'match')
         .gte('data_aula', periodoInicio)
         .lte('data_aula', periodoFim)
@@ -233,6 +233,8 @@ export function useAtualizarFechamento() {
 // Novos hooks — Financeiro por empresa
 // ──────────────────────────────────────────────────────────────────────
 
+const CAMPOS_PROF_PAGAMENTO = 'id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular, chave_pix_beach, banco_beach, agencia_beach, conta_beach, tipo_conta_beach, tipo_pagamento_beach, nome_titular_beach, cpf_titular_beach'
+
 // Custo total de professores agrupado por professor, filtrado por empresa+período
 export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
   return useQuery({
@@ -243,10 +245,11 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
       const aulas = await buscarTodasAsAulas(() => supabase
         .from('aulas')
         .select(`
-          id, professor_executou_id, turma_id, observacoes, data_aula, status_aula, motivo_cancelamento,
+          id, professor_executou_id, professor_auxiliar_id, turma_id, observacoes, data_aula, status_aula, motivo_cancelamento,
           turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao),
           presencas(tipo_participacao, status_inclusao_professor),
-          professores!professor_executou_id(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular, chave_pix_beach, banco_beach, agencia_beach, conta_beach, tipo_conta_beach, tipo_pagamento_beach, nome_titular_beach, cpf_titular_beach)
+          professores!professor_executou_id(${CAMPOS_PROF_PAGAMENTO}),
+          auxiliar:professores!professor_auxiliar_id(${CAMPOS_PROF_PAGAMENTO})
         `)
         .gte('data_aula', dataInicio)
         .lte('data_aula', dataFim)
@@ -262,9 +265,9 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
       })
 
       const por = {}
-      filtradas.forEach(a => {
-        const p = a.professores
-        if (!p) return
+      // Aula com 2º professor (turma Kids cheia): os dois recebem a tabela cheia da aula,
+      // calculada pelo total de alunos (decisão do coordenador em 04/11/2026).
+      filtradas.flatMap(a => [a.professores, a.auxiliar].filter(Boolean).map(p => [a, p])).forEach(([a, p]) => {
         if (!por[p.id]) {
           const valorBase = Number(p.valor_aula || p.valor_hora_aula || 0)
           const valorUnitario = empresa === 'beach_arena' && p.valor_aula_beach
@@ -305,7 +308,7 @@ export function useAulasProfessorFinanceiro({ professorId, professor, empresa, d
           turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao),
           presencas(tipo_participacao, status_presenca, status_inclusao_professor)
         `)
-        .eq('professor_executou_id', professorId)
+        .or(`professor_executou_id.eq.${professorId},professor_auxiliar_id.eq.${professorId}`)
         .gte('data_aula', dataInicio)
         .lte('data_aula', dataFim)
         .eq('paga_professor', true)
@@ -353,7 +356,7 @@ export function useAulasAnoProfessor({ professorId, professor }) {
           turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao),
           presencas(tipo_participacao, status_inclusao_professor)
         `)
-        .eq('professor_executou_id', professorId)
+        .or(`professor_executou_id.eq.${professorId},professor_auxiliar_id.eq.${professorId}`)
         .eq('paga_professor', true)
         .in('status_aula', ['dada', 'cancelada'])
         .lte('data_aula', hoje)

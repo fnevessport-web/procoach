@@ -291,13 +291,15 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose, mostrarValores
           turmas(nome, horario_inicio, eh_turma_reposicao, niveis(nome), modalidades(nome), quadras(nome)),
           presencas(presente, status_presenca, tipo_participacao, status_inclusao_professor, alunos(nome))
         `)
-        .eq('professor_executou_id', professorId)
+        .or(`professor_executou_id.eq.${professorId},professor_auxiliar_id.eq.${professorId}`)
         .eq('data_aula', dataStr)
         .in('status_aula', ['dada', 'cancelada'])
         .order('id')
       if (error) throw error
       // Cancelada só aparece quando ainda paga algo ao professor (chuva = 50%, feriado = 100%).
+      const horarioDe = a => a.turmas?.horario_inicio?.slice(0, 5) || ((a.observacoes || '').split('·').map(s => s.trim())[2] || '99:99')
       return (data || []).filter(a => a.status_aula === 'dada' || ['Chuva', 'Feriado'].includes(a.motivo_cancelamento))
+        .sort((x, y) => horarioDe(x).localeCompare(horarioDe(y)))
     },
     enabled: !!professorId && !!dataStr,
     staleTime: 30000,
@@ -546,7 +548,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       const { data, error } = await supabase
         .from('aulas')
         .select('id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, status, turmas(horario_inicio, niveis(nome), modalidades(nome), quadras(nome), eh_turma_reposicao), presencas(tipo_participacao, status_inclusao_professor)')
-        .eq('professor_executou_id', cardAberto.id)
+        .or(`professor_executou_id.eq.${cardAberto.id},professor_auxiliar_id.eq.${cardAberto.id}`)
         .in('status_aula', ['dada', 'cancelada'])
         .eq('paga_professor', true)
         .lte('data_aula', hoje)

@@ -416,7 +416,7 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
       const { data: aulasData, error: e1 } = await supabase
         .from('aulas')
         .select('id, turma_id, observacoes, data_aula, status_aula, motivo_cancelamento, turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao)')
-        .eq('professor_executou_id', professorId)
+        .or(`professor_executou_id.eq.${professorId},professor_auxiliar_id.eq.${professorId}`)
         .eq('data_aula', dataStr)
         .in('status_aula', ['dada', 'cancelada']) // cancelada por chuva paga 50% — tem que aparecer aqui pro total do dia bater com o do professor
         .eq('paga_professor', true)
@@ -452,11 +452,13 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
       // professor) — só pra visão do coordenador, nunca aparece pro professor. Restrito a
       // Tênis/Procópio (calcularMargensTenis retorna undefined pra aula fora desse escopo).
       const { porAula: margemPorAula } = professor ? calcularMargensTenis(aulasComPresenca, professor, empresaId) : { porAula: {} }
+      // Em ordem de horário (a busca vinha por id, que fica tudo misturado no dia).
+      const horarioDe = a => a.turmas?.horario_inicio?.slice(0, 5) || ((a.observacoes || '').split('·').map(s => s.trim())[2] || '99:99')
       return aulasComPresenca.map(a => ({
         ...a,
         valor: professor ? calcularValorAula(a, professor, empresaId) : valorUnitario,
         margem: margemPorAula[a.id],
-      }))
+      })).sort((x, y) => horarioDe(x).localeCompare(horarioDe(y)))
     },
     enabled: !!professorId && !!dataStr,
     staleTime: 30000,

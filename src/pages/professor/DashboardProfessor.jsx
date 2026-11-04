@@ -146,7 +146,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
           presencas(id, status_presenca, presente)
         `)
         .in('data_aula', [hoje, amanha])
-        .eq('professor_executou_id', professorId)
+        .or(`professor_executou_id.eq.${professorId},professor_auxiliar_id.eq.${professorId}`)
         .neq('status_aula', 'cancelada')
       if (error) throw error
       return data || []
@@ -163,7 +163,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
       const { data, error } = await supabase
         .from('aulas')
         .select('id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, turmas(horario_inicio, niveis(nome), modalidades(nome), quadras(nome), eh_turma_reposicao), presencas(tipo_participacao, status_inclusao_professor)')
-        .eq('professor_executou_id', professorId)
+        .or(`professor_executou_id.eq.${professorId},professor_auxiliar_id.eq.${professorId}`)
         .in('status_aula', ['dada', 'cancelada'])
         .eq('paga_professor', true)
         .lte('data_aula', hoje)
@@ -213,7 +213,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
           turmas(nome, horario_inicio, niveis(nome), quadras(nome)),
           presencas(id, status_presenca, tipo_participacao, status_inclusao_professor, alunos(nome))
         `)
-        .eq('professor_executou_id', professorId)
+        .or(`professor_executou_id.eq.${professorId},professor_auxiliar_id.eq.${professorId}`)
         .gte('data_aula', inicioSemanaStr)
         .lte('data_aula', fimSemanaStr)
         .neq('status_aula', 'cancelada')

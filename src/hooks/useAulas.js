@@ -24,6 +24,7 @@ export function useAulas({ data, dataInicio, dataFim, professorId, modalidadeId,
           *,
           turmas(nome, horario_inicio, horario_fim, horario_dia_semana, professor_titular_id, modalidade_id, quadras(nome), modalidades(nome, icone_emoji, cor_hex), turmas_alunos(id, ativo)),
           professores!professor_executou_id(id, nome, foto_url),
+          auxiliar:professores!professor_auxiliar_id(id, nome, foto_url),
           prof_titular:professores!professor_titular_id(id, nome),
           presencas(id, aluno_id, presente, status_presenca, tipo_participacao, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof, criado_por, criado_por_nome, criado_em, status_inclusao_professor, motivo_inclusao, alunos(id, nome, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof)),
           contratantes(id, nome, tipo)
@@ -33,7 +34,7 @@ export function useAulas({ data, dataInicio, dataFim, professorId, modalidadeId,
       if (data) q = q.eq('data_aula', data)
       if (dataInicio) q = q.gte('data_aula', dataInicio)
       if (dataFim) q = q.lte('data_aula', dataFim)
-      if (professorId) q = q.eq('professor_executou_id', professorId)
+      if (professorId) q = q.or(`professor_executou_id.eq.${professorId},professor_auxiliar_id.eq.${professorId}`)
       if (status) q = q.eq('status', status)
       q = empresaId ? q.eq('empresa_id', empresaId) : q.is('empresa_id', null)
 
@@ -66,7 +67,7 @@ export async function confirmarAulasElegiveis({ professorId = null, dataInicio =
       .select('id, data_aula, turma_id, observacoes, turmas(horario_inicio), presencas(id)')
       .eq('status_aula', 'dada')
       .or('paga_professor.is.null,paga_professor.eq.false')
-    if (professorId) q = q.eq('professor_executou_id', professorId)
+    if (professorId) q = q.or(`professor_executou_id.eq.${professorId},professor_auxiliar_id.eq.${professorId}`)
     if (dataInicio) q = q.gte('data_aula', dataInicio)
     q = q.lte('data_aula', dataFim || format(new Date(), 'yyyy-MM-dd'))
 

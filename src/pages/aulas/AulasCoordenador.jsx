@@ -285,6 +285,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   const [substituindoProfessor, setSubstituindoProfessor] = useState(false)
   const [novoProfessorSubstitutoId, setNovoProfessorSubstitutoId] = useState('')
   const [salvandoSubstituicao, setSalvandoSubstituicao] = useState(false)
+  // 2º professor na aula (turma Kids cheia, acima de 4 alunos): fica em aulas.professor_auxiliar_id
+  // e os dois recebem a tabela cheia pelo total de alunos (decisão do coordenador em 04/11/2026).
+  const [adicionandoAuxiliar, setAdicionandoAuxiliar] = useState(false)
+  const [auxiliarId, setAuxiliarId] = useState('')
   const [modalExportarPDF, setModalExportarPDF] = useState(false)
   const [pdfSomenteComAluno, setPdfSomenteComAluno] = useState(true)
   const [pdfQuadras, setPdfQuadras] = useState(() => [...QUADRAS_EMPRESA.procopio, ...QUADRAS_EMPRESA.beach_arena])
@@ -668,9 +672,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
     setHistoricoAula(null)
     setSubstituindoProfessor(false)
     setNovoProfessorSubstitutoId('')
+    setAdicionandoAuxiliar(false)
+    setAuxiliarId('')
   }
 
   function fecharModal() {
+    setAdicionandoAuxiliar(false)
     setAulaModal(null)
     setNavRecolhida(false)
     setEditandoAula(null)
@@ -1214,6 +1221,31 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       toast.success(`${nomeSubstituto} substituindo nessa aula!`, { style: toastStyle })
       setSubstituindoProfessor(false)
       setNovoProfessorSubstitutoId('')
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    } finally {
+      setSalvandoSubstituicao(false)
+    }
+  }
+
+  async function handleDefinirAuxiliar(aula, novoId) {
+    setSalvandoSubstituicao(true)
+    try {
+      const { error } = await supabase.from('aulas').update({ professor_auxiliar_id: novoId || null }).eq('id', aula.id)
+      if (error) throw error
+      const nome = novoId ? (todoProfessores?.find(p => p.id === novoId)?.nome || '') : ''
+      await logAudit('aulas', aula.id, 'UPDATE',
+        { professor_auxiliar: aula.auxiliar?.nome || null, data: aula.data_aula },
+        { professor_auxiliar: nome || null }
+      )
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
+      toast.success(novoId ? `${nome} adicionado(a) como 2º professor nessa aula!` : '2º professor removido dessa aula.', { style: toastStyle })
+      setAulaModal(prev => prev && prev.id === aula.id
+        ? { ...prev, professor_auxiliar_id: novoId || null, auxiliar: novoId ? { id: novoId, nome } : null }
+        : prev)
+      setAdicionandoAuxiliar(false)
+      setAuxiliarId('')
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
     } finally {
@@ -2121,7 +2153,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                   {getNivel(aula) || (isAvulsa ? 'Aula Avulsa' : aula.turmas?.nome)}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <span>{getQuadraNome(aula)} · {getHorario(aula)} · Prof: {aula.professores?.nome}</span>
+                  <span>{getQuadraNome(aula)} · {getHorario(aula)} · Prof: {aula.professores?.nome}{aula.auxiliar ? ` + ${aula.auxiliar.nome}` : ''}</span>
                   {aula.eh_substituicao && (
                     <span
                       title={aula.prof_titular?.nome ? `Titular da turma: ${aula.prof_titular.nome}` : 'Substituição'}
@@ -2195,6 +2227,15 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                   color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer',
                 }}>
                   <Repeat size={12} /> Substituir professor
+                </button>
+              )}
+              {!somenteLeitura && !professorProprioId && !isAvulsa && !adicionandoAuxiliar && (
+                <button onClick={() => { setAdicionandoAuxiliar(true); setAuxiliarId(aula.professor_auxiliar_id || '') }} style={{
+                  display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
+                  borderRadius: '8px', border: '1px solid var(--color-border-light)', background: 'none',
+                  color: 'var(--color-text-light-secondary)', fontSize: '12px', cursor: 'pointer',
+                }}>
+                  <UserPlus size={12} /> {aula.auxiliar ? `2º prof: ${aula.auxiliar.nome.split(' ')[0]}` : '2º professor'}
                 </button>
               )}
               <button onClick={() => handleAbrirHistorico(aula)} style={{
@@ -2359,6 +2400,39 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     Sempre
                   </button>
                   <button onClick={() => setEditandoHorarioAula(false)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '11px', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {adicionandoAuxiliar && (
+              <div style={{ backgroundColor: 'var(--color-surface-light-overlay)', borderRadius: '10px', border: '1px solid var(--color-border-light)', padding: '12px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  2º professor nessa aula ({format(new Date(aula.data_aula + 'T12:00'), 'dd/MM')})
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>
+                  Para turmas cheias. Os dois professores recebem a tabela cheia, pelo total de alunos da aula.
+                </div>
+                <select value={auxiliarId} onChange={e => setAuxiliarId(e.target.value)} style={inputStyle}>
+                  <option value="">Selecione o 2º professor...</option>
+                  {todoProfessores?.filter(p => p.id !== aula.professores?.id && p.ativo !== false).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button onClick={() => auxiliarId ? handleDefinirAuxiliar(aula, auxiliarId) : toast.error('Selecione o professor', { style: toastStyle })} disabled={salvandoSubstituicao} style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
+                    background: 'var(--color-action-primary)', color: 'white', fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+                  }}>
+                    Confirmar 2º professor
+                  </button>
+                  {aula.professor_auxiliar_id && (
+                    <button onClick={() => handleDefinirAuxiliar(aula, null)} disabled={salvandoSubstituicao} style={{
+                      padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(180,71,47,0.3)', background: 'none', color: 'var(--color-state-danger)', fontSize: '11px', cursor: 'pointer',
+                    }}>
+                      Remover
+                    </button>
+                  )}
+                  <button onClick={() => { setAdicionandoAuxiliar(false); setAuxiliarId('') }} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '11px', cursor: 'pointer' }}>
                     Cancelar
                   </button>
                 </div>
