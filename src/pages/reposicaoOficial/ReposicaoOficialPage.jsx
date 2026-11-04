@@ -13,7 +13,7 @@ import { identificar, agendar, entrarListaEspera, atualizarTelefone, usePainel, 
 import { GradeReposicao } from './GradeReposicao'
 import {
   PRAZO_DIAS, WHATSAPP_EXIBIDO, linkWhats, DIAS_SEMANA, FAIXAS_HORARIO, nomeDiaSemana, ordenarTurmas,
-  dataCurta, diaCurto, diaLongo, plural, primeiroNome, resumoCreditos, partesNivel,
+  dataCurta, diaCurto, diaLongo, plural, primeiroNome, resumoCreditos, partesNivel, separarCompetitivo,
 } from './regras'
 
 // Página pública /reposicao (sem login): link OFICIAL de reposição das aulas de Tênis canceladas
@@ -224,8 +224,38 @@ function diasRestantes(dataLimite) {
   return Math.round((new Date(dataLimite + 'T12:00') - hoje) / 86400000)
 }
 
+// Kids Competitivo: não agenda pelo link, a equipe encaixa pelo WhatsApp.
+function AvisoCompetitivo({ aluno, form, creditos }) {
+  const aulas = creditos.map(c => `• ${diaCurto(c.data_origem)}${c.horario_origem ? ` às ${c.horario_origem}` : ''}`).join('\n')
+  const texto = `Olá! Sou responsável por ${aluno.nome} (${mascararTelefoneBR(form.telefone)}), do Kids Competitivo. ` +
+    `Gostaria de agendar a reposição ${creditos.length === 1 ? 'da aula cancelada' : 'das aulas canceladas'} por chuva:\n${aulas}`
+  return (
+    <Cartao style={{ marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>
+        Kids Competitivo: {plural(creditos.length, 'aula para repor', 'aulas para repor')}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        {creditos.map(c => (
+          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px' }}>
+            <CloudRain size={16} style={{ color: 'var(--color-state-info)', flexShrink: 0 }} />
+            <span style={{ flex: 1 }}><strong>Aula de {diaCurto(c.data_origem)}</strong>{c.horario_origem ? ` às ${c.horario_origem}` : ''}</span>
+            {c.data_limite && <span style={{ fontSize: '11.5px', color: 'var(--color-text-light-muted)' }}>até {dataCurta(c.data_limite)}</span>}
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: '13.5px', lineHeight: 1.7, color: 'var(--color-text-light-secondary)' }}>
+        Dentro das turmas do Kids Competitivo existem nivelamentos técnicos e idades diferentes entre as crianças.
+        Por isso, a reposição do Kids Competitivo é agendada <strong>somente pelo WhatsApp, com a equipe da Procopio</strong>,
+        para encaixar cada criança na turma certa. A mensagem já vai pronta, é só enviar.
+      </div>
+      <BotaoWhats texto={texto}>Agendar pelo WhatsApp</BotaoWhats>
+    </Cartao>
+  )
+}
+
 function EtapaPainel({ painel, form, onEscolher }) {
   const { aluno, turmas, creditos, agendadas, frequencia, outros_pendentes: outros } = painel
+  const competitivo = painel.creditos_competitivo || []
   const saldo = resumoCreditos(creditos)
   const nome = primeiroNome(aluno.nome)
   const textoSemCredito = `Olá! Sou ${aluno.nome} (${mascararTelefoneBR(form.telefone)}). Entrei no link de reposição e não aparece nenhuma aula de chuva para repor. Gostaria de verificar a minha situação.`
@@ -262,7 +292,9 @@ function EtapaPainel({ painel, form, onEscolher }) {
             )}
           </div>
         ) : (
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700 }}>Nenhuma aula para repor no momento</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700 }}>
+            {competitivo.length ? 'Reposição do Kids Competitivo pelo WhatsApp' : 'Nenhuma aula para repor no momento'}
+          </div>
         )}
         {turmas.length > 0 && (
           <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--color-border-dark)' }}>
@@ -277,6 +309,8 @@ function EtapaPainel({ painel, form, onEscolher }) {
           </div>
         )}
       </div>
+
+      {competitivo.length > 0 && <AvisoCompetitivo aluno={aluno} form={form} creditos={competitivo} />}
 
       {creditos.length > 0 && (
         <Cartao style={{ padding: '6px 16px' }}>
@@ -308,10 +342,10 @@ function EtapaPainel({ painel, form, onEscolher }) {
         </Cartao>
       )}
 
-      {saldo.total === 0 && (
+      {saldo.total === 0 && competitivo.length === 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <Nota icone={<AlertCircle size={16} />}>
-            Pelo link, a reposição vale para as aulas canceladas por chuva nos últimos {PRAZO_DIAS} dias, conforme a regra do clube.
+            Pelo link, a reposição vale para as aulas canceladas por chuva nos últimos {PRAZO_DIAS} dias, conforme a regra do clube (excepcionalmente, as de setembro e outubro valem até 30/11).
             {outros > 0 ? ' Encontramos outras situações no seu cadastro que a nossa equipe precisa avaliar com você.' : ''}
             {' '}Se você ficou com alguma aula sem repor ou acha que algo precisa de ajuste, fale com a gente.
             Vamos olhar o seu caso com carinho e fazemos questão de ajudar.
@@ -338,6 +372,7 @@ function EtapaPainel({ painel, form, onEscolher }) {
           <Cartao>
             <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13.5px', lineHeight: 1.75, color: 'var(--color-text-light-secondary)' }}>
               <li>Cada reposição vale por <strong>{PRAZO_DIAS} dias</strong> a partir da aula cancelada. Depois desse prazo, ela expira.</li>
+              <li><strong>Exceção de novembro:</strong> as aulas de setembro e outubro canceladas por chuva podem ser repostas <strong>até 30/11</strong>.</li>
               <li>Mostramos sempre os <strong>próximos 7 dias</strong> da grade. A cada dia que passa, um novo dia é liberado.</li>
               <li>Você pode agendar no <strong>seu nível ou em 1 nível abaixo</strong>. Turmas Kids e adulto não se misturam.</li>
               <li>O agendamento fecha <strong>2 horas antes</strong> do início da aula.</li>
@@ -345,7 +380,9 @@ function EtapaPainel({ painel, form, onEscolher }) {
               <li>Teve um imprevisto? Avise no nosso WhatsApp para a equipe liberar a vaga.</li>
             </ul>
             <div style={{ marginTop: '10px', fontSize: '13px', lineHeight: 1.6, color: 'var(--color-text-light-secondary)' }}>
-              Alguma aula ficou de fora ou algo não está certo? Fale com a gente no WhatsApp {WHATSAPP_EXIBIDO}.
+              Alguma aula ficou de fora ou algo não está certo? Fale com a gente no WhatsApp{' '}
+              <a href={linkWhats(`Olá! Sou ${aluno.nome}. Estou no link de reposição e preciso de ajuda.`)} target="_blank" rel="noopener noreferrer"
+                style={{ color: 'var(--color-action-primary)', fontWeight: 700, textDecoration: 'underline' }}>{WHATSAPP_EXIBIDO}</a>.
               Fazemos questão de ajudar a resolver.
             </div>
           </Cartao>
@@ -634,7 +671,7 @@ export function ReposicaoOficialPage() {
     setEtapa('identificar')
   }
 
-  const painelOk = painel?.ok ? painel : null
+  const painelOk = painel?.ok ? separarCompetitivo(painel) : null
   const precisaPainel = ['painel', 'grade', 'revisar', 'sem_horario', 'final'].includes(etapa)
 
   return (

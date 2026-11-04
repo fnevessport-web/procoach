@@ -492,6 +492,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
         <ModalDetalhesDia
           professorId={professorId}
           dataStr={diaSelecionado}
+          mostrarValores={mostrarValores}
           onClose={() => setDiaSelecionado(null)}
         />
       )}

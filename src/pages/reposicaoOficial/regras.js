@@ -55,6 +55,20 @@ export function partesNivel(nivel) {
 
 export const primeiroNome = nome => (nome || '').trim().split(/\s+/)[0] || ''
 
+// Kids Competitivo: as turmas misturam nivelamentos técnicos e idades, então a reposição é
+// sempre combinada com a equipe pelo WhatsApp. Nem crédito de lá conta no saldo do link,
+// nem turma de lá aparece na grade (servidor: script 2026-10-30b; aqui é a segunda trava).
+export const ehCompetitivo = nivel => /^Kids.*Competitivo/i.test((nivel || '').trim())
+
+export function separarCompetitivo(painel) {
+  const creditos = painel.creditos || []
+  return {
+    ...painel,
+    creditos: creditos.filter(c => !ehCompetitivo(c.nivel_origem)),
+    creditos_competitivo: [...(painel.creditos_competitivo || []), ...creditos.filter(c => ehCompetitivo(c.nivel_origem))],
+  }
+}
+
 export function resumoCreditos(creditos) {
   const grupo = creditos.filter(c => c.formato === 'grupo').length
   const individual = creditos.filter(c => c.formato === 'individual').length

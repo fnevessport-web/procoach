@@ -1,9 +1,9 @@
 import { addHours, format, parse } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
-// 2 na 1ª rodada; 1 na 2ª rodada (menos horários). O banco confere o mesmo número
-// (c_limite em extras_confirmar_reposicao, ver scripts/2026-09-28_limite_1_reposicao.sql).
-export const MAX_REPOSICOES = 1
+// 2 na 1ª rodada; 1 na 2ª rodada (menos horários); 2 de novo na 3ª rodada (pedido de 19/10). O banco
+// confere o mesmo número (c_limite em extras_confirmar_reposicao, ver scripts/2026-10-19_limite_2_reposicoes.sql).
+export const MAX_REPOSICOES = 2
 // "1 aula" / "2 aulas" — os textos do link acompanham o limite sem ficar no plural errado.
 export const qtdAulas = n => `${n} ${n === 1 ? 'aula' : 'aulas'}`
 

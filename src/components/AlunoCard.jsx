@@ -941,11 +941,11 @@ function ModalDetalheModalidade({ aluno, modalidade, mesInicial = null, onClose 
                         <span style={{ color: temDestino ? 'var(--color-state-success)' : 'var(--color-state-info)', fontSize: '16px', flexShrink: 0 }}>→</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: '9px', color: temDestino ? 'var(--color-state-success)' : 'var(--color-state-info)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                            {r.status === 'pendente' ? 'Ainda por repor' : 'Repôs em'}
+                            {r.status === 'pendente' ? 'Ainda por repor' : r.agendado_via === 'grade_extra' ? 'Agendou na grade extra' : 'Repôs em'}
                           </div>
                           <div style={{ color: 'var(--color-text-light-primary)', fontWeight: '600', marginTop: '2px' }}>
-                            {/* 'agendada' sem aula de destino = reposta na grade extra da chuva */}
-                            {temDestino ? fmtData(r.aula_reposicao.data_aula) : r.status === 'agendada' ? 'Grade extra' : '—'}
+                            {/* 'agendada' sem aula de destino = grade extra da chuva (set/out 2026); agendado_em guarda dia e hora da aula extra */}
+                            {temDestino ? fmtData(r.aula_reposicao.data_aula) : r.status === 'agendada' ? (r.agendado_via === 'grade_extra' && r.agendado_em ? new Date(r.agendado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às') : 'Grade extra') : '—'}
                           </div>
                         </div>
                       </div>

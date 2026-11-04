@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { CalendarCheck, CloudRain, Gift, Info, Plus, Trash2, User, Users } from 'lucide-react'
 import {
   DIAS, HORARIOS, NIVEIS_ADULTO, NIVEIS_KIDS, TURMA_VAZIA, MODALIDADES_PRESENTE, MAX_REPOSICOES, OFERECE_PRESENTE, OFERECE_KIDS, qtdAulas,
-  COR_ADULTO, COR_KIDS, estiloInput, WHATSAPP_EXIBIDO, WHATSAPP_LINK_GRADE_REGULAR,
+  COR_ADULTO, COR_KIDS, estiloInput, WHATSAPP_EXIBIDO, WHATSAPP_LINK_GRADE_REGULAR, rotuloDiaLongo,
 } from './constantes'
+import { useVagas } from './api'
 import { Titulo, Cartao, Nota, Botao, Campo, Chip } from './ui'
 
 const MAX_POR_TIPO = 3
@@ -101,9 +102,33 @@ export function EtapaCadastro({ dados, setDados, onContinuar }) {
   const removerTurma = i => setDados(d => ({ ...d, turmas: d.turmas.filter((_, j) => j !== i) }))
   const adicionarHorario = chave => setDados(d => ({ ...d, turmas: [...d.turmas, { ...TURMA_VAZIA, formato: chave }] }))
 
+  // Datas desta rodada (só as futuras vêm do servidor): deixa claro logo no início que a reposição
+  // é só nesses dias. Alunos confundiam com rodadas anteriores e com os dias da turma atual (19/10).
+  const { data: vagas } = useVagas('reposicao')
+  const datasRodada = useMemo(() => [...new Set((vagas || []).map(s => s.data_aula))].sort(), [vagas])
+
   return (
     <form onSubmit={enviar} style={{ animation: 'repoSobe 0.25s ease-out' }}>
       <Titulo kicker="Aulas extras">Vamos repor as suas aulas</Titulo>
+
+      {datasRodada.length > 0 && (
+        <div style={{
+          borderRadius: '14px', padding: '14px 16px', marginBottom: '12px', boxSizing: 'border-box',
+          backgroundColor: 'var(--color-brand-verde-court)', color: 'var(--color-text-dark-primary)',
+        }}>
+          <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--color-text-dark-secondary)', marginBottom: '6px' }}>
+            Datas desta reposição
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {datasRodada.map(d => (
+              <span key={d} style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: 700 }}>{rotuloDiaLongo(d)}</span>
+            )).reduce((acc, el, i) => (i ? [...acc, <span key={`e${i}`} style={{ fontSize: '17px', color: 'var(--color-text-dark-muted)' }}>e</span>, el] : [el]), [])}
+          </div>
+          <div style={{ fontSize: '12.5px', marginTop: '6px', color: 'var(--color-text-dark-secondary)' }}>
+            As reposições desta rodada acontecem somente nesses dias, na Quadra Coberta.
+          </div>
+        </div>
+      )}
 
       <Cartao style={{ marginBottom: '12px' }}>
         <div style={{ display: 'flex', gap: '12px' }}>

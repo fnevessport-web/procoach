@@ -561,7 +561,7 @@ export function useReposicoesDoAluno(alunoId) {
       const { data, error } = await supabase
         .from('reposicoes')
         .select(`
-          id, status, data_limite, created_at, aula_origem_id, aula_reposicao_id,
+          id, status, data_limite, created_at, aula_origem_id, aula_reposicao_id, agendado_via, agendado_em,
           modalidades(id, nome, icone_emoji, cor_hex),
           aula_origem:aulas!aula_origem_id(data_aula),
           aula_reposicao:aulas!aula_reposicao_id(data_aula, turmas(nome, quadras(nome)))

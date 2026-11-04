@@ -262,6 +262,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   // Rastreabilidade: quem incluiu cada aluno na aula (aluno.aula_id => bool) e histórico
   // completo da aula (audit_log), ambos abertos sob demanda pra não poluir a tela.
   const [origemAberta, setOrigemAberta] = useState(null)
+  // Reposição: qual crédito (aula perdida) essa presença está consumindo — buscado só ao abrir
+  // "Quem agendou". { [aluno_id]: { carregando, itens } }
+  const [origemRepo, setOrigemRepo] = useState({})
   // Ficha do aluno em pop-up (clique no nome dentro da aula) — contato rápido sem sair da agenda.
   const [alunoFicha, setAlunoFicha] = useState(null)
   // Edição rápida do nome do aluno direto na lista de presenças — corrigir um erro de
@@ -801,6 +804,18 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
         ? null
         : { nivel: alunoData.nivel_avaliado_prof || '', obs: alunoData.obs_nivel_prof || '' }
     }))
+  }
+
+  async function toggleQuemAgendou(aulaAlvo, alunoId) {
+    if (origemAberta === alunoId) { setOrigemAberta(null); return }
+    setOrigemAberta(alunoId)
+    setOrigemRepo(prev => ({ ...prev, [alunoId]: { carregando: true, itens: [] } }))
+    const { data } = await supabase
+      .from('reposicoes')
+      .select('id, agendado_via, agendado_em, origem:aulas!aula_origem_id(data_aula, status_aula, motivo_cancelamento, turmas(horario_inicio))')
+      .eq('aluno_id', alunoId)
+      .eq('aula_reposicao_id', aulaAlvo.id)
+    setOrigemRepo(prev => ({ ...prev, [alunoId]: { carregando: false, itens: data || [] } }))
   }
 
   async function handleAbrirHistorico(aulaAlvo) {
@@ -2643,7 +2658,18 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                             aguardando aprovação · não conta no pagamento ainda
                             </span>
                           )}
-                          {aluno.criado_por_nome && (
+                          {isReposicao && alunosOriginais.has(String(aluno.aluno_id)) && (
+                            <button
+                              onClick={() => toggleQuemAgendou(aula, aluno.aluno_id)}
+                              title="Ver quem agendou essa reposição e quando"
+                              style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px', fontWeight: '600', padding: '2px 7px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0,
+                                border: '1px solid rgba(61,107,122,0.35)', color: COR_REPOSICAO,
+                                backgroundColor: origemAberta === aluno.aluno_id ? 'rgba(61,107,122,0.15)' : 'transparent' }}
+                            >
+                              <History size={10} /> Quem agendou
+                            </button>
+                          )}
+                          {aluno.criado_por_nome && !isReposicao && (
                             <button
                               onClick={() => setOrigemAberta(prev => prev === aluno.aluno_id ? null : aluno.aluno_id)}
                               title={`Incluído por ${aluno.criado_por_nome}`}
@@ -2682,7 +2708,40 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                       )}
                     </div>
 
-                    {origemAberta === aluno.aluno_id && aluno.criado_por_nome && (
+                    {origemAberta === aluno.aluno_id && isReposicao && (() => {
+                      const peloLink = aluno.criado_por_nome === 'Link de reposição'
+                      const quando = aluno.criado_em ? format(new Date(aluno.criado_em), "dd/MM/yyyy 'às' HH:mm") : null
+                      const repo = origemRepo[aluno.aluno_id]
+                      return (
+                        <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginBottom: '8px', backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '6px', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <User size={11} style={{ flexShrink: 0 }} />
+                            {peloLink ? (
+                              <span><strong style={{ color: 'var(--color-state-success)' }}>O próprio aluno</strong> agendou, pelo link de reposição</span>
+                            ) : aluno.criado_por_nome ? (
+                              <span>Agendado pela equipe: <strong style={{ color: 'var(--color-text-light-primary)' }}>{aluno.criado_por_nome}</strong></span>
+                            ) : (
+                              <span>Incluído pela equipe ou pelo sistema, <strong style={{ color: 'var(--color-text-light-primary)' }}>sem registro de quem fez</strong></span>
+                            )}
+                          </div>
+                          {quando && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <Clock size={11} style={{ flexShrink: 0 }} /> {aluno.criado_por_nome ? 'Agendou em' : 'Registro criado em'} <strong style={{ color: 'var(--color-text-light-primary)' }}>{quando}</strong>
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <Repeat size={11} style={{ flexShrink: 0 }} />
+                            {!repo || repo.carregando ? 'Buscando a aula que está sendo reposta...' : repo.itens.length === 0 ? 'Nenhum crédito de reposição vinculado a essa aula' : (
+                              <span>Repondo a aula de {repo.itens.map(r => r.origem
+                                ? `${format(new Date(r.origem.data_aula + 'T12:00'), 'dd/MM')}${r.origem.turmas?.horario_inicio ? ' ' + r.origem.turmas.horario_inicio.slice(0, 5) : ''}${r.origem.motivo_cancelamento === 'Chuva' ? ' (chuva)' : r.origem.status_aula === 'cancelada' ? ' (cancelada)' : ' (falta)'}`
+                                : '?').join(', ')}</span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    {origemAberta === aluno.aluno_id && aluno.criado_por_nome && !isReposicao && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '8px', backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '6px', padding: '6px 8px' }}>
                         <User size={10} style={{ flexShrink: 0 }} /> Incluído por <span style={{ color: 'var(--color-text-light-primary)' }}>{aluno.criado_por_nome}</span>
                         {aluno.criado_em && ` em ${format(new Date(aluno.criado_em), "dd/MM/yyyy 'às' HH:mm")}`}

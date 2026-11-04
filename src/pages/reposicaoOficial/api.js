@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
+import { ehFeriado } from '../../constants/feriados'
 import { demo, modoDemo } from './demo'
+import { ehCompetitivo } from './regras'
 
 // Link oficial de reposição (/reposicao): tudo passa pelas funções repo_* do banco
 // (scripts/2026-10-29_reposicao_link_oficial.sql e 2026-10-29b), que revalidam aluno + chave de
@@ -40,7 +42,13 @@ export function useGrade(alunoId, telefone) {
     refetchInterval: 20000,
     refetchOnWindowFocus: true,
     staleTime: 5000,
-    queryFn: () => modoDemo() ? demo.grade() : chamar('repo_grade', { p_aluno_id: alunoId, p_telefone: telefone }),
+    queryFn: async () => {
+      const r = await (modoDemo() ? demo.grade() : chamar('repo_grade', { p_aluno_id: alunoId, p_telefone: telefone }))
+      // Feriado não tem aula e Kids Competitivo é só pelo WhatsApp: o servidor já tira
+      // (scripts 2026-10-30 e 2026-10-30b), aqui é a segunda trava.
+      if (r?.ok && Array.isArray(r.aulas)) return { ...r, aulas: r.aulas.filter(a => !ehFeriado(a.data_aula) && !ehCompetitivo(a.nivel)) }
+      return r
+    },
   })
 }
 

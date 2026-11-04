@@ -19,6 +19,7 @@ import { nomeCurto } from '../../lib/nomes'
 import { BANCOS, ESTADOS } from '../../constants/geografia'
 import { calcularValorAula } from '../../constants/modalidades'
 import { empresaDaAula, aulaContaNoFinanceiro } from '../../hooks/useFinanceiro'
+import { BOLINHAS_VALOR } from '../../lib/valorOculto'
 import { DashboardProfessor } from '../professor/DashboardProfessor'
 import { ModalAulasDiaEditavel } from './ModalAulasDiaEditavel'
 
@@ -275,26 +276,43 @@ function BlocoDadosBancarios({ sufixo, titulo, cor, form, set, cardAberto }) {
   )
 }
 
-export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
+// mostrarValores: o professor vê o valor de cada aula (mesmo interruptor do painel dele, ver
+// useMostrarValoresProfessor); gestor/coordenação sempre vê.
+export function ModalDetalhesDia({ professorId, dataStr, onClose, mostrarValores = true }) {
+  // Mesmos campos que o painel/financeiro usam pra calcularValorAula, pra que o valor de cada
+  // aula aqui some exatamente o total do dia mostrado na lista do mês.
   const { data: aulas = [], isLoading } = useQuery({
     queryKey: ['aulas_dia_prof_detalhe', professorId, dataStr],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('aulas')
         .select(`
-          id, turma_id, observacoes,
-          turmas(nome, horario_inicio, niveis(nome)),
-          presencas(presente, status_presenca, tipo_participacao, alunos(nome))
+          id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor,
+          turmas(nome, horario_inicio, eh_turma_reposicao, niveis(nome), modalidades(nome), quadras(nome)),
+          presencas(presente, status_presenca, tipo_participacao, status_inclusao_professor, alunos(nome))
         `)
         .eq('professor_executou_id', professorId)
         .eq('data_aula', dataStr)
-        .eq('status_aula', 'dada')
+        .in('status_aula', ['dada', 'cancelada'])
         .order('id')
       if (error) throw error
-      return data || []
+      // Cancelada só aparece quando ainda paga algo ao professor (chuva = 50%, feriado = 100%).
+      return (data || []).filter(a => a.status_aula === 'dada' || ['Chuva', 'Feriado'].includes(a.motivo_cancelamento))
     },
     enabled: !!professorId && !!dataStr,
     staleTime: 30000,
+  })
+
+  const { data: professor } = useQuery({
+    queryKey: ['prof_valores_aula', professorId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('professores').select('id, valor_aula, valor_hora_aula, valor_aula_beach').eq('id', professorId).maybeSingle()
+      if (error) throw error
+      return data
+    },
+    enabled: !!professorId,
+    staleTime: 60000,
   })
 
   const parteObs = obs => (obs || '').split('·').map(s => s.trim())
@@ -302,6 +320,12 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
   const getHorario = a => a.turmas?.horario_inicio?.slice(0, 5) || parteObs(a.observacoes)[2] || ''
   const getNivel = a => a.turmas?.niveis?.nome || parteObs(a.observacoes)[3] || ''
   const dataLabel = format(new Date(dataStr + 'T12:00'), "dd 'de' MMMM", { locale: ptBR })
+  // Mesma regra da lista do mês (DashboardProfessor): só aula paga ao professor e já iniciada entra.
+  const valorDaAula = a => (professor && a.paga_professor && aulaContaNoFinanceiro(a)) ? calcularValorAula(a, professor, empresaDaAula(a)) : 0
+  const fmtValor = v => `R$ ${Number.isInteger(v) ? v : v.toFixed(2).replace('.', ',')}`
+  const aulasOrdenadas = [...aulas].sort((a, b) => getHorario(a).localeCompare(getHorario(b)))
+  const totalDia = aulas.reduce((acc, a) => acc + valorDaAula(a), 0)
+  const qtdDadas = aulas.filter(a => a.status_aula === 'dada').length
 
   // Via portal pro <body>: sem isso, o WebKit mobile prende esse position:fixed dentro do
   // .app-main (overflow-y + scroll-touch) e o modal fica cortado, sem cobrir a tela toda.
@@ -317,7 +341,10 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <div>
             <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>{dataLabel}</div>
-            <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>{aulas.length} aula{aulas.length !== 1 ? 's' : ''} confirmada{aulas.length !== 1 ? 's' : ''}</div>
+            <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>
+              {qtdDadas} aula{qtdDadas !== 1 ? 's' : ''} confirmada{qtdDadas !== 1 ? 's' : ''}
+              {professor && <> · <span style={{ color: 'var(--color-action-primary)', fontWeight: '600' }}>{mostrarValores ? fmtValor(totalDia) : `R$ ${BOLINHAS_VALOR}`}</span></>}
+            </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
             <X size={18} color="var(--color-state-danger)" />
@@ -327,26 +354,39 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {isLoading ? (
             <div style={{ textAlign: 'center', color: 'var(--color-text-dark-secondary)', fontSize: '13px', padding: '24px' }}>Carregando...</div>
-          ) : aulas.map(aula => {
+          ) : aulasOrdenadas.map(aula => {
             const horario = getHorario(aula)
             const nivel = getNivel(aula)
             const nome = getNome(aula)
             const presencas = (aula.presencas || []).filter(p => p.alunos)
             const presentes = presencas.filter(p => p.status_presenca === 'presente').length
             const ausentes = presencas.filter(p => p.status_presenca !== 'presente').length
+            const valor = valorDaAula(aula)
+            const chuva = aula.status_aula === 'cancelada' && aula.motivo_cancelamento === 'Chuva'
+            const temPendente = presencas.some(p => p.status_inclusao_professor === 'pendente')
             return (
-              <div key={aula.id} style={{ backgroundColor: 'var(--color-surface-dark-overlay)', borderRadius: '10px', padding: '10px 12px', border: '1px solid var(--color-border-dark)' }}>
+              <div key={aula.id} style={{ backgroundColor: 'var(--color-surface-dark-overlay)', borderRadius: '10px', padding: '10px 12px', border: '1px solid var(--color-border-dark)', opacity: presencas.length === 0 ? 0.6 : 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: presencas.length > 0 ? '8px' : 0 }}>
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text-dark-primary)' }}>{nome}</div>
                     {nivel && nivel !== nome && <div style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', marginTop: '1px' }}>{nivel}</div>}
+                    {chuva && <div style={{ fontSize: '10px', color: 'var(--color-state-info)', marginTop: '2px' }}>Cancelada por chuva · 50% do valor</div>}
+                    {temPendente && <div style={{ fontSize: '10px', color: 'var(--color-state-warning)', marginTop: '2px' }}>Inclusão aguardando aprovação · não conta no valor até aprovar</div>}
+                    {presencas.length === 0 && <div style={{ fontSize: '10px', color: 'var(--color-text-dark-muted)', marginTop: '2px' }}>Sem aluno · não gera pagamento</div>}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                    {horario && <span style={{ fontSize: '11px', color: 'var(--color-action-primary)', fontWeight: '600' }}>{horario}</span>}
-                    {presencas.length > 0 && (
-                      <span style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)' }}>
-                        <span style={{ color: 'var(--color-state-success)' }}>✓{presentes}</span>{' '}
-                        {ausentes > 0 && <span style={{ color: 'var(--color-state-danger)' }}>✗{ausentes}</span>}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {horario && <span style={{ fontSize: '11px', color: 'var(--color-action-primary)', fontWeight: '600' }}>{horario}</span>}
+                      {presencas.length > 0 && (
+                        <span style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)' }}>
+                          <span style={{ color: 'var(--color-state-success)' }}>✓{presentes}</span>{' '}
+                          {ausentes > 0 && <span style={{ color: 'var(--color-state-danger)' }}>✗{ausentes}</span>}
+                        </span>
+                      )}
+                    </div>
+                    {professor && (
+                      <span style={{ fontSize: '10px', fontWeight: '600', color: valor > 0 ? 'var(--color-text-dark-secondary)' : 'var(--color-text-dark-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                        {mostrarValores ? fmtValor(valor) : `R$ ${BOLINHAS_VALOR}`}
                       </span>
                     )}
                   </div>
@@ -363,6 +403,8 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose }) {
                           }
                           <span style={{ fontSize: '12px', fontWeight: cortesia ? '700' : '400', color: cortesia ? 'var(--color-state-warning)' : p.status_presenca === 'presente' ? 'var(--color-text-dark-secondary)' : 'var(--color-text-dark-muted)' }}>{p.alunos?.nome || '—'}</span>
                           {cortesia && <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(201,138,60,0.15)', color: 'var(--color-state-warning)', fontWeight: '600' }}>cortesia</span>}
+                          {p.status_inclusao_professor === 'pendente' && <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(201,138,60,0.15)', color: 'var(--color-state-warning)', fontWeight: '600' }}>aguardando aprovação</span>}
+                          {p.status_inclusao_professor === 'rejeitado' && <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(180,71,47,0.15)', color: 'var(--color-state-danger)', fontWeight: '600' }}>inclusão recusada</span>}
                           {p.status_presenca === 'falta_justificada' && <span style={{ fontSize: '9px', color: 'var(--color-state-warning)', marginLeft: 'auto' }}>just.</span>}
                         </div>
                       )

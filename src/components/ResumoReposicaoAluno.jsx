@@ -31,16 +31,23 @@ function useResumo(alunoId) {
       const fim = format(endOfMonth(new Date()), 'yyyy-MM-dd')
       const [pres, repos] = await Promise.all([
         supabase.from('presencas')
-          .select('status_presenca, aulas!inner(data_aula, status_aula, motivo_cancelamento)')
+          .select(`status_presenca, tipo_participacao, aulas!inner(data_aula, status_aula, motivo_cancelamento,
+            professores!professor_executou_id(nome),
+            turmas(horario_inicio, niveis(nome), professores!professor_titular_id(nome)))`)
           .eq('aluno_id', alunoId).gte('aulas.data_aula', ini).lte('aulas.data_aula', fim),
         supabase.from('reposicoes')
-          .select(`id, status, data_limite, historico, agendado_via,
+          .select(`id, status, data_limite, historico, agendado_via, agendado_em,
             origem:aulas!aula_origem_id(data_aula, status_aula, motivo_cancelamento, turmas(horario_inicio, niveis(nome))),
             destino:aulas!aula_reposicao_id(data_aula, turmas(horario_inicio, niveis(nome)))`)
           .eq('aluno_id', alunoId),
       ])
       if (pres.error) throw pres.error
-      const frequencia = (pres.data || []).map(p => ({ data: p.aulas.data_aula, status: statusFrequencia(p, hoje) }))
+      const frequencia = (pres.data || []).map(p => ({
+        data: p.aulas.data_aula, status: statusFrequencia(p, hoje), tipo: p.tipo_participacao,
+        horario: p.aulas.turmas?.horario_inicio?.slice(0, 5), nivel: p.aulas.turmas?.niveis?.nome?.trim(),
+        professor: p.aulas.professores?.nome || p.aulas.turmas?.professores?.nome,
+        motivo: p.aulas.status_aula === 'cancelada' ? p.aulas.motivo_cancelamento : null,
+      }))
       const chuva = (repos.data || []).filter(r => r.origem?.status_aula === 'cancelada' && r.origem?.motivo_cancelamento === 'Chuva')
       return { frequencia, chuva, hoje }
     },
@@ -85,7 +92,7 @@ export function ResumoReposicaoAluno({ alunoId }) {
             const o = r.origem
             const vencida = r.status === 'expirada' || (r.status === 'pendente' && r.data_limite && r.data_limite < hoje)
             const cor = r.status === 'agendada' ? 'var(--color-state-success)' : vencida ? 'var(--color-text-light-muted)' : 'var(--color-action-primary)'
-            const rotulo = r.status === 'agendada' ? (r.destino ? 'Agendada' : 'Reposta (grade extra)') : vencida ? 'Expirada' : `Pendente até ${fmt(r.data_limite)}`
+            const rotulo = r.status === 'agendada' ? (r.destino ? 'Agendada' : r.agendado_via === 'grade_extra' ? 'Agendada (grade extra)' : 'Reposta (grade extra)') : vencida ? 'Expirada' : `Pendente até ${fmt(r.data_limite)}`
             const historico = Array.isArray(r.historico) ? r.historico : []
             return (
               <div key={r.id} style={{ padding: '9px 0', borderBottom: '1px solid var(--color-border-light-subtle)' }}>
@@ -102,6 +109,12 @@ export function ResumoReposicaoAluno({ alunoId }) {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-light-secondary)' }}>
                       <ArrowRight size={12} /> {fmt(r.destino.data_aula)} {r.destino.turmas?.horario_inicio?.slice(0, 5)}
                       {r.agendado_via === 'link' && <span style={{ fontSize: '10px', color: 'var(--color-text-light-muted)' }}>(pelo link)</span>}
+                    </span>
+                  )}
+                  {!r.destino && r.agendado_via === 'grade_extra' && r.agendado_em && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-light-secondary)' }}>
+                      <ArrowRight size={12} /> {new Date(r.agendado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '')}
+                      <span style={{ fontSize: '10px', color: 'var(--color-text-light-muted)' }}>(grade extra)</span>
                     </span>
                   )}
                   <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 700, color: cor }}>{rotulo}</span>
