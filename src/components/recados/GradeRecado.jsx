@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
 import { useAulasDoDiaParaRecado } from '../../hooks/useRecados'
 import { QUADRAS_EMPRESA } from '../../hooks/useFinanceiro'
@@ -23,6 +23,13 @@ export function GradeRecado({ data, selecionadas = [], onToggle, somenteSelecion
     return modalidades.includes('Tênis') ? 'Tênis' : 'todas'
   }
   const [modalidade, setModalidade] = useState(null)
+  const caixaRef = useRef(null)
+  // Só leitura (quem recebe o recado): já abre mostrando a primeira turma marcada.
+  useEffect(() => {
+    if (onToggle || isLoading) return
+    const el = caixaRef.current?.querySelector('[data-sel="1"]')
+    if (el) setTimeout(() => el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' }), 250)
+  }, [isLoading, onToggle, modalidade])
   const modAtual = modalidade ?? modInicial()
 
   const visiveis = aulas.filter(a => modAtual === 'todas' || a.turmas?.modalidades?.nome === modAtual)
@@ -35,7 +42,7 @@ export function GradeRecado({ data, selecionadas = [], onToggle, somenteSelecion
 
   const CW = 112
   return (
-    <div style={{ backgroundColor: 'var(--color-surface-light-base)', borderRadius: '12px', padding: '10px', border: '1px solid var(--color-border-light)' }}>
+    <div ref={caixaRef} style={{ backgroundColor: 'var(--color-surface-light-base)', borderRadius: '12px', padding: '10px', border: '1px solid var(--color-border-light)' }}>
       {modalidades.length > 1 && (
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
           {['todas', ...modalidades].map(m => (
@@ -66,7 +73,7 @@ export function GradeRecado({ data, selecionadas = [], onToggle, somenteSelecion
                 const qtd = a.presencas?.length || 0
                 const prof = a.professores ? nomeProfessor(a.professores) : 'sem professor'
                 return (
-                  <button key={q} type="button" disabled={!onToggle} onClick={() => onToggle?.(a)} style={{
+                  <button key={q} type="button" data-sel={sel ? '1' : undefined} disabled={!onToggle} onClick={() => onToggle?.(a)} style={{
                     width: `${CW}px`, marginRight: '4px', flexShrink: 0, minHeight: '54px', textAlign: 'left', padding: '6px 7px',
                     borderRadius: '8px', cursor: onToggle ? 'pointer' : 'default', position: 'relative', boxSizing: 'border-box',
                     border: sel ? '2px solid var(--color-action-primary)' : '1px solid var(--color-border-light)',
