@@ -575,7 +575,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
             const aula = aulasSecao.find(a => getHorario(a) === h && getQuadraNome(a) === q)
             if (!aula) { linha.push(''); return }
             const nivel = getNivel(aula) || (aula.turma_id ? aula.turmas?.nome : 'Avulsa')
-            const professor = aula.substituto_nome || aula.professores?.nome || 'Sem professor'
+            const professor = (aula.substituto_nome || aula.professores?.nome || 'Sem professor') + (aula.auxiliar ? ` + ${aula.auxiliar.nome}` : '')
             const alunos = (aula.presencas || []).filter(p => p.alunos).map(p => p.alunos.nome)
             linha.push(alunos.length > 0
               ? `${nivel}\nProf: ${professor}\n\n${alunos.join('\n')}`
@@ -2201,7 +2201,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                                 ? <span style={{ color: 'var(--color-state-info)', fontWeight: 600 }}>{nomeTitularDaTurma(aulaCelula) ? `no lugar de ${nomeTitularDaTurma(aulaCelula)}` : 'turma sem titular'}</span>
                                 : <>
                                     {aulaCelula.eh_substituicao && <Repeat size={9} title="Substituição" style={{ flexShrink: 0 }} />}
-                                    {aulaCelula.substituto_nome ? nomeCurto(aulaCelula.substituto_nome) : nomeProfessor(aulaCelula.professores)}
+                                    {/* 2º professor: os dois nomes não cabem no quadrado; aparecem ao abrir a aula */}
+                                    {aulaCelula.auxiliar
+                                      ? <b title={`${nomeProfessor(aulaCelula.professores)} + ${nomeProfessor(aulaCelula.auxiliar)}`}>2 professores</b>
+                                      : aulaCelula.substituto_nome ? nomeCurto(aulaCelula.substituto_nome) : nomeProfessor(aulaCelula.professores)}
                                   </>}
                             </span>
                         }
