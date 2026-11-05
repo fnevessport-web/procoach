@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown, Info, History, Repeat, CloudRain, Trash2, Save, User, MessageSquareText, DollarSign, Plus, Minus, CalendarDays, PartyPopper, StickyNote } from 'lucide-react'
-import { horarioParaMinutos, chuvaPagaProfessor, capacidadeDoNivel } from '../../constants/modalidades'
+import { horarioParaMinutos, chuvaPagaProfessor, capacidadeDoNivel, PROFESSOR_SUBSTITUTO_ID } from '../../constants/modalidades'
 import { nomeCurto } from '../../lib/nomes'
 import { getFeriado } from '../../constants/feriados'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas, confirmarAulasElegiveis, gerarReposicoesPorCancelamento, useAvisarFalta } from '../../hooks/useAulas'
@@ -285,6 +285,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   const [substituindoProfessor, setSubstituindoProfessor] = useState(false)
   const [novoProfessorSubstitutoId, setNovoProfessorSubstitutoId] = useState('')
   const [salvandoSubstituicao, setSalvandoSubstituicao] = useState(false)
+  // Substituto de fora da grade (perfil "Professor Substituto"): janela pedindo nome + valor.
+  const [subExterno, setSubExterno] = useState(null)
+  const [subNome, setSubNome] = useState('')
+  const [subValor, setSubValor] = useState('')
   // 2º professor na aula (turma Kids cheia, acima de 4 alunos): fica em aulas.professor_auxiliar_id
   // e os dois recebem a tabela cheia pelo total de alunos (decisão do coordenador em 04/11/2026).
   const [adicionandoAuxiliar, setAdicionandoAuxiliar] = useState(false)
@@ -571,7 +575,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
             const aula = aulasSecao.find(a => getHorario(a) === h && getQuadraNome(a) === q)
             if (!aula) { linha.push(''); return }
             const nivel = getNivel(aula) || (aula.turma_id ? aula.turmas?.nome : 'Avulsa')
-            const professor = aula.professores?.nome || 'Sem professor'
+            const professor = aula.substituto_nome || aula.professores?.nome || 'Sem professor'
             const alunos = (aula.presencas || []).filter(p => p.alunos).map(p => p.alunos.nome)
             linha.push(alunos.length > 0
               ? `${nivel}\nProf: ${professor}\n\n${alunos.join('\n')}`
@@ -1210,11 +1214,18 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   // vai dar a aula e (b) a troca de titular em massa (acima) nunca sobrescrever essa data.
   async function handleSubstituirProfessor(aula) {
     if (!novoProfessorSubstitutoId) return toast.error('Selecione o professor substituto', { style: toastStyle })
+    if (novoProfessorSubstitutoId === PROFESSOR_SUBSTITUTO_ID) {
+      setSubNome(aula.substituto_nome || '')
+      setSubValor(aula.substituto_valor != null ? String(aula.substituto_valor).replace('.', ',') : '')
+      setSubExterno({ aula })
+      return
+    }
     setSalvandoSubstituicao(true)
     try {
       const { error } = await supabase.from('aulas').update({
         professor_executou_id: novoProfessorSubstitutoId,
         eh_substituicao: true,
+        ...limparSubstitutoExterno(aula),
       }).eq('id', aula.id)
       if (error) throw error
 
@@ -1227,6 +1238,45 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       qc.invalidateQueries({ queryKey: ['aulas'] })
       invalidarFinanceiro()
       toast.success(`${nomeSubstituto} substituindo nessa aula!`, { style: toastStyle })
+      setSubstituindoProfessor(false)
+      setNovoProfessorSubstitutoId('')
+    } catch (err) {
+      toast.error(err.message, { style: toastStyle })
+    } finally {
+      setSalvandoSubstituicao(false)
+    }
+  }
+
+  // Só manda as colunas do substituto externo quando há algo pra limpar.
+  function limparSubstitutoExterno(aula) {
+    return (aula.substituto_nome || aula.substituto_valor != null) ? { substituto_nome: null, substituto_valor: null } : {}
+  }
+
+  async function handleConfirmarSubstitutoExterno() {
+    const aula = subExterno?.aula
+    const nome = subNome.trim()
+    const txt = String(subValor).trim()
+    const valor = Number(txt.includes(',') ? txt.replace(/\./g, '').replace(',', '.') : txt)
+    if (!aula) return
+    if (!nome) return toast.error('Informe o nome de quem vai dar a aula', { style: toastStyle })
+    if (!txt || !Number.isFinite(valor) || valor < 0) return toast.error('Informe o valor combinado', { style: toastStyle })
+    setSalvandoSubstituicao(true)
+    try {
+      const { error } = await supabase.from('aulas').update({
+        professor_executou_id: PROFESSOR_SUBSTITUTO_ID,
+        eh_substituicao: true,
+        substituto_nome: nome,
+        substituto_valor: valor,
+      }).eq('id', aula.id)
+      if (error) throw error
+      await logAudit('aulas', aula.id, 'UPDATE',
+        { professor_executou: aula.professores?.nome, substituto_nome: aula.substituto_nome || null, substituto_valor: aula.substituto_valor ?? null, data: aula.data_aula },
+        { professor_executou: 'Professor Substituto', substituto_nome: nome, substituto_valor: valor, eh_substituicao: true }
+      )
+      qc.invalidateQueries({ queryKey: ['aulas'] })
+      invalidarFinanceiro()
+      toast.success(`${nome} substituindo nessa aula (R$ ${valor.toFixed(2).replace('.', ',')})`, { style: toastStyle })
+      setSubExterno(null)
       setSubstituindoProfessor(false)
       setNovoProfessorSubstitutoId('')
     } catch (err) {
@@ -1268,6 +1318,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       const { error } = await supabase.from('aulas').update({
         professor_executou_id: professorTitularId,
         eh_substituicao: false,
+        ...limparSubstitutoExterno(aula),
       }).eq('id', aula.id)
       if (error) throw error
 
@@ -2112,7 +2163,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                           ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: 700, fontSize: '11px' }}><AlertTriangle size={12} strokeWidth={2.5} /> sem professor</span>
                           : <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                               {aulaCelula.eh_substituicao && <Repeat size={9} title="Substituição" style={{ flexShrink: 0 }} />}
-                              {nomeCurto(aulaCelula.professores?.nome)}
+                              {nomeCurto(aulaCelula.substituto_nome || aulaCelula.professores?.nome)}
                             </span>
                         }
                       </div>
@@ -2161,7 +2212,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                   {getNivel(aula) || (isAvulsa ? 'Aula Avulsa' : aula.turmas?.nome)}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <span>{getQuadraNome(aula)} · {getHorario(aula)} · Prof: {aula.professores?.nome}{aula.auxiliar ? ` + ${aula.auxiliar.nome}` : ''}</span>
+                  <span>{getQuadraNome(aula)} · {getHorario(aula)} · Prof: {aula.substituto_nome ? `${aula.substituto_nome} (substituto, R$ ${Number(aula.substituto_valor || 0).toFixed(2).replace('.', ',')})` : aula.professores?.nome}{aula.auxiliar ? ` + ${aula.auxiliar.nome}` : ''}</span>
                   {aula.eh_substituicao && (
                     <span
                       title={aula.prof_titular?.nome ? `Titular da turma: ${aula.prof_titular.nome}` : 'Substituição'}
@@ -2424,7 +2475,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                 </div>
                 <select value={auxiliarId} onChange={e => setAuxiliarId(e.target.value)} style={inputStyle}>
                   <option value="">Selecione o 2º professor...</option>
-                  {todoProfessores?.filter(p => p.id !== aula.professores?.id && p.ativo !== false).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  {todoProfessores?.filter(p => (p.id !== aula.professores?.id || p.id === PROFESSOR_SUBSTITUTO_ID) && p.ativo !== false).map(p => <option key={p.id} value={p.id}>{p.id === PROFESSOR_SUBSTITUTO_ID ? 'Professor Substituto (de fora da grade)' : p.nome}</option>)}
                 </select>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button onClick={() => auxiliarId ? handleDefinirAuxiliar(aula, auxiliarId) : toast.error('Selecione o professor', { style: toastStyle })} disabled={salvandoSubstituicao} style={{
@@ -3063,6 +3114,36 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
           onConfirmarTurma={handleAdicionarEmOutraTurma}
           onFechar={() => setPromptOutraTurma(null)}
         />
+      )}
+
+      {subExterno && (
+        <Modal open onClose={() => setSubExterno(null)} title="Professor substituto" size="sm">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+              Professor de fora da grade dando a aula de{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>
+                {format(new Date(subExterno.aula.data_aula + 'T12:00'), "dd/MM (EEEE)", { locale: ptBR })} às {getHorario(subExterno.aula)}
+              </strong>. O financeiro paga essa aula pelo valor combinado.
+            </div>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+              Nome de quem vai dar a aula
+              <input autoFocus value={subNome} onChange={e => setSubNome(e.target.value)} placeholder="Nome completo"
+                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface-raised)', color: 'var(--text-primary)', fontSize: '14px', fontWeight: 500 }} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+              Valor combinado (R$)
+              <input value={subValor} onChange={e => setSubValor(e.target.value.replace(/[^0-9,.]/g, ''))} inputMode="decimal" placeholder="Ex.: 120,00"
+                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--surface-raised)', color: 'var(--text-primary)', fontSize: '14px', fontWeight: 500 }} />
+            </label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setSubExterno(null)} style={{ flex: 1, padding: '11px', borderRadius: '10px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={handleConfirmarSubstitutoExterno} disabled={salvandoSubstituicao || !subNome.trim() || !subValor}
+                style={{ flex: 1, padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontWeight: 700, cursor: 'pointer', opacity: subNome.trim() && subValor ? 1 : 0.5 }}>
+                {salvandoSubstituicao ? 'Salvando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {pedindoMotivo && (

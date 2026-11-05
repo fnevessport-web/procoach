@@ -284,7 +284,16 @@ export function aulaComTodosAusentes(aula) {
 // - Cancelada por Feriado: 100% do valor (na prática feriado não cancela: a aula segue como
 //   "dada" e já paga o valor normal — isto só protege se algum dia for lançado como cancelada).
 // - Cancelada por qualquer outro motivo (ou chuva fora do escopo): zero.
+// Perfil genérico "Professor Substituto": alguém de fora da grade que cobriu uma aula. A aula
+// guarda quem foi (aulas.substituto_nome) e o valor combinado (aulas.substituto_valor), e paga
+// exatamente esse valor quando foi dada (decisão do coordenador em 05/11/2026).
+export const PROFESSOR_SUBSTITUTO_ID = 'a5e177c8-57a6-4df2-a67e-e6c078be770a'
+
 export function calcularValorAula(aula, professor, empresa) {
+  if (professor?.id === PROFESSOR_SUBSTITUTO_ID) {
+    return aula.status_aula === 'cancelada' ? 0 : Number(aula.substituto_valor || 0)
+  }
+
   // Aula sem NENHUM aluno vinculado (nem presente, nem falta, nem cortesia — a lista de
   // presença veio vazia) não conta como aula dada pra fim de pagamento, mesmo que
   // status_aula/paga_professor digam o contrário no banco — decisão explícita do

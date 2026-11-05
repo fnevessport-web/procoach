@@ -43,6 +43,7 @@ export function TurmasPage({ onIrParaProfessores }) {
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(formInicial())
   const [alunosSelecionados, setAlunosSelecionados] = useState([])
+  const [alunosIniciais, setAlunosIniciais] = useState([])
 
   const modalidadeId = form.modalidade_id || null
   const { professores } = useProfessores(modalidadeId)
@@ -59,6 +60,7 @@ export function TurmasPage({ onIrParaProfessores }) {
     setEditando(null)
     setForm(formInicial())
     setAlunosSelecionados([])
+    setAlunosIniciais([])
     setBuscaAluno('')
     setModal(true)
   }
@@ -74,6 +76,7 @@ export function TurmasPage({ onIrParaProfessores }) {
     })
     const idsAtivos = turma.turmas_alunos?.filter(ta => ta.ativo).map(ta => ta.aluno_id) || []
     setAlunosSelecionados(idsAtivos)
+    setAlunosIniciais(idsAtivos)
     setBuscaAluno('')
     setModal(true)
   }
@@ -99,7 +102,8 @@ export function TurmasPage({ onIrParaProfessores }) {
         id: editando?.id,
         ...form,
         nome,
-        alunos_ids: alunosSelecionados
+        alunos_ids: alunosSelecionados,
+        alunos_ids_iniciais: alunosIniciais,
       })
       toast.success(editando ? 'Turma atualizada!' : 'Turma criada!')
       setModal(false)

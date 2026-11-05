@@ -326,7 +326,12 @@ function EtapaPainel({ painel, form, onEscolher }) {
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--color-text-light-muted)' }}>
                     {c.formato === 'individual' ? 'Individual' : 'Em grupo'} · cancelada por chuva
-                    {Array.isArray(c.historico) && c.historico.length > 0 && ` · reposição de ${c.historico.map(h => dataCurta(h.data_aula)).join(', ')} também cancelada, crédito devolvido`}
+                    {/* só entradas de "reposição que choveu" (têm data_aula); qualquer outra anotação no
+                        histórico é ignorada aqui, senão derruba a página inteira (caso Juracy, 04/11). */}
+                    {(() => {
+                      const choveu = Array.isArray(c.historico) ? c.historico.filter(h => typeof h?.data_aula === 'string') : []
+                      return choveu.length > 0 && ` · reposição de ${choveu.map(h => dataCurta(h.data_aula)).join(', ')} também cancelada, crédito devolvido`
+                    })()}
                   </div>
                 </div>
                 {c.data_limite && (
@@ -374,7 +379,7 @@ function EtapaPainel({ painel, form, onEscolher }) {
               <li>Cada reposição vale por <strong>{PRAZO_DIAS} dias</strong> a partir da aula cancelada. Depois desse prazo, ela expira.</li>
               <li><strong>Exceção de novembro:</strong> as aulas de setembro e outubro canceladas por chuva podem ser repostas <strong>até 30/11</strong>.</li>
               <li>Mostramos sempre os <strong>próximos 7 dias</strong> da grade. A cada dia que passa, um novo dia é liberado.</li>
-              <li>Você pode agendar no <strong>seu nível ou em 1 nível abaixo</strong>. Turmas Kids e adulto não se misturam.</li>
+              <li>Adultos podem agendar no <strong>seu nível ou em 1 nível abaixo</strong>. Kids agendam <strong>somente na turma da mesma faixa</strong> (por exemplo, Kids 7 a 10 só em Kids 7 a 10), com até 6 alunos. Turmas Kids e adulto não se misturam.</li>
               <li>O agendamento fecha <strong>2 horas antes</strong> do início da aula.</li>
               <li>Se você tem reposição individual e escolher uma aula em grupo, ela será descontada da sua reposição individual.</li>
               <li>Teve um imprevisto? Avise no nosso WhatsApp para a equipe liberar a vaga.</li>

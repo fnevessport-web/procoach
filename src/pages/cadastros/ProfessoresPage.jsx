@@ -287,7 +287,7 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose, mostrarValores
       const { data, error } = await supabase
         .from('aulas')
         .select(`
-          id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor,
+          id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, substituto_nome, substituto_valor,
           turmas(nome, horario_inicio, eh_turma_reposicao, niveis(nome), modalidades(nome), quadras(nome)),
           presencas(presente, status_presenca, tipo_participacao, status_inclusao_professor, alunos(nome))
         `)
@@ -547,7 +547,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       await confirmarAulasElegiveis({ professorId: cardAberto.id })
       const { data, error } = await supabase
         .from('aulas')
-        .select('id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, status, turmas(horario_inicio, niveis(nome), modalidades(nome), quadras(nome), eh_turma_reposicao), presencas(tipo_participacao, status_inclusao_professor)')
+        .select('id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, substituto_nome, substituto_valor, status, turmas(horario_inicio, niveis(nome), modalidades(nome), quadras(nome), eh_turma_reposicao), presencas(tipo_participacao, status_inclusao_professor)')
         .or(`professor_executou_id.eq.${cardAberto.id},professor_auxiliar_id.eq.${cardAberto.id}`)
         .in('status_aula', ['dada', 'cancelada'])
         .eq('paga_professor', true)

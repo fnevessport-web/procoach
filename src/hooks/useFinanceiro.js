@@ -245,7 +245,7 @@ export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
       const aulas = await buscarTodasAsAulas(() => supabase
         .from('aulas')
         .select(`
-          id, professor_executou_id, professor_auxiliar_id, turma_id, observacoes, data_aula, status_aula, motivo_cancelamento,
+          id, professor_executou_id, professor_auxiliar_id, turma_id, observacoes, data_aula, status_aula, motivo_cancelamento, substituto_nome, substituto_valor,
           turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao),
           presencas(tipo_participacao, status_inclusao_professor),
           professores!professor_executou_id(${CAMPOS_PROF_PAGAMENTO}),
@@ -304,7 +304,7 @@ export function useAulasProfessorFinanceiro({ professorId, professor, empresa, d
       const { data: aulas, error } = await supabase
         .from('aulas')
         .select(`
-          id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento,
+          id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, substituto_nome, substituto_valor,
           turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao),
           presencas(tipo_participacao, status_presenca, status_inclusao_professor)
         `)
@@ -352,7 +352,7 @@ export function useAulasAnoProfessor({ professorId, professor }) {
       const { data: aulas, error } = await supabase
         .from('aulas')
         .select(`
-          id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento,
+          id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, substituto_nome, substituto_valor,
           turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao),
           presencas(tipo_participacao, status_inclusao_professor)
         `)

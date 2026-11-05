@@ -291,7 +291,7 @@ export function ModalAulasDiaEditavel({ professor, dataStr: dataInicial, onClose
     queryKey: ['aulas-dia-editavel', professor.id, dataStr, empresa],
     queryFn: async () => {
       const { data, error } = await supabase.from('aulas')
-        .select('id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao), presencas(aluno_id, status_presenca, tipo_participacao, presente, status_inclusao_professor, alunos(nome))')
+        .select('id, data_aula, turma_id, observacoes, status_aula, motivo_cancelamento, paga_professor, substituto_nome, substituto_valor, turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao), presencas(aluno_id, status_presenca, tipo_participacao, presente, status_inclusao_professor, alunos(nome))')
         .eq('professor_executou_id', professor.id).eq('data_aula', dataStr)
       if (error) throw error
       const quadras = empresa ? QUADRAS_EMPRESA[empresa] || [] : null

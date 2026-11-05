@@ -415,7 +415,7 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
       // 1) busca aulas do dia
       const { data: aulasData, error: e1 } = await supabase
         .from('aulas')
-        .select('id, turma_id, observacoes, data_aula, status_aula, motivo_cancelamento, turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao)')
+        .select('id, turma_id, observacoes, data_aula, status_aula, motivo_cancelamento, substituto_nome, substituto_valor, turmas(nome, horario_inicio, quadras(nome), niveis(nome), modalidades(nome), eh_turma_reposicao)')
         .or(`professor_executou_id.eq.${professorId},professor_auxiliar_id.eq.${professorId}`)
         .eq('data_aula', dataStr)
         .in('status_aula', ['dada', 'cancelada']) // cancelada por chuva paga 50% — tem que aparecer aqui pro total do dia bater com o do professor
@@ -465,11 +465,13 @@ function DetalhesDiaModal({ dataStr, professorId, professor, empresaId, totalAul
   })
 
   function getInfo(a) {
+    // Substituto de fora da grade: mostra quem deu a aula de verdade.
+    const quem = a.substituto_nome ? ` · Substituto: ${a.substituto_nome}` : ''
     if (a.turma_id && a.turmas) {
-      return { nome: a.turmas.nome, horario: a.turmas.horario_inicio?.slice(0,5) || '', quadra: a.turmas.quadras?.nome || '' }
+      return { nome: a.turmas.nome + quem, horario: a.turmas.horario_inicio?.slice(0,5) || '', quadra: a.turmas.quadras?.nome || '' }
     }
     const partes = (a.observacoes || '').split('·').map(s => s.trim())
-    return { nome: 'Avulsa', horario: partes[2] || '', quadra: partes[1] || '' }
+    return { nome: 'Avulsa' + quem, horario: partes[2] || '', quadra: partes[1] || '' }
   }
 
   const contagem = aulas.length || totalAulas

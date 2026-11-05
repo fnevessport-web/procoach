@@ -104,7 +104,10 @@ export function useTurma(id) {
 export function useSalvarTurma() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, alunos_ids = [], ...dadosBrutos }) => {
+    // alunos_ids_iniciais: quem estava marcado quando o formulário abriu (ver "Sync alunos").
+    // alunos_ids omitido = não mexe nos alunos (ex.: só posicionar a turma na grade; antes isso
+    // caía no default [] e desmatriculava a turma inteira).
+    mutationFn: async ({ id, alunos_ids, alunos_ids_iniciais = null, ...dadosBrutos }) => {
       // professor_titular_id é opcional (turma pode existir sem professor definido ainda) —
       // o formulário manda '' quando não selecionado, e '' não é um uuid válido pro Postgres
       // (dava erro genérico em vez de simplesmente salvar sem professor).
@@ -122,6 +125,8 @@ export function useSalvarTurma() {
         await logAudit('turmas', turmaId, 'INSERT', null, data)
       }
 
+      if (alunos_ids === undefined) return turmaId
+
       const { data: ativosAntes } = await supabase
         .from('turmas_alunos')
         .select('aluno_id')
@@ -129,11 +134,23 @@ export function useSalvarTurma() {
         .eq('ativo', true)
       const idsAntes = (ativosAntes || []).map(a => a.aluno_id)
 
-      // Sync alunos
-      await supabase.from('turmas_alunos').update({ ativo: false }).eq('turma_id', turmaId)
-      if (alunos_ids.length > 0) {
-        const rows = alunos_ids.map(aluno_id => ({ turma_id: turmaId, aluno_id, ativo: true }))
-        await supabase.from('turmas_alunos').upsert(rows, { onConflict: 'turma_id,aluno_id' })
+      // Sync alunos: aplica só a diferença entre o que o formulário abriu e o que ficou marcado,
+      // por cima do estado atual do banco. Antes gravava a lista inteira da tela: se a
+      // atualização da lista do clube tirou alguém com o formulário aberto (ou com a tela
+      // desatualizada), salvar a turma rematriculava essa pessoa.
+      const iniciais = alunos_ids_iniciais ?? idsAntes
+      const adicionados = alunos_ids.filter(i => !iniciais.includes(i))
+      const removidos = iniciais.filter(i => !alunos_ids.includes(i))
+      const idsDepois = [...new Set([...idsAntes.filter(i => !removidos.includes(i)), ...adicionados])]
+      if (removidos.length > 0) {
+        const { error } = await supabase.from('turmas_alunos').update({ ativo: false })
+          .eq('turma_id', turmaId).in('aluno_id', removidos)
+        if (error) throw error
+      }
+      if (adicionados.length > 0) {
+        const rows = adicionados.map(aluno_id => ({ turma_id: turmaId, aluno_id, ativo: true }))
+        const { error } = await supabase.from('turmas_alunos').upsert(rows, { onConflict: 'turma_id,aluno_id' })
+        if (error) throw error
       }
 
       await notificarMudancasDeMatricula({
@@ -141,7 +158,7 @@ export function useSalvarTurma() {
         professorTitularId: dados.professor_titular_id,
         nomeTurma: dados.nome,
         idsAntes,
-        idsDepois: alunos_ids,
+        idsDepois,
       })
 
       return turmaId
