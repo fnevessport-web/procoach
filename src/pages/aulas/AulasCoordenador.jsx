@@ -254,6 +254,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   const [alertaNivel, setAlertaNivel] = useState({})
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(null)
+  // Removidos da lista e ainda não salvos (por aula): dá pra desfazer antes de salvar.
+  const [removidosLocal, setRemovidosLocal] = useState({})
   // Exclusão travada por PIN (só quando precisaPinParaExcluir): { executar } guarda a ação
   // de excluir (aula ou aluno) já decidida, esperando o PIN pra rodar de verdade.
   const [pinExclusaoPendente, setPinExclusaoPendente] = useState(null)
@@ -681,6 +683,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   }
 
   function fecharModal() {
+    setRemovidosLocal({})
     setAdicionandoAuxiliar(false)
     setAulaModal(null)
     setNavRecolhida(false)
@@ -756,8 +759,43 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
     if (aula.turma_id && presenca?.tipo_participacao === 'mensalista') {
       setConfirmandoRemocao({ aulaId: aula.id, turmaId: aula.turma_id, dataAula: aula.data_aula, alunoId, nome: presenca.nome })
     } else {
+      if (presenca) setRemovidosLocal(prev => ({ ...prev, [aula.id]: { ...(prev[aula.id] || {}), [alunoId]: presenca } }))
       removerAlunoDaListaLocal(aula.id, alunoId)
     }
+  }
+
+  function desfazerRemocaoLocal(aulaId, alunoId) {
+    const dados = removidosLocal[aulaId]?.[alunoId]
+    if (!dados) return
+    setPresencasLocal(prev => ({ ...prev, [aulaId]: { ...(prev[aulaId] || {}), [alunoId]: dados } }))
+    setRemovidosLocal(prev => { const n = { ...(prev[aulaId] || {}) }; delete n[alunoId]; return { ...prev, [aulaId]: n } })
+  }
+
+  // Remoção que já foi gravada no banco (mensalista): toast com "Desfazer" que devolve as
+  // linhas apagadas (e reativa a matrícula, quando foi "todas as futuras").
+  function toastDesfazer(texto, linhas, reativarMatricula) {
+    toast((t) => (
+      <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {texto}
+        <button onClick={async () => {
+          toast.dismiss(t.id)
+          try {
+            if (linhas?.length) {
+              const { error } = await supabase.from('presencas').insert(linhas)
+              if (error) throw error
+            }
+            if (reativarMatricula) await supabase.from('turmas_alunos').update({ ativo: true }).eq('turma_id', reativarMatricula.turmaId).eq('aluno_id', reativarMatricula.alunoId)
+            await logAudit('presencas', linhas?.[0]?.aula_id || null, 'UPDATE', { desfeito: 'remoção' }, { restaurados: linhas?.length || 0 })
+            qc.invalidateQueries({ queryKey: ['aulas'] })
+            invalidarFinanceiro()
+            setAulaModal(null)
+            toast.success('Remoção desfeita. Abra a aula de novo para conferir.', { style: toastStyle })
+          } catch (err) { toast.error('Não deu para desfazer: ' + err.message, { style: toastStyle }) }
+        }} style={{ padding: '5px 10px', borderRadius: '8px', border: 'none', background: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontWeight: 700, fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>
+          Desfazer
+        </button>
+      </span>
+    ), { duration: 15000, style: toastStyle })
   }
 
   // Ponto de entrada do botão "Remover" — quem precisa de PIN (precisaPinParaExcluir) só
@@ -773,13 +811,15 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   }
 
   async function handleRemoverSomenteEstaAula() {
-    const { aulaId, alunoId } = confirmandoRemocao
+    const { aulaId, alunoId, nome } = confirmandoRemocao
     try {
+      const { data: backup } = await supabase.from('presencas').select('*').eq('aula_id', aulaId).eq('aluno_id', alunoId)
       await supabase.from('presencas').delete().eq('aula_id', aulaId).eq('aluno_id', alunoId)
+      await logAudit('presencas', aulaId, 'DELETE', { aluno: nome, linhas: backup }, { escopo: 'só essa aula' })
       removerAlunoDaListaLocal(aulaId, alunoId)
       qc.invalidateQueries({ queryKey: ['aulas'] })
       invalidarFinanceiro()
-      toast.success('Aluno removido dessa aula.', { style: toastStyle })
+      toastDesfazer(`${nome || 'Aluno'} removido dessa aula.`, backup)
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
     } finally {
@@ -788,19 +828,23 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   }
 
   async function handleRemoverTodasFuturas() {
-    const { aulaId, turmaId, dataAula, alunoId } = confirmandoRemocao
+    const { aulaId, turmaId, dataAula, alunoId, nome } = confirmandoRemocao
     try {
       await supabase.from('turmas_alunos').update({ ativo: false }).eq('turma_id', turmaId).eq('aluno_id', alunoId)
       const { data: aulasFuturas } = await supabase
         .from('aulas').select('id').eq('turma_id', turmaId).gte('data_aula', dataAula)
       const idsAulas = (aulasFuturas || []).map(a => a.id)
+      let backup = []
       if (idsAulas.length > 0) {
+        const { data: b } = await supabase.from('presencas').select('*').eq('aluno_id', alunoId).in('aula_id', idsAulas)
+        backup = b || []
         await supabase.from('presencas').delete().eq('aluno_id', alunoId).in('aula_id', idsAulas)
       }
+      await logAudit('presencas', aulaId, 'DELETE', { aluno: nome, turma_id: turmaId, linhas: backup }, { escopo: 'essa e todas as futuras', matricula: 'desativada' })
       removerAlunoDaListaLocal(aulaId, alunoId)
       qc.invalidateQueries({ queryKey: ['aulas'] })
       invalidarFinanceiro()
-      toast.success('Aluno removido dessa aula e de todas as futuras da turma.', { style: toastStyle })
+      toastDesfazer(`${nome || 'Aluno'} removido dessa aula e das futuras da turma.`, backup, { turmaId, alunoId })
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
     } finally {
@@ -966,6 +1010,14 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
       const idsAdicionados = idsAtuais.filter(id => !idsAnteriores.includes(id))
       if (idsRemovidos.length > 0) {
         await supabase.from('presencas').delete().eq('aula_id', aulaId).in('aluno_id', idsRemovidos)
+        // Reposição tirada da aula: o crédito volta pro aluno (antes ficava preso nesta aula e
+        // ele perdia a reposição sem ninguém perceber).
+        const idsRepoRemovidos = (presencasAnteriores || []).filter(p => p.tipo_participacao === 'reposicao' && idsRemovidos.includes(p.aluno_id)).map(p => p.aluno_id)
+        if (idsRepoRemovidos.length > 0) {
+          await supabase.from('reposicoes')
+            .update({ status: 'pendente', aula_reposicao_id: null, agendado_via: null, agendado_em: null })
+            .eq('aula_reposicao_id', aulaId).in('aluno_id', idsRepoRemovidos).eq('status', 'agendada')
+        }
       }
       let reposicoesBaixadas = []
       if (lista.length > 0) {
@@ -1055,6 +1107,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
 
       qc.invalidateQueries({ queryKey: ['aulas'] })
       invalidarFinanceiro()
+      setRemovidosLocal(prev => ({ ...prev, [aulaId]: {} }))
       toast.success('Presenças salvas!', { style: toastStyle })
       reposicoesBaixadas.forEach(r => {
         if (!r.dataFaltaResolvida) return
@@ -3135,6 +3188,17 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
               }}>
                 <UserPlus size={13} /> Adicionar aluno
               </button>
+            ))}
+
+            {Object.entries(removidosLocal[aula.id] || {}).map(([alunoId, dados]) => (
+              <div key={alunoId} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', padding: '9px 12px', borderRadius: '10px', border: '1px dashed var(--color-state-warning)', backgroundColor: 'color-mix(in srgb, var(--color-state-warning) 10%, var(--color-surface-light-overlay))', fontSize: '12px', color: 'var(--color-text-light-primary)' }}>
+                <span style={{ flex: 1 }}>
+                  <b>{dados.nome || 'Aluno'}</b> {dados.tipo_participacao === 'reposicao' ? '(reposição) ' : ''}removido da lista. Ainda não foi salvo.
+                </span>
+                <button onClick={() => desfazerRemocaoLocal(aula.id, alunoId)} style={{ padding: '6px 12px', borderRadius: '8px', border: 'none', background: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontWeight: 700, fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>
+                  Desfazer
+                </button>
+              </div>
             ))}
 
             {podeMarcarPresencaAgora && (
