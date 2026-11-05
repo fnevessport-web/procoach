@@ -8,6 +8,7 @@ import {
   useConversas, useMensagensDaConversa, useEnviarMensagem, useAbrirConversaDireta, useContatos,
 } from '../../hooks/useMensagens'
 import { Loading } from '../../components/ui/Loading'
+import { RecadosAba } from '../../components/recados/RecadosAba'
 
 function formatarHora(dataStr) {
   const d = new Date(dataStr)
@@ -196,6 +197,7 @@ export function MensagensPage() {
   const location = useLocation()
   const [conversaAberta, setConversaAberta] = useState(() => location.state?.conversaId || null)
   const [novaConversa, setNovaConversa] = useState(false)
+  const [aba, setAba] = useState(() => location.state?.aba || 'conversas')
 
   if (conversaAberta) {
     return <Thread conversaId={conversaAberta} onVoltar={() => setConversaAberta(null)} />
@@ -208,5 +210,27 @@ export function MensagensPage() {
       />
     )
   }
-  return <ListaConversas onAbrirConversa={setConversaAberta} onNovaConversa={() => setNovaConversa(true)} />
+  return (
+    <div>
+      <AbasMensagens aba={aba} setAba={setAba} />
+      {aba === 'recados'
+        ? <RecadosAba />
+        : <ListaConversas onAbrirConversa={setConversaAberta} onNovaConversa={() => setNovaConversa(true)} />}
+    </div>
+  )
+}
+
+// Conversas (chat) e Recados (aviso da equipe pro professor, com lido/não lido).
+function AbasMensagens({ aba, setAba }) {
+  return (
+    <div style={{ display: 'flex', gap: '4px', padding: '4px', marginTop: '14px', borderRadius: '12px', backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark)' }}>
+      {[['conversas', 'Conversas'], ['recados', 'Recados']].map(([v, l]) => (
+        <button key={v} onClick={() => setAba(v)} style={{
+          flex: 1, padding: '9px', borderRadius: '9px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 700,
+          backgroundColor: aba === v ? 'var(--color-action-primary)' : 'transparent',
+          color: aba === v ? 'var(--color-action-on-primary)' : 'var(--color-text-dark-secondary)',
+        }}>{l}</button>
+      ))}
+    </div>
+  )
 }

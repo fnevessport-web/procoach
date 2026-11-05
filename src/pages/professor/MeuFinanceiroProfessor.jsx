@@ -110,7 +110,8 @@ export function MeuFinanceiroProfessor() {
     })
   }
 
-  const aulasMesSel = aulasDoMes(mesSel, anoSel)
+  // Em ordem de data e horário (vinha misturado dentro do mesmo dia).
+  const aulasMesSel = [...aulasDoMes(mesSel, anoSel)].sort((x, y) => (x.data_aula + (x.horario || '')).localeCompare(y.data_aula + (y.horario || '')))
   const valorAulasMesSel = aulasMesSel.reduce((acc, a) => acc + (a.valor || 0), 0)
   const extrasMesSel = extrasDoMes(mesSel, anoSel)
   const valorMesSel = valorAulasMesSel + somaExtras(extrasMesSel)

@@ -23,9 +23,9 @@ export function useAulas({ data, dataInicio, dataFim, professorId, modalidadeId,
         .select(`
           *,
           turmas(nome, horario_inicio, horario_fim, horario_dia_semana, professor_titular_id, modalidade_id, quadras(nome), modalidades(nome, icone_emoji, cor_hex), turmas_alunos(id, ativo)),
-          professores!professor_executou_id(id, nome, foto_url),
-          auxiliar:professores!professor_auxiliar_id(id, nome, foto_url),
-          prof_titular:professores!professor_titular_id(id, nome),
+          professores!professor_executou_id(id, nome, apelido, foto_url),
+          auxiliar:professores!professor_auxiliar_id(id, nome, apelido, foto_url),
+          prof_titular:professores!professor_titular_id(id, nome, apelido),
           presencas(id, aluno_id, presente, status_presenca, tipo_participacao, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof, criado_por, criado_por_nome, criado_em, status_inclusao_professor, motivo_inclusao, alunos(id, nome, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof)),
           contratantes(id, nome, tipo)
         `)

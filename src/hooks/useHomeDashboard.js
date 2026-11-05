@@ -59,7 +59,7 @@ export function useHomeDashboard() {
         .select(`
           id, data_aula, turma_id, status_aula, observacoes,
           turmas(nome, horario_inicio, horario_fim, quadras(nome), modalidades(nome, icone_emoji, cor_hex)),
-          professores!professor_executou_id(id, nome, foto_url),
+          professores!professor_executou_id(id, nome, apelido, foto_url),
           presencas(id, status_presenca, presente)
         `)
         .eq('data_aula', hoje)

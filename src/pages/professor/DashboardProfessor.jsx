@@ -4,11 +4,13 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { format, addDays, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronRight, X, AlertTriangle, Check, MessageCircle, Sparkles, Eye } from 'lucide-react'
+import { ChevronRight, X, AlertTriangle, Check, MessageCircle, Sparkles, Mail } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { confirmarAulasElegiveis } from '../../hooks/useAulas'
 import { usePendenciasConfirmacao, useConfirmarAvaliacaoTecnica, useResumoTecnicoTurma } from '../../hooks/useAlunos'
-import { useAlertaFaltasConsecutivas } from '../../hooks/useAlertaFaltas'
+import { useRecadosDoProfessor, recadoNoPainel } from '../../hooks/useRecados'
+import { CartaoRecado, RecadoLeitura } from '../../components/recados/RecadoLeitura'
+import { AoVivoEquipe } from './AoVivoEquipe'
 import { useAbrirConversaDoAluno } from '../../hooks/useMensagens'
 import { nivelPorPcScore, REAVALIACAO_PRAZO_DIAS } from '../../lib/pcScore'
 import useAppStore from '../../store/useAppStore'
@@ -76,19 +78,12 @@ export function DashboardProfessor({ professorIdProp } = {}) {
   const confirmarAvaliacao = useConfirmarAvaliacaoTecnica()
   const abrirConversaDoAluno = useAbrirConversaDoAluno()
 
-  // Mesmo aviso da Home do gestor (aluno com aula hoje/amanhã já emendando 2+ faltas
-  // seguidas), mas só as ocorrências onde ESSE professor é quem vai dar a aula — um professor
-  // não precisa (nem deveria) ver esse alerta sobre aluno de outro professor.
-  const { data: alertasFaltas = [] } = useAlertaFaltasConsecutivas()
-  const meusAlertasFaltas = professorId
-    ? alertasFaltas
-        .map(a => ({ ...a, ocorrencias: a.ocorrencias.filter(o => o.professorId === professorId) }))
-        .filter(a => a.ocorrencias.length > 0)
-    : []
-
-  function abrirAulaDoAlerta(aulaId) {
-    navigate('/aulas', { state: { highlightAulaId: aulaId } })
-  }
+  // Recados da equipe (Mensagens > Recados): ficam no painel enquanto não lidos, ou até a
+  // data da aula marcada no recado (mesmo já lidos, em tom mais apagado).
+  const { data: recados = [] } = useRecadosDoProfessor(professorId)
+  const recadosPainel = recados.filter(r => recadoNoPainel(r))
+  const naoLidos = recadosPainel.filter(r => !r.lido_em).length
+  const [recadoAberto, setRecadoAberto] = useState(null)
 
   async function handleConfirmarPendencia(pendencia) {
     try {
@@ -210,7 +205,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
         .from('aulas')
         .select(`
           id, data_aula, turma_id,
-          turmas(nome, horario_inicio, niveis(nome), quadras(nome)),
+          turmas(nome, horario_inicio, professor_titular_id, niveis(nome), quadras(nome)),
           presencas(id, status_presenca, tipo_participacao, status_inclusao_professor, alunos(nome))
         `)
         .or(`professor_executou_id.eq.${professorId},professor_auxiliar_id.eq.${professorId}`)
@@ -273,9 +268,12 @@ export function DashboardProfessor({ professorIdProp } = {}) {
     const presencasReposicao = presencas.filter(p => p.tipo_participacao === 'reposicao')
     const ehOverride = !!(aulaSemana && turmaRecorrente && aulaSemana.turma_id !== turmaRecorrente.id)
     const removida = turmaRecorrente?.ativo === false
+    // Aula que ele dá nessa semana numa turma que não é dele (titular é outro): substituição.
+    const ehSubstituicao = !!(aulaSemana?.turma_id && aulaSemana.turmas?.professor_titular_id !== professorId && !turmaRecorrente)
 
     let corBorda
     if (removida) corBorda = 'rgba(180,71,47,0.5)'
+    else if (ehSubstituicao) corBorda = 'var(--color-state-info)'
     else if (ehOverride) corBorda = 'rgba(61,107,122,0.6)'
     else if (presencasRegulares.length > 0 || presencasReposicao.length > 0) corBorda = 'rgba(75,139,106,0.5)'
     else corBorda = 'rgba(165,76,46,0.5)'
@@ -285,7 +283,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
     const individual = (turmaRecorrente?.niveis?.nome === 'Individual') || (aulaSemana?.turmas?.niveis?.nome === 'Individual')
 
     return {
-      turmaRecorrente, aulaSemana, ehOverride, removida, corBorda, individual,
+      turmaRecorrente, aulaSemana, ehOverride, removida, corBorda, individual, ehSubstituicao,
       presencasRegulares, presencasReposicao, nomeRecorrente, nomeEfetivo,
       quadraNome: aulaSemana?.turmas?.quadras?.nome || turmaRecorrente?.quadras?.nome || '',
     }
@@ -372,44 +370,36 @@ export function DashboardProfessor({ professorIdProp } = {}) {
         </div>
       )}
 
-      {/* Alunos meus com aula hoje/amanhã já emendando 2+ faltas seguidas */}
-      {meusAlertasFaltas.length > 0 && (
+      {/* Recados da equipe */}
+      {recadosPainel.length > 0 && (
         <div style={{ marginBottom: '16px' }}>
-          <h3 style={{
-            fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)', textTransform: 'uppercase',
-            letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px',
-          }}>
-            <Eye size={13} /> De olho ({meusAlertasFaltas.length})
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <h3 style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-action-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Mail size={14} /> Recados {naoLidos > 0 ? `(${naoLidos} ${naoLidos > 1 ? 'novos' : 'novo'})` : ''}
+            </h3>
+            {!professorIdProp && (
+              <button onClick={() => navigate('/mensagens', { state: { aba: 'recados' } })} style={{ background: 'none', border: 'none', color: 'var(--color-text-dark-secondary)', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                Ver todos <ChevronRight size={13} />
+              </button>
+            )}
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {meusAlertasFaltas.map(a => {
-              const proxima = a.ocorrencias[0]
-              const ehHoje = proxima?.data === hoje
-              return (
-                <div key={`${a.alunoId}-${a.modalidadeId}`}
-                  onClick={() => proxima && abrirAulaDoAlerta(proxima.aulaId)}
-                  style={{
-                    padding: '10px 12px', borderRadius: '10px', cursor: proxima ? 'pointer' : 'default',
-                    backgroundColor: 'rgba(165,76,46,0.08)', border: '1px solid rgba(165,76,46,0.25)',
-                    fontSize: '12px', color: 'var(--color-text-dark-primary)',
-                  }}>
-                  <b>{a.alunoNome}</b> · {a.faltasConsecutivas} faltas seguidas · {a.modalidadeNome}
-                  {proxima && <> · aula {ehHoje ? 'hoje' : 'amanhã'} {proxima.horario}</>}
-                </div>
-              )
-            })}
+            {recadosPainel.map(r => <CartaoRecado key={r.id} recado={r} onAbrir={() => setRecadoAberto(r)} />)}
           </div>
         </div>
       )}
+      {recadoAberto && <RecadoLeitura recado={recadoAberto} podeMarcar={!professorIdProp} onFechar={() => setRecadoAberto(null)} />}
 
       {/* 3 cards do dia */}
       {loadingAulas ? <Loading /> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '16px' }}>
           <CardResumoDia titulo="Aulas Hoje" valor={aulasHojeTodas.length} cor="var(--color-action-primary)" onClick={() => navigate('/aulas')} />
-          <CardResumoDia titulo="Ao Vivo Agora" valor={aoVivoAgora.length} cor="var(--color-state-success)" pulsando={aoVivoAgora.length > 0} onClick={() => navigate('/aulas')} />
           <CardResumoDia titulo="Amanhã" valor={aulasAmanha.length} cor="var(--color-state-info)" onClick={() => navigate('/aulas', { state: { data: amanha } })} />
         </div>
       )}
+
+      {/* Ao vivo: quem da equipe está em quadra agora */}
+      <AoVivoEquipe />
 
       {/* Financeiro */}
       <div style={{ backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '14px', padding: '16px', border: '1px solid rgba(165,76,46,0.15)', marginBottom: '16px' }}>
@@ -522,7 +512,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
                       disabled={!info}
                       style={{
                         minHeight: '46px', borderRadius: '6px', cursor: info ? 'pointer' : 'default',
-                        backgroundColor: info ? 'var(--color-surface-dark-raised)' : 'rgba(255,255,255,0.02)',
+                        backgroundColor: info?.ehSubstituicao ? 'color-mix(in srgb, var(--color-state-info) 38%, var(--color-surface-dark-raised))' : info ? 'var(--color-surface-dark-raised)' : 'rgba(255,255,255,0.02)',
                         border: `1px solid ${info ? info.corBorda : 'transparent'}`,
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                         gap: '2px', padding: '3px', overflow: 'hidden', boxSizing: 'border-box',
@@ -530,6 +520,9 @@ export function DashboardProfessor({ professorIdProp } = {}) {
                     >
                       {info && (
                         <>
+                          {info.ehSubstituicao && (
+                            <span style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '0.4px', color: 'var(--color-text-dark-primary)', textTransform: 'uppercase' }}>Subst.</span>
+                          )}
                           {info.ehOverride ? (
                             <>
                               <span style={{ fontSize: '8px', color: 'var(--color-text-dark-muted)', textDecoration: 'line-through', lineHeight: 1.2, textAlign: 'center', wordBreak: 'break-word', maxWidth: '100%' }}>
@@ -572,6 +565,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
           <Legenda tipo="borda" cor="var(--color-action-primary)" label="Borda: sua turma, vazia" />
           <Legenda tipo="borda" cor="var(--color-state-info)" label="Borda: virou outra aula hoje" />
           <Legenda tipo="borda" cor="var(--color-state-danger)" label="Borda: removida" />
+          <Legenda tipo="borda" cor="var(--color-state-info)" label="Fundo azul (SUBST.): você substituindo, não é sua turma" />
         </div>
         <div style={{ display: 'flex', gap: '14px', marginTop: '6px', flexWrap: 'wrap' }}>
           <Legenda tipo="sublinhado" cor="var(--color-state-success)" label="Nº: ainda tem vaga" />
@@ -724,6 +718,9 @@ function ModalCelula({ celulaAtiva, onClose }) {
             <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>{nomeExibir}</div>
             {info.ehOverride && (
               <div style={{ fontSize: '11px', color: 'var(--color-state-info)', marginTop: '2px' }}>Substituindo {info.nomeRecorrente} nessa semana</div>
+            )}
+            {info.ehSubstituicao && (
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-state-info)', marginTop: '2px' }}>Você está substituindo nesta aula. Não é uma turma da sua grade oficial.</div>
             )}
             <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>{info.quadraNome}</div>
           </div>

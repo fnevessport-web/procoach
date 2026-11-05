@@ -10,7 +10,7 @@ import useAppStore from '../../store/useAppStore'
 import { Loading } from '../../components/ui/Loading'
 import { FotoProfessor } from '../../components/ui/FotoProfessor'
 import { ICONES_MODALIDADES, LOGO_EMPRESA, EMPRESAS, horarioParaMinutos } from '../../constants/modalidades'
-import { nomeCurto } from '../../lib/nomes'
+import { nomeProfessor } from '../../lib/nomes'
 
 function useAgoraEmSegundos() {
   const [agora, setAgora] = useState(() => Date.now())
@@ -344,7 +344,7 @@ export function HomePage() {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
                   <FotoProfessor src={aula.professores?.foto_url} nome={aula.professores?.nome} />
                   <span style={{ fontSize: '9px', color: 'var(--color-text-dark-secondary)', maxWidth: '52px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {nomeCurto(aula.professores?.nome)}
+                    {nomeProfessor(aula.professores)}
                   </span>
                 </div>
 
@@ -459,7 +459,7 @@ export function HomePage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: ativo ? 'var(--color-state-success)' : 'var(--color-text-dark-muted)', flexShrink: 0 }} />
                     <span style={{ fontSize: '12px', color: 'var(--color-text-dark-primary)', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {nomeCurto(prof.nome)}
+                      {nomeProfessor(prof)}
                     </span>
                   </div>
                   <span style={{ fontSize: '11px', color: ativo ? 'var(--color-action-primary)' : 'var(--color-text-dark-secondary)' }}>

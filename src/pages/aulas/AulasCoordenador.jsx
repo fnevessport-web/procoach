@@ -4,7 +4,7 @@ import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, UserPlus, Pencil, Check, X, AlertTriangle, FileText, Zap, MessageCircle, Download, Clock, Crown, Info, History, Repeat, CloudRain, Trash2, Save, User, MessageSquareText, DollarSign, Plus, Minus, CalendarDays, PartyPopper, StickyNote } from 'lucide-react'
 import { horarioParaMinutos, chuvaPagaProfessor, capacidadeDoNivel, PROFESSOR_SUBSTITUTO_ID } from '../../constants/modalidades'
-import { nomeCurto } from '../../lib/nomes'
+import { nomeCurto, nomeProfessor } from '../../lib/nomes'
 import { getFeriado } from '../../constants/feriados'
 import { useAulas, useAtualizarStatusAula, useSalvarPresencas, confirmarAulasElegiveis, gerarReposicoesPorCancelamento, useAvisarFalta } from '../../hooks/useAulas'
 import { useVisualViewportHeight } from '../../hooks/useVisualViewportHeight'
@@ -1624,6 +1624,21 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
     return aulaCelula.presencas?.some(p => p.alerta_nivel ?? p.alunos?.alerta_nivel)
   }
 
+  // Modo "Minhas Aulas": a aula é da grade oficial do professor (titular da turma), ou ele está
+  // cobrindo outro professor (substituto), ou entrou como 2º professor. Pedido do coordenador
+  // em 05/11/2026: o professor precisa enxergar separado o que é dele e o que é substituição.
+  function papelDoProfessor(a) {
+    if (!professorProprioId || !a?.turma_id) return null
+    if (a.professor_auxiliar_id === professorProprioId && a.professor_executou_id !== professorProprioId) return 'auxiliar'
+    return a.turmas?.professor_titular_id === professorProprioId ? 'titular' : 'substituto'
+  }
+  function nomeTitularDaTurma(a) {
+    const id = a?.turmas?.professor_titular_id
+    if (!id) return null
+    const p = todoProfessores?.find(x => x.id === id) || (a.prof_titular?.id === id ? a.prof_titular : null)
+    return p ? nomeProfessor(p) : null
+  }
+
   function temReposicao(aulaCelula) {
     return aulaCelula.presencas?.some(p => p.tipo_participacao === 'reposicao')
   }
@@ -1988,6 +2003,19 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
         </div>
       )}
 
+      {professorProprioId && !isLoading && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px', alignItems: 'center', fontSize: '11px', fontWeight: 600, color: 'var(--color-text-light-secondary)', margin: '2px 0 10px', padding: '8px 12px', borderRadius: '10px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '14px', height: '10px', borderRadius: '3px', border: '1px solid rgba(165,76,46,0.3)', backgroundColor: 'var(--color-surface-light-base)' }} />
+            Sua grade oficial (titular)
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '14px', height: '10px', borderRadius: '3px', border: '1px solid var(--color-state-info)', backgroundColor: 'color-mix(in srgb, var(--color-state-info) 14%, var(--color-surface-light-overlay))' }} />
+            <Repeat size={11} color="var(--color-state-info)" /> Substituição (só nesse dia)
+          </span>
+        </div>
+      )}
+
       {isLoading ? <Loading /> : (
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <div style={{ minWidth: `${50 + quadrasParaGrade.length * 140}px`, position: 'relative' }}>
@@ -2121,6 +2149,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                   const semProfInativa = semProfessor && semAluno
 
                   const isHighlighted = highlightedAulaId === aulaCelula.id
+                  const papel = papelDoProfessor(aulaCelula)
+                  const ehSubst = papel === 'substituto' || papel === 'auxiliar'
 
                   return (
                     <button key={quadra} id={`aula-cel-${aulaCelula.id}`} onClick={() => abrirAula(aulaCelula)} style={{
@@ -2130,8 +2160,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                       // colorido/translúcido ficava escuro sobre o verde do app e ruim de ler.
                       backgroundColor: isHighlighted ? 'color-mix(in srgb, var(--color-action-primary) 22%, var(--color-surface-light-overlay))'
                         : semProfessor ? 'var(--color-surface-light-overlay)'
+                        : ehSubst ? 'color-mix(in srgb, var(--color-state-info) 14%, var(--color-surface-light-overlay))'
                         : bgColor,
-                      borderRadius: '10px', border: `1px solid ${isHighlighted ? 'var(--color-action-primary)' : destaqueSemProf ? 'var(--color-action-primary)' : borderColor}`,
+                      borderRadius: '10px', border: `1px solid ${isHighlighted ? 'var(--color-action-primary)' : destaqueSemProf ? 'var(--color-action-primary)' : ehSubst ? 'var(--color-state-info)' : borderColor}`,
                       padding: '8px 10px', cursor: 'pointer', textAlign: 'left',
                       minHeight: '72px', boxSizing: 'border-box',
                       display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
@@ -2140,6 +2171,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                         {isAv
                           ? <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', backgroundColor: 'rgba(165,76,46,0.15)', color: 'var(--color-action-primary)' }}>avulsa</span>
+                          : ehSubst
+                          ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', backgroundColor: 'var(--color-state-info)', color: 'var(--color-action-on-primary)' }}>
+                              <Repeat size={8} /> {papel === 'auxiliar' ? '2º professor' : 'substituindo'}
+                            </span>
                           : semAluno
                           ? <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', backgroundColor: 'rgba(30,43,36,0.06)', color: 'var(--color-text-light-secondary)' }}>sem aluno</span>
                           : <span />
@@ -2162,8 +2197,12 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                         {semProfessor
                           ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: 700, fontSize: '11px' }}><AlertTriangle size={12} strokeWidth={2.5} /> sem professor</span>
                           : <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                              {aulaCelula.eh_substituicao && <Repeat size={9} title="Substituição" style={{ flexShrink: 0 }} />}
-                              {nomeCurto(aulaCelula.substituto_nome || aulaCelula.professores?.nome)}
+                              {papel === 'substituto'
+                                ? <span style={{ color: 'var(--color-state-info)', fontWeight: 600 }}>{nomeTitularDaTurma(aulaCelula) ? `no lugar de ${nomeTitularDaTurma(aulaCelula)}` : 'turma sem titular'}</span>
+                                : <>
+                                    {aulaCelula.eh_substituicao && <Repeat size={9} title="Substituição" style={{ flexShrink: 0 }} />}
+                                    {aulaCelula.substituto_nome ? nomeCurto(aulaCelula.substituto_nome) : nomeProfessor(aulaCelula.professores)}
+                                  </>}
                             </span>
                         }
                       </div>
@@ -2212,7 +2251,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                   {getNivel(aula) || (isAvulsa ? 'Aula Avulsa' : aula.turmas?.nome)}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-light-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <span>{getQuadraNome(aula)} · {getHorario(aula)} · Prof: {aula.substituto_nome ? `${aula.substituto_nome} (substituto, R$ ${Number(aula.substituto_valor || 0).toFixed(2).replace('.', ',')})` : aula.professores?.nome}{aula.auxiliar ? ` + ${aula.auxiliar.nome}` : ''}</span>
+                  <span>{getQuadraNome(aula)} · {getHorario(aula)} · Prof: {aula.substituto_nome ? `${aula.substituto_nome} (substituto, R$ ${Number(aula.substituto_valor || 0).toFixed(2).replace('.', ',')})` : nomeProfessor(aula.professores)}{aula.auxiliar ? ` + ${nomeProfessor(aula.auxiliar)}` : ''}</span>
                   {aula.eh_substituicao && (
                     <span
                       title={aula.prof_titular?.nome ? `Titular da turma: ${aula.prof_titular.nome}` : 'Substituição'}
@@ -2495,6 +2534,19 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     Cancelar
                   </button>
                 </div>
+              </div>
+            )}
+
+            {(papelDoProfessor(aula) === 'substituto' || papelDoProfessor(aula) === 'auxiliar') && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '10px 12px', marginBottom: '14px', borderRadius: '10px', border: '1px solid var(--color-state-info)', backgroundColor: 'color-mix(in srgb, var(--color-state-info) 12%, var(--color-surface-light-overlay))', fontSize: '12px', color: 'var(--color-text-light-primary)', lineHeight: 1.45 }}>
+                <Repeat size={15} color="var(--color-state-info)" style={{ flexShrink: 0, marginTop: '1px' }} />
+                <span>
+                  {papelDoProfessor(aula) === 'auxiliar'
+                    ? <><b>Você é o 2º professor</b> nesta aula. O titular da aula é {aula.professores?.nome || 'outro professor'}.</>
+                    : nomeTitularDaTurma(aula)
+                      ? <><b>Você está substituindo</b> o(a) professor(a) <b>{nomeTitularDaTurma(aula)}</b> só nesta aula. Ela não faz parte da sua grade oficial.</>
+                      : <><b>Você está cobrindo esta aula.</b> A turma está sem professor titular, então ela não faz parte da sua grade oficial.</>}
+                </span>
               </div>
             )}
 

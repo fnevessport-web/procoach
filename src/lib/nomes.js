@@ -7,3 +7,10 @@ export function nomeCurto(nomeCompleto) {
   if (partes.length <= 1) return partes[0] || ''
   return `${partes[0]} ${partes[partes.length - 1]}`
 }
+
+// Nome de professor como a equipe chama ele: apelido cadastrado (ex.: "Daniel", "Binho",
+// "Guedes") e, sem apelido, primeiro + último nome. Pedido do coordenador em 05/11/2026.
+export function nomeProfessor(p) {
+  if (!p) return ''
+  return (p.apelido || '').trim() || nomeCurto(p.nome)
+}
