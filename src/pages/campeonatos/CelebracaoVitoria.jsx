@@ -6,7 +6,7 @@ import { Avatar } from './componentes'
 // Animação do telão quando um jogo termina:
 //   1. zoom: cartão grande no meio da tela com as fotos dos vencedores, "Vitória!" e confete;
 //   2. voltar: o cartão encolhe e voa até o quadrado do jogo na chave;
-//   3. linha: uma linha verde-lima "corre" do jogo até o próximo jogo da dupla na chave.
+//   3. linha: só uma linha verde-lima "corre" do jogo até o próximo jogo da dupla na chave.
 // Coordenadas no palco de 1920x1080 da TV (o palco é escalado; `escala` desfaz isso).
 
 const LARGURA = 980
@@ -47,7 +47,7 @@ export function CelebracaoVitoria({ jogo, jogos, duplaPorId, palco, escala, onFi
       const r = el.getBoundingClientRect()
       return { x: (r.left - b.left) / escala, y: (r.top - b.top) / escala, w: r.width / escala, h: r.height / escala }
     }
-    const t1 = setTimeout(() => { setAlvo(medir(jogo.id)); setFase('voltar') }, 5000)
+    const t1 = setTimeout(() => { setAlvo(medir(jogo.id)); setFase('voltar') }, 7000)
     const t2 = setTimeout(() => {
       const a = medir(jogo.id)
       const b = proximo ? medir(proximo.id) : null
@@ -58,11 +58,11 @@ export function CelebracaoVitoria({ jogo, jogos, duplaPorId, palco, escala, onFi
         const y1 = a.y + a.h / 2
         const y2 = b.y + b.h / 2
         const meio = (x1 + x2) / 2
-        setLinha({ d: `M ${x1} ${y1} H ${meio} V ${y2} H ${x2}`, alvo: b, origem: a })
+        setLinha({ d: `M ${x1} ${y1} H ${meio} V ${y2} H ${x2}` })
       }
       setFase('linha')
-    }, 6000)
-    const t3 = setTimeout(onFim, proximo ? 10000 : 6600)
+    }, 8000)
+    const t3 = setTimeout(onFim, proximo ? 11500 : 8600)
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
     // roda uma vez por jogo celebrado
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,9 +72,7 @@ export function CelebracaoVitoria({ jogo, jogos, duplaPorId, palco, escala, onFi
     if (!linha) return null
     return (
       <svg width={1920} height={1080} style={{ position: 'absolute', inset: 0, zIndex: 30, pointerEvents: 'none', overflow: 'visible' }}>
-        <rect x={linha.origem.x - 4} y={linha.origem.y - 4} width={linha.origem.w + 8} height={linha.origem.h + 8} rx={12} fill="none" stroke="var(--color-brand-lima)" strokeWidth={3} className="cp-pulso" />
         <path d={linha.d} pathLength={1} fill="none" stroke="var(--color-brand-lima)" strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" className="cp-linha" style={{ filter: 'drop-shadow(0 0 8px var(--color-brand-lima))' }} />
-        <rect x={linha.alvo.x - 6} y={linha.alvo.y - 6} width={linha.alvo.w + 12} height={linha.alvo.h + 12} rx={14} fill="none" stroke="var(--color-brand-lima)" strokeWidth={4} className="cp-alvo" style={{ filter: 'drop-shadow(0 0 10px var(--color-brand-lima))' }} />
       </svg>
     )
   }

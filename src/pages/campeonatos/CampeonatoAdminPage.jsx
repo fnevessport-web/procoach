@@ -12,7 +12,7 @@ import {
   rotuloFase, rotuloFaseCurto, ordenarJogos, normalizar, indiceSetAtual, duplaIncompleta,
 } from '../../lib/campeonato'
 import { Avatar, AvataresDupla, Chave, SorteioAoVivo, QrCode, Marcas } from './componentes'
-import { rotuloStatusCampeonato, urlPublica, urlTV } from './util'
+import { rotuloStatusCampeonato, urlPublica, urlTV, proximosPorQuadra } from './util'
 import { EditorFoto } from './EditorFoto'
 
 // Gestão de um campeonato: operação ao vivo das quadras (placar com +/-), atletas e check-in,
@@ -161,6 +161,26 @@ function AbaOperacao({ dados, salvarJogo }) {
     if (faltando) return toast.error(`Defina o(a) parceiro(a) da dupla nº ${faltando.numero} antes de iniciar o jogo.`)
     return salvarJogo(jogo.id, { status: 'ao_vivo', quadra, iniciado_em: new Date().toISOString() })
   }
+  // Próximo jogo de cada quadra (verde na chave) e troca de posição na fila.
+  const proximosMapa = proximosPorQuadra(campeonato, jogos)
+  const proximaDaQuadra = q => prontos.find(x => x.quadra === q)
+  const tornarProximo = (j, q) => {
+    const atual = proximaDaQuadra(q)
+    if (!atual || atual.id === j.id) {
+      return rodar(async () => {
+        await aplicarPatchesJogos([{ id: j.id, patch: { quadra: q } }])
+        await recarregar()
+      }, `Jogo ${j.ordem} é o próximo na ${q}`)
+    }
+    return rodar(async () => {
+      await aplicarPatchesJogos([
+        { id: j.id, patch: { ordem: atual.ordem, horario: atual.horario, quadra: q } },
+        { id: atual.id, patch: { ordem: j.ordem, horario: j.horario, quadra: j.quadra } },
+      ])
+      await recarregar()
+    }, `Agora o próximo na ${q} é o de ${nomesDupla(duplaPorId.get(j.dupla_a_id))}`)
+  }
+
   const completar = (dupla, campo, atletaId) => rodar(async () => {
     const { error } = await supabase.from('campeonato_duplas').update({ [campo]: atletaId || null }).eq('id', dupla.id)
     if (error) throw error
@@ -212,10 +232,14 @@ function AbaOperacao({ dados, salvarJogo }) {
       </div>
 
       <Painel titulo={`Próximos jogos · ${prontos.length}`}>
+        <div style={{ fontSize: 12, color: 'var(--color-text-dark-muted)', marginBottom: 10 }}>O jogo marcado como <b style={{ color: 'var(--color-state-success)' }}>PRÓXIMO</b> fica em verde na chave da TV. Para mudar, toque em "Próximo na Quadra X" em outro jogo: os dois trocam de lugar na fila (número, horário e quadra).</div>
         {!prontos.length && <div style={{ fontSize: 14, color: 'var(--color-text-dark-muted)' }}>Nenhum jogo com as duas duplas definidas esperando quadra.</div>}
         <div style={{ display: 'grid', gap: 8 }}>
-          {prontos.map(j => (
-            <div key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', borderRadius: 12, backgroundColor: 'var(--color-surface-dark-overlay)' }}>
+          {prontos.map(j => {
+            const proxQuadra = proximosMapa.get(j.id)
+            return (
+            <div key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', borderRadius: 12, backgroundColor: proxQuadra ? 'color-mix(in srgb, var(--color-state-success) 14%, var(--color-surface-dark-overlay))' : 'var(--color-surface-dark-overlay)', border: `1px solid ${proxQuadra ? 'var(--color-state-success)' : 'transparent'}` }}>
+              {proxQuadra && <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.5px', padding: '3px 8px', borderRadius: 999, backgroundColor: 'var(--color-state-success)', color: 'var(--color-text-dark-primary)', whiteSpace: 'nowrap' }}>▶ PRÓXIMO · {proxQuadra.toUpperCase()}</span>}
               <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--color-text-dark-muted)', minWidth: 54 }}>Jogo {j.ordem}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-dark-secondary)', minWidth: 110 }}>{rotuloFaseCurto(j.fase)} · {j.quadra} · {j.horario}</span>
               <span style={{ flex: 1, minWidth: 200, fontSize: 14, fontWeight: 600 }}>{nomesDupla(duplaPorId.get(j.dupla_a_id))} <span style={{ color: 'var(--color-text-dark-muted)' }}>x</span> {nomesDupla(duplaPorId.get(j.dupla_b_id))}</span>
@@ -224,8 +248,14 @@ function AbaOperacao({ dados, salvarJogo }) {
                   <Play size={13} />{q}
                 </Botao>
               ))}
+              <span style={{ display: 'flex', gap: 6, flexBasis: '100%', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                {quadras.filter(q => proximaDaQuadra(q)?.id !== j.id).map(q => (
+                  <Botao key={q} tamanho="sm" variante="fantasma" onClick={() => tornarProximo(j, q)}><ChevronUp size={13} />Próximo na {q}</Botao>
+                ))}
+              </span>
             </div>
-          ))}
+            )
+          })}
         </div>
       </Painel>
 
