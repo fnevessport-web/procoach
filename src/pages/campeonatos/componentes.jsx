@@ -313,14 +313,32 @@ export function Chave({ campeonato, jogos, duplas, duplaPorId, seguindo, espelha
       {rodadasLado.map(r => (
         <ColunaChave key={`e${r}`} titulo={rotuloFaseCurto(daRodada(r)[0]?.fase)} jogos={metade(r, true)} ehPrimeira={r === 1} ehUltima={false} props={props} lado="cp-dir" />
       ))}
-      <div className="cp-col" style={{ flex: '1.15 1 0' }}>
-        <div className="cp-col-titulo" style={{ color: 'var(--color-brand-lima)' }}>Final</div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 * escala, padding: `0 ${10 * escala}px` }}>
+      {/* Palco da final: coluna central mais larga, troféu, "Grande Final" e cartão maior com
+          brilho verde-lima. 3º lugar embaixo, discreto. */}
+      <div className="cp-col" style={{ flex: '1.6 1 0' }}>
+        <div className="cp-col-titulo" style={{ visibility: 'hidden' }}>Final</div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16 * escala, padding: `0 ${14 * escala}px` }}>
           <CampeaoBox jogos={jogos} duplaPorId={duplaPorId} escala={escala} />
-          {final && <JogoChave jogo={final} {...props} />}
+          {final && (
+            <div style={{
+              padding: `${14 * escala}px ${12 * escala}px ${12 * escala}px`, borderRadius: 18 * escala,
+              background: 'linear-gradient(165deg, color-mix(in srgb, var(--color-brand-lima) 16%, var(--color-surface-dark-raised)), var(--color-surface-dark-raised) 72%)',
+              border: '1.5px solid var(--color-brand-lima)',
+              boxShadow: '0 0 42px color-mix(in srgb, var(--color-brand-lima) 22%, transparent)',
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 * escala, marginBottom: 10 * escala }}>
+                <Trophy size={26 * escala} color="var(--color-brand-lima)" />
+                <div className="cp-display" style={{ fontSize: 22 * escala, fontWeight: 700, lineHeight: 1.1, whiteSpace: 'nowrap' }}>Grande Final</div>
+                {final.status === 'agendado' && final.horario && (
+                  <div style={{ fontSize: 10 * escala, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--color-text-dark-muted)', whiteSpace: 'nowrap' }}>{final.quadra} · {final.horario}</div>
+                )}
+              </div>
+              <JogoChave jogo={final} {...props} escala={escala * 1.35} />
+            </div>
+          )}
           {terceiro && (
-            <div style={{ marginTop: 6 * escala }}>
-              <div className="cp-col-titulo" style={{ paddingBottom: 4 }}>3º lugar</div>
+            <div style={{ opacity: 0.9 }}>
+              <div className="cp-col-titulo" style={{ paddingBottom: 4 }}>Disputa de 3º lugar</div>
               <JogoChave jogo={terceiro} {...props} />
             </div>
           )}
