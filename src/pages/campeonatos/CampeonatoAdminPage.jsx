@@ -101,7 +101,7 @@ export function CampeonatoAdminPage() {
     for (const m of mudancas) juntos.set(m.id, { ...(juntos.get(m.id) || {}), ...m.patch })
     return rodar(async () => {
       await aplicarPatchesJogos([...juntos].map(([id2, p]) => ({ id: id2, patch: p })))
-      await recarregar()
+      await recarregar(['jogos'])
     }, silencioso ? null : 'Salvo')
   }
 
@@ -693,7 +693,7 @@ function AbaSorteio({ dados, irPara }) {
   useEffect(() => {
     if (!emSorteio || !auto || revelados >= duplas.length) return
     const t = setTimeout(() => {
-      avancarRevelados(campeonato.id, revelados, revelados + 1).then(recarregar).catch(e => toast.error(e.message))
+      avancarRevelados(campeonato.id, revelados, revelados + 1).then(() => recarregar(['camp'])).catch(e => toast.error(e.message))
     }, segundos * 1000)
     return () => clearTimeout(t)
   }, [emSorteio, auto, revelados, duplas.length, segundos, campeonato.id, recarregar])
@@ -793,7 +793,7 @@ function AbaSorteio({ dados, irPara }) {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="cp-display" style={{ fontSize: 22, fontWeight: 700, marginRight: 8 }}>{revelados} de {duplas.length}</span>
             <Botao onClick={() => setAuto(v => !v)}>{auto ? <><Pause size={15} />Pausar</> : <><Play size={15} />Retomar</>}</Botao>
-            <Botao disabled={revelados >= duplas.length} onClick={() => rodar(() => avancarRevelados(campeonato.id, revelados, revelados + 1).then(recarregar))}><SkipForward size={15} />Próxima dupla</Botao>
+            <Botao disabled={revelados >= duplas.length} onClick={() => rodar(() => avancarRevelados(campeonato.id, revelados, revelados + 1).then(() => recarregar(['camp'])))}><SkipForward size={15} />Próxima dupla</Botao>
             <Botao disabled={revelados >= duplas.length} onClick={() => { setAuto(false); rodar(() => atualizarCampeonato(campeonato.id, { sorteio_revelados: duplas.length }).then(recarregar)) }}><FastForward size={15} />Revelar todas</Botao>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text-dark-secondary)' }}>
               a cada
