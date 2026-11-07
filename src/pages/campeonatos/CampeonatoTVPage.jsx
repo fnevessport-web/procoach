@@ -6,6 +6,7 @@ import { nomeCurto, iniciais, rotuloFaseCurto, ordenarJogos } from '../../lib/ca
 import { Marcas, CartaoJogo, Chave, SorteioAoVivo, QrCode, AvataresDupla } from './componentes'
 import { urlPublica, duplasOcultas, proximosPorQuadra } from './util'
 import { CelebracaoVitoria } from './CelebracaoVitoria'
+import { TelaPodio } from './PodioTV'
 
 // Telão do clube. Desenhado em 1920x1080 e escalado para caber em qualquer TV.
 // Antes do sorteio: boas-vindas + QR code + inscritos. Durante o sorteio: sorteio em tela cheia.
@@ -152,6 +153,13 @@ function TelaJogos({ dados, escala }) {
   const quadras = [...new Set([...(campeonato.quadras || []), ...aoVivo.map(j => j.quadra).filter(Boolean)])]
   const proximos = ordenados.filter(j => j.status === 'agendado' && j.dupla_a_id && j.dupla_b_id)
   const aguardando = ordenados.filter(j => j.status === 'agendado' && !(j.dupla_a_id && j.dupla_b_id))
+
+  // Fim do torneio (final e 3º lugar decididos): depois da animação da final, abre o pódio.
+  const finalJogo = jogos.find(j => j.fase === 'final')
+  const terceiroJogo = jogos.find(j => j.fase === 'terceiro')
+  const decidido = j => j && ['finalizado', 'wo'].includes(j.status) && j.vencedor_id
+  const terminou = decidido(finalJogo) && (!terceiroJogo || decidido(terceiroJogo))
+  if (terminou && !celebrar) return <TelaPodio campeonato={campeonato} jogos={jogos} duplaPorId={duplaPorId} />
 
   return (
     <div ref={palco} style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>

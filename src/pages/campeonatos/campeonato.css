@@ -137,3 +137,33 @@
   50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-state-success) 45%, transparent); }
 }
 .cp-proximo { animation: cp-proximo 2.2s ease-in-out infinite; }
+
+/* Pódio do telão */
+@keyframes cp-subir {
+  0% { transform: scaleY(0); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: scaleY(1); opacity: 1; }
+}
+.cp-subir { transform-origin: bottom center; animation: cp-subir 1s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+
+@keyframes cp-flutuar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.cp-flutuar { animation: cp-flutuar 4.5s ease-in-out infinite; }
+
+@keyframes cp-varrer {
+  0% { transform: translateX(-120%) skewX(-18deg); }
+  35%, 100% { transform: translateX(260%) skewX(-18deg); }
+}
+.cp-varrer {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-brand-areia) 28%, transparent), transparent);
+  animation: cp-varrer 4.8s ease-in-out infinite;
+}
+
+@keyframes cp-holofote {
+  0%, 100% { transform: rotate(-4deg); opacity: 0.85; }
+  50% { transform: rotate(4deg); opacity: 1; }
+}
+.cp-holofote { transform-origin: top center; animation: cp-holofote 9s ease-in-out infinite; }
