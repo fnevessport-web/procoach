@@ -1,7 +1,7 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Search, Camera, X, Plus, Star, Radio, GitBranch, Users, UserRound, Check, CalendarClock, ChevronRight, MapPin } from 'lucide-react'
+import { Search, Camera, X, Plus, Star, Radio, GitBranch, Users, UserRound, Check, CalendarClock, ChevronRight, MapPin, Phone, MessageCircle, Lock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCampeonato } from '../../hooks/useCampeonato'
 import { nomeCurto, normalizar, ordenarJogos } from '../../lib/campeonato'
@@ -70,6 +70,10 @@ export function CampeonatoPublicoPage() {
 
         {campeonato.status === 'inscricoes' && prefs?.eu && atletaPorId.get(prefs.eu) && (aba === 'jogos' || aba === 'eu') && (
           <CardCheckin atleta={atletaPorId.get(prefs.eu)} onMudou={dados.recarregar} />
+        )}
+
+        {prefs?.eu && atletaPorId.get(prefs.eu) && aba !== 'chave' && (
+          <CardParceiro campeonato={campeonato} eu={atletaPorId.get(prefs.eu)} duplas={duplas} atletaPorId={atletaPorId} slug={slug} />
         )}
 
         {aba === 'jogos' && <AbaJogos dados={dados} seguindo={seguindo} />}
@@ -303,6 +307,99 @@ function CardCheckin({ atleta, onMudou }) {
       <button onClick={() => marcar(true)} disabled={salvando} style={{ ...botaoPrincipal, opacity: salvando ? 0.6 : 1 }}>
         {salvando ? 'Confirmando...' : 'Cheguei! Fazer meu check-in'}
       </button>
+    </div>
+  )
+}
+
+// ---------- sua dupla (contato do parceiro) ----------
+
+function formatarTelefone(t) {
+  const d = String(t || '').replace(/\D/g, '').replace(/^55/, '')
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return t
+}
+
+// Depois que a dupla é revelada no sorteio, mostra foto e nome do parceiro e libera o WhatsApp
+// dele. O telefone vem de uma função fechada no banco: só sai depois de a pessoa confirmar os 4
+// últimos dígitos do PRÓPRIO telefone de inscrição (fica lembrado neste aparelho).
+function CardParceiro({ campeonato, eu, duplas, atletaPorId, slug }) {
+  const minha = duplas.find(d => d.atleta1_id === eu.id || d.atleta2_id === eu.id)
+  const revelada = !!minha && !(campeonato.status === 'sorteio' && minha.numero > (campeonato.sorteio_revelados || 0))
+  const parceiroId = minha ? (minha.atleta1_id === eu.id ? minha.atleta2_id : minha.atleta1_id) : null
+  const parceiro = parceiroId ? atletaPorId.get(parceiroId) : null
+  const chaveFinal = `campeonato:${slug}:final:${eu.id}`
+  const [contato, setContato] = useState(null)
+  const [pedindo, setPedindo] = useState(false)
+  const [final, setFinal] = useState('')
+  const [carregando, setCarregando] = useState(false)
+
+  // Se este aparelho já confirmou os dígitos antes, busca o contato sozinho.
+  useEffect(() => {
+    if (!revelada || !parceiroId) return
+    let salvo
+    try { salvo = localStorage.getItem(chaveFinal) } catch { salvo = null }
+    if (!salvo) return
+    let vivo = true
+    supabase.rpc('campeonato_contato_parceiro', { p_atleta_id: eu.id, p_final: salvo }).then(({ data, error }) => {
+      if (vivo && !error && data?.[0]) setContato(data[0])
+    })
+    return () => { vivo = false }
+  }, [revelada, parceiroId, eu.id, chaveFinal])
+
+  if (!revelada || !parceiro) return null
+
+  const buscar = async () => {
+    setCarregando(true)
+    const { data, error } = await supabase.rpc('campeonato_contato_parceiro', { p_atleta_id: eu.id, p_final: final })
+    setCarregando(false)
+    if (error) return toast.error(error.message)
+    try { localStorage.setItem(chaveFinal, final) } catch { /* sem armazenamento: pede de novo na próxima */ }
+    setContato(data?.[0] || { nome: parceiro.nome, telefone: null })
+    setPedindo(false)
+  }
+
+  const primeiro = parceiro.nome.split(' ')[0]
+  const mensagem = `Oi ${primeiro}! Sou ${eu.nome.split(' ')[0]}, sua dupla no ${campeonato.nome}. Vamos nos encontrar para conversar antes do nosso jogo? Onde você está?`
+  const tel = contato?.telefone ? String(contato.telefone).replace(/\D/g, '') : null
+  const verde = 'rgb(37, 211, 102)' // verde do WhatsApp (cor de marca de terceiro)
+
+  return (
+    <div className="cp-entrar" style={{ marginBottom: 16, padding: 16, borderRadius: 18, border: `1px solid ${COR_DESTAQUE}`, background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-brand-lima) 14%, var(--color-surface-dark-raised)), var(--color-surface-dark-raised))' }}>
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '2.5px', color: COR_DESTAQUE }}>SUA DUPLA · Nº {minha.numero}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 10 }}>
+        <Avatar atleta={parceiro} tamanho={72} destaque />
+        <div style={{ minWidth: 0 }}>
+          <div className="cp-display" style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.15 }}>{parceiro.nome}</div>
+          {tel && <div style={{ fontSize: 14, color: 'var(--color-text-dark-secondary)', marginTop: 4 }}>{formatarTelefone(tel)}</div>}
+        </div>
+      </div>
+
+      {tel ? (
+        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <a href={`https://wa.me/${tel}?text=${encodeURIComponent(mensagem)}`} target="_blank" rel="noreferrer" style={{ flex: 1.6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 0', borderRadius: 12, backgroundColor: verde, color: 'var(--color-brand-verde-court)', fontWeight: 800, fontSize: 15, textDecoration: 'none' }}>
+            <MessageCircle size={18} />Chamar no WhatsApp
+          </a>
+          <a href={`tel:+${tel}`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px 0', borderRadius: 12, border: '1px solid var(--color-border-dark)', color: 'var(--color-text-dark-primary)', fontWeight: 700, fontSize: 15, textDecoration: 'none' }}>
+            <Phone size={16} />Ligar
+          </a>
+        </div>
+      ) : contato ? (
+        <div style={{ marginTop: 12, fontSize: 13, color: 'var(--color-text-dark-secondary)' }}>O telefone de {primeiro} não está no cadastro. Procure a mesa do torneio.</div>
+      ) : pedindo ? (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Lock size={13} />Para proteger os contatos, digite os 4 últimos dígitos do SEU telefone da inscrição.</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input value={final} onChange={e => setFinal(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" placeholder="0000" autoFocus
+              style={{ width: 110, boxSizing: 'border-box', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--color-border-dark)', backgroundColor: 'var(--color-surface-dark-overlay)', color: 'var(--color-text-dark-primary)', fontSize: 20, letterSpacing: '6px', textAlign: 'center', outline: 'none' }} />
+            <button onClick={buscar} disabled={final.length < 4 || carregando} style={{ ...botaoPrincipal, flex: 1, width: 'auto', opacity: final.length < 4 || carregando ? 0.5 : 1 }}>{carregando ? 'Conferindo...' : 'Ver contato'}</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setPedindo(true)} style={{ ...botaoPrincipal, marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <MessageCircle size={18} />Ver contato de {primeiro} para combinar
+        </button>
+      )}
     </div>
   )
 }

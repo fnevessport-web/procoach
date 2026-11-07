@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Tv, Smartphone, Copy, Radio, Users, Shuffle, ListOrdered, Settings, Plus, Minus, Play,
-  Trash2, Camera, Check, RotateCcw, ChevronUp, ChevronDown, UserPlus, Pause, SkipForward, FastForward, Flag, ExternalLink, Search, X,
+  Trash2, Camera, Check, RotateCcw, ChevronUp, ChevronDown, UserPlus, Phone, Pause, SkipForward, FastForward, Flag, ExternalLink, Search, X,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCampeonato, aplicarPatchesJogos } from '../../hooks/useCampeonato'
@@ -334,7 +334,31 @@ function AbaAtletas({ dados }) {
   const { campeonato, atletas, recarregar } = dados
   const [lista, setLista] = useState('inscritos')
   const [busca, setBusca] = useState('')
-  const [novo, setNovo] = useState({ nome: '', genero: 'F', situacao: 'inscrito' })
+  const [novo, setNovo] = useState({ nome: '', genero: 'F', situacao: 'inscrito', telefone: '' })
+  // Telefones ficam numa tabela fechada (só a gestão lê); usados no "Sua dupla" do link público.
+  const [contatos, setContatos] = useState(new Map())
+  const [versaoContatos, setVersaoContatos] = useState(0)
+  useEffect(() => {
+    let vivo = true
+    supabase.from('campeonato_contatos').select('atleta_id, telefone').then(({ data }) => {
+      if (vivo && data) setContatos(new Map(data.map(c => [c.atleta_id, c.telefone])))
+    })
+    return () => { vivo = false }
+  }, [versaoContatos, atletas.length])
+  const salvarTelefone = (atletaId, bruto) => rodar(async () => {
+    let d = String(bruto || '').replace(/\D/g, '')
+    if (d && (d.length === 10 || d.length === 11)) d = '55' + d
+    const r = d
+      ? await supabase.from('campeonato_contatos').upsert({ atleta_id: atletaId, telefone: d })
+      : await supabase.from('campeonato_contatos').delete().eq('atleta_id', atletaId)
+    if (r.error) throw r.error
+    setVersaoContatos(v => v + 1)
+  }, 'Telefone salvo')
+  const editarTelefone = (a) => {
+    const atual = (contatos.get(a.id) || '').replace(/^55/, '')
+    const novoTel = window.prompt(`Telefone de ${a.nome} (com DDD). Deixe vazio para apagar.`, atual)
+    if (novoTel !== null) salvarTelefone(a.id, novoTel)
+  }
 
   const inscritos = atletas.filter(a => a.situacao === 'inscrito')
   const conta = (g, soPresentes) => inscritos.filter(a => a.genero === g && (!soPresentes || a.presente)).length
@@ -355,9 +379,10 @@ function AbaAtletas({ dados }) {
   const adicionar = () => rodar(async () => {
     if (!novo.nome.trim()) throw new Error('Digite o nome')
     const maxOrdem = atletas.reduce((m, a) => Math.max(m, a.ordem || 0), 0)
-    const { error } = await supabase.from('campeonato_atletas').insert({ campeonato_id: campeonato.id, nome: novo.nome.trim(), genero: novo.genero, situacao: novo.situacao, ordem: maxOrdem + 1 })
+    const { data: criado, error } = await supabase.from('campeonato_atletas').insert({ campeonato_id: campeonato.id, nome: novo.nome.trim(), genero: novo.genero, situacao: novo.situacao, ordem: maxOrdem + 1 }).select('id').single()
     if (error) throw error
-    setNovo({ ...novo, nome: '' })
+    if (novo.telefone.trim()) await salvarTelefone(criado.id, novo.telefone)
+    setNovo({ ...novo, nome: '', telefone: '' })
     await recarregar()
   }, 'Atleta incluído')
 
@@ -413,6 +438,7 @@ function AbaAtletas({ dados }) {
       <Painel titulo="Incluir atleta">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input style={{ ...estiloInput, flex: '1 1 220px' }} placeholder="Nome completo" value={novo.nome} onChange={e => setNovo({ ...novo, nome: e.target.value })} onKeyDown={e => e.key === 'Enter' && adicionar()} />
+          <input style={{ ...estiloInput, flex: '0 1 170px' }} placeholder="Telefone (DDD)" inputMode="tel" value={novo.telefone} onChange={e => setNovo({ ...novo, telefone: e.target.value })} />
           <select style={estiloInput} value={novo.genero} onChange={e => setNovo({ ...novo, genero: e.target.value })}><option value="F">Feminino</option><option value="M">Masculino</option></select>
           <select style={estiloInput} value={novo.situacao} onChange={e => setNovo({ ...novo, situacao: e.target.value })}><option value="inscrito">Inscrito</option><option value="espera">Lista de espera</option></select>
           <Botao variante="primario" onClick={adicionar}><Plus size={15} />Incluir</Botao>
@@ -435,7 +461,7 @@ function AbaAtletas({ dados }) {
             <div key={g}>
               {titulo(`${t} · ${conta(g)} inscritos · ${conta(g, true)} com check-in`)}
               <div style={{ display: 'grid', gap: 6 }}>
-                {doLado.map(a => <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} />)}
+                {doLado.map(a => <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} telefone={contatos.get(a.id)} onTelefone={() => editarTelefone(a)} />)}
                 {!doLado.length && <div style={{ fontSize: 14, color: 'var(--color-text-dark-muted)' }}>Ninguém aqui.</div>}
               </div>
             </div>
@@ -455,7 +481,7 @@ function AbaAtletas({ dados }) {
                   {titulo(`${t} · ${fila.length} na fila`)}
                   <div style={{ display: 'grid', gap: 6 }}>
                     {fila.map((a, i) => casaBusca(a) && (
-                      <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} numero={i + 1} acoes={(
+                      <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} telefone={contatos.get(a.id)} onTelefone={() => editarTelefone(a)} numero={i + 1} acoes={(
                         <>
                           <Botao tamanho="sm" variante="fantasma" titulo="Subir na fila" disabled={i === 0} onClick={() => mover(fila, i, -1)}><ChevronUp size={15} /></Botao>
                           <Botao tamanho="sm" variante="fantasma" titulo="Descer na fila" disabled={i === fila.length - 1} onClick={() => mover(fila, i, 1)}><ChevronDown size={15} /></Botao>
@@ -473,7 +499,7 @@ function AbaAtletas({ dados }) {
 
         {lista === 'desistiu' && (
           <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
-            {desistencias.filter(casaBusca).map(a => <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} />)}
+            {desistencias.filter(casaBusca).map(a => <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} telefone={contatos.get(a.id)} onTelefone={() => editarTelefone(a)} />)}
             {!desistencias.length && <div style={{ fontSize: 14, color: 'var(--color-text-dark-muted)' }}>Nenhuma desistência.</div>}
           </div>
         )}
@@ -492,7 +518,7 @@ function Numero({ rotulo, valor, sub }) {
   )
 }
 
-function LinhaAtleta({ atleta: a, atualizar, excluir, numero, acoes }) {
+function LinhaAtleta({ atleta: a, atualizar, excluir, numero, acoes, telefone, onTelefone }) {
   const [editando, setEditando] = useState(false)
   const [nome, setNome] = useState(a.nome)
   const ref = useRef(null)
@@ -532,6 +558,11 @@ function LinhaAtleta({ atleta: a, atualizar, excluir, numero, acoes }) {
         border: `1px solid ${a.presente ? 'var(--color-state-success)' : 'var(--color-border-dark)'}`,
         backgroundColor: a.presente ? 'var(--color-state-success)' : 'transparent', color: a.presente ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-secondary)',
       }}>{a.presente ? <><Check size={14} />Presente</> : 'Check-in'}</button>
+      {onTelefone && (
+        <button onClick={onTelefone} title="Editar telefone" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 9px', borderRadius: 9, border: '1px solid var(--color-border-dark)', backgroundColor: 'transparent', color: telefone ? 'var(--color-text-dark-secondary)' : 'var(--color-state-warning)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          <Phone size={12} />{telefone ? telefone.replace(/^55(\d{2})(\d{4,5})(\d{4})$/, '($1) $2-$3') : 'sem telefone'}
+        </button>
+      )}
       {a.foto && <Botao tamanho="sm" variante="fantasma" titulo="Apagar foto" onClick={() => window.confirm('Apagar a foto?') && atualizar(a.id, { foto: null }, 'Foto apagada')}><Camera size={13} /><X size={11} /></Botao>}
       {acoes}
       <Botao tamanho="sm" variante="fantasma" titulo="Excluir atleta" onClick={() => excluir(a)}><Trash2 size={14} /></Botao>
