@@ -656,6 +656,13 @@ async function zerarCampeonato(id, { checkins = false, fotos = false } = {}) {
   }
 }
 
+// Avança o sorteio só se o número no banco ainda for o esperado: evita que o cronômetro
+// automático, disparando atrasado, desfaça um "Revelar todas" (voltando de 16 para 6, por exemplo).
+async function avancarRevelados(id, de, para) {
+  const { error } = await supabase.from('campeonatos').update({ sorteio_revelados: para }).eq('id', id).eq('sorteio_revelados', de)
+  if (error) throw error
+}
+
 async function atualizarCampeonato(id, patch) {
   const { error } = await supabase.from('campeonatos').update(patch).eq('id', id)
   if (error) throw error
@@ -686,7 +693,7 @@ function AbaSorteio({ dados, irPara }) {
   useEffect(() => {
     if (!emSorteio || !auto || revelados >= duplas.length) return
     const t = setTimeout(() => {
-      atualizarCampeonato(campeonato.id, { sorteio_revelados: revelados + 1 }).then(recarregar).catch(e => toast.error(e.message))
+      avancarRevelados(campeonato.id, revelados, revelados + 1).then(recarregar).catch(e => toast.error(e.message))
     }, segundos * 1000)
     return () => clearTimeout(t)
   }, [emSorteio, auto, revelados, duplas.length, segundos, campeonato.id, recarregar])
@@ -786,8 +793,8 @@ function AbaSorteio({ dados, irPara }) {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="cp-display" style={{ fontSize: 22, fontWeight: 700, marginRight: 8 }}>{revelados} de {duplas.length}</span>
             <Botao onClick={() => setAuto(v => !v)}>{auto ? <><Pause size={15} />Pausar</> : <><Play size={15} />Retomar</>}</Botao>
-            <Botao disabled={revelados >= duplas.length} onClick={() => rodar(() => atualizarCampeonato(campeonato.id, { sorteio_revelados: revelados + 1 }).then(recarregar))}><SkipForward size={15} />Próxima dupla</Botao>
-            <Botao disabled={revelados >= duplas.length} onClick={() => rodar(() => atualizarCampeonato(campeonato.id, { sorteio_revelados: duplas.length }).then(recarregar))}><FastForward size={15} />Revelar todas</Botao>
+            <Botao disabled={revelados >= duplas.length} onClick={() => rodar(() => avancarRevelados(campeonato.id, revelados, revelados + 1).then(recarregar))}><SkipForward size={15} />Próxima dupla</Botao>
+            <Botao disabled={revelados >= duplas.length} onClick={() => { setAuto(false); rodar(() => atualizarCampeonato(campeonato.id, { sorteio_revelados: duplas.length }).then(recarregar)) }}><FastForward size={15} />Revelar todas</Botao>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text-dark-secondary)' }}>
               a cada
               <select value={segundos} onChange={e => setSegundos(Number(e.target.value))} style={{ ...estiloInput, padding: '6px 8px' }}>{[3, 4, 6, 8, 10, 15].map(s => <option key={s} value={s}>{s}s</option>)}</select>
