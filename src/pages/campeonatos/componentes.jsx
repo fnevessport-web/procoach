@@ -314,18 +314,13 @@ export function Chave({ campeonato, jogos, duplas, duplaPorId, seguindo, espelha
         <ColunaChave key={`e${r}`} titulo={rotuloFaseCurto(daRodada(r)[0]?.fase)} jogos={metade(r, true)} ehPrimeira={r === 1} ehUltima={false} props={props} lado="cp-dir" />
       ))}
       {/* Palco da final: coluna central mais larga, troféu, "Grande Final" e cartão maior com
-          brilho verde-lima. 3º lugar embaixo, discreto. */}
+          sem moldura em volta. 3º lugar embaixo, discreto. */}
       <div className="cp-col" style={{ flex: '1.6 1 0' }}>
         <div className="cp-col-titulo" style={{ visibility: 'hidden' }}>Final</div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16 * escala, padding: `0 ${14 * escala}px` }}>
           <CampeaoBox jogos={jogos} duplaPorId={duplaPorId} escala={escala} />
           {final && (
-            <div style={{
-              padding: `${14 * escala}px ${12 * escala}px ${12 * escala}px`, borderRadius: 18 * escala,
-              background: 'linear-gradient(165deg, color-mix(in srgb, var(--color-brand-lima) 16%, var(--color-surface-dark-raised)), var(--color-surface-dark-raised) 72%)',
-              border: '1.5px solid var(--color-brand-lima)',
-              boxShadow: '0 0 42px color-mix(in srgb, var(--color-brand-lima) 22%, transparent)',
-            }}>
+            <div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 * escala, marginBottom: 10 * escala }}>
                 <Trophy size={26 * escala} color="var(--color-brand-lima)" />
                 <div className="cp-display" style={{ fontSize: 22 * escala, fontWeight: 700, lineHeight: 1.1, whiteSpace: 'nowrap' }}>Grande Final</div>
