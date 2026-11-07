@@ -52,6 +52,12 @@ só o logo/nome, não o tema).
 - **Claro**: Agenda/grade de aulas, Cadastros (alunos/professores/turmas/níveis/quadras/eventos),
   ficha do aluno, Match de Aulas, disponibilidade de professores, Reposições, Extra Reposição (`/extra-reposicao`, aulas extras da chuva), páginas públicas
   (`/disponibilidade/:token`, `/eventos/:slug`), Configurações.
+- **Campeonatos** (`/campeonatos`, `/campeonatos/:id`, e as públicas `/campeonato/:slug` e
+  `/campeonato/:slug/tv`): **Escuro** sempre, inclusive as páginas públicas (exceção à regra
+  "páginas públicas = claro": é placar ao vivo/telão, mesma família do Ranking). Fundo premium em
+  `.cp-fundo` (`src/pages/campeonatos/campeonato.css`), destaque de "quem eu sigo" em
+  `--color-brand-lima`, ao vivo em `--color-accent-live`. Logos `logobeyond.png` + `logoprocopio.png`
+  (brancos). O QR code lê as cores dos tokens via `getComputedStyle` (a lib exige cor literal).
 - **Ilhas escuras dentro de página clara**: o card de Pontuação Beyond
   (`BlocoPontuacaoBeyond.jsx`) e o card de Conquistas (`ConquistasCard.jsx`), mesmo aparecendo
   dentro da ficha do aluno (página clara) — mantêm o tratamento escuro que já têm no

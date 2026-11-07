@@ -1,0 +1,88 @@
+/* Aba Campeonatos: animações e linhas de ligação da chave. Cores sempre por token. */
+
+.cp-fundo {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, color-mix(in srgb, var(--color-brand-saibro) 22%, transparent), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 100% 110%, color-mix(in srgb, var(--color-brand-lima) 7%, transparent), transparent 70%),
+    var(--color-brand-verde-court);
+  color: var(--color-text-dark-primary);
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: var(--font-family-sans);
+}
+
+.cp-display { font-family: var(--font-display); }
+
+@keyframes cp-pulso {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+.cp-pulso { animation: cp-pulso 1.4s ease-in-out infinite; }
+
+@keyframes cp-brilho {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent-live) 0%, transparent); }
+  50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent-live) 45%, transparent); }
+}
+.cp-ao-vivo { animation: cp-brilho 2s ease-in-out infinite; }
+
+@keyframes cp-entrar {
+  0% { opacity: 0; transform: translateY(14px) scale(0.92); }
+  60% { opacity: 1; transform: translateY(-3px) scale(1.03); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.cp-entrar { animation: cp-entrar 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+@keyframes cp-girar-borda {
+  0%, 100% { border-color: var(--color-brand-saibro); }
+  50% { border-color: var(--color-brand-lima); }
+}
+.cp-sorteando { animation: cp-girar-borda 0.9s ease-in-out infinite; }
+
+/* ---------- chave ---------- */
+.cp-chave { display: flex; align-items: stretch; gap: 0; }
+.cp-col { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; }
+.cp-col-titulo {
+  text-align: center; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--color-text-dark-muted); padding-bottom: 8px;
+}
+.cp-col-corpo { display: flex; flex-direction: column; flex: 1; }
+.cp-par { position: relative; display: flex; flex-direction: column; justify-content: space-around; flex: 1; }
+.cp-slot { position: relative; display: flex; align-items: center; flex: 1; padding: 4px 14px; }
+.cp-slot > * { width: 100%; }
+
+/* linha saindo do jogo para a direita */
+.cp-dir .cp-slot.cp-tem-saida::after {
+  content: ''; position: absolute; right: 0; top: 50%; width: 14px;
+  border-top: 2px solid var(--color-border-dark);
+}
+/* barra vertical que junta os dois jogos do par */
+.cp-dir .cp-par.cp-tem-saida::after {
+  content: ''; position: absolute; right: 0; top: 25%; bottom: 25%;
+  border-right: 2px solid var(--color-border-dark);
+}
+/* linha chegando no jogo pela esquerda */
+.cp-dir .cp-slot.cp-tem-entrada::before {
+  content: ''; position: absolute; left: 0; top: 50%; width: 14px;
+  border-top: 2px solid var(--color-border-dark);
+}
+
+/* lado espelhado (metade direita da chave na TV) */
+.cp-esq .cp-slot.cp-tem-saida::after {
+  content: ''; position: absolute; left: 0; top: 50%; width: 14px;
+  border-top: 2px solid var(--color-border-dark);
+}
+.cp-esq .cp-par.cp-tem-saida::after {
+  content: ''; position: absolute; left: 0; top: 25%; bottom: 25%;
+  border-left: 2px solid var(--color-border-dark);
+}
+.cp-esq .cp-slot.cp-tem-entrada::before {
+  content: ''; position: absolute; right: 0; top: 50%; width: 14px;
+  border-top: 2px solid var(--color-border-dark);
+}
+
+.cp-scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.cp-scroll-x::-webkit-scrollbar { height: 6px; }
+.cp-scroll-x::-webkit-scrollbar-thumb { background: var(--color-border-dark); border-radius: 3px; }
+
+.cp-sem-scroll::-webkit-scrollbar { display: none; }
+.cp-sem-scroll { scrollbar-width: none; }

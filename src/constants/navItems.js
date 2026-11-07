@@ -1,4 +1,4 @@
-import { Home, CalendarDays, CalendarPlus, Users, DollarSign, FileBarChart, MessageCircle, LayoutDashboard, User, GraduationCap, ClipboardCheck, Trophy, ShieldCheck, LayoutGrid } from 'lucide-react'
+import { Home, CalendarDays, CalendarPlus, Users, DollarSign, FileBarChart, MessageCircle, LayoutDashboard, User, GraduationCap, ClipboardCheck, Trophy, ShieldCheck, LayoutGrid, Medal } from 'lucide-react'
 import { resolverRole, permissoesDoRole } from '../hooks/usePermissions'
 
 // Itens de navegação derivados das flags de usePermissions — uma fonte só de verdade
@@ -56,6 +56,8 @@ export function getNavItems(roleBruto) {
   // Rascunho de redistribuição dos professores (mostra quem sai da grade) — só gestor/coordenador.
   if (role === 'gestor' || role === 'coordenador') items.push({ path: '/organizar-grade', icon: LayoutGrid, label: 'Organizar Grade', labelMobile: 'Organizar' })
   items.push({ path: '/ranking', icon: Trophy, label: 'Ranking' })
+  // Torneios (sorteio ao vivo, chave, placar, link do associado e telão) — gestor/coordenador.
+  if (role === 'gestor' || role === 'coordenador') items.push({ path: '/campeonatos', icon: Medal, label: 'Campeonatos', labelMobile: 'Torneios' })
   if (permissoes.podeAcessarFinanceiro) items.push({ path: '/financeiro', icon: DollarSign, label: 'Financeiro' })
   // Fila de aluno incluído por professor aguardando aprovação (não conta no pagamento até
   // aprovar) — mesmo público que já vê salário de todo mundo.

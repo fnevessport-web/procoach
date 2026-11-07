@@ -45,6 +45,10 @@ import { PoliticaPrivacidadePage } from './pages/legal/PoliticaPrivacidadePage'
 import { ComoFuncionaAPontuacaoPage } from './pages/legal/ComoFuncionaAPontuacaoPage'
 import { ComoFuncionaORankingPage } from './pages/legal/ComoFuncionaORankingPage'
 import { ReuniaoEquipe2026Page } from './pages/reuniao/ReuniaoEquipe2026Page'
+import { CampeonatosPage } from './pages/campeonatos/CampeonatosPage'
+import { CampeonatoAdminPage } from './pages/campeonatos/CampeonatoAdminPage'
+import { CampeonatoPublicoPage } from './pages/campeonatos/CampeonatoPublicoPage'
+import { CampeonatoTVPage } from './pages/campeonatos/CampeonatoTVPage'
 import { HomeParticular } from './pages/particular/HomeParticular'
 import { AgendaParticular } from './pages/particular/AgendaParticular'
 import { CadastroParticular } from './pages/particular/CadastroParticular'
@@ -198,6 +202,14 @@ function AppRouter() {
             <Route path="/financeiro" element={
               <RouteGuard permitido={podeAcessarFinanceiro} homeRoute={homeRoute}><FinanceiroPage /></RouteGuard>
             } />
+            {/* Campeonatos: sorteio ao vivo, chave, placar. Gestão só gestor/coordenador (mesma
+                trava do banco, sou_gestao()). Link público e TV ficam nas rotas sem login. */}
+            <Route path="/campeonatos" element={
+              <RouteGuard permitido={role === 'gestor' || role === 'coordenador'} homeRoute={homeRoute}><CampeonatosPage /></RouteGuard>
+            } />
+            <Route path="/campeonatos/:id" element={
+              <RouteGuard permitido={role === 'gestor' || role === 'coordenador'} homeRoute={homeRoute}><CampeonatoAdminPage /></RouteGuard>
+            } />
             <Route path="*" element={<Navigate to={homeRoute} replace />} />
           </>
         )}
@@ -216,6 +228,8 @@ export default function App() {
           <Route path="/pesquisa/:token" element={<PesquisaSatisfacaoPage />} />
           <Route path="/pesquisa-socios/:token" element={<PesquisaSociosPublicaPage />} />
           <Route path="/eventos/:slug" element={<EventoInscricaoPage />} />
+          <Route path="/campeonato/:slug" element={<CampeonatoPublicoPage />} />
+          <Route path="/campeonato/:slug/tv" element={<CampeonatoTVPage />} />
           <Route path="/reposicao" element={<ReposicaoOficialPage />} />
           <Route path="/reposicao-rodada-chuva" element={<ReposicaoExtraPage />} />
           <Route path="/reuniao-equipe-2026" element={<ReuniaoEquipe2026Page />} />
