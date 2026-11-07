@@ -192,47 +192,84 @@ function TelaSorteio({ dados }) {
   )
 }
 
+// Peça da tela de entrada: um atleta (acende quando faz check-in).
+function CartaoAtletaEntrada({ atleta: a }) {
+  return (
+    <div key={`${a.id}-${a.presente}-${!!a.foto}`} className={a.presente ? 'cp-entrar' : ''} style={{
+      position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '0 14px', borderRadius: 16, minWidth: 0,
+      backgroundColor: a.presente ? 'color-mix(in srgb, var(--color-brand-lima) 12%, var(--color-surface-dark-raised))' : 'var(--color-surface-dark-raised)',
+      border: `1px solid ${a.presente ? 'var(--color-brand-lima)' : 'var(--color-border-dark-subtle)'}`,
+      opacity: a.presente ? 1 : 0.42, transition: 'opacity 0.4s',
+    }}>
+      <Avatar atleta={a} tamanho={54} destaque={a.presente} />
+      <span style={{ fontSize: 21, fontWeight: a.presente ? 700 : 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomeCurto(a.nome)}</span>
+      {a.presente && (
+        <span style={{ position: 'absolute', top: -8, right: -8, width: 26, height: 26, borderRadius: '50%', backgroundColor: 'var(--color-brand-lima)', color: 'var(--color-brand-verde-court)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={16} strokeWidth={3.5} /></span>
+      )}
+    </div>
+  )
+}
+
+// Um lado da tela de entrada (Mulheres ou Homens), em ordem alfabética, com os números.
+function LadoEntrada({ titulo, lista, inscritosTxt, linhas }) {
+  const presentes = lista.filter(a => a.presente).length
+  return (
+    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '6px', color: 'var(--color-text-dark-primary)' }}>{titulo}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 6, fontSize: 19, color: 'var(--color-text-dark-secondary)' }}>
+          <span>{lista.length} {inscritosTxt}</span>
+          <span style={{ color: 'var(--color-text-dark-muted)' }}>·</span>
+          <span className="cp-display" style={{ fontSize: 30, fontWeight: 700, color: 'var(--color-brand-lima)', lineHeight: 1 }}>{presentes}</span>
+          <span>{presentes === 1 ? 'já fez check-in' : 'já fizeram check-in'}</span>
+        </div>
+      </div>
+      <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gridTemplateRows: `repeat(${linhas}, minmax(0,1fr))`, gridAutoFlow: 'column', gap: 12 }}>
+        {lista.map(a => <CartaoAtletaEntrada key={`${a.id}-${a.presente}-${!!a.foto}`} atleta={a} />)}
+      </div>
+    </div>
+  )
+}
+
 function TelaBoasVindas({ dados }) {
   const { campeonato, atletas } = dados
   const inscritos = atletas.filter(a => a.situacao === 'inscrito')
+  const porNome = (x, y) => x.nome.localeCompare(y.nome, 'pt-BR', { sensitivity: 'base' })
+  const mulheres = inscritos.filter(a => a.genero === 'F').sort(porNome)
+  const homens = inscritos.filter(a => a.genero === 'M').sort(porNome)
   const presentes = inscritos.filter(a => a.presente).length
+  // Mesmo número de linhas dos dois lados, para as colunas ficarem alinhadas e preencherem a altura.
+  const linhas = Math.max(6, Math.ceil(Math.max(mulheres.length, homens.length) / 2))
   const dataFmt = campeonato.data ? new Date(campeonato.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }) : ''
   return (
-    <div style={{ height: '100%', display: 'flex', padding: '70px 80px', gap: 70 }}>
-      <div style={{ width: 720, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100%', display: 'flex', padding: '60px 70px', gap: 60, boxSizing: 'border-box' }}>
+      <div style={{ width: 600, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
         <Marcas altura={58} />
-        <div style={{ marginTop: 60, fontSize: 20, fontWeight: 800, letterSpacing: '5px', color: 'var(--color-brand-lima)' }}>{(campeonato.subtitulo || '').toUpperCase()}</div>
-        <div className="cp-display" style={{ fontSize: 96, fontWeight: 700, lineHeight: 1, margin: '14px 0 18px' }}>{campeonato.nome}</div>
+        <div style={{ marginTop: 56, fontSize: 19, fontWeight: 800, letterSpacing: '5px', color: 'var(--color-brand-lima)', lineHeight: 1.4 }}>{(campeonato.subtitulo || '').toUpperCase()}</div>
+        <div className="cp-display" style={{ fontSize: 88, fontWeight: 700, lineHeight: 1, margin: '14px 0 18px' }}>{campeonato.nome}</div>
         <div style={{ fontSize: 26, color: 'var(--color-text-dark-secondary)', textTransform: 'capitalize' }}>{dataFmt}{campeonato.local ? ` · ${campeonato.local}` : ''}</div>
-        <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 28, padding: 24, borderRadius: 28, backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark)' }}>
-          <QrCode url={urlPublica(campeonato.slug)} tamanho={210} />
+        <div style={{ marginTop: 36, display: 'flex', alignItems: 'baseline', gap: 14 }}>
+          <span className="cp-display" style={{ fontSize: 64, fontWeight: 700, lineHeight: 1 }}>{inscritos.length}</span>
+          <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-dark-secondary)' }}>atletas no total</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginTop: 8 }}>
+          <span className="cp-display" style={{ fontSize: 64, fontWeight: 700, lineHeight: 1, color: 'var(--color-brand-lima)' }}>{presentes}</span>
+          <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-dark-secondary)' }}>{presentes === 1 ? 'já fez check-in' : 'já fizeram check-in'}</span>
+        </div>
+        <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 24, padding: 22, borderRadius: 28, backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark)' }}>
+          <QrCode url={urlPublica(campeonato.slug)} tamanho={190} />
           <div>
-            <div className="cp-display" style={{ fontSize: 38, fontWeight: 700, lineHeight: 1.1 }}>Aponte a câmera</div>
-            <div style={{ fontSize: 22, color: 'var(--color-text-dark-secondary)', marginTop: 10, lineHeight: 1.4 }}>Escolha seu nome, faça o check-in, coloque sua foto e acompanhe o sorteio, seus jogos e a chave ao vivo.</div>
+            <div className="cp-display" style={{ fontSize: 36, fontWeight: 700, lineHeight: 1.1 }}>Aponte a câmera</div>
+            <div style={{ fontSize: 20, color: 'var(--color-text-dark-secondary)', marginTop: 10, lineHeight: 1.4 }}>Escolha seu nome, faça o check-in, coloque sua foto e acompanhe o sorteio, seus jogos e a chave ao vivo.</div>
           </div>
         </div>
       </div>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 18, marginBottom: 20 }}>
-          <span className="cp-display" style={{ fontSize: 54, fontWeight: 700, lineHeight: 1, color: 'var(--color-brand-lima)' }}>{presentes}<span style={{ fontSize: 30, color: 'var(--color-text-dark-muted)' }}> / {inscritos.length}</span></span>
-          <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '4px', color: 'var(--color-text-dark-secondary)' }}>{presentes === 1 ? 'ATLETA JÁ CHEGOU' : 'ATLETAS JÁ CHEGARAM'} · DUPLAS SORTEADAS NA HORA</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 12, alignContent: 'start' }}>
-          {inscritos.map(a => (
-            <div key={`${a.id}-${a.presente}-${!!a.foto}`} className={a.presente ? 'cp-entrar' : ''} style={{
-              position: 'relative', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 14,
-              backgroundColor: a.presente ? 'color-mix(in srgb, var(--color-brand-lima) 12%, var(--color-surface-dark-raised))' : 'var(--color-surface-dark-raised)',
-              border: `1px solid ${a.presente ? 'var(--color-brand-lima)' : 'var(--color-border-dark-subtle)'}`,
-              opacity: a.presente ? 1 : 0.45, transition: 'opacity 0.4s',
-            }}>
-              <Avatar atleta={a} tamanho={46} destaque={a.presente} />
-              <span style={{ fontSize: 16, fontWeight: a.presente ? 700 : 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomeCurto(a.nome)}</span>
-              {a.presente && (
-                <span style={{ position: 'absolute', top: -7, right: -7, width: 22, height: 22, borderRadius: '50%', backgroundColor: 'var(--color-brand-lima)', color: 'var(--color-brand-verde-court)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={14} strokeWidth={3.5} /></span>
-              )}
-            </div>
-          ))}
-        </div>
+
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'stretch', gap: 36 }}>
+        <LadoEntrada titulo="MULHERES" lista={mulheres} inscritosTxt={mulheres.length === 1 ? 'inscrita' : 'inscritas'} linhas={linhas} />
+        {/* divisória fina, só no meio da altura */}
+        <div style={{ width: 1, alignSelf: 'center', height: '62%', background: 'linear-gradient(to bottom, transparent, var(--color-border-dark) 20%, var(--color-border-dark) 80%, transparent)' }} />
+        <LadoEntrada titulo="HOMENS" lista={homens} inscritosTxt={homens.length === 1 ? 'inscrito' : 'inscritos'} linhas={linhas} />
       </div>
     </div>
   )
