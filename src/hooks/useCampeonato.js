@@ -45,6 +45,9 @@ export function useCampeonato({ slug, id }) {
     const canal = supabase.channel(`campeonato-${campId}-${Math.random().toString(36).slice(2)}`)
     for (const tabela of ['campeonato_atletas', 'campeonato_duplas', 'campeonato_jogos']) {
       canal.on('postgres_changes', { event: '*', schema: 'public', table: tabela, filter: `campeonato_id=eq.${campId}` }, agendar)
+      // Exclusão não respeita filtro no tempo real do Supabase (o registro apagado só traz o id),
+      // então escuta qualquer DELETE da tabela e recarrega (é raro e barato).
+      canal.on('postgres_changes', { event: 'DELETE', schema: 'public', table: tabela }, agendar)
     }
     canal.on('postgres_changes', { event: '*', schema: 'public', table: 'campeonatos', filter: `id=eq.${campId}` }, agendar)
     canal.subscribe()

@@ -12,10 +12,11 @@ import './campeonato.css'
 
 export function Marcas({ altura = 30, separador = true }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: altura * 0.55 }}>
-      <img src="/images/logobeyond.png" alt="Beyond The Club" style={{ height: altura * 1.25, width: 'auto', objectFit: 'contain' }} />
-      {separador && <span style={{ width: 1, height: altura, backgroundColor: 'var(--color-border-dark)' }} />}
-      <img src="/images/logoprocopio.png" alt="Procopio" style={{ height: altura * 1.5, width: 'auto', objectFit: 'contain' }} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: altura * 0.6 }}>
+      {/* Versões recortadas e horizontais (mesma proporção ~4:1), para os dois logos terem o mesmo tamanho. */}
+      <img src="/images/logobeyond_recorte.png" alt="Beyond The Club" style={{ height: altura * 0.85, width: 'auto', objectFit: 'contain' }} />
+      {separador && <span style={{ width: 1, height: altura * 1.1, backgroundColor: 'var(--color-border-dark)' }} />}
+      <img src="/images/logoprocopio_horizontal.png" alt="Procopio" style={{ height: altura * 0.85, width: 'auto', objectFit: 'contain' }} />
     </div>
   )
 }
