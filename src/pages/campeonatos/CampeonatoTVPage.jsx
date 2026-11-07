@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Radio, CalendarClock, Smartphone, Check } from 'lucide-react'
+import { Radio, CalendarClock, Smartphone, Check, Maximize, Minimize } from 'lucide-react'
 import { useCampeonato } from '../../hooks/useCampeonato'
 import { nomeCurto, iniciais, rotuloFaseCurto, ordenarJogos } from '../../lib/campeonato'
 import { Marcas, CartaoJogo, Chave, SorteioAoVivo, QrCode, AvataresDupla } from './componentes'
@@ -33,14 +33,56 @@ function Relogio() {
   return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
 }
 
+// Tela cheia (some a barra de endereço e as abas). O navegador só deixa entrar com um clique,
+// então fica um botão discreto no canto, que se esconde com o mouse parado; duplo clique também
+// alterna.
+function useTelaCheia() {
+  const [cheia, setCheia] = useState(() => !!document.fullscreenElement)
+  const [mouseAtivo, setMouseAtivo] = useState(true)
+  useEffect(() => {
+    const aoMudar = () => setCheia(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', aoMudar)
+    let t = setTimeout(() => setMouseAtivo(false), 4000)
+    const aoMover = () => {
+      setMouseAtivo(true)
+      clearTimeout(t)
+      t = setTimeout(() => setMouseAtivo(false), 3000)
+    }
+    window.addEventListener('mousemove', aoMover)
+    window.addEventListener('touchstart', aoMover)
+    return () => {
+      document.removeEventListener('fullscreenchange', aoMudar)
+      window.removeEventListener('mousemove', aoMover)
+      window.removeEventListener('touchstart', aoMover)
+      clearTimeout(t)
+    }
+  }, [])
+  const alternar = () => {
+    const el = document.documentElement
+    if (document.fullscreenElement) document.exitFullscreen?.()
+    else (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el)
+  }
+  return { cheia, mouseAtivo, alternar }
+}
+
 export function CampeonatoTVPage() {
   const { slug } = useParams()
   const escala = useEscala()
   const dados = useCampeonato({ slug })
   const { campeonato, carregando, erro } = dados
+  const { cheia, mouseAtivo, alternar } = useTelaCheia()
+  const mostrarBotao = !cheia || mouseAtivo
 
   return (
-    <div className="cp-fundo" style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative' }}>
+    <div className="cp-fundo" onDoubleClick={alternar} style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative', cursor: mouseAtivo ? 'default' : 'none' }}>
+      <button onClick={alternar} title={cheia ? 'Sair da tela cheia' : 'Tela cheia'} style={{
+        position: 'absolute', right: 16, bottom: 16, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 8,
+        padding: '10px 14px', borderRadius: 12, border: '1px solid var(--color-border-dark)', cursor: 'pointer',
+        backgroundColor: 'color-mix(in srgb, var(--color-surface-dark-raised) 85%, transparent)', color: 'var(--color-text-dark-primary)',
+        fontSize: 14, fontWeight: 700, opacity: mostrarBotao ? (cheia ? 0.6 : 1) : 0, pointerEvents: mostrarBotao ? 'auto' : 'none', transition: 'opacity 0.4s',
+      }}>
+        {cheia ? <><Minimize size={16} />Sair da tela cheia</> : <><Maximize size={16} />Tela cheia</>}
+      </button>
       <div style={{
         width: L, height: A, position: 'absolute', left: '50%', top: '50%',
         transform: `translate(-50%, -50%) scale(${escala})`, transformOrigin: 'center center',
