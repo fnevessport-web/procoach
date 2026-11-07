@@ -4,7 +4,8 @@ import toast from 'react-hot-toast'
 import { Search, Camera, X, Plus, Star, Radio, GitBranch, Users, UserRound, Check, CalendarClock, ChevronRight, MapPin } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCampeonato } from '../../hooks/useCampeonato'
-import { nomeCurto, normalizar, comprimirFoto, ordenarJogos } from '../../lib/campeonato'
+import { nomeCurto, normalizar, ordenarJogos } from '../../lib/campeonato'
+import { EditorFoto } from './EditorFoto'
 import { Marcas, Avatar, CartaoJogo, Chave, SorteioAoVivo } from './componentes'
 import { COR_DESTAQUE, jogoTemSeguido, duplasOcultas } from './util'
 
@@ -311,16 +312,20 @@ function CardCheckin({ atleta, onMudou }) {
 function BotaoFoto({ atleta, onEnviada, rotulo = 'Enviar minha foto' }) {
   const ref = useRef(null)
   const [enviando, setEnviando] = useState(false)
-  const escolher = async (e) => {
+  const [arquivo, setArquivo] = useState(null)
+  const escolher = (e) => {
     const arq = e.target.files?.[0]
     e.target.value = ''
-    if (!arq) return
+    if (arq) setArquivo(arq)
+  }
+  // Depois do ajuste no editor (rosto no círculo), envia a foto recortada.
+  const enviar = async (foto) => {
     setEnviando(true)
     try {
-      const foto = await comprimirFoto(arq)
       const { error } = await supabase.rpc('campeonato_salvar_foto', { p_atleta_id: atleta.id, p_foto: foto, p_token: tokenDoAparelho() })
       if (error) throw error
       toast.success('Foto enviada!')
+      setArquivo(null)
       onEnviada?.()
     } catch (err) {
       toast.error(err.message || 'Não foi possível enviar a foto')
@@ -330,6 +335,7 @@ function BotaoFoto({ atleta, onEnviada, rotulo = 'Enviar minha foto' }) {
   }
   return (
     <>
+      {arquivo && <EditorFoto arquivo={arquivo} salvando={enviando} onCancelar={() => setArquivo(null)} onConfirmar={enviar} />}
       <input ref={ref} type="file" accept="image/*" onChange={escolher} style={{ display: 'none' }} />
       <button onClick={() => ref.current?.click()} disabled={enviando} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 18px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontSize: 15, fontWeight: 700, cursor: 'pointer', opacity: enviando ? 0.6 : 1 }}>
         <Camera size={18} />{enviando ? 'Enviando...' : rotulo}

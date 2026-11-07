@@ -318,3 +318,59 @@ export function comprimirFoto(arquivo, lado = 320, qualidade = 0.78) {
     leitor.readAsDataURL(arquivo)
   })
 }
+
+// ---------- editor de foto (ajuste do rosto pelo próprio atleta) ----------
+
+function carregarImagem(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('Formato de foto não suportado'))
+    img.src = src
+  })
+}
+
+// Lê a foto escolhida, já reduz (fotos de celular têm 12 MP) e corrige a orientação do aparelho.
+export async function prepararImagem(arquivo, maximo = 1400) {
+  const url = URL.createObjectURL(arquivo)
+  try {
+    const img = await carregarImagem(url)
+    const fator = Math.min(1, maximo / Math.max(img.naturalWidth, img.naturalHeight))
+    const w = Math.round(img.naturalWidth * fator)
+    const h = Math.round(img.naturalHeight * fator)
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+    return { src: canvas.toDataURL('image/jpeg', 0.9), w, h }
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
+export async function girarImagem({ src, w, h }) {
+  const img = await carregarImagem(src)
+  const canvas = document.createElement('canvas')
+  canvas.width = h
+  canvas.height = w
+  const ctx = canvas.getContext('2d')
+  ctx.translate(h, 0)
+  ctx.rotate(Math.PI / 2)
+  ctx.drawImage(img, 0, 0, w, h)
+  return { src: canvas.toDataURL('image/jpeg', 0.9), w: h, h: w }
+}
+
+// Recorta o quadrado que está dentro do círculo do editor (janela de `janela` px, com zoom e
+// deslocamento em px de tela) e devolve a foto final pequena para o banco.
+export async function recortarFoto({ src, w, h }, janela, zoom, pos, lado = 360, qualidade = 0.82) {
+  const img = await carregarImagem(src)
+  const escala = (janela / Math.min(w, h)) * zoom
+  const tamanho = janela / escala
+  const cx = w / 2 - pos.x / escala
+  const cy = h / 2 - pos.y / escala
+  const canvas = document.createElement('canvas')
+  canvas.width = lado
+  canvas.height = lado
+  canvas.getContext('2d').drawImage(img, cx - tamanho / 2, cy - tamanho / 2, tamanho, tamanho, 0, 0, lado, lado)
+  return canvas.toDataURL('image/jpeg', qualidade)
+}

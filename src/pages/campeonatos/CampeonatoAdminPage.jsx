@@ -9,10 +9,11 @@ import { supabase } from '../../lib/supabase'
 import { useCampeonato, aplicarPatchesJogos } from '../../hooks/useCampeonato'
 import {
   sortearDuplas, montarChave, propagar, agendar, resumoPlacar, somarPonto, tirarPonto, nomeCurto,
-  rotuloFase, rotuloFaseCurto, ordenarJogos, comprimirFoto, normalizar, indiceSetAtual,
+  rotuloFase, rotuloFaseCurto, ordenarJogos, normalizar, indiceSetAtual,
 } from '../../lib/campeonato'
 import { Avatar, AvataresDupla, Chave, SorteioAoVivo, QrCode, Marcas } from './componentes'
 import { rotuloStatusCampeonato, urlPublica, urlTV } from './util'
+import { EditorFoto } from './EditorFoto'
 
 // Gestão de um campeonato: operação ao vivo das quadras (placar com +/-), atletas e check-in,
 // sorteio ao vivo, lista de jogos editável e configuração. Tudo que muda aqui aparece na hora no
@@ -433,15 +434,16 @@ function LinhaAtleta({ atleta: a, atualizar, excluir }) {
   const [editando, setEditando] = useState(false)
   const [nome, setNome] = useState(a.nome)
   const ref = useRef(null)
-  const foto = async (e) => {
+  const [arquivo, setArquivo] = useState(null)
+  const foto = (e) => {
     const arq = e.target.files?.[0]
     e.target.value = ''
-    if (!arq) return
-    try { atualizar(a.id, { foto: await comprimirFoto(arq) }, 'Foto salva') } catch (err) { toast.error(err.message) }
+    if (arq) setArquivo(arq)
   }
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 12, backgroundColor: 'var(--color-surface-dark-overlay)', opacity: a.situacao === 'desistiu' ? 0.55 : 1 }}>
       <input ref={ref} type="file" accept="image/*" onChange={foto} style={{ display: 'none' }} />
+      {arquivo && <EditorFoto arquivo={arquivo} onCancelar={() => setArquivo(null)} onConfirmar={async (f) => { await atualizar(a.id, { foto: f }, 'Foto salva'); setArquivo(null) }} />}
       <button onClick={() => ref.current?.click()} title="Trocar foto" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', position: 'relative' }}>
         <Avatar atleta={a} tamanho={38} />
         {!a.foto && <Camera size={12} style={{ position: 'absolute', right: -2, bottom: -2, color: 'var(--color-text-dark-secondary)' }} />}
