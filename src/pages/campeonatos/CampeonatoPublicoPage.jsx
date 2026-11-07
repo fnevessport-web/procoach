@@ -7,7 +7,7 @@ import { useCampeonato } from '../../hooks/useCampeonato'
 import { nomeCurto, normalizar, ordenarJogos } from '../../lib/campeonato'
 import { EditorFoto } from './EditorFoto'
 import { Marcas, Avatar, AvataresDupla, CartaoJogo, Chave, SorteioAoVivo } from './componentes'
-import { COR_DESTAQUE, jogoTemSeguido, duplasOcultas } from './util'
+import { COR_DESTAQUE, jogoTemSeguido, duplasOcultas, proximosPorQuadra } from './util'
 
 // Link público do campeonato (QR code no telão). Sem login. O associado escolhe o próprio nome
 // (autocomplete com os inscritos), manda uma foto e pode seguir quantos nomes quiser (ex.: a
@@ -79,7 +79,7 @@ export function CampeonatoPublicoPage() {
         {!emSorteio && aba === 'jogos' && <AbaJogos dados={dados} seguindo={seguindo} />}
         {!emSorteio && aba === 'chave' && (
           <Secao titulo="Chaveamento">
-            <Chave campeonato={campeonato} jogos={jogos} duplas={duplas} duplaPorId={duplaPorId} seguindo={seguindo} porRodada />
+            <Chave campeonato={campeonato} jogos={jogos} duplas={duplas} duplaPorId={duplaPorId} seguindo={seguindo} porRodada proximos={proximosPorQuadra(campeonato, jogos)} />
           </Secao>
         )}
         {!emSorteio && aba === 'duplas' && (

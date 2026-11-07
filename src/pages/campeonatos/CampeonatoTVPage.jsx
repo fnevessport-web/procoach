@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Radio, CalendarClock, Smartphone, Check, Maximize, Minimize } from 'lucide-react'
 import { useCampeonato } from '../../hooks/useCampeonato'
 import { nomeCurto, iniciais, rotuloFaseCurto, ordenarJogos } from '../../lib/campeonato'
 import { Marcas, CartaoJogo, Chave, SorteioAoVivo, QrCode, AvataresDupla } from './componentes'
-import { urlPublica, duplasOcultas } from './util'
+import { urlPublica, duplasOcultas, proximosPorQuadra } from './util'
+import { CelebracaoVitoria } from './CelebracaoVitoria'
 
 // Telão do clube. Desenhado em 1920x1080 e escalado para caber em qualquer TV.
 // Antes do sorteio: boas-vindas + QR code + inscritos. Durante o sorteio: sorteio em tela cheia.
@@ -96,7 +97,7 @@ export function CampeonatoTVPage() {
         ) : campeonato.status === 'sorteio' ? (
           <TelaSorteio dados={dados} />
         ) : (
-          <TelaJogos dados={dados} />
+          <TelaJogos dados={dados} escala={escala} />
         )}
       </div>
     </div>
@@ -133,8 +134,16 @@ function TituloBloco({ icone: Icone, children, cor = 'var(--color-text-dark-seco
   )
 }
 
-function TelaJogos({ dados }) {
+function TelaJogos({ dados, escala }) {
   const { campeonato, jogos, duplas, duplaPorId } = dados
+  const palco = useRef(null)
+  const proximosMapa = proximosPorQuadra(campeonato, jogos)
+  // Celebração: só jogos que terminarem com a TV aberta (os já encerrados ao abrir não animam).
+  const [jaEncerrados] = useState(() => new Set(jogos.filter(j => j.status === 'finalizado').map(j => j.id)))
+  const [celebrados, setCelebrados] = useState(() => new Set())
+  const celebrar = jogos
+    .filter(j => j.status === 'finalizado' && j.vencedor_id && !jaEncerrados.has(j.id) && !celebrados.has(j.id))
+    .sort((a, b) => String(a.finalizado_em).localeCompare(String(b.finalizado_em)))[0]
   const semSeguidos = new Set()
   const ocultas = duplasOcultas(campeonato, duplas)
   const ordenados = ordenarJogos(jogos.filter(j => j.status !== 'bye' && !ocultas.has(j.dupla_a_id) && !ocultas.has(j.dupla_b_id)))
@@ -145,7 +154,11 @@ function TelaJogos({ dados }) {
   const aguardando = ordenados.filter(j => j.status === 'agendado' && !(j.dupla_a_id && j.dupla_b_id))
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div ref={palco} style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      {celebrar && (
+        <CelebracaoVitoria key={celebrar.id} jogo={celebrar} jogos={jogos} duplaPorId={duplaPorId} palco={palco} escala={escala}
+          onFim={() => setCelebrados(s => new Set(s).add(celebrar.id))} />
+      )}
       <Topo campeonato={campeonato} />
       <div style={{ flex: 1, display: 'flex', gap: 36, padding: '26px 48px 30px', minHeight: 0 }}>
         <div style={{ width: 600, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -154,16 +167,16 @@ function TelaJogos({ dados }) {
             {quadras.map(q => {
               const jogo = aoVivo.find(j => j.quadra === q)
               if (jogo) return <CartaoJogo key={q} jogo={jogo} duplaPorId={duplaPorId} seguindo={semSeguidos} escala={1.32} numero={jogo.ordem || null} />
-              const prox = proximos.find(j => j.quadra === q)
+              const prox = jogos.find(j => proximosMapa.get(j.id) === q)
               return (
                 <div key={q} style={{ borderRadius: 20, padding: '18px 22px', backgroundColor: 'var(--color-surface-dark-raised)', border: '1px dashed var(--color-border-dark)' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                    <span className="cp-display" style={{ fontSize: 26, fontWeight: 700 }}>{q}</span>
+                    <span className="cp-display" style={{ fontSize: 26, fontWeight: 700, whiteSpace: 'nowrap' }}>{q}</span>
                     <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '2px', color: 'var(--color-text-dark-muted)' }}>{campeonato.status === 'encerrado' ? 'ENCERRADO' : 'AGUARDANDO'}</span>
                   </div>
                   {prox && (
                     <div style={{ marginTop: 10, fontSize: 18, color: 'var(--color-text-dark-secondary)' }}>
-                      A seguir: <b style={{ color: 'var(--color-text-dark-primary)' }}>{nomesDupla(duplaPorId.get(prox.dupla_a_id))}</b> x <b style={{ color: 'var(--color-text-dark-primary)' }}>{nomesDupla(duplaPorId.get(prox.dupla_b_id))}</b>
+                      <span style={{ color: 'var(--color-state-success)', fontWeight: 800 }}>▶ Próximo:</span> <b style={{ color: 'var(--color-text-dark-primary)' }}>{nomesDupla(duplaPorId.get(prox.dupla_a_id))}</b> x <b style={{ color: 'var(--color-text-dark-primary)' }}>{nomesDupla(duplaPorId.get(prox.dupla_b_id))}</b>
                     </div>
                   )}
                 </div>
@@ -186,7 +199,7 @@ function TelaJogos({ dados }) {
 
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', borderRadius: 24, padding: '20px 10px 16px', backgroundColor: 'color-mix(in srgb, var(--color-surface-dark-raised) 55%, transparent)', border: '1px solid var(--color-border-dark-subtle)' }}>
           <div style={{ flex: 1, minHeight: 0 }}>
-            <Chave campeonato={campeonato} jogos={jogos} duplas={duplas} duplaPorId={duplaPorId} seguindo={semSeguidos} espelhada escala={1.08} />
+            <Chave campeonato={campeonato} jogos={jogos} duplas={duplas} duplaPorId={duplaPorId} seguindo={semSeguidos} espelhada escala={1.08} proximos={proximosMapa} />
           </div>
         </div>
       </div>

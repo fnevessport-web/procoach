@@ -246,7 +246,7 @@ function QuadraLivre({ quadra, prontos, duplaPorId, onIniciar }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <span className="cp-display" style={{ fontSize: 22, fontWeight: 700 }}>{quadra}</span>
+        <span className="cp-display" style={{ fontSize: 22, fontWeight: 700, whiteSpace: 'nowrap' }}>{quadra}</span>
         <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-text-dark-muted)' }}>LIVRE</span>
       </div>
       {sugestao ? (
@@ -311,7 +311,7 @@ function PlacarAoVivo({ jogo, duplaPorId, salvarJogo }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
         <div>
-          <span className="cp-display" style={{ fontSize: 22, fontWeight: 700 }}>{jogo.quadra}</span>
+          <span className="cp-display" style={{ fontSize: 22, fontWeight: 700, whiteSpace: 'nowrap' }}>{jogo.quadra}</span>
           <span style={{ marginLeft: 10, fontSize: 12, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-text-dark-secondary)' }}>{rotuloFaseCurto(jogo.fase).toUpperCase()} · JOGO {jogo.ordem}</span>
         </div>
         <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent-on-live)', backgroundColor: 'var(--color-accent-live)', padding: '3px 8px', borderRadius: 999 }}>
@@ -824,13 +824,14 @@ function AbaJogos({ dados, salvarJogo }) {
   return (
     <Painel titulo={`Todos os jogos · ${jogos.filter(j => j.status !== 'bye').length}`} extra={<Botao tamanho="sm" onClick={recalcularHorarios}><RotateCcw size={13} />Recalcular horários</Botao>}>
       <div style={{ display: 'grid', gap: 10 }}>
-        {ordenados.map(j => <EditorJogo key={`${j.id}-${JSON.stringify(j.sets)}-${j.quadra}-${j.horario}-${j.status}`} jogo={j} campeonato={campeonato} duplaPorId={duplaPorId} salvarJogo={salvarJogo} />)}
+        {ordenados.map(j => <EditorJogo key={`${j.id}-${JSON.stringify(j.sets)}-${j.quadra}-${j.horario}-${j.status}`} jogo={j} campeonato={campeonato} duplaPorId={duplaPorId} salvarJogo={salvarJogo} dados={dados} />)}
       </div>
     </Painel>
   )
 }
 
-function EditorJogo({ jogo, campeonato, duplaPorId, salvarJogo }) {
+function EditorJogo({ jogo, campeonato, duplaPorId, salvarJogo, dados }) {
+  const [substituindo, setSubstituindo] = useState(null)
   const [sets, setSets] = useState(() => [0, 1, 2].map(i => ({ a: jogo.sets?.[i]?.a ?? '', b: jogo.sets?.[i]?.b ?? '' })))
   const [quadra, setQuadra] = useState(jogo.quadra || '')
   const [horario, setHorario] = useState(jogo.horario || '')
@@ -879,11 +880,17 @@ function EditorJogo({ jogo, campeonato, duplaPorId, salvarJogo }) {
             <div key={`n${l}`} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, fontSize: 14, fontWeight: venceu ? 800 : 600, color: venceu ? 'var(--color-brand-lima)' : 'inherit' }}>
               {d ? <AvataresDupla dupla={d} tamanho={24} /> : null}
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nomesDupla(d)}</span>
+              {d && ['agendado', 'ao_vivo'].includes(jogo.status) && (
+                <button onClick={() => setSubstituindo(substituindo === l ? null : l)} style={{ flexShrink: 0, border: 'none', background: 'none', color: 'var(--color-state-warning)', fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: '0 4px' }}>Substituir</button>
+              )}
             </div>,
             <div key={`s${l}`} style={{ display: 'flex', gap: 4 }}>{[0, 1, 2].map(i => <span key={i}>{inputSet(i, l)}</span>)}</div>,
           ]
         })}
       </div>
+      {substituindo && (
+        <SubstituirDupla jogo={jogo} lado={substituindo} dados={dados} salvarJogo={salvarJogo} onFechar={() => setSubstituindo(null)} />
+      )}
       <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         <Botao tamanho="sm" variante="primario" disabled={!completo} onClick={salvarPlacar}><Check size={13} />Salvar placar{resumo.vencedor ? ' e classificar' : ''}</Botao>
         {jogo.status === 'agendado' && completo && <Botao tamanho="sm" onClick={() => salvarJogo(jogo.id, { status: 'ao_vivo', iniciado_em: new Date().toISOString(), quadra: quadra || jogo.quadra })}><Play size={13} />Iniciar</Botao>}
@@ -891,6 +898,56 @@ function EditorJogo({ jogo, campeonato, duplaPorId, salvarJogo }) {
         {['finalizado', 'wo'].includes(jogo.status) && <Botao tamanho="sm" onClick={() => salvarJogo(jogo.id, { status: 'ao_vivo', vencedor_id: null, finalizado_em: null })}><RotateCcw size={13} />Reabrir</Botao>}
         {jogo.status !== 'agendado' && <Botao tamanho="sm" variante="fantasma" onClick={() => window.confirm('Zerar o placar e voltar o jogo para agendado?') && salvarJogo(jogo.id, { status: 'agendado', sets: [], vencedor_id: null, iniciado_em: null, finalizado_em: null })}>Zerar</Botao>}
       </div>
+    </div>
+  )
+}
+
+// Quando uma dupla não consegue jogar: (1) trocar um ou os dois atletas dela, ou (2) chamar a
+// dupla que perdeu para ela no jogo anterior para entrar no lugar ("lucky loser"). No caso (2) o
+// jogo anterior passa a W.O. a favor de quem entra, e a chave se ajusta sozinha.
+function SubstituirDupla({ jogo, lado, dados, salvarJogo, onFechar }) {
+  const { jogos, atletas, duplaPorId, recarregar } = dados
+  const d = duplaPorId.get(jogo[`dupla_${lado}_id`])
+  const anterior = jogo.fase !== 'terceiro' && jogo.rodada > 1
+    ? jogos.find(j => j.rodada === jogo.rodada - 1 && j.fase !== 'terceiro' && j.posicao === 2 * jogo.posicao + (lado === 'a' ? 0 : 1))
+    : null
+  const perdedorId = anterior && ['finalizado', 'wo'].includes(anterior.status) && anterior.vencedor_id
+    ? (anterior.vencedor_id === anterior.dupla_a_id ? anterior.dupla_b_id : anterior.dupla_a_id)
+    : null
+  const perdedor = perdedorId ? duplaPorId.get(perdedorId) : null
+
+  const trocarAtleta = (campo, atletaId) => rodar(async () => {
+    const { error } = await supabase.from('campeonato_duplas').update({ [campo]: atletaId || null }).eq('id', d.id)
+    if (error) throw error
+    await recarregar()
+  }, 'Dupla atualizada')
+
+  const chamarPerdedor = async () => {
+    if (!window.confirm(`${nomesDupla(d)} não vai jogar e ${nomesDupla(perdedor)} entra no lugar?\n\nO jogo ${anterior.ordem} fica registrado como W.O. a favor de ${nomesDupla(perdedor)}.`)) return
+    const ok = await salvarJogo(anterior.id, { status: 'wo', vencedor_id: perdedorId, finalizado_em: anterior.finalizado_em || new Date().toISOString() })
+    if (ok) onFechar()
+  }
+
+  if (!d) return null
+  return (
+    <div style={{ marginTop: 10, padding: 12, borderRadius: 12, border: '1px solid var(--color-state-warning)', backgroundColor: 'color-mix(in srgb, var(--color-state-warning) 8%, transparent)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 13, fontWeight: 800 }}>Substituir {nomesDupla(d)}</span>
+        <button onClick={onFechar} style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--color-text-dark-muted)', cursor: 'pointer' }}><X size={16} /></button>
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-dark-secondary)', marginBottom: 6 }}>1. Trocar atleta(s) desta dupla</div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        <SelectAtleta atletas={atletas} valor={d.atleta1_id} onChange={v => trocarAtleta('atleta1_id', v)} />
+        <SelectAtleta atletas={atletas} valor={d.atleta2_id} onChange={v => trocarAtleta('atleta2_id', v)} />
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-dark-secondary)', marginBottom: 6 }}>2. Chamar outra dupla no lugar</div>
+      {perdedor ? (
+        <Botao tamanho="sm" variante="destaque" onClick={chamarPerdedor}><UserPlus size={14} />Chamar {nomesDupla(perdedor)} (perdeu para eles no jogo {anterior.ordem})</Botao>
+      ) : (
+        <div style={{ fontSize: 12, color: 'var(--color-text-dark-muted)', lineHeight: 1.5 }}>
+          {jogo.rodada === 1 ? 'Na 1ª rodada não há dupla anterior para chamar. Troque os atletas acima ou use W.O.' : 'O jogo anterior ainda não terminou.'}
+        </div>
+      )}
     </div>
   )
 }

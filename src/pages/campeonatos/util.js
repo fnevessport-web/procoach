@@ -34,3 +34,19 @@ const STATUS = {
 
 export function rotuloStatusCampeonato(s) { return STATUS[s] || [s, 'var(--color-text-dark-muted)'] }
 
+
+// Para cada quadra livre (sem jogo ao vivo), o próximo jogo pronto (as duas duplas definidas) na
+// ordem de jogos: primeiro um marcado para aquela quadra, senão o próximo da fila.
+// Devolve Map(jogoId -> quadra), usado para destacar em verde na chave.
+export function proximosPorQuadra(campeonato, jogos) {
+  const ordenados = [...jogos].sort((a, b) => (a.ordem || 999) - (b.ordem || 999))
+  const ocupadas = new Set(jogos.filter(j => j.status === 'ao_vivo').map(j => j.quadra))
+  const prontos = ordenados.filter(j => j.status === 'agendado' && j.dupla_a_id && j.dupla_b_id)
+  const mapa = new Map()
+  for (const q of campeonato?.quadras || []) {
+    if (ocupadas.has(q)) continue
+    const j = prontos.find(x => !mapa.has(x.id) && x.quadra === q) || prontos.find(x => !mapa.has(x.id))
+    if (j) mapa.set(j.id, q)
+  }
+  return mapa
+}

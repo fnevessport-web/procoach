@@ -123,14 +123,14 @@ export function CartaoJogo({ jogo, duplaPorId, seguindo, escala = 1, numero, aco
       backgroundColor: 'var(--color-surface-dark-raised)',
       border: `1px solid ${destaque ? COR_DESTAQUE : aoVivo ? 'var(--color-accent-live)' : 'var(--color-border-dark-subtle)'}`,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 * escala, padding: `0 ${4 * escala}px` }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 * escala, minWidth: 0 }}>
-          <span className="cp-display" style={{ fontSize: 18 * escala, fontWeight: 700, color: 'var(--color-text-dark-primary)', whiteSpace: 'nowrap' }}>{jogo.quadra || 'Quadra a definir'}</span>
-          <span style={{ fontSize: 11 * escala, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-brand-saibro)', filter: 'brightness(1.35)', whiteSpace: 'nowrap' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 * escala, marginBottom: 8 * escala, padding: `0 ${4 * escala}px` }}>
+        <div style={{ minWidth: 0 }}>
+          <div className="cp-display" style={{ fontSize: 18 * escala, fontWeight: 700, lineHeight: 1.1, color: 'var(--color-text-dark-primary)', whiteSpace: 'nowrap' }}>{jogo.quadra || 'Quadra a definir'}</div>
+          <div style={{ fontSize: 11 * escala, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-brand-saibro)', filter: 'brightness(1.35)', whiteSpace: 'nowrap', marginTop: 3 * escala }}>
             {rotuloFaseCurto(jogo.fase)}{numero ? ` · Jogo ${numero}` : ''}
-          </span>
+          </div>
         </div>
-        <ChipStatus jogo={jogo} tamanho={10 * escala} />
+        <div style={{ flexShrink: 0 }}><ChipStatus jogo={jogo} tamanho={10 * escala} /></div>
       </div>
       <LinhaDupla dupla={a} lado="a" jogo={jogo} seguindo={seguindo} escala={escala} mostrarSets={jogo.status !== 'agendado'} />
       <div style={{ height: 1, margin: `${3 * escala}px ${8 * escala}px`, backgroundColor: 'var(--color-border-dark-subtle)' }} />
@@ -142,18 +142,19 @@ export function CartaoJogo({ jogo, duplaPorId, seguindo, escala = 1, numero, aco
 
 // ---------- chave ----------
 
-function JogoChave({ jogo, duplaPorId, seguindo, ocultas, escala = 1 }) {
+function JogoChave({ jogo, duplaPorId, seguindo, ocultas, escala = 1, proximos }) {
   const linhas = ['a', 'b'].map(lado => {
     const id = jogo[`dupla_${lado}_id`]
     return ocultas.has(id) ? null : duplaPorId.get(id) || null
   })
   const aoVivo = jogo.status === 'ao_vivo'
   const destaqueJogo = linhas.some(d => duplaTemSeguido(d, seguindo))
+  const quadraProxima = proximos?.get(jogo.id)
   return (
-    <div className={aoVivo ? 'cp-ao-vivo' : ''} style={{
+    <div data-jogo={jogo.id} className={aoVivo ? 'cp-ao-vivo' : quadraProxima ? 'cp-proximo' : ''} style={{
       borderRadius: 8 * escala, overflow: 'hidden',
-      backgroundColor: 'var(--color-surface-dark-raised)',
-      border: `1px solid ${destaqueJogo ? COR_DESTAQUE : aoVivo ? 'var(--color-accent-live)' : 'var(--color-border-dark-subtle)'}`,
+      backgroundColor: quadraProxima ? 'color-mix(in srgb, var(--color-state-success) 14%, var(--color-surface-dark-raised))' : 'var(--color-surface-dark-raised)',
+      border: `${quadraProxima ? 2 : 1}px solid ${quadraProxima ? 'var(--color-state-success)' : destaqueJogo ? COR_DESTAQUE : aoVivo ? 'var(--color-accent-live)' : 'var(--color-border-dark-subtle)'}`,
     }}>
       {linhas.map((d, i) => {
         const lado = i === 0 ? 'a' : 'b'
@@ -165,7 +166,7 @@ function JogoChave({ jogo, duplaPorId, seguindo, ocultas, escala = 1 }) {
           <div key={lado} style={{
             display: 'flex', alignItems: 'center', gap: 6 * escala, padding: `${4 * escala}px ${7 * escala}px`,
             borderTop: i ? '1px solid var(--color-border-dark-subtle)' : 'none',
-            backgroundColor: destaque ? 'color-mix(in srgb, var(--color-brand-lima) 14%, transparent)' : venceu ? 'color-mix(in srgb, var(--color-brand-saibro) 16%, transparent)' : 'transparent',
+            backgroundColor: destaque ? 'color-mix(in srgb, var(--color-brand-lima) 14%, transparent)' : venceu ? 'color-mix(in srgb, var(--color-state-success) 30%, transparent)' : 'transparent',
             opacity: perdeu ? 0.45 : 1, minHeight: 34 * escala,
           }}>
             <div style={{ flex: 1, minWidth: 0, lineHeight: 1.15 }}>
@@ -188,7 +189,12 @@ function JogoChave({ jogo, duplaPorId, seguindo, ocultas, escala = 1 }) {
           </div>
         )
       })}
-      {(aoVivo || (jogo.status === 'agendado' && jogo.horario && linhas.some(Boolean))) && (
+      {quadraProxima && !aoVivo && (
+        <div style={{ fontSize: 9.5 * escala, fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', padding: `${3 * escala}px ${7 * escala}px`, color: 'var(--color-text-dark-primary)', backgroundColor: 'var(--color-state-success)' }}>
+          ▶ Próximo · {quadraProxima}
+        </div>
+      )}
+      {!quadraProxima && (aoVivo || (jogo.status === 'agendado' && jogo.horario && linhas.some(Boolean))) && (
         <div style={{ fontSize: 9 * escala, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', padding: `${2 * escala}px ${7 * escala}px`, color: aoVivo ? 'var(--color-accent-on-live)' : 'var(--color-text-dark-muted)', backgroundColor: aoVivo ? 'var(--color-accent-live)' : 'var(--color-surface-dark-overlay)' }}>
           {aoVivo ? `● Ao vivo · ${jogo.quadra || ''}` : `${jogo.quadra || ''} · ${jogo.horario}`}
         </div>
@@ -235,14 +241,14 @@ function CampeaoBox({ jogos, duplaPorId, escala = 1 }) {
 
 // Chave linear (celular, com rolagem lateral) ou espelhada (TV: metade esquerda + final no
 // centro + metade direita).
-export function Chave({ campeonato, jogos, duplas, duplaPorId, seguindo, espelhada = false, escala = 1, larguraColuna = 190, porRodada = false }) {
+export function Chave({ campeonato, jogos, duplas, duplaPorId, seguindo, espelhada = false, escala = 1, larguraColuna = 190, porRodada = false, proximos }) {
   const ocultas = useMemo(() => duplasOcultas(campeonato, duplas), [campeonato, duplas])
   const R = totalRodadas(jogos)
   const [rodadaEscolhida, setRodadaEscolhida] = useState(null)
   if (!jogos.length) {
     return <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-dark-muted)', fontSize: 14 }}>A chave aparece aqui logo depois do sorteio das duplas.</div>
   }
-  const props = { duplaPorId, seguindo, ocultas, escala }
+  const props = { duplaPorId, seguindo, ocultas, escala, proximos }
   const daRodada = r => jogos.filter(j => j.rodada === r && j.fase !== 'terceiro').sort((a, b) => a.posicao - b.posicao)
   const final = jogos.find(j => j.fase === 'final')
   const terceiro = jogos.find(j => j.fase === 'terceiro')
