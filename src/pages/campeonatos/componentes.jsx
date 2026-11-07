@@ -235,9 +235,10 @@ function CampeaoBox({ jogos, duplaPorId, escala = 1 }) {
 
 // Chave linear (celular, com rolagem lateral) ou espelhada (TV: metade esquerda + final no
 // centro + metade direita).
-export function Chave({ campeonato, jogos, duplas, duplaPorId, seguindo, espelhada = false, escala = 1, larguraColuna = 190 }) {
+export function Chave({ campeonato, jogos, duplas, duplaPorId, seguindo, espelhada = false, escala = 1, larguraColuna = 190, porRodada = false }) {
   const ocultas = useMemo(() => duplasOcultas(campeonato, duplas), [campeonato, duplas])
   const R = totalRodadas(jogos)
+  const [rodadaEscolhida, setRodadaEscolhida] = useState(null)
   if (!jogos.length) {
     return <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-dark-muted)', fontSize: 14 }}>A chave aparece aqui logo depois do sorteio das duplas.</div>
   }
@@ -245,6 +246,34 @@ export function Chave({ campeonato, jogos, duplas, duplaPorId, seguindo, espelha
   const daRodada = r => jogos.filter(j => j.rodada === r && j.fase !== 'terceiro').sort((a, b) => a.posicao - b.posicao)
   const final = jogos.find(j => j.fase === 'final')
   const terceiro = jogos.find(j => j.fase === 'terceiro')
+
+  // Celular: uma fase por vez (abas), jogos em lista vertical grandes. Abre na fase em andamento.
+  if (porRodada) {
+    const fases = Array.from({ length: R }, (_, i) => ({ chave: `r${i + 1}`, titulo: rotuloFaseCurto(daRodada(i + 1)[0]?.fase), lista: daRodada(i + 1) }))
+    if (terceiro) fases.splice(R - 1, 0, { chave: 't', titulo: '3º lugar', lista: [terceiro] })
+    const pendente = fases.find(f => f.lista.some(j => j.status === 'ao_vivo')) || fases.find(f => f.lista.some(j => j.status === 'agendado' && j.dupla_a_id && j.dupla_b_id)) || fases[0]
+    const atual = fases.find(f => f.chave === rodadaEscolhida) || pendente
+    return (
+      <div>
+        <div className="cp-sem-scroll" style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 12 }}>
+          {fases.map(f => {
+            const ativa = f.chave === atual.chave
+            const aoVivo = f.lista.some(j => j.status === 'ao_vivo')
+            return (
+              <button key={f.chave} onClick={() => setRodadaEscolhida(f.chave)} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999, cursor: 'pointer', fontSize: 13, fontWeight: 800, border: `1px solid ${ativa ? 'var(--color-brand-lima)' : 'var(--color-border-dark)'}`, backgroundColor: ativa ? 'color-mix(in srgb, var(--color-brand-lima) 14%, transparent)' : 'transparent', color: ativa ? 'var(--color-brand-lima)' : 'var(--color-text-dark-secondary)' }}>
+                {aoVivo && <span className="cp-pulso" style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--color-accent-live)' }} />}
+                {f.titulo}
+              </button>
+            )
+          })}
+        </div>
+        <div style={{ display: 'grid', gap: 10 }}>
+          {atual.lista.map(j => <JogoChave key={j.id} jogo={j} {...props} escala={1.15} />)}
+        </div>
+        <div style={{ marginTop: 14 }}><CampeaoBox jogos={jogos} duplaPorId={duplaPorId} /></div>
+      </div>
+    )
+  }
 
   if (!espelhada) {
     return (

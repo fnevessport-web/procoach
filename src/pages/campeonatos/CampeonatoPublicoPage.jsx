@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Search, Camera, X, Plus, Star, Radio, GitBranch, Users, UserRound, Check, CalendarClock, ChevronRight, MapPin, Phone, MessageCircle, Lock } from 'lucide-react'
+import { Search, Camera, X, Plus, Star, Radio, GitBranch, Users, UserRound, Check, CalendarClock, MapPin, Phone, MessageCircle, Lock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCampeonato } from '../../hooks/useCampeonato'
 import { nomeCurto, normalizar, ordenarJogos } from '../../lib/campeonato'
 import { EditorFoto } from './EditorFoto'
-import { Marcas, Avatar, CartaoJogo, Chave, SorteioAoVivo } from './componentes'
+import { Marcas, Avatar, AvataresDupla, CartaoJogo, Chave, SorteioAoVivo } from './componentes'
 import { COR_DESTAQUE, jogoTemSeguido, duplasOcultas } from './util'
 
 // Link público do campeonato (QR code no telão). Sem login. O associado escolhe o próprio nome
@@ -42,6 +42,8 @@ export function CampeonatoPublicoPage() {
 
   const [prefs, setPrefs] = useState(() => lerPreferencias(slug))
   const [aba, setAba] = useState('jogos')
+  const rolagem = useRef(null)
+  const irParaTopo = useCallback(() => rolagem.current?.scrollTo({ top: 0, behavior: 'smooth' }), [])
 
   const salvarPrefs = (p) => {
     setPrefs(p)
@@ -50,39 +52,37 @@ export function CampeonatoPublicoPage() {
 
   const seguindo = useMemo(() => new Set([...(prefs?.seguindo || []), ...(prefs?.eu ? [prefs.eu] : [])]), [prefs])
 
-  if (carregando) return <div className="cp-fundo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Marcas altura={34} /></div>
+  if (carregando) return <div className="cp-fundo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Marcas altura={34} /></div>
   if (erro || !campeonato) return <div className="cp-fundo" style={{ padding: 40, textAlign: 'center' }}>{erro || 'Campeonato não encontrado'}</div>
 
   const emSorteio = campeonato.status === 'sorteio'
 
   return (
-    <div className="cp-fundo" style={{ paddingBottom: 'calc(84px + env(safe-area-inset-bottom))' }}>
+    <div ref={rolagem} className="cp-fundo cp-rolagem" style={{ paddingBottom: 'calc(84px + env(safe-area-inset-bottom))' }}>
       <Cabecalho campeonato={campeonato} seguindo={seguindo} atletaPorId={atletaPorId} onEditar={() => setAba('eu')} />
 
       <main style={{ maxWidth: 760, margin: '0 auto', padding: '0 14px' }}>
-        {emSorteio && aba !== 'duplas' && (
-          <button onClick={() => setAba('duplas')} style={{ width: '100%', marginBottom: 14, padding: '12px 14px', borderRadius: 14, border: '1px solid var(--color-accent-live)', backgroundColor: 'color-mix(in srgb, var(--color-accent-live) 18%, transparent)', color: 'var(--color-text-dark-primary)', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>
-            <span className="cp-pulso" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: 'var(--color-accent-live)' }} />
-            Sorteio das duplas acontecendo agora. Toque para assistir
-            <ChevronRight size={16} style={{ marginLeft: 'auto' }} />
-          </button>
-        )}
+        {campeonato.status === 'inscricoes' && (aba === 'jogos' || aba === 'duplas') && <AvisoSorteio campeonato={campeonato} />}
 
         {campeonato.status === 'inscricoes' && prefs?.eu && atletaPorId.get(prefs.eu) && (aba === 'jogos' || aba === 'eu') && (
           <CardCheckin atleta={atletaPorId.get(prefs.eu)} onMudou={dados.recarregar} />
         )}
 
-        {prefs?.eu && atletaPorId.get(prefs.eu) && aba !== 'chave' && (
+        {!emSorteio && prefs?.eu && atletaPorId.get(prefs.eu) && aba !== 'chave' && (
           <CardParceiro campeonato={campeonato} eu={atletaPorId.get(prefs.eu)} duplas={duplas} atletaPorId={atletaPorId} slug={slug} />
         )}
 
-        {aba === 'jogos' && <AbaJogos dados={dados} seguindo={seguindo} />}
-        {aba === 'chave' && (
+        {/* Durante o sorteio, a tela (menos "Meus atletas") vira o sorteio ao vivo. */}
+        {emSorteio && aba !== 'eu' && (
+          <SorteioCelular campeonato={campeonato} duplas={duplas} duplaPorId={duplaPorId} atletas={atletas} seguindo={seguindo} eu={prefs?.eu} irParaTopo={irParaTopo} />
+        )}
+        {!emSorteio && aba === 'jogos' && <AbaJogos dados={dados} seguindo={seguindo} />}
+        {!emSorteio && aba === 'chave' && (
           <Secao titulo="Chaveamento">
-            <Chave campeonato={campeonato} jogos={jogos} duplas={duplas} duplaPorId={duplaPorId} seguindo={seguindo} larguraColuna={180} />
+            <Chave campeonato={campeonato} jogos={jogos} duplas={duplas} duplaPorId={duplaPorId} seguindo={seguindo} porRodada />
           </Secao>
         )}
-        {aba === 'duplas' && (
+        {!emSorteio && aba === 'duplas' && (
           duplas.length
             ? <SorteioAoVivo campeonato={campeonato} duplas={duplas} duplaPorId={duplaPorId} atletas={atletas} seguindo={seguindo} colunas={1} escala={0.95} />
             : <ListaInscritos atletas={atletas} seguindo={seguindo} />
@@ -97,7 +97,7 @@ export function CampeonatoPublicoPage() {
           {ABAS.map(({ id, label, icon: Icone }) => {
             const ativa = aba === id
             return (
-              <button key={id} onClick={() => { setAba(id); window.scrollTo({ top: 0, behavior: 'smooth' }) }} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 0', border: 'none', borderRadius: 12, cursor: 'pointer', backgroundColor: ativa ? 'var(--color-surface-dark-overlay)' : 'transparent', color: ativa ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-muted)', fontSize: 11, fontWeight: 700, position: 'relative' }}>
+              <button key={id} onClick={() => { setAba(id); irParaTopo() }} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 0', border: 'none', borderRadius: 12, cursor: 'pointer', backgroundColor: ativa ? 'var(--color-surface-dark-overlay)' : 'transparent', color: ativa ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-muted)', fontSize: 11, fontWeight: 700, position: 'relative' }}>
                 <Icone size={19} color={ativa ? 'var(--color-brand-lima)' : undefined} />
                 {label}
                 {id === 'duplas' && emSorteio && <span className="cp-pulso" style={{ position: 'absolute', top: 4, right: '30%', width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--color-accent-live)' }} />}
@@ -112,6 +112,103 @@ export function CampeonatoPublicoPage() {
           onConcluir={salvarPrefs} />
       )}
     </div>
+  )
+}
+
+// Antes do sorteio: avisa que o sorteio é ao vivo nesta tela (30 min antes do primeiro jogo).
+function AvisoSorteio({ campeonato }) {
+  const [h, m] = String(campeonato.hora_inicio || '09:30').split(':').map(Number)
+  const total = h * 60 + m - 30
+  const hora = `${Math.floor(total / 60)}h${total % 60 ? String(total % 60).padStart(2, '0') : ''}`
+  return (
+    <div style={{ marginBottom: 16, padding: 16, borderRadius: 18, border: '1px solid var(--color-accent-live)', background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-accent-live) 22%, var(--color-surface-dark-raised)), var(--color-surface-dark-raised))' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 800, letterSpacing: '2.5px', color: 'var(--color-text-dark-primary)' }}>
+        <span className="cp-pulso" style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: 'var(--color-accent-live)' }} />SORTEIO AO VIVO ÀS {hora.toUpperCase()}
+      </div>
+      <div className="cp-display" style={{ fontSize: 21, fontWeight: 700, margin: '8px 0 4px', lineHeight: 1.2 }}>As duplas mistas serão sorteadas ao vivo, aqui nesta tela</div>
+      <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', lineHeight: 1.5 }}>Deixe esta página aberta: as duplas aparecem uma a uma e, quando sair a sua, você vê na hora quem é seu parceiro.</div>
+    </div>
+  )
+}
+
+// Sorteio no celular: a dupla de quem está logado e as de quem ele segue ficam fixas no topo
+// enquanto o sorteio continua. Quando sai a dupla dele, a tela inteira destaca "É VOCÊ!".
+function SorteioCelular({ campeonato, duplas, duplaPorId, atletas, seguindo, eu, irParaTopo }) {
+  const revelados = campeonato.sorteio_revelados || 0
+  const visivel = d => d.numero <= revelados
+  const minha = eu ? duplas.find(d => d.atleta1_id === eu || d.atleta2_id === eu) : null
+  const minhaVisivel = minha && visivel(minha) ? duplaPorId.get(minha.id) : null
+  const seguidas = duplas.filter(d => d.id !== minha?.id && visivel(d) && (seguindo.has(d.atleta1_id) || seguindo.has(d.atleta2_id))).map(d => duplaPorId.get(d.id))
+  const [destaqueVisto, setDestaqueVisto] = useState(() => !!minhaVisivel)
+  const mostrarDestaque = !!minhaVisivel && !destaqueVisto
+
+  // Fecha o destaque sozinho depois de alguns segundos e volta para o topo (dupla fixa).
+  useEffect(() => {
+    if (!mostrarDestaque) return
+    const t = setTimeout(() => { setDestaqueVisto(true); irParaTopo() }, 5000)
+    return () => clearTimeout(t)
+  }, [mostrarDestaque, irParaTopo])
+
+  // Aviso discreto quando sai a dupla de alguém que a pessoa segue.
+  const avisadas = useRef(null)
+  useEffect(() => {
+    const ids = seguidas.map(d => d.id)
+    if (avisadas.current === null) { avisadas.current = new Set(ids); return }
+    for (const d of seguidas) {
+      if (avisadas.current.has(d.id)) continue
+      avisadas.current.add(d.id)
+      const quem = [d.atleta1, d.atleta2].find(a => a && seguindo.has(a.id))
+      toast(`${quem?.nome.split(' ')[0] || 'Quem você segue'} já tem dupla!`, { icon: '⭐', duration: 3500 })
+    }
+  }, [seguidas, seguindo])
+
+  const nomeDupla = d => `${nomeCurto(d.atleta1?.nome)} & ${nomeCurto(d.atleta2?.nome)}`
+  const parceiroDe = d => (d.atleta1_id === eu ? d.atleta2 : d.atleta1)
+
+  return (
+    <>
+      {(minhaVisivel || seguidas.length > 0) && (
+        <div style={{ position: 'sticky', top: 0, zIndex: 15, margin: '0 -14px 14px', padding: '10px 14px', backgroundColor: 'color-mix(in srgb, var(--color-surface-dark-base) 90%, transparent)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-border-dark-subtle)' }}>
+          {minhaVisivel && (
+            <div className="cp-entrar" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 14, border: `1.5px solid ${COR_DESTAQUE}`, backgroundColor: 'color-mix(in srgb, var(--color-brand-lima) 14%, var(--color-surface-dark-raised))' }}>
+              <AvataresDupla dupla={minhaVisivel} tamanho={44} destaque />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '2px', color: COR_DESTAQUE }}>SUA DUPLA · Nº {minhaVisivel.numero}</div>
+                <div style={{ fontSize: 15, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Você & {parceiroDe(minhaVisivel)?.nome.split(' ')[0]}</div>
+              </div>
+            </div>
+          )}
+          {seguidas.length > 0 && (
+            <div className="cp-sem-scroll" style={{ display: 'flex', gap: 6, overflowX: 'auto', marginTop: minhaVisivel ? 8 : 0 }}>
+              {seguidas.map(d => (
+                <span key={d.id} className="cp-entrar" style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 4px', borderRadius: 999, border: '1px solid var(--color-border-dark)', backgroundColor: 'var(--color-surface-dark-raised)', fontSize: 12, fontWeight: 600 }}>
+                  <AvataresDupla dupla={d} tamanho={22} />
+                  <span style={{ color: 'var(--color-text-dark-muted)' }}>{d.numero}</span>{nomeDupla(d)}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <SorteioAoVivo campeonato={campeonato} duplas={duplas} duplaPorId={duplaPorId} atletas={atletas} seguindo={seguindo} colunas={1} escala={0.95} />
+
+      {mostrarDestaque && (
+        <div className="cp-fade-in" onClick={() => { setDestaqueVisto(true); irParaTopo() }} style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', background: 'radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--color-brand-lima) 22%, var(--color-surface-dark-base)), color-mix(in srgb, var(--color-surface-dark-base) 97%, transparent) 70%)' }}>
+          <div className="cp-zoom" style={{ fontSize: 13, fontWeight: 800, letterSpacing: '4px', color: COR_DESTAQUE }}>SUA DUPLA SAIU!</div>
+          <div className="cp-display cp-zoom" style={{ fontSize: 46, fontWeight: 700, margin: '6px 0 22px', animationDelay: '0.1s' }}>É você!</div>
+          <div className="cp-zoom" style={{ display: 'flex', alignItems: 'center', gap: 14, animationDelay: '0.25s' }}>
+            {[minhaVisivel.atleta1, minhaVisivel.atleta2].map((a, i) => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 130 }}>
+                <Avatar atleta={a} tamanho={118} destaque />
+                <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.2 }}>{a?.id === eu ? 'Você' : nomeCurto(a?.nome)}</div>
+              </div>
+            ))}
+          </div>
+          <div className="cp-zoom" style={{ marginTop: 22, fontSize: 14, color: 'var(--color-text-dark-secondary)', animationDelay: '0.4s' }}>Dupla nº {minhaVisivel.numero} · toque para continuar vendo o sorteio</div>
+        </div>
+      )}
+    </>
   )
 }
 

@@ -86,3 +86,26 @@
 
 .cp-sem-scroll::-webkit-scrollbar { display: none; }
 .cp-sem-scroll { scrollbar-width: none; }
+
+/* Página pública: o body do app tem overflow hidden (o painel rola por dentro), então a página
+   pública precisa do próprio contêiner de rolagem, senão o celular não desce a tela. */
+.cp-rolagem {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+@keyframes cp-zoom {
+  0% { opacity: 0; transform: scale(0.35); }
+  55% { opacity: 1; transform: scale(1.12); }
+  75% { transform: scale(0.97); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.cp-zoom { animation: cp-zoom 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+@keyframes cp-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.cp-fade-in { animation: cp-fade-in 0.35s ease both; }
