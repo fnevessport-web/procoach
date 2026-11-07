@@ -620,6 +620,11 @@ function AbaSorteio({ dados, irPara }) {
   const homens = base.filter(a => a.genero === 'M')
   const mulheres = base.filter(a => a.genero === 'F')
   const qtdCompletas = Math.min(homens.length, mulheres.length)
+  const ausentes = usaPresentes ? inscritos.filter(a => !a.presente).sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR')) : []
+  const inscritosF = inscritos.filter(a => a.genero === 'F').length
+  const inscritosM = inscritos.filter(a => a.genero === 'M').length
+  const sobraQtd = Math.abs(homens.length - mulheres.length)
+  const sobraHomens = homens.length > mulheres.length
   // quem sobra vira dupla com parceiro(a) "A definir"
   const qtdDuplas = qtdCompletas >= 1 ? Math.max(homens.length, mulheres.length) : 0
 
@@ -637,6 +642,7 @@ function AbaSorteio({ dados, irPara }) {
     const sobra = qtdDuplas - qtdCompletas
     const msg = `Sortear ${qtdDuplas} duplas entre ${usaPresentes ? 'os PRESENTES' : 'TODOS os inscritos (ninguém fez check-in)'}?` +
       (sobra ? `\n\n${sobra} dupla(s) ficam com parceiro(a) "A DEFINIR" (sai por último no sorteio e o jogo dela é o último da 1ª rodada). Depois é só escolher a pessoa na aba Ao vivo.` : '') +
+      (usaPresentes && ausentes.length ? `\n\nFicam FORA por não terem feito check-in (${ausentes.length}): ${ausentes.map(a => nomeCurto(a.nome)).join(', ')}.` : '') +
       `\n\nA TV e os celulares vão mostrar o sorteio ao vivo.`
     if (!window.confirm(msg)) return
     rodar(async () => {
@@ -690,8 +696,30 @@ function AbaSorteio({ dados, irPara }) {
           <Numero rotulo="Mulheres" valor={mulheres.length} sub={usaPresentes ? 'presentes' : 'inscritos'} />
           <Numero rotulo="Duplas" valor={qtdDuplas} sub={qtdDuplas ? `chave de ${2 ** Math.ceil(Math.log2(Math.max(2, qtdDuplas)))}` : ''} />
         </div>
-        {!usaPresentes && <div style={{ fontSize: 13, color: 'var(--color-state-warning)', marginBottom: 10 }}>Ninguém fez check-in ainda. Se sortear agora, entram todos os inscritos. O ideal é fazer o check-in na aba Atletas antes.</div>}
-        {homens.length !== mulheres.length && <div style={{ fontSize: 13, color: 'var(--color-state-warning)', marginBottom: 10 }}>{Math.abs(homens.length - mulheres.length)} {homens.length > mulheres.length ? 'homem(ns)' : 'mulher(es)'} sem par: {homens.length > mulheres.length ? 'ficará com parceira' : 'ficará com parceiro'} "A definir", sai por último no sorteio e joga o último jogo da 1ª rodada. Dá tempo de convidar alguém eliminado.</div>}
+        {/* O aviso de sobra só vale com o check-in: até lá ainda pode faltar gente dos dois lados. */}
+        {!usaPresentes ? (
+          <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginBottom: 10, lineHeight: 1.5 }}>
+            <b>Aguardando check-in.</b> Os números acima são dos inscritos. Assim que começarem os check-ins, esta tela passa a contar só quem chegou e avisa se alguém vai ficar sem par.
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginBottom: 10 }}>
+              Check-in: <b>{mulheres.length}</b> de {inscritosF} mulheres e <b>{homens.length}</b> de {inscritosM} homens.
+            </div>
+            {sobraQtd > 0 && (
+              <div style={{ fontSize: 13, color: 'var(--color-state-warning)', marginBottom: 10, lineHeight: 1.5, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--color-state-warning)' }}>
+                <b>{sobraQtd} {sobraHomens ? (sobraQtd === 1 ? 'homem vai ficar' : 'homens vão ficar') : (sobraQtd === 1 ? 'mulher vai ficar' : 'mulheres vão ficar')} sem par.</b>{' '}
+                {sobraQtd === 1 ? 'Ele(a) vira uma dupla' : `Cada um(a) vira uma dupla`} com {sobraHomens ? 'parceira' : 'parceiro'} "A definir", {sobraQtd === 1 ? 'sorteada' : 'sorteadas'} por último e com o jogo no fim da 1ª rodada. Dá tempo de convidar alguém eliminado.
+                {' '}Se preferir equilibrar antes, chame alguém da fila de espera ({sobraHomens ? 'mulheres' : 'homens'}) na aba Atletas.
+              </div>
+            )}
+            {ausentes.length > 0 && (
+              <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginBottom: 10, lineHeight: 1.5 }}>
+                <b>Ainda sem check-in ({ausentes.length}):</b> {ausentes.map(a => nomeCurto(a.nome)).join(', ')}. Se sortear agora, ficam de fora.
+              </div>
+            )}
+          </>
+        )}
         {qtdDuplas > 0 && (qtdDuplas & (qtdDuplas - 1)) !== 0 && <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginBottom: 10 }}>Com {qtdDuplas} duplas, {2 ** Math.ceil(Math.log2(qtdDuplas)) - qtdDuplas} dupla(s) sorteada(s) avançam direto (bye) na 1ª rodada.</div>}
         <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginBottom: 14, lineHeight: 1.5 }}>
           Ao tocar em sortear, o sistema embaralha, monta a chave e define quadra e horário de cada jogo (primeiro jogo às {campeonato.hora_inicio}, {campeonato.duracao_min} min por rodada, quadras: {(campeonato.quadras || []).join(', ')}). As duplas vão aparecendo uma a uma na TV e nos celulares.
