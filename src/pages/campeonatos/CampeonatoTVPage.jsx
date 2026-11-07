@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Radio, CalendarClock, Smartphone } from 'lucide-react'
+import { Radio, CalendarClock, Smartphone, Check } from 'lucide-react'
 import { useCampeonato } from '../../hooks/useCampeonato'
 import { nomeCurto, rotuloFaseCurto, ordenarJogos } from '../../lib/campeonato'
 import { Marcas, Avatar, CartaoJogo, Chave, SorteioAoVivo, QrCode, AvataresDupla } from './componentes'
@@ -195,6 +195,7 @@ function TelaSorteio({ dados }) {
 function TelaBoasVindas({ dados }) {
   const { campeonato, atletas } = dados
   const inscritos = atletas.filter(a => a.situacao === 'inscrito')
+  const presentes = inscritos.filter(a => a.presente).length
   const dataFmt = campeonato.data ? new Date(campeonato.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }) : ''
   return (
     <div style={{ height: '100%', display: 'flex', padding: '70px 80px', gap: 70 }}>
@@ -207,17 +208,28 @@ function TelaBoasVindas({ dados }) {
           <QrCode url={urlPublica(campeonato.slug)} tamanho={210} />
           <div>
             <div className="cp-display" style={{ fontSize: 38, fontWeight: 700, lineHeight: 1.1 }}>Aponte a câmera</div>
-            <div style={{ fontSize: 22, color: 'var(--color-text-dark-secondary)', marginTop: 10, lineHeight: 1.4 }}>Escolha seu nome, coloque sua foto e acompanhe o sorteio, seus jogos e a chave ao vivo.</div>
+            <div style={{ fontSize: 22, color: 'var(--color-text-dark-secondary)', marginTop: 10, lineHeight: 1.4 }}>Escolha seu nome, faça o check-in, coloque sua foto e acompanhe o sorteio, seus jogos e a chave ao vivo.</div>
           </div>
         </div>
       </div>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '4px', color: 'var(--color-text-dark-secondary)', marginBottom: 20 }}>{inscritos.length} ATLETAS · DUPLAS SORTEADAS NA HORA</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 18, marginBottom: 20 }}>
+          <span className="cp-display" style={{ fontSize: 54, fontWeight: 700, lineHeight: 1, color: 'var(--color-brand-lima)' }}>{presentes}<span style={{ fontSize: 30, color: 'var(--color-text-dark-muted)' }}> / {inscritos.length}</span></span>
+          <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '4px', color: 'var(--color-text-dark-secondary)' }}>{presentes === 1 ? 'ATLETA JÁ CHEGOU' : 'ATLETAS JÁ CHEGARAM'} · DUPLAS SORTEADAS NA HORA</span>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 12, alignContent: 'start' }}>
           {inscritos.map(a => (
-            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 14, backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)' }}>
-              <Avatar atleta={a} tamanho={40} />
-              <span style={{ fontSize: 16, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomeCurto(a.nome)}</span>
+            <div key={`${a.id}-${a.presente}-${!!a.foto}`} className={a.presente ? 'cp-entrar' : ''} style={{
+              position: 'relative', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 14,
+              backgroundColor: a.presente ? 'color-mix(in srgb, var(--color-brand-lima) 12%, var(--color-surface-dark-raised))' : 'var(--color-surface-dark-raised)',
+              border: `1px solid ${a.presente ? 'var(--color-brand-lima)' : 'var(--color-border-dark-subtle)'}`,
+              opacity: a.presente ? 1 : 0.45, transition: 'opacity 0.4s',
+            }}>
+              <Avatar atleta={a} tamanho={46} destaque={a.presente} />
+              <span style={{ fontSize: 16, fontWeight: a.presente ? 700 : 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomeCurto(a.nome)}</span>
+              {a.presente && (
+                <span style={{ position: 'absolute', top: -7, right: -7, width: 22, height: 22, borderRadius: '50%', backgroundColor: 'var(--color-brand-lima)', color: 'var(--color-brand-verde-court)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={14} strokeWidth={3.5} /></span>
+              )}
             </div>
           ))}
         </div>

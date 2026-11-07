@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Search, Camera, X, Plus, Star, Radio, GitBranch, Users, UserRound, Check, CalendarClock, ChevronRight } from 'lucide-react'
+import { Search, Camera, X, Plus, Star, Radio, GitBranch, Users, UserRound, Check, CalendarClock, ChevronRight, MapPin } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCampeonato } from '../../hooks/useCampeonato'
 import { nomeCurto, normalizar, comprimirFoto, ordenarJogos } from '../../lib/campeonato'
@@ -65,6 +65,10 @@ export function CampeonatoPublicoPage() {
             Sorteio das duplas acontecendo agora. Toque para assistir
             <ChevronRight size={16} style={{ marginLeft: 'auto' }} />
           </button>
+        )}
+
+        {campeonato.status === 'inscricoes' && prefs?.eu && atletaPorId.get(prefs.eu) && (aba === 'jogos' || aba === 'eu') && (
+          <CardCheckin atleta={atletaPorId.get(prefs.eu)} onMudou={dados.recarregar} />
         )}
 
         {aba === 'jogos' && <AbaJogos dados={dados} seguindo={seguindo} />}
@@ -252,6 +256,52 @@ function BuscaAtleta({ atletas, excluir = [], onEscolher, placeholder = 'Digite 
       {termo.length >= 2 && !resultados.length && (
         <div style={{ marginTop: 8, fontSize: 13, color: 'var(--color-text-dark-muted)' }}>Nenhum inscrito com esse nome.</div>
       )}
+    </div>
+  )
+}
+
+// ---------- check-in pelo celular ----------
+
+// O associado confirma que chegou ao clube. Acende o nome dele no telão e entra no sorteio
+// (o sorteio usa quem fez check-in). Só vale antes do sorteio.
+function CardCheckin({ atleta, onMudou }) {
+  const [salvando, setSalvando] = useState(false)
+  const primeiro = atleta.nome.split(' ')[0]
+  const marcar = async (presente) => {
+    setSalvando(true)
+    const { error } = await supabase.rpc('campeonato_checkin', { p_atleta_id: atleta.id, p_presente: presente })
+    setSalvando(false)
+    if (error) return toast.error(error.message)
+    if (presente) toast.success('Check-in feito! Seu nome já acendeu no telão.')
+    onMudou?.()
+  }
+  if (atleta.presente) {
+    return (
+      <div className="cp-entrar" style={{ marginBottom: 16, padding: 16, borderRadius: 16, border: `1px solid ${COR_DESTAQUE}`, backgroundColor: 'color-mix(in srgb, var(--color-brand-lima) 12%, var(--color-surface-dark-raised))' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: COR_DESTAQUE, color: 'var(--color-brand-verde-court)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Check size={24} strokeWidth={3} /></span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: COR_DESTAQUE }}>Check-in feito, {primeiro}!</div>
+            <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginTop: 2 }}>{atleta.situacao === 'espera' ? 'Você está na lista de espera. Se abrir vaga, a mesa te chama.' : 'Você está no sorteio. Fique de olho no telão às 9h.'}</div>
+          </div>
+        </div>
+        {!atleta.foto && (
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)' }}>Falta sua foto para aparecer no telão:</span>
+            <BotaoFoto atleta={atleta} rotulo="Colocar foto" onEnviada={onMudou} />
+          </div>
+        )}
+        <button onClick={() => marcar(false)} disabled={salvando} style={{ ...botaoTexto, marginTop: 10, fontSize: 12, width: 'auto' }}>Fiz check-in sem querer, desfazer</button>
+      </div>
+    )
+  }
+  return (
+    <div style={{ marginBottom: 16, padding: 16, borderRadius: 16, border: '1px solid var(--color-brand-saibro)', backgroundColor: 'color-mix(in srgb, var(--color-brand-saibro) 14%, var(--color-surface-dark-raised))' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 800 }}><MapPin size={18} />Já está no Beyond, {primeiro}?</div>
+      <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', margin: '4px 0 12px', lineHeight: 1.5 }}>Faça o check-in quando chegar ao clube. O sorteio das duplas usa só quem fez check-in.</div>
+      <button onClick={() => marcar(true)} disabled={salvando} style={{ ...botaoPrincipal, opacity: salvando ? 0.6 : 1 }}>
+        {salvando ? 'Confirmando...' : 'Cheguei! Fazer meu check-in'}
+      </button>
     </div>
   )
 }
