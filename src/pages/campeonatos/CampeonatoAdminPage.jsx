@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Tv, Smartphone, Copy, Radio, Users, Shuffle, ListOrdered, Settings, Plus, Minus, Play,
-  Trash2, Camera, Check, RotateCcw, Pause, SkipForward, FastForward, Flag, ExternalLink, Search, X,
+  Trash2, Camera, Check, RotateCcw, ChevronUp, ChevronDown, UserPlus, Pause, SkipForward, FastForward, Flag, ExternalLink, Search, X,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCampeonato, aplicarPatchesJogos } from '../../hooks/useCampeonato'
@@ -332,7 +332,7 @@ function BotaoWO({ jogo, duplaPorId, salvarJogo }) {
 
 function AbaAtletas({ dados }) {
   const { campeonato, atletas, recarregar } = dados
-  const [filtro, setFiltro] = useState('todos')
+  const [lista, setLista] = useState('inscritos')
   const [busca, setBusca] = useState('')
   const [novo, setNovo] = useState({ nome: '', genero: 'F', situacao: 'inscrito' })
 
@@ -340,14 +340,11 @@ function AbaAtletas({ dados }) {
   const conta = (g, soPresentes) => inscritos.filter(a => a.genero === g && (!soPresentes || a.presente)).length
   const espera = atletas.filter(a => a.situacao === 'espera')
 
-  const visiveis = atletas.filter(a => {
-    if (filtro === 'F' || filtro === 'M') { if (a.genero !== filtro || a.situacao !== 'inscrito') return false }
-    if (filtro === 'espera' && a.situacao !== 'espera') return false
-    if (filtro === 'desistiu' && a.situacao !== 'desistiu') return false
-    if (filtro === 'todos' && a.situacao === 'desistiu') return false
-    if (busca && !normalizar(a.nome).includes(normalizar(busca))) return false
-    return true
-  }).sort((x, y) => (x.situacao === y.situacao ? 0 : x.situacao === 'inscrito' ? -1 : 1) || x.genero.localeCompare(y.genero) || x.ordem - y.ordem)
+  const casaBusca = a => !busca || normalizar(a.nome).includes(normalizar(busca))
+  const porNome = (x, y) => x.nome.localeCompare(y.nome, 'pt-BR', { sensitivity: 'base' })
+  // Fila de espera: ordem de chamada = campo "ordem" (quem se inscreveu antes vem primeiro).
+  const filaDe = g => espera.filter(a => a.genero === g).sort((x, y) => x.ordem - y.ordem)
+  const desistencias = atletas.filter(a => a.situacao === 'desistiu').sort(porNome)
 
   const atualizar = (id, patch, ok) => rodar(async () => {
     const { error } = await supabase.from('campeonato_atletas').update(patch).eq('id', id)
@@ -379,9 +376,30 @@ function AbaAtletas({ dados }) {
     await recarregar()
   }, 'Todos os inscritos marcados como presentes')
 
-  const filtros = [
-    ['todos', 'Todos'], ['F', `Mulheres · ${conta('F')}`], ['M', `Homens · ${conta('M')}`], ['espera', `Espera · ${espera.length}`], ['desistiu', 'Desistências'],
+  // Troca a posição na fila com o vizinho (setas).
+  const mover = (fila, i, delta) => {
+    const a = fila[i]
+    const b = fila[i + delta]
+    if (!a || !b) return
+    rodar(async () => {
+      const r1 = await supabase.from('campeonato_atletas').update({ ordem: b.ordem }).eq('id', a.id)
+      if (r1.error) throw r1.error
+      const r2 = await supabase.from('campeonato_atletas').update({ ordem: a.ordem }).eq('id', b.id)
+      if (r2.error) throw r2.error
+      await recarregar()
+    })
+  }
+  const chamar = (a) => {
+    if (!window.confirm(`Chamar ${a.nome} da fila de espera para o torneio?`)) return
+    atualizar(a.id, { situacao: 'inscrito' }, `${a.nome.split(' ')[0]} entrou no torneio`)
+  }
+
+  const abas = [
+    ['inscritos', `Inscritos · ${inscritos.length}`],
+    ['espera', `Fila de espera · ${espera.length}`],
+    ['desistiu', `Desistências · ${desistencias.length}`],
   ]
+  const titulo = t => <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '1.5px', color: 'var(--color-text-dark-secondary)', margin: '14px 2px 8px', textTransform: 'uppercase' }}>{t}</div>
 
   return (
     <>
@@ -389,7 +407,7 @@ function AbaAtletas({ dados }) {
         <Numero rotulo="Mulheres inscritas" valor={conta('F')} sub={`${conta('F', true)} presentes`} />
         <Numero rotulo="Homens inscritos" valor={conta('M')} sub={`${conta('M', true)} presentes`} />
         <Numero rotulo="Duplas possíveis" valor={Math.min(conta('F', true) || conta('F'), conta('M', true) || conta('M'))} sub={conta('F', true) || conta('M', true) ? 'com os presentes' : 'com os inscritos'} />
-        <Numero rotulo="Lista de espera" valor={espera.length} sub="para entrar no torneio, troque Espera por Inscrito" />
+        <Numero rotulo="Lista de espera" valor={espera.length} sub="veja a aba Fila de espera" />
       </div>
 
       <Painel titulo="Incluir atleta">
@@ -401,20 +419,64 @@ function AbaAtletas({ dados }) {
         </div>
       </Painel>
 
-      <Painel titulo="Check-in e cadastro" extra={<Botao tamanho="sm" onClick={todosPresentes}><Check size={13} />Marcar todos inscritos presentes</Botao>}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {filtros.map(([v, t]) => (
-            <button key={v} onClick={() => setFiltro(v)} style={{ padding: '6px 12px', borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: `1px solid ${filtro === v ? 'var(--color-brand-lima)' : 'var(--color-border-dark)'}`, backgroundColor: 'transparent', color: filtro === v ? 'var(--color-brand-lima)' : 'var(--color-text-dark-secondary)' }}>{t}</button>
+      <Painel extra={lista === 'inscritos' ? <Botao tamanho="sm" onClick={todosPresentes}><Check size={13} />Marcar todos inscritos presentes</Botao> : null}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+          {abas.map(([v, t]) => (
+            <button key={v} onClick={() => setLista(v)} style={{ padding: '8px 14px', borderRadius: 999, fontSize: 14, fontWeight: 800, cursor: 'pointer', border: `1px solid ${lista === v ? 'var(--color-brand-lima)' : 'var(--color-border-dark)'}`, backgroundColor: lista === v ? 'color-mix(in srgb, var(--color-brand-lima) 12%, transparent)' : 'transparent', color: lista === v ? 'var(--color-brand-lima)' : 'var(--color-text-dark-secondary)' }}>{t}</button>
           ))}
           <div style={{ position: 'relative', marginLeft: 'auto' }}>
             <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-dark-muted)' }} />
             <input style={{ ...estiloInput, paddingLeft: 30, width: 200 }} placeholder="Buscar" value={busca} onChange={e => setBusca(e.target.value)} />
           </div>
         </div>
-        <div style={{ display: 'grid', gap: 6 }}>
-          {visiveis.map(a => <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} />)}
-          {!visiveis.length && <div style={{ fontSize: 14, color: 'var(--color-text-dark-muted)' }}>Ninguém aqui.</div>}
-        </div>
+        {lista === 'inscritos' && [['F', 'Mulheres'], ['M', 'Homens']].map(([g, t]) => {
+          const doLado = inscritos.filter(a => a.genero === g && casaBusca(a)).sort(porNome)
+          return (
+            <div key={g}>
+              {titulo(`${t} · ${conta(g)} inscritos · ${conta(g, true)} com check-in`)}
+              <div style={{ display: 'grid', gap: 6 }}>
+                {doLado.map(a => <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} />)}
+                {!doLado.length && <div style={{ fontSize: 14, color: 'var(--color-text-dark-muted)' }}>Ninguém aqui.</div>}
+              </div>
+            </div>
+          )
+        })}
+
+        {lista === 'espera' && (
+          <>
+            <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', margin: '8px 2px 0', lineHeight: 1.5 }}>
+              Ordem de chamada: o nº 1 é o próximo a ser chamado. Use as setas para mudar a ordem e <b>Chamar</b> para colocar a pessoa no torneio.
+            </div>
+            {[['F', 'Mulheres'], ['M', 'Homens']].map(([g, t]) => {
+              const fila = filaDe(g)
+              if (!fila.length) return null
+              return (
+                <div key={g}>
+                  {titulo(`${t} · ${fila.length} na fila`)}
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    {fila.map((a, i) => casaBusca(a) && (
+                      <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} numero={i + 1} acoes={(
+                        <>
+                          <Botao tamanho="sm" variante="fantasma" titulo="Subir na fila" disabled={i === 0} onClick={() => mover(fila, i, -1)}><ChevronUp size={15} /></Botao>
+                          <Botao tamanho="sm" variante="fantasma" titulo="Descer na fila" disabled={i === fila.length - 1} onClick={() => mover(fila, i, 1)}><ChevronDown size={15} /></Botao>
+                          <Botao tamanho="sm" variante="destaque" onClick={() => chamar(a)}><UserPlus size={14} />Chamar</Botao>
+                        </>
+                      )} />
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+            {!espera.length && <div style={{ fontSize: 14, color: 'var(--color-text-dark-muted)', marginTop: 10 }}>Fila de espera vazia.</div>}
+          </>
+        )}
+
+        {lista === 'desistiu' && (
+          <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+            {desistencias.filter(casaBusca).map(a => <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} />)}
+            {!desistencias.length && <div style={{ fontSize: 14, color: 'var(--color-text-dark-muted)' }}>Nenhuma desistência.</div>}
+          </div>
+        )}
       </Painel>
     </>
   )
@@ -430,7 +492,7 @@ function Numero({ rotulo, valor, sub }) {
   )
 }
 
-function LinhaAtleta({ atleta: a, atualizar, excluir }) {
+function LinhaAtleta({ atleta: a, atualizar, excluir, numero, acoes }) {
   const [editando, setEditando] = useState(false)
   const [nome, setNome] = useState(a.nome)
   const ref = useRef(null)
@@ -442,6 +504,9 @@ function LinhaAtleta({ atleta: a, atualizar, excluir }) {
   }
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 12, backgroundColor: 'var(--color-surface-dark-overlay)', opacity: a.situacao === 'desistiu' ? 0.55 : 1 }}>
+      {numero != null && (
+        <span className="cp-display" style={{ minWidth: 30, height: 30, borderRadius: 8, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, backgroundColor: numero === 1 ? 'var(--color-brand-lima)' : 'var(--color-surface-dark-raised)', color: numero === 1 ? 'var(--color-brand-verde-court)' : 'var(--color-text-dark-primary)' }}>{numero}</span>
+      )}
       <input ref={ref} type="file" accept="image/*" onChange={foto} style={{ display: 'none' }} />
       {arquivo && <EditorFoto arquivo={arquivo} onCancelar={() => setArquivo(null)} onConfirmar={async (f) => { await atualizar(a.id, { foto: f }, 'Foto salva'); setArquivo(null) }} />}
       <button onClick={() => ref.current?.click()} title="Trocar foto" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', position: 'relative' }}>
@@ -468,6 +533,7 @@ function LinhaAtleta({ atleta: a, atualizar, excluir }) {
         backgroundColor: a.presente ? 'var(--color-state-success)' : 'transparent', color: a.presente ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-secondary)',
       }}>{a.presente ? <><Check size={14} />Presente</> : 'Check-in'}</button>
       {a.foto && <Botao tamanho="sm" variante="fantasma" titulo="Apagar foto" onClick={() => window.confirm('Apagar a foto?') && atualizar(a.id, { foto: null }, 'Foto apagada')}><Camera size={13} /><X size={11} /></Botao>}
+      {acoes}
       <Botao tamanho="sm" variante="fantasma" titulo="Excluir atleta" onClick={() => excluir(a)}><Trash2 size={14} /></Botao>
     </div>
   )
