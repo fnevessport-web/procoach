@@ -154,7 +154,8 @@ function TelaJogos({ dados }) {
 
 function nomesDupla(d) {
   if (!d) return 'A definir'
-  return `${nomeCurto(d.atleta1?.nome).split(' ')[0]} & ${nomeCurto(d.atleta2?.nome).split(' ')[0]}`
+  const primeiro = a => (a ? nomeCurto(a.nome).split(' ')[0] : 'A definir')
+  return `${primeiro(d.atleta1)} & ${primeiro(d.atleta2)}`
 }
 
 function LinhaProximo({ jogo, duplaPorId }) {

@@ -67,7 +67,8 @@ function ordemEspalhada(m) {
 }
 
 // Sorteio: embaralha homens e mulheres separadamente e casa um com um. Quem sobra (gênero com
-// mais gente) volta na lista "sobra" para a gestão decidir.
+// mais gente) vira dupla com parceiro(a) "A definir", sorteada por último. A organização convida
+// alguém (ex.: uma eliminada) e completa a dupla pelo painel antes do jogo.
 export function sortearDuplas(homens, mulheres) {
   const h = embaralhar(homens)
   const m = embaralhar(mulheres)
@@ -78,7 +79,16 @@ export function sortearDuplas(homens, mulheres) {
     atleta1_id: h[i].id,
     atleta2_id: m[i].id,
   }))
-  return { duplas, sobra: [...h.slice(qtd), ...m.slice(qtd)] }
+  const resto = [
+    ...h.slice(qtd).map(a => ({ atleta1_id: a.id, atleta2_id: null })),
+    ...m.slice(qtd).map(a => ({ atleta1_id: null, atleta2_id: a.id })),
+  ]
+  resto.forEach((r, i) => duplas.push({ id: crypto.randomUUID(), numero: qtd + i + 1, ...r }))
+  return { duplas, incompletas: resto.length }
+}
+
+export function duplaIncompleta(d) {
+  return !!d && (!d.atleta1_id || !d.atleta2_id)
 }
 
 // Chave completa a partir das duplas na ordem do sorteio. Duplas 1..m ficam no lado A dos jogos
@@ -259,8 +269,13 @@ export function ordenarJogos(jogos) {
 
 // Distribui os jogos (sem bye) em sequência pelas quadras: cada "rodada de quadras" começa
 // duracaoMin depois da anterior. O horário é "não antes de".
-export function agendar(jogos, quadras, horaInicio, duracaoMin) {
-  const lista = ordenarJogos(jogos).filter(j => j.status !== 'bye')
+// Jogos da 1ª rodada com dupla incompleta ("A definir") vão para o fim da rodada, para dar tempo
+// de a organização convidar o(a) parceiro(a).
+export function agendar(jogos, quadras, horaInicio, duracaoMin, incompletas = new Set()) {
+  const todos = ordenarJogos(jogos).filter(j => j.status !== 'bye')
+  const temIncompleta = j => j.rodada === 1 && (incompletas.has(j.dupla_a_id) || incompletas.has(j.dupla_b_id))
+  const primeira = todos.filter(j => j.rodada === 1)
+  const lista = [...primeira.filter(j => !temIncompleta(j)), ...primeira.filter(temIncompleta), ...todos.filter(j => j.rodada !== 1)]
   const qs = quadras?.length ? quadras : ['Quadra 1']
   return lista.map((j, i) => ({
     id: j.id,
@@ -277,6 +292,7 @@ export function agendar(jogos, quadras, horaInicio, duracaoMin) {
 const PARTICULAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'junior', 'júnior', 'filho', 'neto'])
 
 export function nomeCurto(nome = '') {
+  if (!nome || !String(nome).trim()) return 'A definir'
   const partes = nome.trim().split(/\s+/).filter(Boolean)
   if (partes.length <= 1) return partes[0] || ''
   let ultimo = partes[partes.length - 1]

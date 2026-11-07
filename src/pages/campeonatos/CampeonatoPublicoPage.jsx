@@ -174,7 +174,7 @@ function SorteioCelular({ campeonato, duplas, duplaPorId, atletas, seguindo, eu,
               <AvataresDupla dupla={minhaVisivel} tamanho={44} destaque />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '2px', color: COR_DESTAQUE }}>SUA DUPLA · Nº {minhaVisivel.numero}</div>
-                <div style={{ fontSize: 15, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Você & {parceiroDe(minhaVisivel)?.nome.split(' ')[0]}</div>
+                <div style={{ fontSize: 15, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Você & {parceiroDe(minhaVisivel)?.nome.split(' ')[0] || 'A definir'}</div>
               </div>
             </div>
           )}
@@ -444,7 +444,16 @@ function CardParceiro({ campeonato, eu, duplas, atletaPorId, slug }) {
     return () => { vivo = false }
   }, [revelada, parceiroId, eu.id, chaveFinal])
 
-  if (!revelada || !parceiro) return null
+  if (!revelada) return null
+  if (!parceiro) {
+    return (
+      <div className="cp-entrar" style={{ marginBottom: 16, padding: 16, borderRadius: 18, border: '1px solid var(--color-state-warning)', backgroundColor: 'color-mix(in srgb, var(--color-state-warning) 12%, var(--color-surface-dark-raised))' }}>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '2.5px', color: 'var(--color-state-warning)' }}>SUA DUPLA · Nº {minha.numero}</div>
+        <div className="cp-display" style={{ fontSize: 20, fontWeight: 700, margin: '6px 0 4px' }}>Seu par será definido pela organização</div>
+        <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', lineHeight: 1.5 }}>O número de inscritos ficou ímpar. Seu jogo é o último da 1ª rodada, e a organização vai convidar alguém para completar sua dupla. Assim que definirem, o nome aparece aqui.</div>
+      </div>
+    )
+  }
 
   const buscar = async () => {
     setCarregando(true)

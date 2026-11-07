@@ -9,7 +9,7 @@ import { supabase } from '../../lib/supabase'
 import { useCampeonato, aplicarPatchesJogos } from '../../hooks/useCampeonato'
 import {
   sortearDuplas, montarChave, propagar, agendar, resumoPlacar, somarPonto, tirarPonto, nomeCurto,
-  rotuloFase, rotuloFaseCurto, ordenarJogos, normalizar, indiceSetAtual,
+  rotuloFase, rotuloFaseCurto, ordenarJogos, normalizar, indiceSetAtual, duplaIncompleta,
 } from '../../lib/campeonato'
 import { Avatar, AvataresDupla, Chave, SorteioAoVivo, QrCode, Marcas } from './componentes'
 import { rotuloStatusCampeonato, urlPublica, urlTV } from './util'
@@ -145,7 +145,8 @@ export function CampeonatoAdminPage() {
 // =============================================================================================
 
 function AbaOperacao({ dados, salvarJogo }) {
-  const { campeonato, jogos, duplaPorId } = dados
+  const { campeonato, jogos, duplas, atletas, duplaPorId, recarregar } = dados
+  const incompletas = duplas.filter(duplaIncompleta)
   const ordenados = ordenarJogos(jogos.filter(j => j.status !== 'bye')).sort((a, b) => (a.ordem || 999) - (b.ordem || 999))
   const aoVivo = ordenados.filter(j => j.status === 'ao_vivo')
   const prontos = ordenados.filter(j => j.status === 'agendado' && j.dupla_a_id && j.dupla_b_id)
@@ -155,7 +156,16 @@ function AbaOperacao({ dados, salvarJogo }) {
     return <Painel><div style={{ color: 'var(--color-text-dark-secondary)', fontSize: 14 }}>Ainda não há jogos. Faça o check-in na aba <b>Atletas</b> e depois o sorteio na aba <b>Sorteio</b>.</div></Painel>
   }
 
-  const iniciar = (jogo, quadra) => salvarJogo(jogo.id, { status: 'ao_vivo', quadra, iniciado_em: new Date().toISOString() })
+  const iniciar = (jogo, quadra) => {
+    const faltando = [jogo.dupla_a_id, jogo.dupla_b_id].map(id => duplas.find(d => d.id === id)).find(duplaIncompleta)
+    if (faltando) return toast.error(`Defina o(a) parceiro(a) da dupla nº ${faltando.numero} antes de iniciar o jogo.`)
+    return salvarJogo(jogo.id, { status: 'ao_vivo', quadra, iniciado_em: new Date().toISOString() })
+  }
+  const completar = (dupla, campo, atletaId) => rodar(async () => {
+    const { error } = await supabase.from('campeonato_duplas').update({ [campo]: atletaId || null }).eq('id', dupla.id)
+    if (error) throw error
+    await recarregar()
+  }, 'Dupla completa!')
 
   return (
     <>
@@ -167,6 +177,24 @@ function AbaOperacao({ dados, salvarJogo }) {
           </div>
         </Painel>
       )}
+
+      {incompletas.map(d => {
+        const jogo = jogos.find(j => j.rodada === 1 && (j.dupla_a_id === d.id || j.dupla_b_id === d.id))
+        const falta = d.atleta1_id ? 'atleta2_id' : 'atleta1_id'
+        const quem = duplaPorId.get(d.id)
+        return (
+          <Painel key={d.id}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-state-warning)' }}>DUPLA Nº {d.numero} SEM {falta === 'atleta2_id' ? 'PARCEIRA' : 'PARCEIRO'}</div>
+                <div style={{ fontSize: 14, marginTop: 2 }}>{nomesDupla(quem)}{jogo ? ` · Jogo ${jogo.ordem} (${jogo.quadra}, ${jogo.horario})` : ''}</div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-dark-muted)', marginTop: 2 }}>Convide alguém (ex.: uma eliminada nos primeiros jogos) e escolha aqui.</div>
+              </div>
+              <SelectAtleta atletas={atletas} valor={null} onChange={v => v && completar(d, falta, v)} />
+            </div>
+          </Painel>
+        )
+      })}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>
         {quadras.map(q => {
@@ -591,7 +619,9 @@ function AbaSorteio({ dados, irPara }) {
   const base = usaPresentes ? inscritos.filter(a => a.presente) : inscritos
   const homens = base.filter(a => a.genero === 'M')
   const mulheres = base.filter(a => a.genero === 'F')
-  const qtdDuplas = Math.min(homens.length, mulheres.length)
+  const qtdCompletas = Math.min(homens.length, mulheres.length)
+  // quem sobra vira dupla com parceiro(a) "A definir"
+  const qtdDuplas = qtdCompletas >= 1 ? Math.max(homens.length, mulheres.length) : 0
 
   // Ritmo do sorteio: esta tela revela uma dupla a cada N segundos (todo mundo vê junto).
   useEffect(() => {
@@ -603,17 +633,18 @@ function AbaSorteio({ dados, irPara }) {
   }, [emSorteio, auto, revelados, duplas.length, segundos, campeonato.id, recarregar])
 
   const iniciar = () => {
-    if (qtdDuplas < 2) return toast.error('Precisa de pelo menos 2 homens e 2 mulheres')
-    const sobra = homens.length + mulheres.length - qtdDuplas * 2
+    if (qtdCompletas < 2) return toast.error('Precisa de pelo menos 2 homens e 2 mulheres')
+    const sobra = qtdDuplas - qtdCompletas
     const msg = `Sortear ${qtdDuplas} duplas entre ${usaPresentes ? 'os PRESENTES' : 'TODOS os inscritos (ninguém fez check-in)'}?` +
-      (sobra ? `\n\n${sobra} atleta(s) vão sobrar sem par (gênero com mais gente).` : '') +
+      (sobra ? `\n\n${sobra} dupla(s) ficam com parceiro(a) "A DEFINIR" (sai por último no sorteio e o jogo dela é o último da 1ª rodada). Depois é só escolher a pessoa na aba Ao vivo.` : '') +
       `\n\nA TV e os celulares vão mostrar o sorteio ao vivo.`
     if (!window.confirm(msg)) return
     rodar(async () => {
-      const { duplas: novas, sobra: quemSobrou } = sortearDuplas(homens, mulheres)
+      const { duplas: novas } = sortearDuplas(homens, mulheres)
+      const incompletas = new Set(novas.filter(duplaIncompleta).map(d => d.id))
       let chave = montarChave(novas, { terceiro: campeonato.disputa_terceiro })
       for (const m of propagar(chave)) chave = chave.map(j => (j.id === m.id ? { ...j, ...m.patch } : j))
-      for (const m of agendar(chave, campeonato.quadras, campeonato.hora_inicio, campeonato.duracao_min)) chave = chave.map(j => (j.id === m.id ? { ...j, ...m.patch } : j))
+      for (const m of agendar(chave, campeonato.quadras, campeonato.hora_inicio, campeonato.duracao_min, incompletas)) chave = chave.map(j => (j.id === m.id ? { ...j, ...m.patch } : j))
       // vencedor do bye já entra na 2ª rodada
       for (const m of propagar(chave)) chave = chave.map(j => (j.id === m.id ? { ...j, ...m.patch } : j))
 
@@ -623,7 +654,6 @@ function AbaSorteio({ dados, irPara }) {
       if (e2) throw e2
       await atualizarCampeonato(campeonato.id, { status: 'sorteio', sorteio_revelados: 0, sorteio_em: new Date().toISOString() })
       await recarregar()
-      if (quemSobrou.length) toast(`Sem par: ${quemSobrou.map(a => nomeCurto(a.nome)).join(', ')}`, { duration: 8000 })
     }, 'Sorteio iniciado')
   }
 
@@ -661,12 +691,12 @@ function AbaSorteio({ dados, irPara }) {
           <Numero rotulo="Duplas" valor={qtdDuplas} sub={qtdDuplas ? `chave de ${2 ** Math.ceil(Math.log2(Math.max(2, qtdDuplas)))}` : ''} />
         </div>
         {!usaPresentes && <div style={{ fontSize: 13, color: 'var(--color-state-warning)', marginBottom: 10 }}>Ninguém fez check-in ainda. Se sortear agora, entram todos os inscritos. O ideal é fazer o check-in na aba Atletas antes.</div>}
-        {homens.length !== mulheres.length && <div style={{ fontSize: 13, color: 'var(--color-state-warning)', marginBottom: 10 }}>{Math.abs(homens.length - mulheres.length)} {homens.length > mulheres.length ? 'homem(ns)' : 'mulher(es)'} sem par. Inclua um suplente na aba Atletas ou aceite a sobra.</div>}
+        {homens.length !== mulheres.length && <div style={{ fontSize: 13, color: 'var(--color-state-warning)', marginBottom: 10 }}>{Math.abs(homens.length - mulheres.length)} {homens.length > mulheres.length ? 'homem(ns)' : 'mulher(es)'} sem par: {homens.length > mulheres.length ? 'ficará com parceira' : 'ficará com parceiro'} "A definir", sai por último no sorteio e joga o último jogo da 1ª rodada. Dá tempo de convidar alguém eliminado.</div>}
         {qtdDuplas > 0 && (qtdDuplas & (qtdDuplas - 1)) !== 0 && <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginBottom: 10 }}>Com {qtdDuplas} duplas, {2 ** Math.ceil(Math.log2(qtdDuplas)) - qtdDuplas} dupla(s) sorteada(s) avançam direto (bye) na 1ª rodada.</div>}
         <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginBottom: 14, lineHeight: 1.5 }}>
           Ao tocar em sortear, o sistema embaralha, monta a chave e define quadra e horário de cada jogo (primeiro jogo às {campeonato.hora_inicio}, {campeonato.duracao_min} min por rodada, quadras: {(campeonato.quadras || []).join(', ')}). As duplas vão aparecendo uma a uma na TV e nos celulares.
         </div>
-        <Botao variante="primario" tamanho="lg" onClick={iniciar} disabled={qtdDuplas < 2}><Shuffle size={18} />Iniciar sorteio ao vivo</Botao>
+        <Botao variante="primario" tamanho="lg" onClick={iniciar} disabled={qtdCompletas < 2}><Shuffle size={18} />Iniciar sorteio ao vivo</Botao>
       </Painel>
     )
   }
@@ -734,7 +764,7 @@ function AbaJogos({ dados, salvarJogo }) {
   const recalcularHorarios = () => {
     if (!window.confirm('Redistribuir quadra e horário de todos os jogos ainda agendados, a partir das configurações?')) return
     rodar(async () => {
-      const mud = agendar(jogos, campeonato.quadras, campeonato.hora_inicio, campeonato.duracao_min)
+      const mud = agendar(jogos, campeonato.quadras, campeonato.hora_inicio, campeonato.duracao_min, new Set(dados.duplas.filter(duplaIncompleta).map(d => d.id)))
         .filter(m => jogos.find(j => j.id === m.id)?.status === 'agendado')
       await aplicarPatchesJogos(mud)
       await recarregar()
