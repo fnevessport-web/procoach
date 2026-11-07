@@ -62,7 +62,7 @@ export function CelebracaoVitoria({ jogo, jogos, duplaPorId, palco, escala, onFi
       }
       setFase('linha')
     }, 8000)
-    const t3 = setTimeout(onFim, proximo ? 11500 : 8600)
+    const t3 = setTimeout(onFim, proximo ? 14200 : 8600)
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
     // roda uma vez por jogo celebrado
     // eslint-disable-next-line react-hooks/exhaustive-deps
