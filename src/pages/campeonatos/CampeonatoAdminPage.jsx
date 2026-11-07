@@ -389,7 +389,7 @@ function AbaAtletas({ dados }) {
         <Numero rotulo="Mulheres inscritas" valor={conta('F')} sub={`${conta('F', true)} presentes`} />
         <Numero rotulo="Homens inscritos" valor={conta('M')} sub={`${conta('M', true)} presentes`} />
         <Numero rotulo="Duplas possíveis" valor={Math.min(conta('F', true) || conta('F'), conta('M', true) || conta('M'))} sub={conta('F', true) || conta('M', true) ? 'com os presentes' : 'com os inscritos'} />
-        <Numero rotulo="Lista de espera" valor={espera.length} sub="toque em Inscrito para promover" />
+        <Numero rotulo="Lista de espera" valor={espera.length} sub="para entrar no torneio, troque Espera por Inscrito" />
       </div>
 
       <Painel titulo="Incluir atleta">
@@ -462,7 +462,7 @@ function LinhaAtleta({ atleta: a, atualizar, excluir }) {
       <select value={a.situacao} onChange={e => atualizar(a.id, { situacao: e.target.value, ...(e.target.value !== 'inscrito' ? { presente: false } : {}) })} style={{ ...estiloInput, padding: '6px 8px', fontSize: 13 }}>
         <option value="inscrito">Inscrito</option><option value="espera">Espera</option><option value="desistiu">Desistiu</option>
       </select>
-      <button onClick={() => atualizar(a.id, { presente: !a.presente, ...(!a.presente && a.situacao !== 'inscrito' ? { situacao: 'inscrito' } : {}) })} style={{
+      <button onClick={() => atualizar(a.id, { presente: !a.presente })} style={{
         display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer', minWidth: 104, justifyContent: 'center',
         border: `1px solid ${a.presente ? 'var(--color-state-success)' : 'var(--color-border-dark)'}`,
         backgroundColor: a.presente ? 'var(--color-state-success)' : 'transparent', color: a.presente ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-secondary)',

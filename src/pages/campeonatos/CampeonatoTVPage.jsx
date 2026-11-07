@@ -192,44 +192,48 @@ function TelaSorteio({ dados }) {
   )
 }
 
-// Peça da tela de entrada: um atleta (acende quando faz check-in).
-function CartaoAtletaEntrada({ atleta: a }) {
+// Peça da tela de entrada: um atleta (acende quando faz check-in). `e` = escala do cartão.
+function CartaoAtletaEntrada({ atleta: a, e = 1 }) {
+  const [primeiro, ...resto] = nomeCurto(a.nome).split(' ')
   return (
     <div className={a.presente ? 'cp-entrar' : ''} style={{
-      position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '0 12px', borderRadius: 16, minWidth: 0,
+      display: 'flex', alignItems: 'center', gap: 12 * e, padding: `0 ${12 * e}px`, borderRadius: 16 * e, minWidth: 0, overflow: 'hidden',
       backgroundColor: a.presente ? 'color-mix(in srgb, var(--color-brand-lima) 12%, var(--color-surface-dark-raised))' : 'var(--color-surface-dark-raised)',
       border: `1px solid ${a.presente ? 'var(--color-brand-lima)' : 'var(--color-border-dark-subtle)'}`,
       opacity: a.presente ? 1 : 0.42, transition: 'opacity 0.4s',
     }}>
-      <Avatar atleta={a} tamanho={52} destaque={a.presente} />
+      <Avatar atleta={a} tamanho={Math.round(52 * e)} destaque={a.presente} />
       {/* Primeiro nome em destaque e sobrenome embaixo: nunca corta, mesmo nome comprido. */}
-      <span style={{ minWidth: 0, lineHeight: 1.15 }}>
-        <span style={{ display: 'block', fontSize: 21, fontWeight: 700, overflowWrap: 'anywhere' }}>{nomeCurto(a.nome).split(' ')[0]}</span>
-        <span style={{ display: 'block', fontSize: 17, fontWeight: 500, color: 'var(--color-text-dark-secondary)', overflowWrap: 'anywhere' }}>{nomeCurto(a.nome).split(' ').slice(1).join(' ')}</span>
+      <span style={{ flex: 1, minWidth: 0, lineHeight: 1.15 }}>
+        <span style={{ display: 'block', fontSize: 21 * e, fontWeight: 700, overflowWrap: 'anywhere' }}>{primeiro}</span>
+        <span style={{ display: 'block', fontSize: 17 * e, fontWeight: 500, color: 'var(--color-text-dark-secondary)', overflowWrap: 'anywhere' }}>{resto.join(' ')}</span>
       </span>
       {a.presente && (
-        <span style={{ position: 'absolute', top: -8, right: -8, width: 26, height: 26, borderRadius: '50%', backgroundColor: 'var(--color-brand-lima)', color: 'var(--color-brand-verde-court)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={16} strokeWidth={3.5} /></span>
+        <span style={{ flexShrink: 0, width: 24 * e, height: 24 * e, borderRadius: '50%', backgroundColor: 'var(--color-brand-lima)', color: 'var(--color-brand-verde-court)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={15 * e} strokeWidth={3.5} /></span>
       )}
     </div>
   )
 }
 
 // Um lado da tela de entrada (Mulheres ou Homens), em ordem alfabética, com os números.
-function LadoEntrada({ titulo, lista, inscritosTxt, linhas }) {
+// A grade se adapta: até 16 nomes em 2 colunas; mais que isso abre 3 ou 4 colunas e diminui o
+// cartão, para nunca espremer nem sobrepor.
+function LadoEntrada({ titulo, lista, inscritosTxt, linhas, colunas, escala, suplentesPresentes = 0 }) {
   const presentes = lista.filter(a => a.presente).length
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
       <div style={{ marginBottom: 18 }}>
         <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '6px', color: 'var(--color-text-dark-primary)' }}>{titulo}</div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 6, fontSize: 19, color: 'var(--color-text-dark-secondary)' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 6, fontSize: 19, color: 'var(--color-text-dark-secondary)', flexWrap: 'wrap' }}>
           <span>{lista.length} {inscritosTxt}</span>
           <span style={{ color: 'var(--color-text-dark-muted)' }}>·</span>
           <span className="cp-display" style={{ fontSize: 30, fontWeight: 700, color: 'var(--color-brand-lima)', lineHeight: 1 }}>{presentes}</span>
           <span>{presentes === 1 ? 'já fez check-in' : 'já fizeram check-in'}</span>
+          {suplentesPresentes > 0 && <span style={{ color: 'var(--color-text-dark-muted)' }}>· {suplentesPresentes} {suplentesPresentes === 1 ? 'suplente presente' : 'suplentes presentes'}</span>}
         </div>
       </div>
-      <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gridTemplateRows: `repeat(${linhas}, minmax(0,1fr))`, gridAutoFlow: 'column', gap: 12 }}>
-        {lista.map(a => <CartaoAtletaEntrada key={`${a.id}-${a.presente}-${!!a.foto}`} atleta={a} />)}
+      <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: `repeat(${colunas}, minmax(0,1fr))`, gridTemplateRows: `repeat(${linhas}, minmax(0,1fr))`, gridAutoFlow: 'column', gap: 12 * escala }}>
+        {lista.map(a => <CartaoAtletaEntrada key={`${a.id}-${a.presente}-${!!a.foto}`} atleta={a} e={escala} />)}
       </div>
     </div>
   )
@@ -242,8 +246,12 @@ function TelaBoasVindas({ dados }) {
   const mulheres = inscritos.filter(a => a.genero === 'F').sort(porNome)
   const homens = inscritos.filter(a => a.genero === 'M').sort(porNome)
   const presentes = inscritos.filter(a => a.presente).length
-  // Mesmo número de linhas dos dois lados, para as colunas ficarem alinhadas e preencherem a altura.
-  const linhas = Math.max(6, Math.ceil(Math.max(mulheres.length, homens.length) / 2))
+  // Mesma grade dos dois lados, para as colunas ficarem alinhadas e preencherem a altura.
+  const maior = Math.max(mulheres.length, homens.length)
+  const colunas = maior <= 16 ? 2 : maior <= 27 ? 3 : 4
+  const linhas = Math.max(6, Math.ceil(maior / colunas))
+  const escala = colunas === 2 ? 1 : colunas === 3 ? 0.8 : 0.66
+  const suplentes = g => atletas.filter(a => a.genero === g && a.situacao === 'espera' && a.presente).length
   const dataFmt = campeonato.data ? new Date(campeonato.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }) : ''
   return (
     <div style={{ height: '100%', display: 'flex', padding: '60px 70px', gap: 60, boxSizing: 'border-box' }}>
@@ -270,10 +278,10 @@ function TelaBoasVindas({ dados }) {
       </div>
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'stretch', gap: 36 }}>
-        <LadoEntrada titulo="MULHERES" lista={mulheres} inscritosTxt={mulheres.length === 1 ? 'inscrita' : 'inscritas'} linhas={linhas} />
+        <LadoEntrada titulo="MULHERES" lista={mulheres} inscritosTxt={mulheres.length === 1 ? 'inscrita' : 'inscritas'} linhas={linhas} colunas={colunas} escala={escala} suplentesPresentes={suplentes('F')} />
         {/* divisória fina, só no meio da altura */}
         <div style={{ width: 1, alignSelf: 'center', height: '62%', background: 'linear-gradient(to bottom, transparent, var(--color-border-dark) 20%, var(--color-border-dark) 80%, transparent)' }} />
-        <LadoEntrada titulo="HOMENS" lista={homens} inscritosTxt={homens.length === 1 ? 'inscrito' : 'inscritos'} linhas={linhas} />
+        <LadoEntrada titulo="HOMENS" lista={homens} inscritosTxt={homens.length === 1 ? 'inscrito' : 'inscritos'} linhas={linhas} colunas={colunas} escala={escala} suplentesPresentes={suplentes('M')} />
       </div>
     </div>
   )
