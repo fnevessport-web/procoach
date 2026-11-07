@@ -423,6 +423,15 @@ function AbaAtletas({ dados }) {
     }, 'Excluído')
   }
 
+  const desmarcarTodos = () => {
+    if (!window.confirm('Desmarcar o check-in de todos?')) return
+    rodar(async () => {
+      const { error } = await supabase.from('campeonato_atletas').update({ presente: false }).eq('campeonato_id', campeonato.id)
+      if (error) throw error
+      await recarregar()
+    }, 'Check-ins desmarcados')
+  }
+
   const todosPresentes = () => rodar(async () => {
     const { error } = await supabase.from('campeonato_atletas').update({ presente: true }).eq('campeonato_id', campeonato.id).eq('situacao', 'inscrito')
     if (error) throw error
@@ -473,7 +482,7 @@ function AbaAtletas({ dados }) {
         </div>
       </Painel>
 
-      <Painel extra={lista === 'inscritos' ? <Botao tamanho="sm" onClick={todosPresentes}><Check size={13} />Marcar todos inscritos presentes</Botao> : null}>
+      <Painel extra={lista === 'inscritos' ? <><Botao tamanho="sm" onClick={todosPresentes}><Check size={13} />Marcar todos presentes</Botao><Botao tamanho="sm" variante="fantasma" onClick={desmarcarTodos}><X size={13} />Desmarcar todos</Botao></> : null}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
           {abas.map(([v, t]) => (
             <button key={v} onClick={() => setLista(v)} style={{ padding: '8px 14px', borderRadius: 999, fontSize: 14, fontWeight: 800, cursor: 'pointer', border: `1px solid ${lista === v ? 'var(--color-brand-lima)' : 'var(--color-border-dark)'}`, backgroundColor: lista === v ? 'color-mix(in srgb, var(--color-brand-lima) 12%, transparent)' : 'transparent', color: lista === v ? 'var(--color-brand-lima)' : 'var(--color-text-dark-secondary)' }}>{t}</button>
@@ -602,6 +611,21 @@ function LinhaAtleta({ atleta: a, atualizar, excluir, numero, acoes, telefone, o
 // SORTEIO
 // =============================================================================================
 
+// Apaga duplas, jogos e placares e volta o torneio para antes do sorteio. Opcionalmente também
+// desmarca os check-ins e apaga as fotos (zerar para um novo teste). Não sorteia nada.
+async function zerarCampeonato(id, { checkins = false, fotos = false } = {}) {
+  const { error: e1 } = await supabase.from('campeonato_jogos').delete().eq('campeonato_id', id)
+  if (e1) throw e1
+  const { error: e2 } = await supabase.from('campeonato_duplas').delete().eq('campeonato_id', id)
+  if (e2) throw e2
+  await atualizarCampeonato(id, { status: 'inscricoes', sorteio_revelados: 0, sorteio_em: null })
+  const patch = { ...(checkins ? { presente: false } : {}), ...(fotos ? { foto: null } : {}) }
+  if (Object.keys(patch).length) {
+    const { error: e3 } = await supabase.from('campeonato_atletas').update(patch).eq('campeonato_id', id)
+    if (e3) throw e3
+  }
+}
+
 async function atualizarCampeonato(id, patch) {
   const { error } = await supabase.from('campeonatos').update(patch).eq('id', id)
   if (error) throw error
@@ -665,15 +689,11 @@ function AbaSorteio({ dados, irPara }) {
 
   const refazer = () => {
     const comPlacar = jogos.some(j => ['ao_vivo', 'finalizado', 'wo'].includes(j.status))
-    if (!window.confirm(`Apagar todas as duplas e jogos e voltar para antes do sorteio?${comPlacar ? '\n\nATENÇÃO: já existem jogos com placar. Tudo será perdido.' : ''}`)) return
+    if (!window.confirm(`Desfazer o sorteio? Apaga todas as duplas e jogos e volta para antes do sorteio. NÃO sorteia de novo: o novo sorteio só começa quando você tocar em "Iniciar sorteio ao vivo".\n\nCheck-ins e fotos continuam.${comPlacar ? '\n\nATENÇÃO: já existem jogos com placar. Tudo será perdido.' : ''}`)) return
     rodar(async () => {
-      const { error: e1 } = await supabase.from('campeonato_jogos').delete().eq('campeonato_id', campeonato.id)
-      if (e1) throw e1
-      const { error: e2 } = await supabase.from('campeonato_duplas').delete().eq('campeonato_id', campeonato.id)
-      if (e2) throw e2
-      await atualizarCampeonato(campeonato.id, { status: 'inscricoes', sorteio_revelados: 0, sorteio_em: null })
+      await zerarCampeonato(campeonato.id)
       await recarregar()
-    }, 'Sorteio desfeito')
+    }, 'Sorteio desfeito. Nada foi sorteado de novo.')
   }
 
   const publicar = () => rodar(async () => {
@@ -748,7 +768,7 @@ function AbaSorteio({ dados, irPara }) {
         </Painel>
       )}
 
-      <Painel titulo="Duplas" extra={<Botao tamanho="sm" variante="perigo" onClick={refazer}><RotateCcw size={13} />Refazer sorteio</Botao>}>
+      <Painel titulo="Duplas" extra={<Botao tamanho="sm" variante="perigo" onClick={refazer}><RotateCcw size={13} />Desfazer sorteio</Botao>}>
         <SorteioAoVivo campeonato={campeonato} duplas={duplas} duplaPorId={duplaPorId} atletas={atletas} seguindo={SEM_SEGUIDOS} colunas={2} escala={0.9} />
       </Painel>
 
@@ -879,6 +899,32 @@ function EditorJogo({ jogo, campeonato, duplaPorId, salvarJogo }) {
 // CONFIGURAÇÃO
 // =============================================================================================
 
+// Volta o torneio ao estado inicial para fazer um novo teste (os atletas continuam cadastrados).
+function PainelZerar({ campeonato, recarregar }) {
+  const [checkins, setCheckins] = useState(true)
+  const [fotos, setFotos] = useState(false)
+  const zerar = () => {
+    const itens = ['duplas, jogos e placares', ...(checkins ? ['check-ins'] : []), ...(fotos ? ['fotos'] : [])]
+    if (window.prompt(`Zerar ${itens.join(', ')}?\nOs atletas continuam cadastrados e nada é sorteado.\n\nDigite ZERAR para confirmar.`) !== 'ZERAR') return
+    rodar(async () => {
+      await zerarCampeonato(campeonato.id, { checkins, fotos })
+      await recarregar()
+    }, 'Torneio zerado. Pronto para um novo teste.')
+  }
+  return (
+    <Painel titulo="Zerar para novo teste">
+      <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginBottom: 10, lineHeight: 1.5 }}>
+        Volta o torneio para antes do sorteio: apaga duplas, jogos e placares. Não sorteia nada. Os atletas cadastrados continuam.
+      </div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, fontSize: 14 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}><input type="checkbox" checked={checkins} onChange={e => setCheckins(e.target.checked)} />Desmarcar todos os check-ins</label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}><input type="checkbox" checked={fotos} onChange={e => setFotos(e.target.checked)} />Apagar todas as fotos</label>
+      </div>
+      <Botao variante="perigo" onClick={zerar}><RotateCcw size={14} />Zerar torneio</Botao>
+    </Painel>
+  )
+}
+
 function AbaConfig({ dados }) {
   const { campeonato, recarregar } = dados
   const navigate = useNavigate()
@@ -949,6 +995,7 @@ function AbaConfig({ dados }) {
           <textarea rows={8} style={{ ...estiloInput, width: '100%', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={form.regras} onChange={e => set('regras', e.target.value)} />
         </label>
       </Painel>
+      <PainelZerar campeonato={campeonato} recarregar={recarregar} />
       <Painel titulo="Zona de perigo">
         <Botao variante="perigo" onClick={excluir}><Trash2 size={14} />Excluir campeonato</Botao>
       </Painel>
