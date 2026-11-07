@@ -195,14 +195,18 @@ function TelaSorteio({ dados }) {
 // Peça da tela de entrada: um atleta (acende quando faz check-in).
 function CartaoAtletaEntrada({ atleta: a }) {
   return (
-    <div key={`${a.id}-${a.presente}-${!!a.foto}`} className={a.presente ? 'cp-entrar' : ''} style={{
-      position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '0 14px', borderRadius: 16, minWidth: 0,
+    <div className={a.presente ? 'cp-entrar' : ''} style={{
+      position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '0 12px', borderRadius: 16, minWidth: 0,
       backgroundColor: a.presente ? 'color-mix(in srgb, var(--color-brand-lima) 12%, var(--color-surface-dark-raised))' : 'var(--color-surface-dark-raised)',
       border: `1px solid ${a.presente ? 'var(--color-brand-lima)' : 'var(--color-border-dark-subtle)'}`,
       opacity: a.presente ? 1 : 0.42, transition: 'opacity 0.4s',
     }}>
-      <Avatar atleta={a} tamanho={54} destaque={a.presente} />
-      <span style={{ fontSize: 21, fontWeight: a.presente ? 700 : 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomeCurto(a.nome)}</span>
+      <Avatar atleta={a} tamanho={52} destaque={a.presente} />
+      {/* Primeiro nome em destaque e sobrenome embaixo: nunca corta, mesmo nome comprido. */}
+      <span style={{ minWidth: 0, lineHeight: 1.15 }}>
+        <span style={{ display: 'block', fontSize: 21, fontWeight: 700, overflowWrap: 'anywhere' }}>{nomeCurto(a.nome).split(' ')[0]}</span>
+        <span style={{ display: 'block', fontSize: 17, fontWeight: 500, color: 'var(--color-text-dark-secondary)', overflowWrap: 'anywhere' }}>{nomeCurto(a.nome).split(' ').slice(1).join(' ')}</span>
+      </span>
       {a.presente && (
         <span style={{ position: 'absolute', top: -8, right: -8, width: 26, height: 26, borderRadius: '50%', backgroundColor: 'var(--color-brand-lima)', color: 'var(--color-brand-verde-court)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={16} strokeWidth={3.5} /></span>
       )}
