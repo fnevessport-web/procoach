@@ -167,3 +167,30 @@
   50% { transform: rotate(4deg); opacity: 1; }
 }
 .cp-holofote { transform-origin: top center; animation: cp-holofote 9s ease-in-out infinite; }
+
+/* Landing de apresentação: transições ao rolar */
+.lp-rev {
+  opacity: 0; transform: translateY(46px);
+  transition: opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--atraso, 0ms);
+}
+.lp-rev.lp-zoom { transform: translateY(34px) scale(0.93); }
+.lp-rev.lp-visivel { opacity: 1; transform: none; }
+
+@keyframes lp-subir { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+.lp-entrada { animation: lp-subir 1s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.lp-d2 { animation-delay: 0.15s; }
+.lp-d3 { animation-delay: 0.3s; }
+
+.lp-inclinada {
+  --p: 0;
+  transform: rotateX(calc((1 - var(--p)) * 24deg)) scale(calc(0.86 + var(--p) * 0.14));
+  transform-origin: center top;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-rev, .lp-rev.lp-zoom { opacity: 1; transform: none; transition: none; }
+  .lp-entrada { animation: none; }
+  .lp-inclinada { transform: none; }
+}

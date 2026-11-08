@@ -10,6 +10,43 @@ import './campeonato.css'
 const M = n => `/apresentacao/${n}`
 const VIDEO_COMPLETO = M('demonstracao.mp4')
 
+// Revela o conteúdo quando ele entra na tela (sobe com fade; `tipo` muda o efeito).
+function Revelar({ children, tipo = '', atraso = 0, estilo }) {
+  const ref = useRef(null)
+  const [visivel, setVisivel] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisivel(true); obs.disconnect() } }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+  return <div ref={ref} className={`lp-rev ${tipo} ${visivel ? 'lp-visivel' : ''}`} style={{ '--atraso': `${atraso}ms`, ...estilo }}>{children}</div>
+}
+
+// Vídeo do topo: começa inclinado em 3D e vai se endireitando/crescendo conforme a rolagem.
+function TelaInclinada({ children }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    const rolagem = el?.closest('.cp-rolagem')
+    if (!el || !rolagem) return
+    let quadro = 0
+    const atualizar = () => {
+      quadro = 0
+      const r = el.getBoundingClientRect()
+      const p = Math.min(1, Math.max(0, (window.innerHeight - r.top) / (window.innerHeight * 0.95)))
+      el.style.setProperty('--p', p.toFixed(3))
+    }
+    const aoRolar = () => { if (!quadro) quadro = requestAnimationFrame(atualizar) }
+    atualizar()
+    rolagem.addEventListener('scroll', aoRolar, { passive: true })
+    window.addEventListener('resize', aoRolar)
+    return () => { rolagem.removeEventListener('scroll', aoRolar); window.removeEventListener('resize', aoRolar); cancelAnimationFrame(quadro) }
+  }, [])
+  return <div style={{ perspective: 1400 }}><div ref={ref} className="lp-inclinada">{children}</div></div>
+}
+
 function Video({ src, poster, estilo, className }) {
   const ref = useRef(null)
   // Só toca quando aparece na tela (economiza dados no celular).
@@ -23,7 +60,11 @@ function Video({ src, poster, estilo, className }) {
   return <video ref={ref} className={className} src={src} poster={poster} muted loop playsInline preload="metadata" style={{ display: 'block', width: '100%', ...estilo }} />
 }
 
-function Tela({ children, tipo = 'tv', estilo }) {
+function Tela(props) {
+  return <Revelar tipo="lp-zoom"><TelaBase {...props} /></Revelar>
+}
+
+function TelaBase({ children, tipo = 'tv', estilo }) {
   if (tipo === 'celular') {
     return (
       <div style={{ width: '100%', maxWidth: 300, margin: '0 auto', padding: 10, borderRadius: 44, background: 'linear-gradient(160deg, var(--color-surface-dark-overlay), var(--color-surface-dark-base))', border: '1px solid var(--color-border-dark)', boxShadow: '0 30px 60px -20px rgba(0,0,0,.55)', ...estilo }}>
@@ -44,15 +85,17 @@ function Rotulo({ children, cor = 'var(--color-brand-lima)' }) {
   return <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '3px', color: cor, textTransform: 'uppercase' }}>{children}</div>
 }
 
+let contadorRecurso = 0
 function Recurso({ icone: Icone, titulo, texto }) {
+  const [atraso] = useState(() => (contadorRecurso++ % 6) * 90)
   return (
-    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+    <Revelar atraso={atraso} estilo={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
       <span style={{ width: 40, height: 40, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'color-mix(in srgb, var(--color-brand-lima) 14%, transparent)', color: 'var(--color-brand-lima)' }}><Icone size={20} /></span>
       <div>
         <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 3 }}>{titulo}</div>
         <div style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--color-text-dark-secondary)' }}>{texto}</div>
       </div>
-    </div>
+    </Revelar>
   )
 }
 
@@ -60,11 +103,11 @@ function Secao({ id, rotulo, titulo, texto, children, alt }) {
   return (
     <section id={id} style={{ padding: 'clamp(56px, 9vw, 110px) 20px', backgroundColor: alt ? 'color-mix(in srgb, var(--color-surface-dark-raised) 45%, transparent)' : 'transparent', borderTop: '1px solid var(--color-border-dark-subtle)' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-        <div style={{ maxWidth: 720, marginBottom: 44 }}>
+        <Revelar estilo={{ maxWidth: 720, marginBottom: 44 }}>
           <Rotulo>{rotulo}</Rotulo>
           <h2 className="cp-display" style={{ fontSize: 'clamp(30px, 4.6vw, 50px)', fontWeight: 700, lineHeight: 1.1, margin: '12px 0 14px' }}>{titulo}</h2>
           {texto && <p style={{ fontSize: 17, lineHeight: 1.65, color: 'var(--color-text-dark-secondary)', margin: 0 }}>{texto}</p>}
-        </div>
+        </Revelar>
         {children}
       </div>
     </section>
@@ -88,18 +131,17 @@ export function ApresentacaoPage() {
       {/* hero */}
       <section style={{ padding: 'clamp(48px, 8vw, 96px) 20px 40px' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto', textAlign: 'center' }}>
-          <Rotulo>Gestão de torneios · Procopio</Rotulo>
-          <h1 className="cp-display" style={{ fontSize: 'clamp(38px, 7vw, 82px)', fontWeight: 700, lineHeight: 1.03, margin: '16px auto 18px', maxWidth: 980 }}>
+          <div className="lp-entrada"><Rotulo>Gestão de torneios · Procopio</Rotulo></div>
+          <h1 className="cp-display lp-entrada" style={{ fontSize: 'clamp(38px, 7vw, 82px)', fontWeight: 700, lineHeight: 1.03, margin: '16px auto 18px', maxWidth: 980 }}>
             O seu torneio com cara de <span style={{ color: 'var(--color-brand-lima)' }}>grande evento</span>
           </h1>
-          <p style={{ fontSize: 'clamp(16px, 2vw, 20px)', lineHeight: 1.6, color: 'var(--color-text-dark-secondary)', maxWidth: 760, margin: '0 auto 34px' }}>
+          <p className="lp-entrada lp-d2" style={{ fontSize: 'clamp(16px, 2vw, 20px)', lineHeight: 1.6, color: 'var(--color-text-dark-secondary)', maxWidth: 760, margin: '0 auto 34px' }}>
             Sorteio ao vivo, placar em tempo real, telão do clube e o celular de cada atleta conectados. Tudo controlado por um painel simples, sem ninguém precisar instalar aplicativo.
           </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 54 }}>
+          <div className="lp-entrada lp-d3" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 54 }}>
             <button onClick={() => setVideoAberto(true)} style={{ padding: '15px 26px', borderRadius: 14, border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontWeight: 800, fontSize: 16, cursor: 'pointer' }}>▶ Assistir à demonstração</button>
-            <a href="#organizador" style={{ padding: '15px 26px', borderRadius: 14, border: '1px solid var(--color-border-dark)', color: 'var(--color-text-dark-primary)', fontWeight: 700, fontSize: 16, textDecoration: 'none' }}>Ver como funciona</a>
           </div>
-          <Tela><Video src={M('hero.mp4')} poster={M('tv-chave.jpg')} /></Tela>
+          <TelaInclinada><Tela><Video src={M('hero.mp4')} poster={M('tv-chave.jpg')} /></Tela></TelaInclinada>
         </div>
       </section>
 
@@ -107,15 +149,15 @@ export function ApresentacaoPage() {
       <section style={{ padding: '30px 20px 70px' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 16 }}>
           {[
-            [Users, 'Organizador', 'Check-in, sorteio, placar, substituições e ordem dos jogos em um painel.', '#organizador'],
-            [Smartphone, 'Atleta', 'Entra pelo QR code, coloca a foto, acompanha os próprios jogos e chama a dupla no WhatsApp.', '#atleta'],
-            [Tv, 'Telão', 'Chegada, sorteio, jogos em quadra, chave, comemoração de vitória e pódio.', '#telao'],
-          ].map(([Icone, t, x, href]) => (
-            <a key={t} href={href} style={{ textDecoration: 'none', color: 'inherit', padding: 22, borderRadius: 18, backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)' }}>
+            [Users, 'Organizador', 'Check-in, sorteio, placar, substituições e ordem dos jogos em um painel.'],
+            [Smartphone, 'Atleta', 'Entra pelo QR code, coloca a foto, acompanha os próprios jogos e chama a dupla no WhatsApp.'],
+            [Tv, 'Telão', 'Chegada, sorteio, jogos em quadra, chave, comemoração de vitória e pódio.'],
+          ].map(([Icone, t, x], i) => (
+            <Revelar key={t} atraso={i * 130} estilo={{ padding: 22, borderRadius: 18, backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)' }}>
               <Icone size={26} color="var(--color-brand-lima)" />
               <div className="cp-display" style={{ fontSize: 24, fontWeight: 700, margin: '12px 0 6px' }}>{t}</div>
               <div style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--color-text-dark-secondary)' }}>{x}</div>
-            </a>
+            </Revelar>
           ))}
         </div>
       </section>
@@ -148,11 +190,11 @@ export function ApresentacaoPage() {
             ['cel-sorteio.mp4', 'cel-sorteio.jpg', 'Vê o sorteio ao vivo e o “É você!”'],
             ['cel-dupla.mp4', 'cel-dupla.jpg', 'Chama a dupla no WhatsApp'],
             ['cel-chave.mp4', 'cel-chave.jpg', 'Acompanha jogos e a chave por fase'],
-          ].map(([v, p, t]) => (
-            <div key={v}>
-              <Tela tipo="celular"><Video src={M(v)} poster={M(p)} estilo={{ height: '100%', objectFit: 'cover' }} /></Tela>
+          ].map(([v, p, t], i) => (
+            <Revelar key={v} atraso={i * 140}>
+              <TelaBase tipo="celular"><Video src={M(v)} poster={M(p)} estilo={{ height: '100%', objectFit: 'cover' }} /></TelaBase>
               <div style={{ textAlign: 'center', fontSize: 15, fontWeight: 700, marginTop: 14 }}>{t}</div>
-            </div>
+            </Revelar>
           ))}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 22 }}>
@@ -198,7 +240,7 @@ export function ApresentacaoPage() {
       {/* chamada final */}
       <section style={{ padding: 'clamp(64px, 10vw, 120px) 20px', textAlign: 'center', borderTop: '1px solid var(--color-border-dark-subtle)', background: 'radial-gradient(ellipse 60% 70% at 50% 100%, color-mix(in srgb, var(--color-brand-saibro) 22%, transparent), transparent 70%)' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 26 }}><Marcas altura={40} /></div>
-        <h2 className="cp-display" style={{ fontSize: 'clamp(32px, 5vw, 56px)', fontWeight: 700, lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 820 }}>Leve essa experiência para o seu clube</h2>
+        <Revelar><h2 className="cp-display" style={{ fontSize: 'clamp(32px, 5vw, 56px)', fontWeight: 700, lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 820 }}>Leve essa experiência para o seu clube</h2></Revelar>
         <p style={{ fontSize: 17, color: 'var(--color-text-dark-secondary)', margin: '0 auto 30px', maxWidth: 620, lineHeight: 1.6 }}>Assista à demonstração completa e veja o torneio acontecendo do check-in ao pódio.</p>
         <button onClick={() => setVideoAberto(true)} style={{ padding: '16px 30px', borderRadius: 14, border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontWeight: 800, fontSize: 17, cursor: 'pointer' }}>▶ Assistir à demonstração</button>
         <div style={{ marginTop: 40, fontSize: 12, color: 'var(--color-text-dark-muted)' }}>Demonstração com atletas e fotos fictícios.</div>
