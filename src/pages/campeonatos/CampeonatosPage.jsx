@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Medal, Plus, ChevronRight, CalendarDays, MapPin } from 'lucide-react'
+import { Medal, Plus, ChevronRight, CalendarDays, MapPin, Presentation, Copy, ExternalLink } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { normalizar } from '../../lib/campeonato'
 import { rotuloStatusCampeonato } from './util'
@@ -59,6 +59,17 @@ export function CampeonatosPage() {
         <button onClick={() => setCriando(v => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 14px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontWeight: 700, cursor: 'pointer' }}>
           <Plus size={16} />Novo
         </button>
+      </div>
+
+      {/* Link público da página de apresentação, para enviar a clubes e parceiros. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '14px 16px', borderRadius: 14, marginBottom: 18, border: '1px solid var(--color-brand-lima)', backgroundColor: 'color-mix(in srgb, var(--color-brand-lima) 8%, var(--color-surface-dark-raised))' }}>
+        <Presentation size={22} color="var(--color-brand-lima)" />
+        <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 800 }}>Apresentação do sistema</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-dark-secondary)' }}>Página com vídeo, prints e tudo que a aba Campeonatos faz. Envie para quem quiser.</div>
+        </div>
+        <button onClick={() => window.open('/apresentacao-campeonatos', '_blank')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, border: '1px solid var(--color-border-dark)', backgroundColor: 'var(--color-surface-dark-overlay)', color: 'var(--color-text-dark-primary)', fontWeight: 700, cursor: 'pointer' }}><ExternalLink size={15} />Abrir</button>
+        <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/apresentacao-campeonatos`); toast.success('Link copiado') }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontWeight: 700, cursor: 'pointer' }}><Copy size={15} />Copiar link</button>
       </div>
 
       {criando && (
