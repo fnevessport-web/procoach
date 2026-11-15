@@ -49,6 +49,7 @@ import { CampeonatosPage } from './pages/campeonatos/CampeonatosPage'
 import { CampeonatoAdminPage } from './pages/campeonatos/CampeonatoAdminPage'
 import { CampeonatoPublicoPage } from './pages/campeonatos/CampeonatoPublicoPage'
 import { CampeonatoTVPage } from './pages/campeonatos/CampeonatoTVPage'
+import { CampeonatoOperadorPage } from './pages/campeonatos/CampeonatoOperadorPage'
 import { ApresentacaoPage } from './pages/campeonatos/ApresentacaoPage'
 import { HomeParticular } from './pages/particular/HomeParticular'
 import { AgendaParticular } from './pages/particular/AgendaParticular'
@@ -231,6 +232,7 @@ export default function App() {
           <Route path="/eventos/:slug" element={<EventoInscricaoPage />} />
           <Route path="/campeonato/:slug" element={<CampeonatoPublicoPage />} />
           <Route path="/campeonato/:slug/tv" element={<CampeonatoTVPage />} />
+          <Route path="/campeonato/:slug/operador/:token" element={<CampeonatoOperadorPage />} />
           <Route path="/apresentacao-campeonatos" element={<ApresentacaoPage />} />
           <Route path="/reposicao" element={<ReposicaoOficialPage />} />
           <Route path="/reposicao-rodada-chuva" element={<ReposicaoExtraPage />} />

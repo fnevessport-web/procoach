@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Tv, Smartphone, Copy, Radio, Users, Shuffle, ListOrdered, Settings, Plus, Minus, Play,
-  Trash2, Camera, Check, RotateCcw, ChevronUp, ChevronDown, UserPlus, UserMinus, Phone, Pause, SkipForward, FastForward, Flag, ExternalLink, Search, X,
+  Trash2, Camera, Check, RotateCcw, ChevronUp, ChevronDown, UserPlus, UserMinus, Phone, Pause, SkipForward, FastForward, Flag, ExternalLink, Search, X, ClipboardList, Share2,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCampeonato, aplicarPatchesJogos } from '../../hooks/useCampeonato'
@@ -34,7 +34,7 @@ const estiloInput = {
   backgroundColor: 'var(--color-surface-dark-overlay)', color: 'var(--color-text-dark-primary)', fontSize: 14, outline: 'none',
 }
 
-function Botao({ children, onClick, variante = 'secundario', disabled, titulo, estilo, tamanho = 'md' }) {
+export function Botao({ children, onClick, variante = 'secundario', disabled, titulo, estilo, tamanho = 'md' }) {
   const cores = {
     primario: ['var(--color-action-primary)', 'var(--color-action-on-primary)', 'transparent'],
     secundario: ['var(--color-surface-dark-overlay)', 'var(--color-text-dark-primary)', 'var(--color-border-dark)'],
@@ -53,7 +53,7 @@ function Botao({ children, onClick, variante = 'secundario', disabled, titulo, e
   )
 }
 
-function Painel({ titulo, children, extra }) {
+export function Painel({ titulo, children, extra }) {
   return (
     <section style={{ padding: 16, borderRadius: 16, backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)', marginBottom: 16 }}>
       {(titulo || extra) && (
@@ -117,6 +117,7 @@ export function CampeonatoAdminPage() {
         </div>
         <Botao tamanho="sm" onClick={() => window.open(urlTV(campeonato.slug), '_blank')}><Tv size={15} />Abrir TV</Botao>
         <Botao tamanho="sm" onClick={() => window.open(urlPublica(campeonato.slug), '_blank')}><Smartphone size={15} />Link do associado</Botao>
+        <Botao tamanho="sm" titulo="Copiar o link do operador de quadra" onClick={() => copiarLinkOperador(campeonato)}><ClipboardList size={15} />Link do operador</Botao>
         <Botao tamanho="sm" variante="fantasma" titulo="Copiar link do associado" onClick={() => { navigator.clipboard.writeText(urlPublica(campeonato.slug)); toast.success('Link copiado') }}><Copy size={15} /></Botao>
       </div>
 
@@ -273,7 +274,7 @@ function nomesDupla(d) {
   return `${nomeCurto(d.atleta1?.nome)} / ${nomeCurto(d.atleta2?.nome)}`
 }
 
-function QuadraLivre({ quadra, prontos, duplaPorId, onIniciar }) {
+export function QuadraLivre({ quadra, prontos, duplaPorId, onIniciar }) {
   const sugestao = prontos.find(j => j.quadra === quadra) || prontos[0]
   return (
     <div>
@@ -294,7 +295,7 @@ function QuadraLivre({ quadra, prontos, duplaPorId, onIniciar }) {
   )
 }
 
-function PlacarAoVivo({ jogo, duplaPorId, salvarJogo }) {
+export function PlacarAoVivo({ jogo, duplaPorId, salvarJogo }) {
   const sets = jogo.sets || []
   const [salvando, setSalvando] = useState(false)
   const atual = indiceSetAtual(sets)
@@ -341,14 +342,14 @@ function PlacarAoVivo({ jogo, duplaPorId, salvarJogo }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-        <div>
-          <span className="cp-display" style={{ fontSize: 22, fontWeight: 700, whiteSpace: 'nowrap' }}>{jogo.quadra}</span>
-          <span style={{ marginLeft: 10, fontSize: 12, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-text-dark-secondary)' }}>{rotuloFaseCurto(jogo.fase).toUpperCase()} · JOGO {jogo.ordem}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+        <div style={{ minWidth: 0, lineHeight: 1.15 }}>
+          <div className="cp-display" style={{ fontSize: 22, fontWeight: 700, whiteSpace: 'nowrap' }}>{jogo.quadra}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-text-dark-secondary)', whiteSpace: 'nowrap' }}>{rotuloFaseCurto(jogo.fase).toUpperCase()} · JOGO {jogo.ordem}</div>
         </div>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <TempoJogo jogo={jogo} tamanho={13} rotulo={false} cor="var(--color-text-dark-muted)" />
-        <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent-on-live)', backgroundColor: 'var(--color-accent-live)', padding: '3px 8px', borderRadius: 999 }}>
+        <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent-on-live)', backgroundColor: 'var(--color-accent-live)', padding: '3px 8px', borderRadius: 999, whiteSpace: 'nowrap' }}>
           {atual === 2 ? 'TIE-BREAK 3º SET' : `${atual + 1}º SET`}
         </span>
         </span>
@@ -1127,6 +1128,74 @@ function SubstituirDupla({ jogo, lado, dados, salvarJogo, onFechar }) {
 }
 
 // =============================================================================================
+// LINK DO OPERADOR (quem marca o placar em quadra, sem login)
+// =============================================================================================
+
+function urlOperador(slug, token) {
+  return `${window.location.origin}/campeonato/${slug}/operador/${token}`
+}
+
+async function buscarTokenOperador(campeonatoId) {
+  const { data, error } = await supabase.from('campeonato_operador_tokens').select('token').eq('campeonato_id', campeonatoId).maybeSingle()
+  if (error) throw new Error('O link do operador ainda não foi ativado no banco (rodar o SQL 2026-11-15b_campeonato_operador.sql).')
+  if (data?.token) return data.token
+  const token = crypto.randomUUID().replace(/-/g, '')
+  const r = await supabase.from('campeonato_operador_tokens').insert({ campeonato_id: campeonatoId, token })
+  if (r.error) throw r.error
+  return token
+}
+
+async function copiarLinkOperador(campeonato) {
+  try {
+    const token = await buscarTokenOperador(campeonato.id)
+    await navigator.clipboard.writeText(urlOperador(campeonato.slug, token))
+    toast.success('Link do operador copiado')
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+
+// O operador só marca placar: iniciar jogo, games, encerrar, lançar resultado e W.O. Gerar um
+// link novo derruba o antigo na hora (ex.: celular perdido, operador que saiu).
+function LinkOperador({ campeonato }) {
+  const [token, setToken] = useState(null)
+  const [erro, setErro] = useState(null)
+  useEffect(() => {
+    let vivo = true
+    buscarTokenOperador(campeonato.id).then(t => vivo && setToken(t)).catch(e => vivo && setErro(e.message))
+    return () => { vivo = false }
+  }, [campeonato.id])
+  const gerarNovo = () => {
+    if (!window.confirm('Gerar um link novo? O link atual do operador para de funcionar na hora, e você precisa mandar o novo para quem está em quadra.')) return
+    rodar(async () => {
+      const novo = crypto.randomUUID().replace(/-/g, '')
+      const { error } = await supabase.from('campeonato_operador_tokens').upsert({ campeonato_id: campeonato.id, token: novo })
+      if (error) throw error
+      setToken(novo)
+    }, 'Link novo gerado')
+  }
+  const url = token ? urlOperador(campeonato.slug, token) : ''
+  const mensagem = `🎾 ${campeonato.nome}: link para marcar o placar em quadra (operador). Abra no celular e deixe a tela aberta: ${url}`
+  return (
+    <Painel titulo="Link do operador (placar em quadra)">
+      <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
+        Para quem vai ficar em quadra marcando o placar pelo celular, sem login. Pelo link a pessoa só consegue <b>iniciar jogo, marcar os games, encerrar, lançar resultado e W.O.</b> Atletas, sorteio, ordem dos jogos e configuração continuam só aqui com você.
+      </div>
+      {erro ? <div style={{ fontSize: 13, color: 'var(--color-state-warning)' }}>{erro}</div> : !token ? <div style={{ fontSize: 13, color: 'var(--color-text-dark-muted)' }}>Carregando...</div> : (
+        <>
+          <LinkCopiavel rotulo="Link do operador" url={url} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+            <Botao tamanho="sm" variante="primario" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`, '_blank')}><Share2 size={13} />Enviar pelo WhatsApp</Botao>
+            <Botao tamanho="sm" onClick={() => window.open(url, '_blank')}><ExternalLink size={13} />Abrir</Botao>
+            <Botao tamanho="sm" variante="perigo" onClick={gerarNovo}><RotateCcw size={13} />Gerar link novo (derruba o atual)</Botao>
+          </div>
+        </>
+      )}
+    </Painel>
+  )
+}
+
+// =============================================================================================
 // CONFIGURAÇÃO
 // =============================================================================================
 
@@ -1226,6 +1295,7 @@ function AbaConfig({ dados }) {
           <textarea rows={8} style={{ ...estiloInput, width: '100%', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={form.regras} onChange={e => set('regras', e.target.value)} />
         </label>
       </Painel>
+      <LinkOperador campeonato={campeonato} />
       <PainelZerar campeonato={campeonato} recarregar={recarregar} />
       <Painel titulo="Zona de perigo">
         <Botao variante="perigo" onClick={excluir}><Trash2 size={14} />Excluir campeonato</Botao>
