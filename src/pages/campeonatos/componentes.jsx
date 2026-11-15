@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
 import { Trophy, Timer, Clock, MapPin } from 'lucide-react'
 import {
-  nomeCurto, iniciais, rotuloFase, rotuloFaseCurto, indiceSetAtual, totalRodadas,
+  nomeCurto, iniciais, rotuloFase, rotuloFaseCurto, totalRodadas,
   origemDaVaga, msAtraso, msEmJogo, formatarDuracao, primeiroNome,
 } from '../../lib/campeonato'
 import { COR_DESTAQUE, duplaTemSeguido, jogoTemSeguido, duplasOcultas, useAgora } from './util'
@@ -51,7 +51,7 @@ export function ChipStatus({ jogo, tamanho = 10 }) {
   if (jogo.status === 'ao_vivo') {
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 999, backgroundColor: 'var(--color-accent-live)', color: 'var(--color-accent-on-live)', fontSize: tamanho, fontWeight: 800, letterSpacing: '1px' }}>
-        <span className="cp-pulso" style={{ width: tamanho * 0.6, height: tamanho * 0.6, borderRadius: '50%', backgroundColor: 'var(--color-accent-on-live)' }} />AO VIVO
+        <span className="cp-pulso" style={{ width: tamanho * 0.6, height: tamanho * 0.6, borderRadius: '50%', backgroundColor: 'var(--color-accent-on-live)' }} />EM JOGO
       </span>
     )
   }
@@ -59,7 +59,7 @@ export function ChipStatus({ jogo, tamanho = 10 }) {
     finalizado: ['Encerrado', 'var(--color-text-dark-muted)'],
     wo: ['W.O.', 'var(--color-state-warning)'],
     bye: ['Bye', 'var(--color-text-dark-muted)'],
-    agendado: [jogo.horario ? `Previsto ${jogo.horario}` : 'A definir', 'var(--color-text-dark-secondary)'],
+    agendado: [jogo.horario ? `Previsto ${jogo.horario}` : 'Na fila', 'var(--color-text-dark-secondary)'],
   }
   const [txt, cor] = mapa[jogo.status] || mapa.agendado
   return <span style={{ fontSize: tamanho, fontWeight: 700, letterSpacing: '0.5px', color: cor, textTransform: 'uppercase' }}>{txt}</span>
@@ -71,7 +71,8 @@ function LinhaDupla({ dupla, lado, jogo, seguindo, escala = 1, mostrarSets = tru
   const venceu = jogo.vencedor_id && jogo.vencedor_id === dupla?.id
   const perdeu = jogo.vencedor_id && dupla && jogo.vencedor_id !== dupla.id
   const sets = jogo.sets || []
-  const atual = jogo.status === 'ao_vivo' ? indiceSetAtual(sets) : -1
+  // Placar não é marcado ao vivo (vem da súmula no fim do jogo): só mostra os sets já lançados.
+  const atual = -1
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10 * escala, padding: `${6 * escala}px ${8 * escala}px`, borderRadius: 10 * escala,
@@ -117,6 +118,14 @@ function LinhaDupla({ dupla, lado, jogo, seguindo, escala = 1, mostrarSets = tru
 // 12:40"). Atualiza sozinho a cada segundo. Sem nada a mostrar, não ocupa espaço.
 export function TempoJogo({ jogo, dataTorneio, tamanho = 13, rotulo = true, cor, icone = true }) {
   const agora = useAgora(1000)
+  if (jogo.status === 'ao_vivo' && jogo.iniciado_em && new Date(jogo.iniciado_em).getTime() > agora) {
+    // Aquecimento: contagem regressiva até o início do jogo (iniciado_em fica no futuro).
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: tamanho * 0.35, fontSize: tamanho, fontWeight: 800, color: 'var(--color-state-warning)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+        {icone && <Timer size={tamanho * 1.05} />}Aquecimento {formatarDuracao(new Date(jogo.iniciado_em).getTime() - agora + 999)}
+      </span>
+    )
+  }
   if (jogo.status === 'ao_vivo' && jogo.iniciado_em) {
     // Discreto (cinza): informa sem disputar atenção com o placar.
     return (
@@ -243,7 +252,7 @@ function JogoChave({ jogo, duplaPorId, seguindo, ocultas, escala = 1, proximos, 
       )}
       {/* Etiqueta de uma linha só: "● QUADRA 3" com o tempo de jogo à direita (ao vivo) ou
           "QUADRA 3 · 10:50" (agendado). O vermelho já diz que é ao vivo. */}
-      {!quadraProxima && (aoVivo || (jogo.status === 'agendado' && jogo.horario && linhas.some(Boolean))) && (
+      {!quadraProxima && (aoVivo || (jogo.status === 'agendado' && (jogo.horario || jogo.quadra) && linhas.some(Boolean))) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 * escala, fontSize: 9 * escala, fontWeight: 800, textTransform: 'uppercase', padding: `${2 * escala}px ${7 * escala}px`, whiteSpace: 'nowrap', color: aoVivo ? 'var(--color-accent-on-live)' : 'var(--color-text-dark-muted)', backgroundColor: aoVivo ? 'var(--color-accent-live)' : 'var(--color-surface-dark-overlay)' }}>
           {aoVivo ? (
             <>
@@ -252,7 +261,7 @@ function JogoChave({ jogo, duplaPorId, seguindo, ocultas, escala = 1, proximos, 
               <span style={{ marginLeft: 'auto', opacity: 0.85 }}><TempoJogo jogo={jogo} tamanho={9 * escala} rotulo={false} cor="var(--color-accent-on-live)" icone={false} /></span>
             </>
           ) : (
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{jogo.quadra || ''} · {jogo.horario}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{[jogo.quadra, jogo.horario].filter(Boolean).join(' · ')}</span>
           )}
         </div>
       )}
@@ -387,8 +396,8 @@ export function Chave({ campeonato, jogos, duplas, duplaPorId, seguindo, espelha
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 * escala, marginBottom: 10 * escala }}>
                 <Trophy size={26 * escala} color="var(--color-brand-lima)" />
                 <div className="cp-display" style={{ fontSize: 22 * escala, fontWeight: 700, lineHeight: 1.1, whiteSpace: 'nowrap' }}>Grande Final</div>
-                {final.status === 'agendado' && final.horario && (
-                  <div style={{ fontSize: 10 * escala, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--color-text-dark-muted)', whiteSpace: 'nowrap' }}>{final.quadra} · {final.horario}</div>
+                {final.status === 'agendado' && (final.horario || final.quadra) && (
+                  <div style={{ fontSize: 10 * escala, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--color-text-dark-muted)', whiteSpace: 'nowrap' }}>{[final.quadra, final.horario].filter(Boolean).join(' · ')}</div>
                 )}
               </div>
               <JogoChave jogo={final} {...props} escala={escala * 1.35} />

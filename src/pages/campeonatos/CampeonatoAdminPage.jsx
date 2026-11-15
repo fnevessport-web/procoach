@@ -2,18 +2,19 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
-  ArrowLeft, Tv, Smartphone, Copy, Radio, Users, Shuffle, ListOrdered, Settings, Plus, Minus, Play,
-  Trash2, Camera, Check, RotateCcw, ChevronUp, ChevronDown, UserPlus, UserMinus, Phone, Pause, SkipForward, FastForward, Flag, ExternalLink, Search, X, ClipboardList, Share2,
+  ArrowLeft, Tv, Smartphone, Copy, Radio, Users, Shuffle, ListOrdered, Settings, Plus, Play,
+  Trash2, Camera, Check, RotateCcw, ChevronUp, ChevronDown, UserPlus, UserMinus, Phone, Pause, SkipForward, FastForward, Flag, ExternalLink, Search, X, ClipboardList, Share2, Printer,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCampeonato, aplicarPatchesJogos } from '../../hooks/useCampeonato'
 import {
-  sortearDuplas, montarChave, propagar, agendar, embaralhar, resumoPlacar, somarPonto, tirarPonto, nomeCurto,
-  rotuloFase, rotuloFaseCurto, ordenarJogos, normalizar, indiceSetAtual, duplaIncompleta, validarDuplas, reagendarPelaOrdem, origemDaVaga, primeiroNome,
+  sortearDuplasPorPresenca, encaixarPorPresenca, montarChave, propagar, agendar, embaralhar, resumoPlacar, nomeCurto, vencedorDoSet, validarPlacarDigitado, camposDoPlacar, textoSet, inicioAposAquecimento,
+  rotuloFase, rotuloFaseCurto, ordenarJogos, normalizar, duplaIncompleta, validarDuplas, reagendarPelaOrdem, origemDaVaga, primeiroNome,
 } from '../../lib/campeonato'
 import { Avatar, AvataresDupla, Chave, SorteioAoVivo, QrCode, Marcas, TempoJogo } from './componentes'
 import { rotuloStatusCampeonato, urlPublica, urlTV, proximosPorQuadra, duplasEliminadas } from './util'
 import { EditorFoto } from './EditorFoto'
+import { baixarSumulasPDF } from '../../lib/sumulaCampeonatoPdf'
 
 // Gestão de um campeonato: operação ao vivo das quadras (placar com +/-), atletas e check-in,
 // sorteio ao vivo, lista de jogos editável e configuração. Tudo que muda aqui aparece na hora no
@@ -118,6 +119,7 @@ export function CampeonatoAdminPage() {
         <Botao tamanho="sm" onClick={() => window.open(urlTV(campeonato.slug), '_blank')}><Tv size={15} />Abrir TV</Botao>
         <Botao tamanho="sm" onClick={() => window.open(urlPublica(campeonato.slug), '_blank')}><Smartphone size={15} />Link do associado</Botao>
         <Botao tamanho="sm" titulo="Copiar o link do operador de quadra" onClick={() => copiarLinkOperador(campeonato)}><ClipboardList size={15} />Link do operador</Botao>
+        <Botao tamanho="sm" titulo="Súmulas de papel, 4 por folha A4, para cortar" onClick={() => rodar(() => baixarSumulasPDF({ campeonato, jogos: dados.jogos, duplaPorId: dados.duplaPorId }), null)}><Printer size={15} />Súmulas (PDF)</Botao>
         <Botao tamanho="sm" variante="fantasma" titulo="Copiar link do associado" onClick={() => { navigator.clipboard.writeText(urlPublica(campeonato.slug)); toast.success('Link copiado') }}><Copy size={15} /></Botao>
       </div>
 
@@ -162,7 +164,7 @@ function AbaOperacao({ dados, salvarJogo }) {
   const iniciar = (jogo, quadra) => {
     const faltando = [jogo.dupla_a_id, jogo.dupla_b_id].map(id => duplas.find(d => d.id === id)).find(duplaIncompleta)
     if (faltando) return toast.error(`Defina o(a) parceiro(a) da dupla nº ${faltando.numero} antes de iniciar o jogo.`)
-    return salvarJogo(jogo.id, { status: 'ao_vivo', quadra, iniciado_em: new Date().toISOString() })
+    return salvarJogo(jogo.id, { status: 'ao_vivo', quadra, iniciado_em: inicioAposAquecimento() })
   }
   // Próximo jogo de cada quadra (verde na chave) e troca de posição na fila.
   const proximosMapa = proximosPorQuadra(campeonato, jogos)
@@ -296,83 +298,124 @@ export function QuadraLivre({ quadra, prontos, duplaPorId, onIniciar }) {
 }
 
 export function PlacarAoVivo({ jogo, duplaPorId, salvarJogo }) {
-  const sets = jogo.sets || []
-  const [salvando, setSalvando] = useState(false)
-  const atual = indiceSetAtual(sets)
-
-  const mudar = async (novosSets) => {
-    if (salvando) return
-    setSalvando(true)
-    const r = resumoPlacar(novosSets)
-    const lados = { a: jogo.dupla_a_id, b: jogo.dupla_b_id }
-    if (r.vencedor) {
-      const venc = duplaPorId.get(lados[r.vencedor])
-      await salvarJogo(jogo.id, { sets: novosSets, status: 'finalizado', vencedor_id: lados[r.vencedor], finalizado_em: new Date().toISOString() }, { silencioso: true })
-      toast((t) => (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          Vitória de {nomesDupla(venc)}. Classificada!
-          <button onClick={() => { toast.dismiss(t.id); salvarJogo(jogo.id, { sets, status: 'ao_vivo', vencedor_id: null, finalizado_em: null }) }} style={{ border: '1px solid var(--color-border-dark)', background: 'none', color: 'inherit', borderRadius: 8, padding: '4px 8px', cursor: 'pointer' }}>Desfazer</button>
-        </span>
-      ), { duration: 8000 })
-    } else {
-      await salvarJogo(jogo.id, { sets: novosSets }, { silencioso: true })
-    }
-    setSalvando(false)
-  }
-
-  const linha = (lado) => {
-    const d = duplaPorId.get(jogo[`dupla_${lado}_id`])
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
-        <AvataresDupla dupla={d} tamanho={34} />
-        <div style={{ flex: 1, minWidth: 0, lineHeight: 1.2 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomeCurto(d?.atleta1?.nome)}</div>
-          <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomeCurto(d?.atleta2?.nome)}</div>
-        </div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {[0, 1, 2].map(i => (i <= atual || sets[i]) ? (
-            <span key={i} style={{ minWidth: 28, textAlign: 'center', padding: '4px 0', borderRadius: 6, fontSize: 18, fontWeight: 800, fontVariantNumeric: 'tabular-nums', backgroundColor: i === atual ? 'var(--color-action-primary)' : 'var(--color-surface-dark-overlay)', color: i === atual ? 'var(--color-action-on-primary)' : 'inherit' }}>{sets[i]?.[lado] ?? 0}</span>
-          ) : null)}
-        </div>
-        <button disabled={salvando} onClick={() => mudar(tirarPonto(sets, lado))} style={botaoPlacar(false)} aria-label="Tirar game"><Minus size={18} /></button>
-        <button disabled={salvando} onClick={() => mudar(somarPonto(sets, lado))} style={botaoPlacar(true)} aria-label="Somar game"><Plus size={22} /></button>
-      </div>
-    )
-  }
-
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
         <div style={{ minWidth: 0, lineHeight: 1.15 }}>
           <div className="cp-display" style={{ fontSize: 22, fontWeight: 700, whiteSpace: 'nowrap' }}>{jogo.quadra}</div>
           <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-text-dark-secondary)', whiteSpace: 'nowrap' }}>{rotuloFaseCurto(jogo.fase).toUpperCase()} · JOGO {jogo.ordem}</div>
         </div>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        <TempoJogo jogo={jogo} tamanho={13} rotulo={false} cor="var(--color-text-dark-muted)" />
-        <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent-on-live)', backgroundColor: 'var(--color-accent-live)', padding: '3px 8px', borderRadius: 999, whiteSpace: 'nowrap' }}>
-          {atual === 2 ? 'TIE-BREAK 3º SET' : `${atual + 1}º SET`}
-        </span>
+          <TempoJogo jogo={jogo} tamanho={13} rotulo={false} cor="var(--color-text-dark-muted)" />
+          <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent-on-live)', backgroundColor: 'var(--color-accent-live)', padding: '3px 8px', borderRadius: 999, whiteSpace: 'nowrap' }}>EM JOGO</span>
         </span>
       </div>
-      {linha('a')}
-      <div style={{ height: 1, backgroundColor: 'var(--color-border-dark-subtle)' }} />
-      {linha('b')}
-      <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+      <PlacarManual key={jogo.id} jogo={jogo} duplaPorId={duplaPorId} salvarJogo={salvarJogo} />
+      <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
         <BotaoWO jogo={jogo} duplaPorId={duplaPorId} salvarJogo={salvarJogo} />
-        <Botao tamanho="sm" variante="fantasma" onClick={() => window.confirm('Tirar este jogo da quadra e voltar para a fila? O placar é mantido.') && salvarJogo(jogo.id, { status: 'agendado' })}><Pause size={13} />Voltar para a fila</Botao>
+        {/* Fim do aquecimento: o cronômetro do jogo (TV e celulares) recomeça do zero. */}
+        <Botao tamanho="sm" variante="secundario" onClick={() => window.confirm(`Zerar o tempo do Jogo ${jogo.ordem}? O cronômetro recomeça agora (use quando acabar o aquecimento).`) && salvarJogo(jogo.id, { iniciado_em: new Date().toISOString() })}><RotateCcw size={13} />Zerar tempo</Botao>
+        <Botao tamanho="sm" variante="fantasma" onClick={() => window.confirm('Tirar este jogo da quadra e voltar para a fila?') && salvarJogo(jogo.id, { status: 'agendado' })}><Pause size={13} />Voltar para a fila</Botao>
       </div>
-      <div style={{ fontSize: 11, color: 'var(--color-text-dark-muted)', marginTop: 6 }}>Sets até 4 games (no 4 a 4, tie-break: marque 5 a 4). 3º set é tie-break até 7. Ao fechar 2 sets, a dupla vencedora avança sozinha na chave.</div>
     </div>
   )
 }
 
-function botaoPlacar(mais) {
-  return {
-    width: mais ? 48 : 36, height: mais ? 48 : 36, borderRadius: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    border: mais ? 'none' : '1px solid var(--color-border-dark)',
-    backgroundColor: mais ? 'var(--color-brand-lima)' : 'transparent',
-    color: mais ? 'var(--color-brand-verde-court)' : 'var(--color-text-dark-secondary)', flexShrink: 0,
+// Placar digitado a partir da súmula de papel: toque no quadrado e escreva os games de cada set.
+// Set em 5 a 4 abre o quadradinho do tie-break (pontos até 7). Nada é gravado enquanto digita: só
+// o botão "Finalizar jogo" grava o placar, encerra o jogo e faz a dupla vencedora avançar na chave.
+export function PlacarManual({ jogo, duplaPorId, salvarJogo, aoFinalizar }) {
+  const [campos, setCampos] = useState(() => camposDoPlacar(jogo.sets))
+  const [salvando, setSalvando] = useState(false)
+  const { sets, vencedor, erro } = validarPlacarDigitado(campos)
+  const algoDigitado = campos.some(c => c.a !== '' || c.b !== '')
+  const preenchido = i => campos[i].a !== '' && campos[i].b !== ''
+  const ehTb = i => {
+    const a = Number(campos[i].a)
+    const b = Number(campos[i].b)
+    return preenchido(i) && Math.max(a, b) === 5 && Math.min(a, b) === 4
   }
+  const v1 = preenchido(0) ? vencedorDoSet({ a: Number(campos[0].a), b: Number(campos[0].b) }, 0) : null
+  const v2 = preenchido(1) ? vencedorDoSet({ a: Number(campos[1].a), b: Number(campos[1].b) }, 1) : null
+  const terceiroFechado = !!v1 && v1 === v2 && campos[2].a === '' && campos[2].b === ''
+  const mostraTb = [0, 1].some(ehTb)
+  const lados = { a: jogo.dupla_a_id, b: jogo.dupla_b_id }
+
+  const mudar = (i, campo, valor) => setCampos(cs => cs.map((c, k) => (k === i ? { ...c, [campo]: valor.replace(/\D/g, '').slice(0, 2) } : c)))
+
+  const finalizar = async () => {
+    if (!vencedor || salvando) return
+    const venc = duplaPorId.get(lados[vencedor])
+    const placar = sets.map(s => textoSet(s, vencedor)).join('  ')
+    if (!window.confirm(`Finalizar o Jogo ${jogo.ordem}?\n\nVitória de ${nomesDupla(venc)}: ${placar}\n\nA dupla avança na chave.`)) return
+    setSalvando(true)
+    const antes = { sets: jogo.sets || [], status: jogo.status, vencedor_id: jogo.vencedor_id || null, finalizado_em: jogo.finalizado_em || null }
+    const agora = new Date().toISOString()
+    const ok = await salvarJogo(jogo.id, { sets, status: 'finalizado', vencedor_id: lados[vencedor], iniciado_em: jogo.iniciado_em && jogo.iniciado_em < agora ? jogo.iniciado_em : agora, finalizado_em: agora }, { silencioso: true })
+    setSalvando(false)
+    if (ok === false) return
+    toast((t) => (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        Jogo {jogo.ordem} finalizado. {nomesDupla(venc)} avança!
+        <button onClick={() => { toast.dismiss(t.id); salvarJogo(jogo.id, antes) }} style={{ border: '1px solid var(--color-border-dark)', background: 'none', color: 'inherit', borderRadius: 8, padding: '4px 8px', cursor: 'pointer' }}>Desfazer</button>
+      </span>
+    ), { duration: 8000 })
+    aoFinalizar?.()
+  }
+
+  const quadrado = (i, campo, { pequeno = false, desligado = false } = {}) => (
+    <input value={campos[i][campo]} inputMode="numeric" pattern="[0-9]*" disabled={desligado} aria-label={`${i + 1}º set ${campo}`}
+      onFocus={e => e.target.select()} onChange={e => mudar(i, campo, e.target.value)}
+      style={{
+        boxSizing: 'border-box', width: pequeno ? 40 : '100%', height: pequeno ? 36 : 52, padding: 0, borderRadius: pequeno ? 9 : 12, textAlign: 'center', outline: 'none',
+        fontSize: pequeno ? 17 : 24, fontWeight: 800, fontVariantNumeric: 'tabular-nums',
+        border: `${pequeno ? 1 : 2}px solid ${desligado ? 'var(--color-border-dark-subtle)' : pequeno ? 'var(--color-brand-lima)' : 'var(--color-border-dark)'}`,
+        backgroundColor: desligado ? 'transparent' : 'var(--color-surface-dark-overlay)', color: 'var(--color-text-dark-primary)', opacity: desligado ? 0.35 : 1,
+      }} />
+  )
+  const grade = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 52px 52px 52px', gap: 8, alignItems: 'center' }
+  const linha = lado => {
+    const d = duplaPorId.get(lados[lado])
+    const ganhou = vencedor === lado
+    return (
+      <>
+        <div style={{ ...grade, padding: '6px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <AvataresDupla dupla={d} tamanho={30} destaque={ganhou} />
+            <div style={{ minWidth: 0, lineHeight: 1.2, color: ganhou ? 'var(--color-brand-lima)' : 'inherit' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomeCurto(d?.atleta1?.nome)}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomeCurto(d?.atleta2?.nome)}</div>
+            </div>
+          </div>
+          {quadrado(0, lado)}
+          {quadrado(1, lado)}
+          {quadrado(2, lado, { desligado: terceiroFechado })}
+        </div>
+        {mostraTb && (
+          <div style={{ ...grade, paddingBottom: 4 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-brand-lima)', textAlign: 'right' }}>TIE-BREAK</div>
+            {[0, 1].map(i => <div key={i} style={{ display: 'flex', justifyContent: 'center' }}>{ehTb(i) ? quadrado(i, lado === 'a' ? 'tbA' : 'tbB', { pequeno: true }) : null}</div>)}
+            <div />
+          </div>
+        )}
+      </>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{ ...grade, fontSize: 10, fontWeight: 800, letterSpacing: '0.5px', color: 'var(--color-text-dark-muted)', textAlign: 'center' }}>
+        <span style={{ textAlign: 'left' }}>DUPLA</span><span>1º SET</span><span>2º SET</span><span>3º (TB)</span>
+      </div>
+      {linha('a')}
+      <div style={{ height: 1, backgroundColor: 'var(--color-border-dark-subtle)' }} />
+      {linha('b')}
+      <div style={{ fontSize: 12, lineHeight: 1.4, minHeight: 18, marginTop: 6, color: vencedor ? 'var(--color-brand-lima)' : algoDigitado ? 'var(--color-state-warning)' : 'var(--color-text-dark-muted)' }}>
+        {vencedor ? `Vitória de ${nomesDupla(duplaPorId.get(lados[vencedor]))}` : algoDigitado ? erro : 'Toque nos quadrados e digite os games da súmula. No 5 a 4 aparece o quadrado do tie-break (até 7).'}
+      </div>
+      <Botao variante="primario" disabled={!vencedor || salvando} onClick={finalizar} estilo={{ width: '100%', marginTop: 8, padding: '13px 16px', fontSize: 16, justifyContent: 'center' }}><Flag size={17} />{salvando ? 'Salvando...' : 'Finalizar jogo'}</Botao>
+    </div>
+  )
 }
 
 function BotaoWO({ jogo, duplaPorId, salvarJogo }) {
@@ -691,7 +734,9 @@ function AbaSorteio({ dados, irPara }) {
 
   const inscritos = atletas.filter(a => a.situacao === 'inscrito')
   const usaPresentes = inscritos.some(a => a.presente)
-  const base = usaPresentes ? inscritos.filter(a => a.presente) : inscritos
+  // Todos os inscritos entram no sorteio. Quem não fez check-in joga nos últimos jogos da 1ª
+  // rodada (sortearDuplasPorPresenca + encaixarPorPresenca).
+  const base = inscritos
   const homens = base.filter(a => a.genero === 'M')
   const mulheres = base.filter(a => a.genero === 'F')
   const qtdCompletas = Math.min(homens.length, mulheres.length)
@@ -729,9 +774,9 @@ function AbaSorteio({ dados, irPara }) {
   const iniciar = () => {
     if (qtdCompletas < 2) return toast.error('Precisa de pelo menos 2 homens e 2 mulheres')
     const sobra = qtdDuplas - qtdCompletas
-    const msg = `Sortear ${qtdDuplas} duplas entre ${usaPresentes ? 'os PRESENTES' : 'TODOS os inscritos (ninguém fez check-in)'}?` +
+    const msg = `Sortear ${qtdDuplas} duplas entre TODOS os inscritos?` +
       (sobra ? `\n\n${sobra} dupla(s) ficam com parceiro(a) "A DEFINIR" (sai por último no sorteio e o jogo dela é o último da 1ª rodada). Depois é só escolher a pessoa na aba Ao vivo.` : '') +
-      (usaPresentes && ausentes.length ? `\n\nFicam FORA por não terem feito check-in (${ausentes.length}): ${ausentes.map(a => nomeCurto(a.nome)).join(', ')}.` : '') +
+      (usaPresentes && ausentes.length ? `\n\nSem check-in (${ausentes.length}): ${ausentes.map(a => nomeCurto(a.nome)).join(', ')}. Entram no sorteio, mas jogam nos ÚLTIMOS jogos da 1ª rodada. Quem fez check-in joga primeiro.` : '') +
       `\n\nA TV e os celulares vão mostrar o sorteio ao vivo.`
     if (iniciando.current) return
     if (!window.confirm(msg)) return
@@ -741,12 +786,17 @@ function AbaSorteio({ dados, irPara }) {
     iniciando.current = true
     setIniciandoUI(true)
     rodar(async () => {
-      const { duplas: novas } = sortearDuplas(homens, mulheres)
+      const { duplas: novas } = sortearDuplasPorPresenca(homens, mulheres)
       validarDuplas(novas, qtdDuplas)
       const incompletas = new Set(novas.filter(duplaIncompleta).map(d => d.id))
       let chave = montarChave(novas, { terceiro: campeonato.disputa_terceiro })
       for (const m of propagar(chave)) chave = chave.map(j => (j.id === m.id ? { ...j, ...m.patch } : j))
       for (const m of agendar(chave, campeonato.quadras, campeonato.hora_inicio, campeonato.duracao_min, incompletas)) chave = chave.map(j => (j.id === m.id ? { ...j, ...m.patch } : j))
+      // Presentes nos primeiros jogos, quem não fez check-in nos últimos.
+      if (usaPresentes) {
+        const presentes = new Set(inscritos.filter(a => a.presente).map(a => a.id))
+        for (const m of encaixarPorPresenca(chave, novas, presentes)) chave = chave.map(j => (j.id === m.id ? { ...j, ...m.patch } : j))
+      }
       // vencedor do bye já entra na 2ª rodada
       for (const m of propagar(chave)) chave = chave.map(j => (j.id === m.id ? { ...j, ...m.patch } : j))
       // Ordem de REVELAÇÃO (campo numero) sorteada à parte da posição na chave: senão as duplas
@@ -830,7 +880,7 @@ function AbaSorteio({ dados, irPara }) {
             )}
             {ausentes.length > 0 && (
               <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginBottom: 10, lineHeight: 1.5 }}>
-                <b>Ainda sem check-in ({ausentes.length}):</b> {ausentes.map(a => nomeCurto(a.nome)).join(', ')}. Se sortear agora, ficam de fora.
+                <b>Ainda sem check-in ({ausentes.length}):</b> {ausentes.map(a => nomeCurto(a.nome)).join(', ')}. Entram no sorteio e jogam nos últimos jogos da 1ª rodada.
               </div>
             )}
           </>
@@ -1021,7 +1071,12 @@ function EditorJogo({ jogo, campeonato, duplaPorId, salvarJogo, dados }) {
     )
   }
 
-  const limpos = sets.filter(s => s.a !== '' || s.b !== '').map(s => ({ a: Number(s.a) || 0, b: Number(s.b) || 0 }))
+  // Mantém os pontos do tie-break (digitados no placar) se os games daquele set não mudaram.
+  const limpos = sets.map((s, i) => ({ s, i })).filter(({ s }) => s.a !== '' || s.b !== '').map(({ s, i }) => {
+    const novo = { a: Number(s.a) || 0, b: Number(s.b) || 0 }
+    const orig = jogo.sets?.[i]
+    return orig?.tb && orig.a === novo.a && orig.b === novo.b ? { ...novo, tb: orig.tb } : novo
+  })
   const resumo = resumoPlacar(limpos)
   const lados = { a: jogo.dupla_a_id, b: jogo.dupla_b_id }
   const completo = !!(jogo.dupla_a_id && jogo.dupla_b_id)

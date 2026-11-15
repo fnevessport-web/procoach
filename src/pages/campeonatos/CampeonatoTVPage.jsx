@@ -154,6 +154,9 @@ function TelaJogos({ dados, escala }) {
   // Programação inteira na ordem dos jogos: os prontos e também os que esperam vencedores
   // ("Vencedor do jogo 3").
   const fila = ordenados.filter(j => j.status === 'agendado')
+  // Com 3 ou mais quadras, cartões menores para caber os 3 próximos jogos embaixo.
+  const compacto = quadras.length >= 3
+  const qtdFila = compacto ? 3 : 2
   const resultados = ordenados.filter(j => ['finalizado', 'wo'].includes(j.status))
     .sort((a, b) => String(b.finalizado_em).localeCompare(String(a.finalizado_em)))
 
@@ -173,22 +176,22 @@ function TelaJogos({ dados, escala }) {
       <Topo campeonato={campeonato} />
       <div style={{ flex: 1, display: 'flex', gap: 18, padding: '16px 22px 18px', minHeight: 0 }}>
         {/* ESQUERDA: as quadras e, embaixo, os próximos jogos em destaque */}
-        <div style={{ width: 440, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
+        <div style={{ width: 440, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: compacto ? 8 : 12, minHeight: 0 }}>
           <TituloBloco icone={Radio} cor="var(--color-accent-live)">Em quadra agora</TituloBloco>
           {quadras.map(q => (
             <CartaoQuadraTV key={q} quadra={q} jogo={aoVivo.find(j => j.quadra === q)} proximo={jogos.find(j => proximosMapa.get(j.id) === q)}
-              campeonato={campeonato} duplaPorId={duplaPorId} jogos={jogos} />
+              campeonato={campeonato} duplaPorId={duplaPorId} jogos={jogos} compacto={compacto} />
           ))}
-          <div style={{ marginTop: 4, flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 20, padding: '12px 12px 6px', border: '2px solid var(--color-brand-lima)', backgroundColor: 'color-mix(in srgb, var(--color-brand-lima) 7%, var(--color-surface-dark-raised))' }}>
+          <div style={{ marginTop: compacto ? 0 : 4, flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 20, padding: compacto ? '8px 10px 4px' : '12px 12px 6px', border: '2px solid var(--color-brand-lima)', backgroundColor: 'color-mix(in srgb, var(--color-brand-lima) 7%, var(--color-surface-dark-raised))' }}>
             <TituloBloco icone={CalendarClock} cor="var(--color-brand-lima)">Próximos jogos</TituloBloco>
             <div style={{ display: 'grid', gap: 8, paddingBottom: 6 }}>
-              {fila.slice(0, 2).map(j => (
-                <LinhaProximo key={j.id} jogo={j} duplaPorId={duplaPorId} jogos={jogos} campeonato={campeonato} chamado={proximosMapa.get(j.id)} />
+              {fila.slice(0, qtdFila).map(j => (
+                <LinhaProximo key={j.id} jogo={j} duplaPorId={duplaPorId} jogos={jogos} campeonato={campeonato} chamado={proximosMapa.get(j.id)} compacto={compacto} />
               ))}
               {!fila.length && (
                 <div style={{ fontSize: 18, color: 'var(--color-text-dark-muted)', padding: '6px 4px 10px' }}>{campeonato.status === 'encerrado' ? 'Torneio encerrado. Obrigado a todos!' : 'Nenhum jogo na fila.'}</div>
               )}
-              {fila.length > 2 && <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-dark-muted)', textAlign: 'center' }}>+ {fila.length - 2} jogos na programação</div>}
+              {fila.length > qtdFila && <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-dark-muted)', textAlign: 'center' }}>+ {fila.length - qtdFila} jogos na programação</div>}
             </div>
           </div>
         </div>
@@ -220,18 +223,18 @@ function nomesDupla(d) {
 
 // Uma quadra, com o nome bem grande no topo. Com jogo: duplas, placar e o tempo de jogo correndo.
 // Livre: quem é chamado para ela, com o atraso em relação ao horário previsto.
-function CartaoQuadraTV({ quadra, jogo, proximo, campeonato, duplaPorId, jogos }) {
+function CartaoQuadraTV({ quadra, jogo, proximo, campeonato, duplaPorId, jogos, compacto = false }) {
   const aoVivo = !!jogo
   const corBorda = aoVivo ? 'var(--color-accent-live)' : proximo ? 'var(--color-state-success)' : 'var(--color-border-dark)'
   const fundoTopo = aoVivo ? 'var(--color-accent-live)' : proximo ? 'color-mix(in srgb, var(--color-state-success) 30%, var(--color-surface-dark-raised))' : 'var(--color-surface-dark-overlay)'
   return (
     <div className={aoVivo ? 'cp-ao-vivo' : ''} style={{ borderRadius: 18, overflow: 'hidden', backgroundColor: 'var(--color-surface-dark-raised)', border: `2px solid ${corBorda}` }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', backgroundColor: fundoTopo, color: aoVivo ? 'var(--color-accent-on-live)' : 'var(--color-text-dark-primary)' }}>
-        <span className="cp-display" style={{ fontSize: 34, fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>{quadra}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: compacto ? '5px 14px' : '10px 16px', backgroundColor: fundoTopo, color: aoVivo ? 'var(--color-accent-on-live)' : 'var(--color-text-dark-primary)' }}>
+        <span className="cp-display" style={{ fontSize: compacto ? 24 : 34, fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>{quadra}</span>
         <span style={{ marginLeft: 'auto', textAlign: 'right', lineHeight: 1.2 }}>
           {aoVivo ? (
             <>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 7, justifyContent: 'flex-end', fontSize: 15, fontWeight: 800, letterSpacing: '2px' }}><span className="cp-pulso" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: 'var(--color-accent-on-live)' }} />AO VIVO</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 7, justifyContent: 'flex-end', fontSize: 15, fontWeight: 800, letterSpacing: '2px' }}><span className="cp-pulso" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: 'var(--color-accent-on-live)' }} />EM JOGO</span>
               <span style={{ fontSize: 13, fontWeight: 700, opacity: 0.9 }}>{rotuloFaseCurto(jogo.fase)}{jogo.ordem ? ` · Jogo ${jogo.ordem}` : ''}</span>
             </>
           ) : (
@@ -242,30 +245,30 @@ function CartaoQuadraTV({ quadra, jogo, proximo, campeonato, duplaPorId, jogos }
         </span>
       </div>
       {aoVivo ? (
-        <div style={{ padding: '6px 6px 10px' }}>
-          <CartaoJogo jogo={jogo} duplaPorId={duplaPorId} seguindo={SEM_SEGUIDOS} escala={1.12} jogos={jogos} compacto />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '2px 12px 0' }}>
+        <div style={{ padding: compacto ? '0 4px 4px' : '6px 6px 10px', position: 'relative' }}>
+          <CartaoJogo jogo={jogo} duplaPorId={duplaPorId} seguindo={SEM_SEGUIDOS} escala={compacto ? 0.85 : 1.12} jogos={jogos} compacto />
+          <div style={compacto ? { position: 'absolute', right: 12, bottom: 6 } : { display: 'flex', justifyContent: 'flex-end', padding: '2px 12px 0' }}>
             <TempoJogo jogo={jogo} dataTorneio={campeonato.data} tamanho={15} rotulo={false} cor="var(--color-text-dark-muted)" />
           </div>
         </div>
       ) : proximo ? (
-        <div style={{ padding: '10px 16px 12px' }}>
-          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase' }}>
-            Jogo {proximo.ordem} · {rotuloFaseCurto(proximo.fase)} · previsto {proximo.horario}
+        <div style={{ padding: compacto ? '6px 14px 8px' : '10px 16px 12px' }}>
+          <div style={{ fontSize: compacto ? 11 : 13, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase' }}>
+            Jogo {proximo.ordem} · {rotuloFaseCurto(proximo.fase)}{proximo.horario ? ` · previsto ${proximo.horario}` : ''}
           </div>
           {['a', 'b'].map((l, i) => {
             const d = duplaPorId.get(proximo[`dupla_${l}_id`])
             return (
-              <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: i ? 6 : 8 }}>
-                {d ? <AvataresDupla dupla={d} tamanho={34} /> : null}
-                <span style={{ fontSize: 21, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomesDupla(d)}</span>
+              <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: compacto ? 3 : i ? 6 : 8 }}>
+                {d ? <AvataresDupla dupla={d} tamanho={compacto ? 24 : 34} /> : null}
+                <span style={{ fontSize: compacto ? 16 : 21, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomesDupla(d)}</span>
               </div>
             )
           })}
-          <div style={{ marginTop: 8 }}><TempoJogo jogo={proximo} dataTorneio={campeonato.data} tamanho={18} /></div>
+          <div style={{ marginTop: compacto ? 3 : 8 }}><TempoJogo jogo={proximo} dataTorneio={campeonato.data} tamanho={compacto ? 14 : 18} /></div>
         </div>
       ) : (
-        <div style={{ padding: '12px 16px', fontSize: 16, color: 'var(--color-text-dark-muted)' }}>Nenhum jogo pronto para esta quadra.</div>
+        <div style={{ padding: compacto ? '6px 14px' : '12px 16px', fontSize: compacto ? 13 : 16, color: 'var(--color-text-dark-muted)' }}>Nenhum jogo pronto para esta quadra.</div>
       )}
     </div>
   )
@@ -275,31 +278,31 @@ const SEM_SEGUIDOS = new Set()
 
 // Linha da programação na TV: horário e quadra grandes, as duplas (ou de onde elas vêm) e o
 // atraso em vermelho quando já passou do horário previsto.
-function LinhaProximo({ jogo, duplaPorId, jogos, campeonato, chamado }) {
+function LinhaProximo({ jogo, duplaPorId, jogos, campeonato, chamado, compacto = false }) {
   const vaga = lado => {
     const d = duplaPorId.get(jogo[`dupla_${lado}_id`])
     return d ? { d, txt: nomesDupla(d) } : { d: null, txt: origemDaVaga(jogo, lado, jogos) || 'A definir' }
   }
   const lados = [vaga('a'), vaga('b')]
   return (
-    <div style={{ padding: '8px 12px', borderRadius: 14, backgroundColor: chamado ? 'color-mix(in srgb, var(--color-state-success) 18%, var(--color-surface-dark-raised))' : 'var(--color-surface-dark-raised)', border: `1px solid ${chamado ? 'var(--color-state-success)' : 'var(--color-border-dark-subtle)'}` }}>
+    <div style={{ padding: compacto ? '5px 10px' : '8px 12px', borderRadius: 14, backgroundColor: chamado ? 'color-mix(in srgb, var(--color-state-success) 18%, var(--color-surface-dark-raised))' : 'var(--color-surface-dark-raised)', border: `1px solid ${chamado ? 'var(--color-state-success)' : 'var(--color-border-dark-subtle)'}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ lineHeight: 1 }}>
-          <span style={{ display: 'block', fontSize: 10, fontWeight: 800, letterSpacing: '1.5px', color: 'var(--color-text-dark-muted)', marginBottom: 2 }}>PREVISTO</span>
-          <span className="cp-display" style={{ fontSize: 28, fontWeight: 700 }}>{jogo.horario || '--:--'}</span>
+          <span style={{ display: 'block', fontSize: 10, fontWeight: 800, letterSpacing: '1.5px', color: 'var(--color-text-dark-muted)', marginBottom: 2 }}>{jogo.horario ? 'PREVISTO' : 'JOGO'}</span>
+          <span className="cp-display" style={{ fontSize: compacto ? 20 : 28, fontWeight: 700 }}>{jogo.horario || jogo.ordem}</span>
         </span>
-        <SeloQuadra quadra={jogo.quadra} escala={1.05} />
+        <SeloQuadra quadra={jogo.quadra} escala={compacto ? 0.85 : 1.05} />
         <span style={{ marginLeft: 'auto', textAlign: 'right' }}>
           <TempoJogo jogo={jogo} dataTorneio={campeonato.data} tamanho={15} />
         </span>
       </div>
-      <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: 6, color: chamado ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-secondary)' }}>
+      <div style={{ fontSize: compacto ? 10 : 11.5, fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: compacto ? 3 : 6, color: chamado ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-secondary)' }}>
         {chamado ? `▶ Próximo na ${chamado} · ` : ''}{rotuloFaseCurto(jogo.fase)}{jogo.ordem ? ` · Jogo ${jogo.ordem}` : ''}
       </div>
       {lados.map((v, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-          {v.d ? <AvataresDupla dupla={v.d} tamanho={24} /> : null}
-          <span style={{ fontSize: v.d ? 17 : 15, fontWeight: v.d ? 700 : 500, fontStyle: v.d ? 'normal' : 'italic', color: v.d ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.txt}</span>
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: compacto ? 2 : 4 }}>
+          {v.d ? <AvataresDupla dupla={v.d} tamanho={compacto ? 20 : 24} /> : null}
+          <span style={{ fontSize: compacto ? (v.d ? 14 : 13) : (v.d ? 17 : 15), fontWeight: v.d ? 700 : 500, fontStyle: v.d ? 'normal' : 'italic', color: v.d ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.txt}</span>
           {i === 0 && <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, color: 'var(--color-text-dark-muted)' }}>VS</span>}
         </div>
       ))}
@@ -452,7 +455,7 @@ function TelaSorteio({ dados }) {
                 <div className={parou ? 'cp-zoom' : ''} key={`${dUltima.id}-${parou ? 'p' : fase}`} style={{ fontFamily: 'var(--font-display)', fontSize: 124, fontWeight: 700, lineHeight: 1.05, color: parou ? 'var(--color-brand-lima)' : 'var(--color-text-dark-primary)', fontVariantNumeric: 'tabular-nums', opacity: fase === 'nome' ? 0.25 : 1 }}>
                   {fase === 'nome' ? '?' : numeroMostrado || '?'}
                 </div>
-                {parou && jogoDaUltima && <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-dark-secondary)', marginTop: 10, whiteSpace: 'nowrap' }}>{jogoDaUltima.quadra} · previsto {jogoDaUltima.horario}</div>}
+                {parou && jogoDaUltima?.horario && <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-dark-secondary)', marginTop: 10, whiteSpace: 'nowrap' }}>{jogoDaUltima.quadra} · previsto {jogoDaUltima.horario}</div>}
               </div>
             </>
           ) : null}

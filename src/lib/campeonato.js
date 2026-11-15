@@ -32,6 +32,11 @@ export const FORMATO_PADRAO = { games: 4, tiebreakFinal: 7 }
 
 export const STATUS_ENCERRADOS = ['finalizado', 'wo', 'bye']
 
+// Ao iniciar um jogo, 5 min de aquecimento: iniciado_em fica 5 min no futuro e o cronômetro
+// mostra a contagem regressiva do aquecimento até lá (TempoJogo).
+export const AQUECIMENTO_MS = 5 * 60 * 1000
+export const inicioAposAquecimento = () => new Date(Date.now() + AQUECIMENTO_MS).toISOString()
+
 function faseDaRodada(rodada, totalRodadas) {
   const restante = totalRodadas - rodada
   return ['final', 'semi', 'quartas', 'oitavas', '16avos', '32avos'][restante] || `rodada${rodada}`
@@ -69,9 +74,9 @@ function ordemEspalhada(m) {
 // Sorteio: embaralha homens e mulheres separadamente e casa um com um. Quem sobra (gênero com
 // mais gente) vira dupla com parceiro(a) "A definir", sorteada por último. A organização convida
 // alguém (ex.: uma eliminada) e completa a dupla pelo painel antes do jogo.
-export function sortearDuplas(homens, mulheres) {
-  const h = embaralhar(homens)
-  const m = embaralhar(mulheres)
+export function sortearDuplas(homens, mulheres, { jaEmbaralhado = false } = {}) {
+  const h = jaEmbaralhado ? homens : embaralhar(homens)
+  const m = jaEmbaralhado ? mulheres : embaralhar(mulheres)
   const qtd = Math.min(h.length, m.length)
   const duplas = Array.from({ length: qtd }, (_, i) => ({
     id: crypto.randomUUID(),
@@ -85,6 +90,38 @@ export function sortearDuplas(homens, mulheres) {
   ]
   resto.forEach((r, i) => duplas.push({ id: crypto.randomUUID(), numero: qtd + i + 1, ...r }))
   return { duplas, incompletas: resto.length }
+}
+
+// Sorteio com prioridade de presença (15/11): quem fez check-in é casado primeiro com quem fez
+// check-in; quem ainda não chegou fica para o fim (e, se sobrar, é quem fica com "A definir").
+export function sortearDuplasPorPresenca(homens, mulheres) {
+  const ordenar = l => [...embaralhar(l.filter(a => a.presente)), ...embaralhar(l.filter(a => !a.presente))]
+  return sortearDuplas(ordenar(homens), ordenar(mulheres), { jaEmbaralhado: true })
+}
+
+// Quanto uma dupla precisa jogar mais tarde: 0 = os dois presentes, 1 ou 2 = quantos ainda sem
+// check-in, +3 se está sem parceiro(a) ("A definir").
+export function atrasoDaDupla(d, presentes) {
+  const ausentes = [d.atleta1_id, d.atleta2_id].filter(id => id && !presentes.has(id)).length
+  return ausentes + (duplaIncompleta(d) ? 3 : 0)
+}
+
+// Depois de agendar, reocupa as vagas da 1ª rodada na ordem dos jogos: duplas completas e
+// presentes nos primeiros jogos, depois as com gente sem check-in, e "A definir" no último.
+// Dentro de cada grupo a ordem é sorteada. Devolve patches { id, patch }.
+export function encaixarPorPresenca(chave, duplas, presentes) {
+  const primeira = chave.filter(j => j.rodada === 1 && j.status !== 'bye').sort((a, b) => (a.ordem || 999) - (b.ordem || 999))
+  const vagas = primeira.flatMap(j => ['dupla_a_id', 'dupla_b_id'].filter(c => j[c]).map(c => [j, c]))
+  const porId = new Map(duplas.map(d => [d.id, d]))
+  const grupos = new Map()
+  for (const [j, c] of vagas) {
+    const n = atrasoDaDupla(porId.get(j[c]), presentes)
+    grupos.set(n, [...(grupos.get(n) || []), j[c]])
+  }
+  const ids = [...grupos.keys()].sort((a, b) => a - b).flatMap(n => embaralhar(grupos.get(n)))
+  const patches = new Map()
+  vagas.forEach(([j, c], i) => patches.set(j.id, { ...(patches.get(j.id) || {}), [c]: ids[i] }))
+  return [...patches].map(([id, patch]) => ({ id, patch }))
 }
 
 export function duplaIncompleta(d) {
@@ -262,7 +299,66 @@ export function tirarPonto(sets = [], lado) {
 }
 
 export function textoPlacar(sets = []) {
-  return sets.map(s => `${s.a ?? 0}-${s.b ?? 0}`).join('  ')
+  return sets.map(s => textoSet(s)).join('  ')
+}
+
+// "5-4 (7-5)": set com os pontos do tie-break do 4 a 4, quando anotados. `lado` inverte a ordem
+// (placar contado do ponto de vista da dupla b).
+export function textoSet(s, lado = 'a') {
+  const o = lado === 'a' ? 'b' : 'a'
+  const base = `${s?.[lado] ?? 0}-${s?.[o] ?? 0}`
+  return s?.tb ? `${base} (${s.tb[lado] ?? 0}-${s.tb[o] ?? 0})` : base
+}
+
+// Placar digitado à mão (súmula de papel). Recebe os campos como texto
+// ([{ a, b, tbA, tbB }] x 3) e devolve { sets, vencedor, erro }. Regras: 1º e 2º sets até 4 games
+// com 2 de diferença ou 5 a 4 (tie-break, pontos opcionais mas, se anotados, até 7 com 2 de
+// diferença e para quem levou o set); 1 set para cada pede o 3º set, que é tie-break até 7.
+export function validarPlacarDigitado(campos, formato = FORMATO_PADRAO) {
+  const num = v => (v === '' || v == null ? null : Number(v))
+  const sets = []
+  for (let i = 0; i < 3; i++) {
+    const c = campos[i] || {}
+    const a = num(c.a)
+    const b = num(c.b)
+    if (a == null && b == null) {
+      if (i < 2) return { sets, vencedor: null, erro: `Falta o ${i + 1}º set.` }
+      continue
+    }
+    if (a == null || b == null) return { sets, vencedor: null, erro: `Complete o ${i + 1}º set das duas duplas.` }
+    const set = { a, b }
+    const ganhou = vencedorDoSet(set, i, formato)
+    if (!ganhou) {
+      return { sets, vencedor: null, erro: i < 2 ? `O ${i + 1}º set não fecha (${a} a ${b}): vai até ${formato.games} games com 2 de diferença, ou ${formato.games + 1} a ${formato.games} no tie-break.` : `O 3º set é tie-break até ${formato.tiebreakFinal} com 2 de diferença (${a} a ${b} não fecha).` }
+    }
+    if (i < 2) {
+      const tA = num(c.tbA)
+      const tB = num(c.tbB)
+      const ehTb = Math.max(a, b) === formato.games + 1 && Math.min(a, b) === formato.games
+      if (ehTb && (tA != null || tB != null)) {
+        if (tA == null || tB == null) return { sets, vencedor: null, erro: `Complete o tie-break do ${i + 1}º set.` }
+        const tbGanhou = vencedorDoSet({ a: tA, b: tB }, 2, formato)
+        if (!tbGanhou) return { sets, vencedor: null, erro: `Tie-break do ${i + 1}º set vai até ${formato.tiebreakFinal} com 2 de diferença (${tA} a ${tB} não fecha).` }
+        if (tbGanhou !== ganhou) return { sets, vencedor: null, erro: `No ${i + 1}º set, quem venceu o tie-break precisa ser quem ficou com o set.` }
+        set.tb = { a: tA, b: tB }
+      }
+    }
+    sets.push(set)
+  }
+  const r = resumoPlacar(sets, formato)
+  if (sets.length === 2 && !r.vencedor) return { sets, vencedor: null, erro: 'Deu 1 set para cada: falta o 3º set (tie-break).' }
+  if (sets.length === 3 && sets.slice(0, 2).every((s, i) => vencedorDoSet(s, i, formato) === vencedorDoSet(sets[0], 0, formato))) {
+    return { sets, vencedor: null, erro: 'A mesma dupla venceu os 2 primeiros sets: o 3º set fica em branco.' }
+  }
+  return { sets, vencedor: r.vencedor, erro: null }
+}
+
+// Campos de texto do formulário a partir dos sets gravados no jogo.
+export function camposDoPlacar(sets = []) {
+  return [0, 1, 2].map(i => {
+    const s = sets[i]
+    return { a: s?.a ?? '', b: s?.b ?? '', tbA: s?.tb?.a ?? '', tbB: s?.tb?.b ?? '' }
+  }).map(c => Object.fromEntries(Object.entries(c).map(([k, v]) => [k, v === '' ? '' : String(v)])))
 }
 
 // ---------- ordem de jogos ----------

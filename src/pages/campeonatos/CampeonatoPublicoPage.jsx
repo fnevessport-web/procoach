@@ -880,7 +880,7 @@ function MeuHistorico({ campeonato, eu, duplas, duplaPorId, jogos }) {
           const adv = duplaPorId.get(j[`dupla_${outro}_id`])
           const aoVivo = j.status === 'ao_vivo'
           const cor = !encerrado ? (aoVivo ? 'var(--color-accent-live)' : 'var(--color-border-dark)') : venceu ? verde : vermelho
-          let selo = aoVivo ? 'AO VIVO' : 'PRÓXIMO'
+          let selo = aoVivo ? 'EM JOGO' : 'PRÓXIMO'
           if (encerrado) selo = `${venceu ? 'VITÓRIA' : 'DERROTA'}${j.status === 'wo' ? ' (W.O.)' : ''}`
           return (
             <div key={j.id} style={{ borderRadius: 16, overflow: 'hidden', border: `2px solid ${cor}`, backgroundColor: encerrado ? `color-mix(in srgb, ${cor} 13%, var(--color-surface-dark-raised))` : 'var(--color-surface-dark-raised)' }}>
