@@ -138,6 +138,13 @@
 }
 .cp-proximo { animation: cp-proximo 2.2s ease-in-out infinite; }
 
+/* TV: últimos resultados subindo sem parar (o conteúdo vem duplicado; sobe metade e recomeça) */
+@keyframes cp-rolar-cima {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+.cp-rolar-cima { animation: cp-rolar-cima var(--duracao, 40s) linear infinite; }
+
 /* Pódio do telão */
 @keyframes cp-subir {
   0% { transform: scaleY(0); opacity: 0; }

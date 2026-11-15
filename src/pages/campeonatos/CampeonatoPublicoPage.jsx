@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Search, Camera, X, Plus, Star, Radio, GitBranch, Users, UserRound, Check, CalendarClock, MapPin, Phone, MessageCircle, Lock } from 'lucide-react'
+import { Search, Camera, Plus, Star, Radio, GitBranch, Users, UserRound, Check, CalendarClock, MapPin, MessageCircle, ImageIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCampeonato } from '../../hooks/useCampeonato'
-import { nomeCurto, normalizar, ordenarJogos } from '../../lib/campeonato'
+import { nomeCurto, normalizar, ordenarJogos, rotuloFaseCurto } from '../../lib/campeonato'
 import { EditorFoto } from './EditorFoto'
-import { Marcas, Avatar, AvataresDupla, CartaoJogo, Chave, SorteioAoVivo } from './componentes'
+import { Marcas, Avatar, AvataresDupla, CartaoJogo, Chave, SorteioAoVivo, TempoJogo } from './componentes'
 import { COR_DESTAQUE, jogoTemSeguido, duplasOcultas, proximosPorQuadra } from './util'
 
 // Link público do campeonato (QR code no telão). Sem login. O associado escolhe o próprio nome
-// (autocomplete com os inscritos), manda uma foto e pode seguir quantos nomes quiser (ex.: a
-// esposa). Os jogos de quem ele segue aparecem em destaque. Tudo ao vivo.
+// (autocomplete com os inscritos) e manda uma foto. Os jogos dele aparecem em destaque. Tudo ao
+// vivo. (A opção de "seguir" outros atletas foi tirada em 14/11 a pedido: confundia.)
 
 function chaveLocal(slug) { return `campeonato:${slug}` }
 
@@ -32,7 +32,7 @@ const ABAS = [
   { id: 'jogos', label: 'Jogos', icon: Radio },
   { id: 'chave', label: 'Chave', icon: GitBranch },
   { id: 'duplas', label: 'Duplas', icon: Users },
-  { id: 'eu', label: 'Meus atletas', icon: Star },
+  { id: 'eu', label: 'Eu', icon: UserRound },
 ]
 
 export function CampeonatoPublicoPage() {
@@ -50,7 +50,8 @@ export function CampeonatoPublicoPage() {
     localStorage.setItem(chaveLocal(slug), JSON.stringify(p))
   }
 
-  const seguindo = useMemo(() => new Set([...(prefs?.seguindo || []), ...(prefs?.eu ? [prefs.eu] : [])]), [prefs])
+  // Só a própria pessoa fica em destaque (nada de seguir outros nomes).
+  const seguindo = useMemo(() => new Set(prefs?.eu ? [prefs.eu] : []), [prefs])
 
   if (carregando) return <div className="cp-fundo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Marcas altura={34} /></div>
   if (erro || !campeonato) return <div className="cp-fundo" style={{ padding: 40, textAlign: 'center' }}>{erro || 'Campeonato não encontrado'}</div>
@@ -68,11 +69,15 @@ export function CampeonatoPublicoPage() {
           <CardCheckin atleta={atletaPorId.get(prefs.eu)} onMudou={dados.recarregar} />
         )}
 
+        {!emSorteio && prefs?.eu && atletaPorId.get(prefs.eu) && aba !== 'eu' && (
+          <AvisoMeuJogo campeonato={campeonato} eu={atletaPorId.get(prefs.eu)} duplas={duplas} jogos={jogos} />
+        )}
+
         {!emSorteio && prefs?.eu && atletaPorId.get(prefs.eu) && aba !== 'chave' && (
           <CardParceiro campeonato={campeonato} eu={atletaPorId.get(prefs.eu)} duplas={duplas} atletaPorId={atletaPorId} slug={slug} />
         )}
 
-        {/* Durante o sorteio, a tela (menos "Meus atletas") vira o sorteio ao vivo. */}
+        {/* Durante o sorteio, a tela (menos a aba "Eu") vira o sorteio ao vivo. */}
         {emSorteio && aba !== 'eu' && (
           <SorteioCelular campeonato={campeonato} duplas={duplas} duplaPorId={duplaPorId} atletas={atletas} seguindo={seguindo} eu={prefs?.eu} irParaTopo={irParaTopo} />
         )}
@@ -88,7 +93,7 @@ export function CampeonatoPublicoPage() {
             : <ListaInscritos atletas={atletas} seguindo={seguindo} />
         )}
         {aba === 'eu' && (
-          <AbaMeusAtletas campeonato={campeonato} atletas={atletas} atletaPorId={atletaPorId} prefs={prefs} salvarPrefs={salvarPrefs} />
+          <AbaEu atletas={atletas} atletaPorId={atletaPorId} prefs={prefs} salvarPrefs={salvarPrefs} />
         )}
       </main>
 
@@ -108,7 +113,7 @@ export function CampeonatoPublicoPage() {
       </nav>
 
       {!prefs && (
-        <Onboarding campeonato={campeonato} atletas={atletas} atletaPorId={atletaPorId}
+        <Onboarding campeonato={campeonato} atletas={atletas} atletaPorId={atletaPorId} slug={slug}
           onConcluir={salvarPrefs} />
       )}
     </div>
@@ -220,14 +225,12 @@ function Cabecalho({ campeonato, seguindo, atletaPorId, onEditar }) {
       <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '3px', color: 'var(--color-brand-lima)' }}>TORNEIO DE DUPLAS MISTAS</div>
       <h1 className="cp-display" style={{ fontSize: 30, fontWeight: 700, margin: '4px 0 2px', lineHeight: 1.1 }}>{campeonato.nome}</h1>
       <div style={{ fontSize: 12, color: 'var(--color-text-dark-secondary)', textTransform: 'capitalize' }}>{dataFmt}{campeonato.local ? ` · ${campeonato.local}` : ''}</div>
-      {seguindo.size > 0 && (
-        <button onClick={onEditar} className="cp-sem-scroll" style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', overflowX: 'auto', padding: '5px 8px 5px 5px', borderRadius: 999, border: `1px solid ${COR_DESTAQUE}`, background: 'color-mix(in srgb, var(--color-brand-lima) 10%, transparent)', color: COR_DESTAQUE, cursor: 'pointer' }}>
-          {[...seguindo].slice(0, 4).map(id => <Avatar key={id} atleta={atletaPorId.get(id)} tamanho={22} destaque />)}
-          <span style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
-            Seguindo {[...seguindo].map(id => nomeCurto(atletaPorId.get(id)?.nome).split(' ')[0]).filter(Boolean).slice(0, 3).join(', ')}{seguindo.size > 3 ? ` +${seguindo.size - 3}` : ''}
-          </span>
+      {[...seguindo].map(id => atletaPorId.get(id)).filter(Boolean).slice(0, 1).map(eu => (
+        <button key={eu.id} onClick={onEditar} style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', padding: '5px 10px 5px 5px', borderRadius: 999, border: `1px solid ${COR_DESTAQUE}`, background: 'color-mix(in srgb, var(--color-brand-lima) 10%, transparent)', color: COR_DESTAQUE, cursor: 'pointer' }}>
+          <Avatar atleta={eu} tamanho={22} destaque />
+          <span style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomeCurto(eu.nome)}</span>
         </button>
-      )}
+      ))}
     </header>
   )
 }
@@ -251,10 +254,12 @@ function AbaJogos({ dados, seguindo }) {
   const visiveis = jogos.filter(j => j.status !== 'bye' && !ocultas.has(j.dupla_a_id) && !ocultas.has(j.dupla_b_id))
   const ordenados = ordenarJogos(visiveis).sort((a, b) => (a.ordem || 999) - (b.ordem || 999))
   const aoVivo = ordenados.filter(j => j.status === 'ao_vivo')
-  const proximos = ordenados.filter(j => j.status === 'agendado' && (j.dupla_a_id || j.dupla_b_id))
+  // Programação completa: todos os jogos ainda por jogar, já com horário e quadra (os das
+  // próximas fases mostram de onde vem a dupla: "Vencedor do jogo 3").
+  const proximos = ordenados.filter(j => j.status === 'agendado')
   const resultados = ordenados.filter(j => ['finalizado', 'wo'].includes(j.status)).sort((a, b) => String(b.finalizado_em).localeCompare(String(a.finalizado_em)))
   const meus = ordenados.filter(j => jogoTemSeguido(j, duplaPorId, seguindo))
-  const cartao = j => <CartaoJogo key={j.id} jogo={j} duplaPorId={duplaPorId} seguindo={seguindo} numero={j.ordem || null} />
+  const cartao = j => <CartaoJogo key={j.id} jogo={j} duplaPorId={duplaPorId} seguindo={seguindo} numero={j.ordem || null} dataTorneio={campeonato.data} jogos={jogos} />
 
   if (!jogos.length) {
     return (
@@ -270,7 +275,7 @@ function AbaJogos({ dados, seguindo }) {
   return (
     <>
       {meus.length > 0 && (
-        <Secao titulo="Jogos de quem você segue" icone={Star}>
+        <Secao titulo="Seus jogos" icone={Star}>
           <div style={{ display: 'grid', gap: 10 }}>{meus.filter(j => j.status !== 'finalizado' && j.status !== 'wo').map(cartao)}</div>
           {meus.every(j => ['finalizado', 'wo'].includes(j.status)) && <div style={{ fontSize: 13, color: 'var(--color-text-dark-muted)', padding: '4px 2px' }}>Sem jogos pendentes. Veja os resultados abaixo.</div>}
         </Secao>
@@ -278,8 +283,8 @@ function AbaJogos({ dados, seguindo }) {
       <Secao titulo="Ao vivo agora" icone={Radio}>
         {aoVivo.length ? <div style={{ display: 'grid', gap: 10 }}>{aoVivo.map(cartao)}</div> : <Vazio texto="Nenhum jogo em quadra neste momento." />}
       </Secao>
-      <Secao titulo="Próximos jogos" icone={CalendarClock}>
-        {proximos.length ? <div style={{ display: 'grid', gap: 10 }}>{proximos.slice(0, 10).map(cartao)}</div> : <Vazio texto="Nenhum jogo na fila." />}
+      <Secao titulo="Ordem de jogos" icone={CalendarClock}>
+        {proximos.length ? <div style={{ display: 'grid', gap: 10 }}>{proximos.map(cartao)}</div> : <Vazio texto="Nenhum jogo na fila." />}
       </Secao>
       {resultados.length > 0 && (
         <Secao titulo="Resultados" icone={Check}>
@@ -368,6 +373,7 @@ function BuscaAtleta({ atletas, excluir = [], onEscolher, placeholder = 'Digite 
 // (o sorteio usa quem fez check-in). Só vale antes do sorteio.
 function CardCheckin({ atleta, onMudou }) {
   const [salvando, setSalvando] = useState(false)
+  const [pedindoTel, setPedindoTel] = useState(false)
   const primeiro = atleta.nome.split(' ')[0]
   const marcar = async (presente) => {
     setSalvando(true)
@@ -375,7 +381,28 @@ function CardCheckin({ atleta, onMudou }) {
     setSalvando(false)
     if (error) return toast.error(error.message)
     if (presente) toast.success('Check-in feito! Seu nome já acendeu no telão.')
+    setPedindoTel(false)
     onMudou?.()
+  }
+  // Antes do check-in, se a pessoa não tem WhatsApp no cadastro do torneio, pede (a dupla dela
+  // usa para chamar). Se a função do banco não existir ou falhar, segue direto para o check-in.
+  const cheguei = async () => {
+    setSalvando(true)
+    const { data, error } = await supabase.rpc('campeonato_tem_telefone', { p_atleta_id: atleta.id })
+    setSalvando(false)
+    if (!error && data === false) return setPedindoTel(true)
+    marcar(true)
+  }
+  const salvarTelefone = async (telefone) => {
+    setSalvando(true)
+    const { error } = await supabase.rpc('campeonato_salvar_telefone', { p_atleta_id: atleta.id, p_telefone: telefone })
+    setSalvando(false)
+    if (error) return toast.error(error.message)
+    toast.success('WhatsApp salvo!')
+    marcar(true)
+  }
+  if (pedindoTel && !atleta.presente) {
+    return <FormTelefone primeiro={primeiro} salvando={salvando} onSalvar={salvarTelefone} onPular={() => marcar(true)} />
   }
   if (atleta.presente) {
     return (
@@ -401,48 +428,148 @@ function CardCheckin({ atleta, onMudou }) {
     <div style={{ marginBottom: 16, padding: 16, borderRadius: 16, border: '1px solid var(--color-brand-saibro)', backgroundColor: 'color-mix(in srgb, var(--color-brand-saibro) 14%, var(--color-surface-dark-raised))' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 800 }}><MapPin size={18} />Já está no Beyond, {primeiro}?</div>
       <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', margin: '4px 0 12px', lineHeight: 1.5 }}>Faça o check-in quando chegar ao clube. O sorteio das duplas usa só quem fez check-in.</div>
-      <button onClick={() => marcar(true)} disabled={salvando} style={{ ...botaoPrincipal, opacity: salvando ? 0.6 : 1 }}>
+      <button onClick={cheguei} disabled={salvando} style={{ ...botaoPrincipal, opacity: salvando ? 0.6 : 1 }}>
         {salvando ? 'Confirmando...' : 'Cheguei! Fazer meu check-in'}
       </button>
     </div>
   )
 }
 
-// ---------- sua dupla (contato do parceiro) ----------
+const PAISES = [
+  ['55', '🇧🇷 Brasil +55'], ['1', '🇺🇸 EUA / Canadá +1'], ['351', '🇵🇹 Portugal +351'], ['54', '🇦🇷 Argentina +54'],
+  ['598', '🇺🇾 Uruguai +598'], ['595', '🇵🇾 Paraguai +595'], ['56', '🇨🇱 Chile +56'], ['34', '🇪🇸 Espanha +34'],
+  ['39', '🇮🇹 Itália +39'], ['33', '🇫🇷 França +33'], ['49', '🇩🇪 Alemanha +49'], ['44', '🇬🇧 Reino Unido +44'],
+  ['972', '🇮🇱 Israel +972'], ['outro', 'Outro país'],
+]
 
-function formatarTelefone(t) {
-  const d = String(t || '').replace(/\D/g, '').replace(/^55/, '')
-  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
-  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
-  return t
+// WhatsApp em 3 partes: país (Brasil já escolhido), DDD e número. Fora do Brasil, número completo
+// com código de área. Grava só dígitos com o código do país (ex.: 5511999998888), que é o formato
+// do link wa.me.
+function FormTelefone({ primeiro, salvando, onSalvar, onPular }) {
+  const [pais, setPais] = useState('55')
+  const [outroCodigo, setOutroCodigo] = useState('')
+  const [ddd, setDdd] = useState('')
+  const [numero, setNumero] = useState('')
+  const br = pais === '55'
+  const codigo = pais === 'outro' ? outroCodigo : pais
+  const valido = br ? ddd.length === 2 && (numero.length === 8 || numero.length === 9) : codigo.length >= 1 && numero.length >= 6
+  const campo = { boxSizing: 'border-box', padding: '13px 12px', borderRadius: 12, border: '1px solid var(--color-border-dark)', backgroundColor: 'var(--color-surface-dark-overlay)', color: 'var(--color-text-dark-primary)', fontSize: 17, outline: 'none', minWidth: 0 }
+  const rotulo = t => <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-text-dark-secondary)', marginBottom: 5, textTransform: 'uppercase' }}>{t}</div>
+  return (
+    <div className="cp-entrar" style={{ marginBottom: 16, padding: 16, borderRadius: 16, border: '1px solid var(--color-brand-saibro)', backgroundColor: 'color-mix(in srgb, var(--color-brand-saibro) 14%, var(--color-surface-dark-raised))' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 800 }}><MessageCircle size={18} />Qual é o seu WhatsApp, {primeiro}?</div>
+      <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', margin: '4px 0 14px', lineHeight: 1.5 }}>Assim que sair o sorteio, sua dupla te chama por ele para vocês combinarem o jogo. 🎾</div>
+      <div style={{ marginBottom: 10 }}>
+        {rotulo('País')}
+        <select value={pais} onChange={e => setPais(e.target.value)} style={{ ...campo, width: '100%' }}>
+          {PAISES.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+        </select>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {pais === 'outro' && (
+          <div style={{ width: 86 }}>
+            {rotulo('Código')}
+            <input value={outroCodigo} onChange={e => setOutroCodigo(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" placeholder="+" style={{ ...campo, width: '100%' }} />
+          </div>
+        )}
+        {br && (
+          <div style={{ width: 76 }}>
+            {rotulo('DDD')}
+            <input value={ddd} onChange={e => setDdd(e.target.value.replace(/\D/g, '').slice(0, 2))} inputMode="numeric" placeholder="11" style={{ ...campo, width: '100%', textAlign: 'center' }} />
+          </div>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {rotulo(br ? 'Número' : 'Número com código de área')}
+          <input value={numero} onChange={e => setNumero(e.target.value.replace(/\D/g, '').slice(0, br ? 9 : 13))} inputMode="numeric" placeholder={br ? '99999-9999' : ''} style={{ ...campo, width: '100%' }} />
+        </div>
+      </div>
+      <button onClick={() => onSalvar(br ? `55${ddd}${numero}` : `${codigo}${numero}`)} disabled={!valido || salvando} style={{ ...botaoPrincipal, marginTop: 14, opacity: !valido || salvando ? 0.5 : 1 }}>
+        {salvando ? 'Salvando...' : 'Salvar e fazer meu check-in'}
+      </button>
+      <button onClick={onPular} disabled={salvando} style={{ ...botaoTexto, marginTop: 10, fontSize: 13 }}>Não tenho WhatsApp, só fazer o check-in</button>
+    </div>
+  )
 }
 
-// Depois que a dupla é revelada no sorteio, mostra foto e nome do parceiro e libera o WhatsApp
-// dele. O telefone vem de uma função fechada no banco: só sai depois de a pessoa confirmar os 4
-// últimos dígitos do PRÓPRIO telefone de inscrição (fica lembrado neste aparelho).
-function CardParceiro({ campeonato, eu, duplas, atletaPorId, slug }) {
+// ---------- aviso "é a sua vez" ----------
+
+// Para quem está jogando: aviso grande e fixo no topo quando o jogo dele é o PRÓXIMO de uma quadra
+// (o celular vibra na hora que vira), cartão quando está em quadra, e uma linha discreta com o
+// próximo jogo e quantos faltam antes dele.
+function AvisoMeuJogo({ campeonato, eu, duplas, jogos }) {
+  const minha = duplas.find(d => d.atleta1_id === eu.id || d.atleta2_id === eu.id)
+  const proximos = proximosPorQuadra(campeonato, jogos)
+  const meus = minha ? jogos.filter(j => j.status !== 'bye' && (j.dupla_a_id === minha.id || j.dupla_b_id === minha.id)) : []
+  const aoVivo = meus.find(j => j.status === 'ao_vivo')
+  const chamado = !aoVivo ? meus.find(j => proximos.has(j.id)) : null
+  const quadraChamada = chamado ? proximos.get(chamado.id) : null
+  const seguinte = !aoVivo && !chamado ? meus.filter(j => j.status === 'agendado').sort((a, b) => (a.ordem || 999) - (b.ordem || 999))[0] : null
+  const antes = seguinte ? jogos.filter(j => j.status === 'agendado' && (j.ordem || 999) < (seguinte.ordem || 999)).length : 0
+
+  const chamadoId = chamado?.id
+  useEffect(() => {
+    if (!chamadoId) return
+    try { navigator.vibrate?.([400, 150, 400, 150, 400]) } catch { /* sem vibração */ }
+  }, [chamadoId])
+
+  if (!minha || campeonato.status === 'sorteio') return null
+  if (chamado) {
+    return (
+      <div className="cp-entrar" style={{ position: 'sticky', top: 8, zIndex: 16, marginBottom: 16, padding: '18px 16px', borderRadius: 20, textAlign: 'center', border: '2px solid var(--color-brand-lima)', background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-brand-lima) 30%, var(--color-surface-dark-raised)), var(--color-surface-dark-raised))', boxShadow: '0 10px 30px color-mix(in srgb, var(--color-surface-dark-base) 70%, transparent)' }}>
+        <div className="cp-pulso" style={{ fontSize: 12, fontWeight: 800, letterSpacing: '3px', color: COR_DESTAQUE }}>🎾 FIQUE ATENTO, {eu.nome.split(' ')[0].toUpperCase()}!</div>
+        <div className="cp-display" style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.15, margin: '6px 0 2px' }}>O próximo jogo da</div>
+        <div className="cp-display" style={{ fontSize: 46, fontWeight: 700, lineHeight: 1.05, color: COR_DESTAQUE }}>{quadraChamada}</div>
+        <div className="cp-display" style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.15 }}>é o seu!</div>
+        <div style={{ fontSize: 14, color: 'var(--color-text-dark-secondary)', marginTop: 8, lineHeight: 1.5 }}>Jogo {chamado.ordem} · {rotuloFaseCurto(chamado.fase)}. Vá para perto da quadra e se aqueça: assim que ela liberar, a mesa chama vocês.</div>
+      </div>
+    )
+  }
+  if (aoVivo) {
+    return (
+      <div className="cp-entrar cp-ao-vivo" style={{ marginBottom: 16, padding: '14px 16px', borderRadius: 18, border: '2px solid var(--color-accent-live)', backgroundColor: 'color-mix(in srgb, var(--color-accent-live) 18%, var(--color-surface-dark-raised))', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span className="cp-pulso" style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'var(--color-accent-live)', flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '2px', color: 'var(--color-text-dark-secondary)' }}>VOCÊ ESTÁ EM QUADRA</div>
+          <div className="cp-display" style={{ fontSize: 24, fontWeight: 700 }}>{aoVivo.quadra} · Jogo {aoVivo.ordem}</div>
+        </div>
+        <TempoJogo jogo={aoVivo} dataTorneio={campeonato.data} tamanho={16} rotulo={false} />
+      </div>
+    )
+  }
+  if (seguinte) {
+    return (
+      <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 16, border: `1px solid ${COR_DESTAQUE}`, backgroundColor: 'var(--color-surface-dark-raised)', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <CalendarClock size={22} color="var(--color-brand-lima)" style={{ flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.4 }}>
+          <b>Seu próximo jogo: Jogo {seguinte.ordem}</b>{seguinte.quadra ? ` · ${seguinte.quadra}` : ''}{seguinte.horario ? ` · previsto ${seguinte.horario}` : ''}
+          <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)' }}>{antes === 0 ? 'Você é o próximo da fila.' : antes === 1 ? 'Falta 1 jogo antes do seu.' : `Faltam ${antes} jogos antes do seu.`}</div>
+        </div>
+      </div>
+    )
+  }
+  return null
+}
+
+// ---------- sua dupla (contato do parceiro) ----------
+
+// Assim que a dupla é revelada no sorteio: foto e nome do parceiro e o botão do WhatsApp, que já
+// abre a conversa com uma mensagem pronta. Sem PIN (tirado em 14/11 a pedido). O telefone vem de
+// uma função do banco que só entrega o contato do PRÓPRIO parceiro, e só depois da revelação.
+function CardParceiro({ campeonato, eu, duplas, atletaPorId }) {
   const minha = duplas.find(d => d.atleta1_id === eu.id || d.atleta2_id === eu.id)
   const revelada = !!minha && !(campeonato.status === 'sorteio' && minha.numero > (campeonato.sorteio_revelados || 0))
   const parceiroId = minha ? (minha.atleta1_id === eu.id ? minha.atleta2_id : minha.atleta1_id) : null
   const parceiro = parceiroId ? atletaPorId.get(parceiroId) : null
-  const chaveFinal = `campeonato:${slug}:final:${eu.id}`
-  const [contato, setContato] = useState(null)
-  const [pedindo, setPedindo] = useState(false)
-  const [final, setFinal] = useState('')
-  const [carregando, setCarregando] = useState(false)
+  const [contato, setContato] = useState({ id: null, telefone: null, buscado: false })
 
-  // Se este aparelho já confirmou os dígitos antes, busca o contato sozinho.
   useEffect(() => {
     if (!revelada || !parceiroId) return
-    let salvo
-    try { salvo = localStorage.getItem(chaveFinal) } catch { salvo = null }
-    if (!salvo) return
     let vivo = true
-    supabase.rpc('campeonato_contato_parceiro', { p_atleta_id: eu.id, p_final: salvo }).then(({ data, error }) => {
-      if (vivo && !error && data?.[0]) setContato(data[0])
+    supabase.rpc('campeonato_contato_parceiro', { p_atleta_id: eu.id, p_final: null }).then(({ data, error }) => {
+      if (vivo) setContato({ id: parceiroId, telefone: !error && data?.[0]?.telefone ? String(data[0].telefone).replace(/\D/g, '') : null, buscado: true })
     })
     return () => { vivo = false }
-  }, [revelada, parceiroId, eu.id, chaveFinal])
+  }, [revelada, parceiroId, eu.id])
 
   if (!revelada) return null
   if (!parceiro) {
@@ -455,56 +582,31 @@ function CardParceiro({ campeonato, eu, duplas, atletaPorId, slug }) {
     )
   }
 
-  const buscar = async () => {
-    setCarregando(true)
-    const { data, error } = await supabase.rpc('campeonato_contato_parceiro', { p_atleta_id: eu.id, p_final: final })
-    setCarregando(false)
-    if (error) return toast.error(error.message)
-    try { localStorage.setItem(chaveFinal, final) } catch { /* sem armazenamento: pede de novo na próxima */ }
-    setContato(data?.[0] || { nome: parceiro.nome, telefone: null })
-    setPedindo(false)
-  }
-
   const primeiro = parceiro.nome.split(' ')[0]
-  const mensagem = `Oi ${primeiro}! Sou ${eu.nome.split(' ')[0]}, sua dupla no ${campeonato.nome}. Vamos nos encontrar para conversar antes do nosso jogo? Onde você está?`
-  const tel = contato?.telefone ? String(contato.telefone).replace(/\D/g, '') : null
+  const meuPrimeiro = eu.nome.split(' ')[0]
+  const mensagem = `Olá, ${primeiro}! 🎾 Sou ${meuPrimeiro}, sua dupla no ${campeonato.nome}. Bora combinar antes do nosso jogo? Esse é o meu contato. Até já na quadra!`
+  const tel = contato.id === parceiroId ? contato.telefone : null
   const verde = 'rgb(37, 211, 102)' // verde do WhatsApp (cor de marca de terceiro)
 
   return (
     <div className="cp-entrar" style={{ marginBottom: 16, padding: 16, borderRadius: 18, border: `1px solid ${COR_DESTAQUE}`, background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-brand-lima) 14%, var(--color-surface-dark-raised)), var(--color-surface-dark-raised))' }}>
-      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '2.5px', color: COR_DESTAQUE }}>SUA DUPLA · Nº {minha.numero}</div>
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '2.5px', color: COR_DESTAQUE }}>🎾 SUA DUPLA · Nº {minha.numero}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 10 }}>
-        <Avatar atleta={parceiro} tamanho={72} destaque />
+        <Avatar atleta={parceiro} tamanho={76} destaque />
         <div style={{ minWidth: 0 }}>
-          <div className="cp-display" style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.15 }}>{parceiro.nome}</div>
-          {tel && <div style={{ fontSize: 14, color: 'var(--color-text-dark-secondary)', marginTop: 4 }}>{formatarTelefone(tel)}</div>}
+          <div style={{ fontSize: 12, color: 'var(--color-text-dark-secondary)' }}>Você joga com</div>
+          <div className="cp-display" style={{ fontSize: 23, fontWeight: 700, lineHeight: 1.15 }}>{parceiro.nome}</div>
         </div>
       </div>
 
       {tel ? (
-        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-          <a href={`https://wa.me/${tel}?text=${encodeURIComponent(mensagem)}`} target="_blank" rel="noreferrer" style={{ flex: 1.6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 0', borderRadius: 12, backgroundColor: verde, color: 'var(--color-brand-verde-court)', fontWeight: 800, fontSize: 15, textDecoration: 'none' }}>
-            <MessageCircle size={18} />Chamar no WhatsApp
-          </a>
-          <a href={`tel:+${tel}`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px 0', borderRadius: 12, border: '1px solid var(--color-border-dark)', color: 'var(--color-text-dark-primary)', fontWeight: 700, fontSize: 15, textDecoration: 'none' }}>
-            <Phone size={16} />Ligar
-          </a>
-        </div>
-      ) : contato ? (
-        <div style={{ marginTop: 12, fontSize: 13, color: 'var(--color-text-dark-secondary)' }}>O telefone de {primeiro} não está no cadastro. Procure a mesa do torneio.</div>
-      ) : pedindo ? (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Lock size={13} />Para proteger os contatos, digite os 4 últimos dígitos do SEU telefone da inscrição.</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input value={final} onChange={e => setFinal(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" placeholder="0000" autoFocus
-              style={{ width: 110, boxSizing: 'border-box', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--color-border-dark)', backgroundColor: 'var(--color-surface-dark-overlay)', color: 'var(--color-text-dark-primary)', fontSize: 20, letterSpacing: '6px', textAlign: 'center', outline: 'none' }} />
-            <button onClick={buscar} disabled={final.length < 4 || carregando} style={{ ...botaoPrincipal, flex: 1, width: 'auto', opacity: final.length < 4 || carregando ? 0.5 : 1 }}>{carregando ? 'Conferindo...' : 'Ver contato'}</button>
-          </div>
-        </div>
+        <a href={`https://wa.me/${tel}?text=${encodeURIComponent(mensagem)}`} target="_blank" rel="noreferrer" style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px 0', borderRadius: 14, backgroundColor: verde, color: 'var(--color-brand-verde-court)', fontWeight: 800, fontSize: 16, textDecoration: 'none' }}>
+          <MessageCircle size={20} />Chamar {primeiro} no WhatsApp
+        </a>
+      ) : contato.buscado && contato.id === parceiroId ? (
+        <div style={{ marginTop: 12, fontSize: 13, color: 'var(--color-text-dark-secondary)', lineHeight: 1.5 }}>O WhatsApp de {primeiro} não está no cadastro do torneio. Procure a mesa da organização para se encontrarem.</div>
       ) : (
-        <button onClick={() => setPedindo(true)} style={{ ...botaoPrincipal, marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          <MessageCircle size={18} />Ver contato de {primeiro} para combinar
-        </button>
+        <div style={{ marginTop: 12, fontSize: 13, color: 'var(--color-text-dark-muted)' }}>Carregando contato...</div>
       )}
     </div>
   )
@@ -512,14 +614,34 @@ function CardParceiro({ campeonato, eu, duplas, atletaPorId, slug }) {
 
 // ---------- foto ----------
 
-function BotaoFoto({ atleta, onEnviada, rotulo = 'Enviar minha foto' }) {
-  const ref = useRef(null)
+// Dois caminhos explícitos: câmera na hora (capture="user" abre direto a câmera frontal) ou
+// galeria. O arquivo é copiado para a memória NA HORA em que volta da câmera: em alguns Android a
+// foto recém-tirada vem como um link temporário que deixa de poder ser lido logo depois (era o
+// motivo de "da câmera não funciona, da galeria funciona").
+function BotaoFoto({ atleta, onEnviada, rotulo = 'Tirar foto agora', antesDeAbrir }) {
+  const camera = useRef(null)
+  const galeria = useRef(null)
   const [enviando, setEnviando] = useState(false)
+  const [lendo, setLendo] = useState(false)
   const [arquivo, setArquivo] = useState(null)
-  const escolher = (e) => {
-    const arq = e.target.files?.[0]
-    e.target.value = ''
-    if (arq) setArquivo(arq)
+  const escolher = async (e) => {
+    const input = e.target
+    const arq = input.files?.[0]
+    if (!arq) return
+    setLendo(true)
+    try {
+      const copia = new Blob([await arq.arrayBuffer()], { type: arq.type || 'image/jpeg' })
+      setArquivo(copia)
+    } catch {
+      toast.error('Não consegui ler a foto. Tente de novo.')
+    } finally {
+      input.value = ''
+      setLendo(false)
+    }
+  }
+  const abrir = (ref) => {
+    antesDeAbrir?.()
+    ref.current?.click()
   }
   // Depois do ajuste no editor (rosto no círculo), envia a foto recortada.
   const enviar = async (foto) => {
@@ -536,24 +658,42 @@ function BotaoFoto({ atleta, onEnviada, rotulo = 'Enviar minha foto' }) {
       setEnviando(false)
     }
   }
+  const ocupado = enviando || lendo
   return (
-    <>
+    <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
       {arquivo && <EditorFoto arquivo={arquivo} salvando={enviando} onCancelar={() => setArquivo(null)} onConfirmar={enviar} />}
-      <input ref={ref} type="file" accept="image/*" onChange={escolher} style={{ display: 'none' }} />
-      <button onClick={() => ref.current?.click()} disabled={enviando} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 18px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontSize: 15, fontWeight: 700, cursor: 'pointer', opacity: enviando ? 0.6 : 1 }}>
-        <Camera size={18} />{enviando ? 'Enviando...' : rotulo}
+      <input ref={camera} type="file" accept="image/*" capture="user" onChange={escolher} style={{ display: 'none' }} />
+      <input ref={galeria} type="file" accept="image/*" onChange={escolher} style={{ display: 'none' }} />
+      <button onClick={() => abrir(camera)} disabled={ocupado} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 18px', borderRadius: 12, border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontSize: 15, fontWeight: 700, cursor: 'pointer', opacity: ocupado ? 0.6 : 1 }}>
+        <Camera size={18} />{enviando ? 'Enviando...' : lendo ? 'Abrindo foto...' : rotulo}
       </button>
-    </>
+      <button onClick={() => abrir(galeria)} disabled={ocupado} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, border: '1px solid var(--color-border-dark)', backgroundColor: 'transparent', color: 'var(--color-text-dark-primary)', fontSize: 15, fontWeight: 700, cursor: 'pointer', opacity: ocupado ? 0.6 : 1 }}>
+        <ImageIcon size={18} />Da galeria
+      </button>
+    </span>
   )
 }
 
 // ---------- primeiro acesso ----------
 
-function Onboarding({ campeonato, atletas, atletaPorId, onConcluir }) {
-  const [passo, setPasso] = useState('quem')
-  const [eu, setEu] = useState(null)
-  const [seguindo, setSeguindo] = useState([])
+// Primeiro acesso: quem é você -> foto -> pronto. O nome escolhido fica guardado antes de abrir a
+// câmera: se o celular recarregar a página ao voltar da câmera (comum em Android com pouca
+// memória), a pessoa volta direto para o passo da foto em vez de recomeçar.
+function Onboarding({ campeonato, atletas, atletaPorId, slug, onConcluir }) {
+  const chavePendente = `campeonato:${slug}:pendente`
+  const [eu, setEu] = useState(() => {
+    try { return localStorage.getItem(chavePendente) || null } catch { return null }
+  })
   const euAtual = eu ? atletaPorId.get(eu) : null
+  const passo = euAtual ? 'foto' : 'quem'
+  const guardar = id => {
+    setEu(id)
+    try { if (id) localStorage.setItem(chavePendente, id); else localStorage.removeItem(chavePendente) } catch { /* sem armazenamento */ }
+  }
+  const concluir = id => {
+    try { localStorage.removeItem(chavePendente) } catch { /* sem armazenamento */ }
+    onConcluir({ eu: id, seguindo: [] })
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, overflowY: 'auto', background: 'color-mix(in srgb, var(--color-surface-dark-base) 96%, transparent)', backdropFilter: 'blur(6px)' }}>
@@ -568,8 +708,8 @@ function Onboarding({ campeonato, atletas, atletaPorId, onConcluir }) {
           <>
             <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Quem é você?</div>
             <div style={{ fontSize: 14, color: 'var(--color-text-dark-secondary)', marginBottom: 14 }}>Digite seu nome e toque nele. Seus jogos vão aparecer em destaque.</div>
-            <BuscaAtleta atletas={atletas} autoFocus onEscolher={a => { setEu(a.id); setPasso('foto') }} />
-            <button onClick={() => setPasso('mais')} style={botaoTexto}>Não estou jogando, só vou acompanhar</button>
+            <BuscaAtleta atletas={atletas} autoFocus onEscolher={a => guardar(a.id)} />
+            <button onClick={() => concluir(null)} style={botaoTexto}>Não estou jogando, só vou acompanhar</button>
           </>
         )}
 
@@ -578,79 +718,41 @@ function Onboarding({ campeonato, atletas, atletaPorId, onConcluir }) {
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><Avatar atleta={euAtual} tamanho={110} destaque /></div>
             <div className="cp-display" style={{ fontSize: 22, fontWeight: 700 }}>Olá, {euAtual.nome.split(' ')[0]}!</div>
             <div style={{ fontSize: 14, color: 'var(--color-text-dark-secondary)', margin: '6px 0 18px', lineHeight: 1.5 }}>Coloque uma foto sua. Ela aparece na chave, no telão e no sorteio das duplas.</div>
-            <BotaoFoto atleta={euAtual} rotulo={euAtual.foto ? 'Trocar foto' : 'Tirar ou escolher foto'} onEnviada={() => setPasso('mais')} />
-            <div><button onClick={() => setPasso('mais')} style={botaoTexto}>{euAtual.foto ? 'Continuar' : 'Agora não'}</button></div>
+            <BotaoFoto atleta={euAtual} rotulo={euAtual.foto ? 'Tirar outra foto' : 'Tirar foto agora'} onEnviada={() => concluir(euAtual.id)} />
+            <div><button onClick={() => concluir(euAtual.id)} style={botaoTexto}>{euAtual.foto ? 'Continuar' : 'Agora não'}</button></div>
+            <div><button onClick={() => guardar(null)} style={{ ...botaoTexto, marginTop: 4, fontSize: 13 }}>Não sou {euAtual.nome.split(' ')[0]}</button></div>
           </div>
-        )}
-
-        {passo === 'mais' && (
-          <>
-            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Quer acompanhar mais alguém?</div>
-            <div style={{ fontSize: 14, color: 'var(--color-text-dark-secondary)', marginBottom: 14 }}>Marido, esposa, amigos... adicione quantos nomes quiser. Os jogos deles também ficam em destaque.</div>
-            {seguindo.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                {seguindo.map(id => (
-                  <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 6px 4px 4px', borderRadius: 999, border: `1px solid ${COR_DESTAQUE}`, color: COR_DESTAQUE, fontSize: 13, fontWeight: 600 }}>
-                    <Avatar atleta={atletaPorId.get(id)} tamanho={22} destaque />{nomeCurto(atletaPorId.get(id)?.nome)}
-                    <X size={14} style={{ cursor: 'pointer' }} onClick={() => setSeguindo(s => s.filter(x => x !== id))} />
-                  </span>
-                ))}
-              </div>
-            )}
-            <BuscaAtleta atletas={atletas} excluir={[eu, ...seguindo].filter(Boolean)} placeholder="Buscar outro nome" onEscolher={a => setSeguindo(s => [...s, a.id])} />
-            <button onClick={() => onConcluir({ eu, seguindo })} style={{ ...botaoPrincipal, marginTop: 20 }}>
-              Ver o torneio
-            </button>
-          </>
         )}
       </div>
     </div>
   )
 }
 
+
 const botaoTexto = { marginTop: 16, background: 'none', border: 'none', color: 'var(--color-text-dark-secondary)', fontSize: 14, textDecoration: 'underline', cursor: 'pointer', width: '100%' }
 const botaoPrincipal = { width: '100%', padding: '14px 18px', borderRadius: 14, border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontSize: 16, fontWeight: 800, cursor: 'pointer' }
 
-// ---------- aba "Meus atletas" ----------
+// ---------- aba "Eu" ----------
 
-function AbaMeusAtletas({ atletas, atletaPorId, prefs, salvarPrefs }) {
+function AbaEu({ atletas, atletaPorId, prefs, salvarPrefs }) {
   const p = prefs || { eu: null, seguindo: [] }
   const eu = p.eu ? atletaPorId.get(p.eu) : null
-  const remover = id => salvarPrefs({ ...p, seguindo: p.seguindo.filter(x => x !== id) })
   return (
-    <>
-      <Secao titulo="Você" icone={UserRound}>
-        {eu ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 14, borderRadius: 16, backgroundColor: 'var(--color-surface-dark-raised)', border: `1px solid ${COR_DESTAQUE}` }}>
+    <Secao titulo="Você" icone={UserRound}>
+      {eu ? (
+        <div style={{ padding: 14, borderRadius: 16, backgroundColor: 'var(--color-surface-dark-raised)', border: `1px solid ${COR_DESTAQUE}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <Avatar atleta={eu} tamanho={64} destaque />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>{eu.nome}</div>
-              <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <BotaoFoto atleta={eu} rotulo={eu.foto ? 'Trocar foto' : 'Enviar foto'} />
-                <button onClick={() => salvarPrefs({ ...p, eu: null })} style={{ ...botaoTexto, marginTop: 0, width: 'auto' }}>Não sou eu</button>
-              </div>
-            </div>
+            <div style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 700 }}>{eu.nome}</div>
           </div>
-        ) : (
-          <BuscaAtleta atletas={atletas} excluir={p.seguindo} placeholder="Se você está jogando, busque seu nome" onEscolher={a => salvarPrefs({ ...p, eu: a.id })} />
-        )}
-      </Secao>
-      <Secao titulo={`Seguindo · ${p.seguindo.length}`} icone={Star}>
-        <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
-          {p.seguindo.map(id => {
-            const a = atletaPorId.get(id)
-            if (!a) return null
-            return (
-              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 12, backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)' }}>
-                <Avatar atleta={a} tamanho={36} destaque />
-                <span style={{ flex: 1, fontSize: 15, fontWeight: 600 }}>{a.nome}</span>
-                <button onClick={() => remover(id)} aria-label="Parar de seguir" style={{ background: 'none', border: 'none', color: 'var(--color-text-dark-muted)', cursor: 'pointer', padding: 6 }}><X size={18} /></button>
-              </div>
-            )
-          })}
+          <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <BotaoFoto atleta={eu} rotulo={eu.foto ? 'Tirar outra foto' : 'Tirar foto agora'} />
+            <button onClick={() => salvarPrefs({ eu: null, seguindo: [] })} style={{ ...botaoTexto, marginTop: 0, width: 'auto' }}>Não sou eu</button>
+          </div>
         </div>
-        <BuscaAtleta atletas={atletas} excluir={[p.eu, ...p.seguindo].filter(Boolean)} placeholder="Adicionar mais um nome" onEscolher={a => salvarPrefs({ ...p, seguindo: [...p.seguindo, a.id] })} />
-      </Secao>
-    </>
+      ) : (
+        <BuscaAtleta atletas={atletas} placeholder="Se você está jogando, busque seu nome" onEscolher={a => salvarPrefs({ eu: a.id, seguindo: [] })} />
+      )}
+    </Secao>
   )
 }

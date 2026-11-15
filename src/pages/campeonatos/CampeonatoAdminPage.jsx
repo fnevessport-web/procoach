@@ -3,16 +3,16 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Tv, Smartphone, Copy, Radio, Users, Shuffle, ListOrdered, Settings, Plus, Minus, Play,
-  Trash2, Camera, Check, RotateCcw, ChevronUp, ChevronDown, UserPlus, Phone, Pause, SkipForward, FastForward, Flag, ExternalLink, Search, X,
+  Trash2, Camera, Check, RotateCcw, ChevronUp, ChevronDown, UserPlus, UserMinus, Phone, Pause, SkipForward, FastForward, Flag, ExternalLink, Search, X,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCampeonato, aplicarPatchesJogos } from '../../hooks/useCampeonato'
 import {
   sortearDuplas, montarChave, propagar, agendar, resumoPlacar, somarPonto, tirarPonto, nomeCurto,
-  rotuloFase, rotuloFaseCurto, ordenarJogos, normalizar, indiceSetAtual, duplaIncompleta,
+  rotuloFase, rotuloFaseCurto, ordenarJogos, normalizar, indiceSetAtual, duplaIncompleta, validarDuplas, reagendarPelaOrdem, origemDaVaga,
 } from '../../lib/campeonato'
 import { Avatar, AvataresDupla, Chave, SorteioAoVivo, QrCode, Marcas } from './componentes'
-import { rotuloStatusCampeonato, urlPublica, urlTV, proximosPorQuadra } from './util'
+import { rotuloStatusCampeonato, urlPublica, urlTV, proximosPorQuadra, duplasEliminadas } from './util'
 import { EditorFoto } from './EditorFoto'
 
 // Gestão de um campeonato: operação ao vivo das quadras (placar com +/-), atletas e check-in,
@@ -147,6 +147,8 @@ export function CampeonatoAdminPage() {
 function AbaOperacao({ dados, salvarJogo }) {
   const { campeonato, jogos, duplas, atletas, duplaPorId, recarregar } = dados
   const incompletas = duplas.filter(duplaIncompleta)
+  const eliminadas = duplasEliminadas(jogos)
+  const duplasAtivas = duplas.filter(d => !eliminadas.has(d.id))
   const ordenados = ordenarJogos(jogos.filter(j => j.status !== 'bye')).sort((a, b) => (a.ordem || 999) - (b.ordem || 999))
   const aoVivo = ordenados.filter(j => j.status === 'ao_vivo')
   const prontos = ordenados.filter(j => j.status === 'agendado' && j.dupla_a_id && j.dupla_b_id)
@@ -210,7 +212,7 @@ function AbaOperacao({ dados, salvarJogo }) {
                 <div style={{ fontSize: 14, marginTop: 2 }}>{nomesDupla(quem)}{jogo ? ` · Jogo ${jogo.ordem} (${jogo.quadra}, ${jogo.horario})` : ''}</div>
                 <div style={{ fontSize: 12, color: 'var(--color-text-dark-muted)', marginTop: 2 }}>Convide alguém (ex.: uma eliminada nos primeiros jogos) e escolha aqui.</div>
               </div>
-              <SelectAtleta atletas={atletas} valor={null} onChange={v => v && completar(d, falta, v)} />
+              <SelectAtleta atletas={atletas} valor={null} onChange={v => v && completar(d, falta, v)} duplas={duplasAtivas} duplaId={d.id} />
             </div>
           </Painel>
         )
@@ -481,6 +483,12 @@ function AbaAtletas({ dados }) {
       await recarregar()
     })
   }
+  const tirar = (a) => {
+    if (!window.confirm(`Tirar ${a.nome} do torneio?
+
+Vai para a lista de Desistências (dá para voltar com um toque).`)) return
+    atualizar(a.id, { situacao: 'desistiu', presente: false }, `${a.nome.split(' ')[0]} saiu do torneio`)
+  }
   const chamar = (a) => {
     if (!window.confirm(`Chamar ${a.nome} da fila de espera para o torneio?`)) return
     atualizar(a.id, { situacao: 'inscrito' }, `${a.nome.split(' ')[0]} entrou no torneio`)
@@ -528,7 +536,7 @@ function AbaAtletas({ dados }) {
             <div key={g}>
               {titulo(`${t} · ${conta(g)} inscritos · ${conta(g, true)} com check-in`)}
               <div style={{ display: 'grid', gap: 6 }}>
-                {doLado.map(a => <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} telefone={contatos.get(a.id)} onTelefone={() => editarTelefone(a)} />)}
+                {doLado.map(a => <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} telefone={contatos.get(a.id)} onTelefone={() => editarTelefone(a)} acoes={<Botao tamanho="sm" variante="perigo" titulo="Tirar do torneio (vai para Desistências, dá para voltar)" onClick={() => tirar(a)}><UserMinus size={14} />Tirar</Botao>} />)}
                 {!doLado.length && <div style={{ fontSize: 14, color: 'var(--color-text-dark-muted)' }}>Ninguém aqui.</div>}
               </div>
             </div>
@@ -566,7 +574,7 @@ function AbaAtletas({ dados }) {
 
         {lista === 'desistiu' && (
           <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
-            {desistencias.filter(casaBusca).map(a => <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} telefone={contatos.get(a.id)} onTelefone={() => editarTelefone(a)} />)}
+            {desistencias.filter(casaBusca).map(a => <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} telefone={contatos.get(a.id)} onTelefone={() => editarTelefone(a)} acoes={<Botao tamanho="sm" variante="destaque" onClick={() => atualizar(a.id, { situacao: 'inscrito' }, `${a.nome.split(' ')[0]} voltou para o torneio`)}><UserPlus size={14} />Voltar para o torneio</Botao>} />)}
             {!desistencias.length && <div style={{ fontSize: 14, color: 'var(--color-text-dark-muted)' }}>Nenhuma desistência.</div>}
           </div>
         )}
@@ -672,6 +680,8 @@ function AbaSorteio({ dados, irPara }) {
   const { campeonato, atletas, duplas, jogos, duplaPorId, recarregar } = dados
   const [auto, setAuto] = useState(true)
   const [segundos, setSegundos] = useState(6)
+  const iniciando = useRef(false)
+  const [iniciandoUI, setIniciandoUI] = useState(false)
   const revelados = campeonato.sorteio_revelados || 0
   const emSorteio = campeonato.status === 'sorteio'
 
@@ -705,9 +715,16 @@ function AbaSorteio({ dados, irPara }) {
       (sobra ? `\n\n${sobra} dupla(s) ficam com parceiro(a) "A DEFINIR" (sai por último no sorteio e o jogo dela é o último da 1ª rodada). Depois é só escolher a pessoa na aba Ao vivo.` : '') +
       (usaPresentes && ausentes.length ? `\n\nFicam FORA por não terem feito check-in (${ausentes.length}): ${ausentes.map(a => nomeCurto(a.nome)).join(', ')}.` : '') +
       `\n\nA TV e os celulares vão mostrar o sorteio ao vivo.`
+    if (iniciando.current) return
     if (!window.confirm(msg)) return
+    // Trava 1 (este aparelho): o botão ficava ativo enquanto gravava; um 2º toque sorteava de
+    // novo. Foi o que gerou as 32 duplas repetidas no teste de 08/11.
+    if (iniciando.current) return
+    iniciando.current = true
+    setIniciandoUI(true)
     rodar(async () => {
       const { duplas: novas } = sortearDuplas(homens, mulheres)
+      validarDuplas(novas, qtdDuplas)
       const incompletas = new Set(novas.filter(duplaIncompleta).map(d => d.id))
       let chave = montarChave(novas, { terceiro: campeonato.disputa_terceiro })
       for (const m of propagar(chave)) chave = chave.map(j => (j.id === m.id ? { ...j, ...m.patch } : j))
@@ -715,13 +732,32 @@ function AbaSorteio({ dados, irPara }) {
       // vencedor do bye já entra na 2ª rodada
       for (const m of propagar(chave)) chave = chave.map(j => (j.id === m.id ? { ...j, ...m.patch } : j))
 
-      const { error: e1 } = await supabase.from('campeonato_duplas').insert(novas.map(d => ({ ...d, campeonato_id: campeonato.id })))
-      if (e1) throw e1
-      const { error: e2 } = await supabase.from('campeonato_jogos').insert(chave.map(j => ({ ...j, campeonato_id: campeonato.id })))
-      if (e2) throw e2
-      await atualizarCampeonato(campeonato.id, { status: 'sorteio', sorteio_revelados: 0, sorteio_em: new Date().toISOString() })
+      // Trava 2 (banco): não pode haver dupla gravada, e só UM aparelho consegue virar o status de
+      // "inscrições" para "sorteio" (update condicional). Quem perder a corrida não grava nada.
+      const { count, error: e0 } = await supabase.from('campeonato_duplas').select('id', { count: 'exact', head: true }).eq('campeonato_id', campeonato.id)
+      if (e0) throw e0
+      if (count) throw new Error('Já existe um sorteio gravado. Atualize a página. Para sortear de novo, use "Desfazer sorteio" primeiro.')
+      const { data: trava, error: eT } = await supabase.from('campeonatos')
+        .update({ status: 'sorteio', sorteio_revelados: 0, sorteio_em: new Date().toISOString() })
+        .eq('id', campeonato.id).eq('status', 'inscricoes').select('id')
+      if (eT) throw eT
+      if (!trava?.length) throw new Error('O sorteio já foi iniciado (em outro aparelho ou aba). Nada foi sorteado de novo.')
+
+      try {
+        const { error: e1 } = await supabase.from('campeonato_duplas').insert(novas.map(d => ({ ...d, campeonato_id: campeonato.id })))
+        if (e1) throw e1
+        const { error: e2 } = await supabase.from('campeonato_jogos').insert(chave.map(j => ({ ...j, campeonato_id: campeonato.id })))
+        if (e2) throw e2
+      } catch (e) {
+        // Não deixa sorteio pela metade: volta tudo para antes do sorteio.
+        await zerarCampeonato(campeonato.id).catch(() => {})
+        throw e
+      }
       await recarregar()
-    }, 'Sorteio iniciado')
+    }, 'Sorteio iniciado').finally(() => {
+      iniciando.current = false
+      setIniciandoUI(false)
+    })
   }
 
   const refazer = () => {
@@ -781,7 +817,7 @@ function AbaSorteio({ dados, irPara }) {
         <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', marginBottom: 14, lineHeight: 1.5 }}>
           Ao tocar em sortear, o sistema embaralha, monta a chave e define quadra e horário de cada jogo (primeiro jogo às {campeonato.hora_inicio}, {campeonato.duracao_min} min por rodada, quadras: {(campeonato.quadras || []).join(', ')}). As duplas vão aparecendo uma a uma na TV e nos celulares.
         </div>
-        <Botao variante="primario" tamanho="lg" onClick={iniciar} disabled={qtdCompletas < 2}><Shuffle size={18} />Iniciar sorteio ao vivo</Botao>
+        <Botao variante="primario" tamanho="lg" onClick={iniciar} disabled={qtdCompletas < 2 || iniciandoUI || campeonato.status !== 'inscricoes'}><Shuffle size={18} />{iniciandoUI ? 'Sorteando...' : 'Iniciar sorteio ao vivo'}</Botao>
       </Painel>
     )
   }
@@ -814,8 +850,8 @@ function AbaSorteio({ dados, irPara }) {
           {duplas.map(d => (
             <div key={d.id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ width: 28, fontWeight: 800, color: 'var(--color-text-dark-muted)' }}>{d.numero}</span>
-              <SelectAtleta atletas={atletas} valor={d.atleta1_id} onChange={v => trocarAtleta(d, 'atleta1_id', v)} />
-              <SelectAtleta atletas={atletas} valor={d.atleta2_id} onChange={v => trocarAtleta(d, 'atleta2_id', v)} />
+              <SelectAtleta atletas={atletas} valor={d.atleta1_id} onChange={v => trocarAtleta(d, 'atleta1_id', v)} duplas={duplas} duplaId={d.id} />
+              <SelectAtleta atletas={atletas} valor={d.atleta2_id} onChange={v => trocarAtleta(d, 'atleta2_id', v)} duplas={duplas} duplaId={d.id} />
             </div>
           ))}
         </div>
@@ -824,14 +860,25 @@ function AbaSorteio({ dados, irPara }) {
   )
 }
 
-function SelectAtleta({ atletas, valor, onChange }) {
+// Escolha de atleta para uma dupla. Quem já está em OUTRA dupla aparece bloqueado, para ninguém
+// jogar em duas duplas ao mesmo tempo.
+function SelectAtleta({ atletas, valor, onChange, duplas = [], duplaId = null }) {
   const lista = [...atletas].filter(a => a.situacao !== 'desistiu' || a.id === valor).sort((a, b) => a.nome.localeCompare(b.nome))
+  const emOutra = new Map()
+  for (const d of duplas) {
+    if (d.id === duplaId) continue
+    for (const id of [d.atleta1_id, d.atleta2_id]) if (id) emOutra.set(id, d.numero)
+  }
   return (
     <select value={valor || ''} onChange={e => onChange(e.target.value)} style={{ ...estiloInput, flex: '1 1 220px', minWidth: 0 }}>
       <option value="">(vazio)</option>
       {['F', 'M'].map(g => (
         <optgroup key={g} label={g === 'F' ? 'Mulheres' : 'Homens'}>
-          {lista.filter(a => a.genero === g).map(a => <option key={a.id} value={a.id}>{a.nome}{a.situacao === 'espera' ? ' (espera)' : ''}</option>)}
+          {lista.filter(a => a.genero === g).map(a => (
+            <option key={a.id} value={a.id} disabled={emOutra.has(a.id) && a.id !== valor}>
+              {a.nome}{a.situacao === 'espera' ? ' (espera)' : ''}{emOutra.has(a.id) ? ` (já na dupla ${emOutra.get(a.id)})` : ''}
+            </option>
+          ))}
         </optgroup>
       ))}
     </select>
@@ -847,21 +894,92 @@ function AbaJogos({ dados, salvarJogo }) {
   const ordenados = ordenarJogos(jogos).sort((a, b) => (a.status === 'bye') - (b.status === 'bye') || (a.ordem || 999) - (b.ordem || 999))
 
   const recalcularHorarios = () => {
-    if (!window.confirm('Redistribuir quadra e horário de todos os jogos ainda agendados, a partir das configurações?')) return
+    if (!window.confirm(`Recalcular quadra e horário dos jogos ainda agendados, seguindo a ordem atual (Jogo 1, 2, 3...)?\n\nPrimeiro jogo às ${campeonato.hora_inicio}, ${campeonato.duracao_min} min por rodada, quadras: ${(campeonato.quadras || []).join(', ')}.`)) return
+    rodar(async () => {
+      await aplicarPatchesJogos(reagendarPelaOrdem(jogos, campeonato.quadras, campeonato.hora_inicio, campeonato.duracao_min))
+      await recarregar(['jogos'])
+    }, 'Horários recalculados')
+  }
+
+  const reorganizar = () => {
+    if (!window.confirm('Refazer a ordem de TODOS os jogos ainda agendados do zero (rodada por rodada, intercalando os dois lados da chave)? A ordem que você arrumou à mão se perde.')) return
     rodar(async () => {
       const mud = agendar(jogos, campeonato.quadras, campeonato.hora_inicio, campeonato.duracao_min, new Set(dados.duplas.filter(duplaIncompleta).map(d => d.id)))
         .filter(m => jogos.find(j => j.id === m.id)?.status === 'agendado')
       await aplicarPatchesJogos(mud)
-      await recarregar()
-    }, 'Horários recalculados')
+      await recarregar(['jogos'])
+    }, 'Ordem refeita')
   }
 
   if (!jogos.length) return <Painel><div style={{ fontSize: 14, color: 'var(--color-text-dark-secondary)' }}>Os jogos são criados no sorteio.</div></Painel>
 
   return (
-    <Painel titulo={`Todos os jogos · ${jogos.filter(j => j.status !== 'bye').length}`} extra={<Botao tamanho="sm" onClick={recalcularHorarios}><RotateCcw size={13} />Recalcular horários</Botao>}>
-      <div style={{ display: 'grid', gap: 10 }}>
-        {ordenados.map(j => <EditorJogo key={`${j.id}-${JSON.stringify(j.sets)}-${j.quadra}-${j.horario}-${j.status}`} jogo={j} campeonato={campeonato} duplaPorId={duplaPorId} salvarJogo={salvarJogo} dados={dados} />)}
+    <>
+      <OrdemDosJogos dados={dados} onRecalcular={recalcularHorarios} onReorganizar={reorganizar} />
+      <Painel titulo={`Placar e detalhes de cada jogo · ${jogos.filter(j => j.status !== 'bye').length}`}>
+        <div style={{ display: 'grid', gap: 10 }}>
+          {ordenados.map(j => <EditorJogo key={`${j.id}-${JSON.stringify(j.sets)}-${j.quadra}-${j.horario}-${j.status}`} jogo={j} campeonato={campeonato} duplaPorId={duplaPorId} salvarJogo={salvarJogo} dados={dados} />)}
+        </div>
+      </Painel>
+    </>
+  )
+}
+
+// Lista compacta para arrumar a ordem dos jogos com as setas. Mover troca o jogo de lugar com o
+// vizinho: os dois trocam número, quadra e horário (os horários da grade continuam os mesmos).
+// Só jogos ainda agendados se movem.
+function OrdemDosJogos({ dados, onRecalcular, onReorganizar }) {
+  const { jogos, duplaPorId, recarregar } = dados
+  const [salvando, setSalvando] = useState(false)
+  const lista = jogos.filter(j => j.status !== 'bye').sort((a, b) => (a.ordem || 999) - (b.ordem || 999))
+  const vaga = (j, lado) => {
+    const d = duplaPorId.get(j[`dupla_${lado}_id`])
+    return d ? nomesDupla(d) : (origemDaVaga(j, lado, jogos) || 'A definir')
+  }
+
+  const mover = async (i, delta) => {
+    const a = lista[i]
+    const b = lista[i + delta]
+    if (!a || !b || salvando) return
+    if (a.status !== 'agendado' || b.status !== 'agendado') return toast.error('Só dá para trocar jogos que ainda não começaram.')
+    setSalvando(true)
+    await rodar(async () => {
+      await aplicarPatchesJogos([
+        { id: a.id, patch: { ordem: b.ordem, quadra: b.quadra, horario: b.horario } },
+        { id: b.id, patch: { ordem: a.ordem, quadra: a.quadra, horario: a.horario } },
+      ])
+      await recarregar(['jogos'])
+    })
+    setSalvando(false)
+  }
+
+  const corStatus = { ao_vivo: 'var(--color-accent-live)', finalizado: 'var(--color-state-success)', wo: 'var(--color-state-warning)' }
+  return (
+    <Painel titulo="Ordem dos jogos" extra={<>
+      <Botao tamanho="sm" onClick={onRecalcular}><RotateCcw size={13} />Recalcular horários</Botao>
+      <Botao tamanho="sm" variante="fantasma" onClick={onReorganizar}>Refazer ordem do zero</Botao>
+    </>}>
+      <div style={{ fontSize: 12, color: 'var(--color-text-dark-muted)', marginBottom: 10, lineHeight: 1.5 }}>
+        Use as setas para mudar a ordem: o jogo troca de lugar com o vizinho (número, quadra e horário). Depois de mexer bastante, toque em <b>Recalcular horários</b> para refazer a grade na ordem nova.
+      </div>
+      <div style={{ display: 'grid', gap: 4 }}>
+        {lista.map((j, i) => {
+          const travado = j.status !== 'agendado'
+          return (
+            <div key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 10, backgroundColor: 'var(--color-surface-dark-overlay)', opacity: travado ? 0.6 : 1 }}>
+              <span className="cp-display" style={{ minWidth: 30, fontSize: 16, fontWeight: 700, textAlign: 'center' }}>{j.ordem}</span>
+              <span style={{ minWidth: 92, fontSize: 12, fontWeight: 700, color: 'var(--color-text-dark-secondary)', lineHeight: 1.25 }}>
+                {j.horario || '--:--'}<br /><span style={{ color: 'var(--color-text-dark-muted)' }}>{j.quadra || 'sem quadra'}</span>
+              </span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.3 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: corStatus[j.status] || 'var(--color-text-dark-muted)' }}>{rotuloFaseCurto(j.fase)}{travado ? ` · ${{ ao_vivo: 'ao vivo', finalizado: 'encerrado', wo: 'W.O.' }[j.status]}` : ''}</span>
+                <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600 }}>{vaga(j, 'a')} <span style={{ color: 'var(--color-text-dark-muted)' }}>x</span> {vaga(j, 'b')}</span>
+              </span>
+              <Botao tamanho="sm" variante="fantasma" titulo="Jogar antes" disabled={travado || salvando || i === 0 || lista[i - 1]?.status !== 'agendado'} onClick={() => mover(i, -1)}><ChevronUp size={16} /></Botao>
+              <Botao tamanho="sm" variante="fantasma" titulo="Jogar depois" disabled={travado || salvando || i === lista.length - 1 || lista[i + 1]?.status !== 'agendado'} onClick={() => mover(i, 1)}><ChevronDown size={16} /></Botao>
+            </div>
+          )
+        })}
       </div>
     </Painel>
   )
@@ -943,8 +1061,10 @@ function EditorJogo({ jogo, campeonato, duplaPorId, salvarJogo, dados }) {
 // dupla que perdeu para ela no jogo anterior para entrar no lugar ("lucky loser"). No caso (2) o
 // jogo anterior passa a W.O. a favor de quem entra, e a chave se ajusta sozinha.
 function SubstituirDupla({ jogo, lado, dados, salvarJogo, onFechar }) {
-  const { jogos, atletas, duplaPorId, recarregar } = dados
+  const { jogos, atletas, duplas, duplaPorId, recarregar } = dados
   const d = duplaPorId.get(jogo[`dupla_${lado}_id`])
+  const eliminadas = duplasEliminadas(jogos)
+  const duplasAtivas = duplas.filter(x => !eliminadas.has(x.id))
   const anterior = jogo.fase !== 'terceiro' && jogo.rodada > 1
     ? jogos.find(j => j.rodada === jogo.rodada - 1 && j.fase !== 'terceiro' && j.posicao === 2 * jogo.posicao + (lado === 'a' ? 0 : 1))
     : null
@@ -974,8 +1094,8 @@ function SubstituirDupla({ jogo, lado, dados, salvarJogo, onFechar }) {
       </div>
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-dark-secondary)', marginBottom: 6 }}>1. Trocar atleta(s) desta dupla</div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-        <SelectAtleta atletas={atletas} valor={d.atleta1_id} onChange={v => trocarAtleta('atleta1_id', v)} />
-        <SelectAtleta atletas={atletas} valor={d.atleta2_id} onChange={v => trocarAtleta('atleta2_id', v)} />
+        <SelectAtleta atletas={atletas} valor={d.atleta1_id} onChange={v => trocarAtleta('atleta1_id', v)} duplas={duplasAtivas} duplaId={d.id} />
+        <SelectAtleta atletas={atletas} valor={d.atleta2_id} onChange={v => trocarAtleta('atleta2_id', v)} duplas={duplasAtivas} duplaId={d.id} />
       </div>
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-dark-secondary)', marginBottom: 6 }}>2. Chamar outra dupla no lugar</div>
       {perdedor ? (

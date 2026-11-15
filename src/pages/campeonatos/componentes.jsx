@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
-import { Trophy } from 'lucide-react'
+import { Trophy, Timer, Clock, MapPin } from 'lucide-react'
 import {
   nomeCurto, iniciais, rotuloFase, rotuloFaseCurto, indiceSetAtual, totalRodadas,
+  origemDaVaga, msAtraso, msEmJogo, formatarDuracao,
 } from '../../lib/campeonato'
-import { COR_DESTAQUE, duplaTemSeguido, jogoTemSeguido, duplasOcultas } from './util'
+import { COR_DESTAQUE, duplaTemSeguido, jogoTemSeguido, duplasOcultas, useAgora } from './util'
 import './campeonato.css'
 
 // Componentes da aba Campeonatos compartilhados entre o link público, a TV e a gestão.
@@ -58,14 +59,14 @@ export function ChipStatus({ jogo, tamanho = 10 }) {
     finalizado: ['Encerrado', 'var(--color-text-dark-muted)'],
     wo: ['W.O.', 'var(--color-state-warning)'],
     bye: ['Bye', 'var(--color-text-dark-muted)'],
-    agendado: [jogo.horario ? `Não antes de ${jogo.horario}` : 'A definir', 'var(--color-text-dark-secondary)'],
+    agendado: [jogo.horario ? `Previsto ${jogo.horario}` : 'A definir', 'var(--color-text-dark-secondary)'],
   }
   const [txt, cor] = mapa[jogo.status] || mapa.agendado
   return <span style={{ fontSize: tamanho, fontWeight: 700, letterSpacing: '0.5px', color: cor, textTransform: 'uppercase' }}>{txt}</span>
 }
 
 // Linha de uma dupla com placar por set (usada nos cartões grandes).
-function LinhaDupla({ dupla, lado, jogo, seguindo, escala = 1, mostrarSets = true }) {
+function LinhaDupla({ dupla, lado, jogo, seguindo, escala = 1, mostrarSets = true, vazio = 'A definir' }) {
   const destaque = duplaTemSeguido(dupla, seguindo)
   const venceu = jogo.vencedor_id && jogo.vencedor_id === dupla?.id
   const perdeu = jogo.vencedor_id && dupla && jogo.vencedor_id !== dupla.id
@@ -85,7 +86,7 @@ function LinhaDupla({ dupla, lado, jogo, seguindo, escala = 1, mostrarSets = tru
             <div style={{ fontSize: 14 * escala, fontWeight: venceu ? 800 : 600, color: destaque ? COR_DESTAQUE : 'var(--color-text-dark-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomeCurto(dupla.atleta2?.nome)}</div>
           </>
         ) : (
-          <div style={{ fontSize: 13 * escala, color: 'var(--color-text-dark-muted)', fontStyle: 'italic' }}>A definir</div>
+          <div style={{ fontSize: 13 * escala, color: 'var(--color-text-dark-muted)', fontStyle: 'italic' }}>{vazio}</div>
         )}
       </div>
       {venceu && <Trophy size={16 * escala} color="var(--color-brand-lima)" style={{ flexShrink: 0 }} />}
@@ -112,37 +113,79 @@ function LinhaDupla({ dupla, lado, jogo, seguindo, escala = 1, mostrarSets = tru
 }
 
 // Cartão grande de jogo (ao vivo / próximos), com quadra, fase e placar.
-export function CartaoJogo({ jogo, duplaPorId, seguindo, escala = 1, numero, acoes }) {
+// Cronômetro do jogo ao vivo ("Tempo de jogo 22:10") ou atraso do jogo agendado ("Atrasado
+// 12:40"). Atualiza sozinho a cada segundo. Sem nada a mostrar, não ocupa espaço.
+export function TempoJogo({ jogo, dataTorneio, tamanho = 13, rotulo = true }) {
+  const agora = useAgora(1000)
+  if (jogo.status === 'ao_vivo' && jogo.iniciado_em) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: tamanho * 0.4, fontSize: tamanho, fontWeight: 800, color: 'var(--color-brand-lima)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+        <Timer size={tamanho * 1.1} />{rotulo ? 'Tempo de jogo ' : ''}{formatarDuracao(msEmJogo(jogo, agora))}
+      </span>
+    )
+  }
+  const atraso = msAtraso(jogo, dataTorneio, agora)
+  if (atraso >= 60000) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: tamanho * 0.4, fontSize: tamanho, fontWeight: 800, color: 'var(--color-state-danger)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', filter: 'brightness(1.35)' }}>
+        <Clock size={tamanho * 1.05} />{rotulo ? 'Atrasado ' : '+'}{formatarDuracao(atraso)}
+      </span>
+    )
+  }
+  return null
+}
+
+// compacto: sem moldura nem cabeçalho (quadra/fase), para ir dentro de outro cartão (TV).
+export function CartaoJogo({ jogo, duplaPorId, seguindo, escala = 1, numero, acoes, dataTorneio, jogos, compacto = false }) {
   const a = duplaPorId.get(jogo.dupla_a_id)
   const b = duplaPorId.get(jogo.dupla_b_id)
   const destaque = jogoTemSeguido(jogo, duplaPorId, seguindo)
   const aoVivo = jogo.status === 'ao_vivo'
+  const vazio = lado => (jogos ? origemDaVaga(jogo, lado, jogos) : null) || 'A definir'
   return (
-    <div className={aoVivo ? 'cp-ao-vivo' : ''} style={{
+    <div className={aoVivo && !compacto ? 'cp-ao-vivo' : ''} style={compacto ? { padding: 4 * escala } : {
       borderRadius: 16 * escala, padding: 12 * escala,
       backgroundColor: 'var(--color-surface-dark-raised)',
       border: `1px solid ${destaque ? COR_DESTAQUE : aoVivo ? 'var(--color-accent-live)' : 'var(--color-border-dark-subtle)'}`,
     }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 * escala, marginBottom: 8 * escala, padding: `0 ${4 * escala}px` }}>
+      {!compacto && <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 * escala, marginBottom: 8 * escala, padding: `0 ${4 * escala}px` }}>
         <div style={{ minWidth: 0 }}>
-          <div className="cp-display" style={{ fontSize: 18 * escala, fontWeight: 700, lineHeight: 1.1, color: 'var(--color-text-dark-primary)', whiteSpace: 'nowrap' }}>{jogo.quadra || 'Quadra a definir'}</div>
-          <div style={{ fontSize: 11 * escala, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-brand-saibro)', filter: 'brightness(1.35)', whiteSpace: 'nowrap', marginTop: 3 * escala }}>
+          <SeloQuadra quadra={jogo.quadra} escala={escala} aoVivo={aoVivo} />
+          <div style={{ fontSize: 11 * escala, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-brand-saibro)', filter: 'brightness(1.35)', whiteSpace: 'nowrap', marginTop: 5 * escala }}>
             {rotuloFaseCurto(jogo.fase)}{numero ? ` · Jogo ${numero}` : ''}
           </div>
         </div>
-        <div style={{ flexShrink: 0 }}><ChipStatus jogo={jogo} tamanho={10 * escala} /></div>
-      </div>
-      <LinhaDupla dupla={a} lado="a" jogo={jogo} seguindo={seguindo} escala={escala} mostrarSets={jogo.status !== 'agendado'} />
+        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 * escala }}>
+          <ChipStatus jogo={jogo} tamanho={10 * escala} />
+          <TempoJogo jogo={jogo} dataTorneio={dataTorneio} tamanho={11.5 * escala} rotulo={false} />
+        </div>
+      </div>}
+      <LinhaDupla dupla={a} lado="a" jogo={jogo} seguindo={seguindo} escala={escala} mostrarSets={jogo.status !== 'agendado'} vazio={vazio('a')} />
       <div style={{ height: 1, margin: `${3 * escala}px ${8 * escala}px`, backgroundColor: 'var(--color-border-dark-subtle)' }} />
-      <LinhaDupla dupla={b} lado="b" jogo={jogo} seguindo={seguindo} escala={escala} mostrarSets={jogo.status !== 'agendado'} />
+      <LinhaDupla dupla={b} lado="b" jogo={jogo} seguindo={seguindo} escala={escala} mostrarSets={jogo.status !== 'agendado'} vazio={vazio('b')} />
       {acoes}
     </div>
   )
 }
 
+// A quadra em destaque: é a informação que o atleta mais procura ("onde eu jogo?").
+export function SeloQuadra({ quadra, escala = 1, aoVivo = false }) {
+  return (
+    <span className="cp-display" style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6 * escala, padding: `${3 * escala}px ${10 * escala}px`, borderRadius: 8 * escala,
+      fontSize: 17 * escala, fontWeight: 700, lineHeight: 1.15, whiteSpace: 'nowrap',
+      backgroundColor: aoVivo ? 'var(--color-accent-live)' : 'var(--color-surface-dark-overlay)',
+      color: aoVivo ? 'var(--color-accent-on-live)' : 'var(--color-text-dark-primary)',
+      border: `1px solid ${aoVivo ? 'var(--color-accent-live)' : 'var(--color-border-dark)'}`,
+    }}>
+      <MapPin size={14 * escala} />{quadra || 'Quadra a definir'}
+    </span>
+  )
+}
+
 // ---------- chave ----------
 
-function JogoChave({ jogo, duplaPorId, seguindo, ocultas, escala = 1, proximos }) {
+function JogoChave({ jogo, duplaPorId, seguindo, ocultas, escala = 1, proximos, jogos }) {
   const linhas = ['a', 'b'].map(lado => {
     const id = jogo[`dupla_${lado}_id`]
     return ocultas.has(id) ? null : duplaPorId.get(id) || null
@@ -177,7 +220,7 @@ function JogoChave({ jogo, duplaPorId, seguindo, ocultas, escala = 1, proximos }
                   </div>
                 ))
               ) : (
-                <div style={{ fontSize: 11 * escala, color: 'var(--color-text-dark-muted)', fontStyle: 'italic' }}>{ehBye ? 'Bye (avança direto)' : 'A definir'}</div>
+                <div style={{ fontSize: 11 * escala, color: 'var(--color-text-dark-muted)', fontStyle: 'italic' }}>{ehBye ? 'Bye (avança direto)' : (jogos && origemDaVaga(jogo, lado, jogos)?.replace(/ do jogo /, ' J')) || 'A definir'}</div>
               )}
             </div>
             {d && (jogo.status === 'ao_vivo' || jogo.status === 'finalizado') && (
@@ -248,7 +291,7 @@ export function Chave({ campeonato, jogos, duplas, duplaPorId, seguindo, espelha
   if (!jogos.length) {
     return <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-dark-muted)', fontSize: 14 }}>A chave aparece aqui logo depois do sorteio das duplas.</div>
   }
-  const props = { duplaPorId, seguindo, ocultas, escala, proximos }
+  const props = { duplaPorId, seguindo, ocultas, escala, proximos, jogos }
   const daRodada = r => jogos.filter(j => j.rodada === r && j.fase !== 'terceiro').sort((a, b) => a.posicao - b.posicao)
   const final = jogos.find(j => j.fase === 'final')
   const terceiro = jogos.find(j => j.fase === 'terceiro')
@@ -315,7 +358,7 @@ export function Chave({ campeonato, jogos, duplas, duplaPorId, seguindo, espelha
       ))}
       {/* Palco da final: coluna central mais larga, troféu, "Grande Final" e cartão maior com
           sem moldura em volta. 3º lugar embaixo, discreto. */}
-      <div className="cp-col" style={{ flex: '1.6 1 0' }}>
+      <div className="cp-col" style={{ flex: '1.25 1 0' }}>
         <div className="cp-col-titulo" style={{ visibility: 'hidden' }}>Final</div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16 * escala, padding: `0 ${14 * escala}px` }}>
           <CampeaoBox jogos={jogos} duplaPorId={duplaPorId} escala={escala} />

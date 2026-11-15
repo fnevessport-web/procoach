@@ -91,6 +91,19 @@ export function duplaIncompleta(d) {
   return !!d && (!d.atleta1_id || !d.atleta2_id)
 }
 
+// Trava de segurança antes de gravar um sorteio: ninguém pode aparecer em duas duplas e o número
+// de duplas tem que bater com o de atletas. (Em 08/11 um toque duplo gravou 32 duplas repetidas.)
+export function validarDuplas(duplas, esperado) {
+  const vistos = new Set()
+  for (const d of duplas) {
+    for (const id of [d.atleta1_id, d.atleta2_id].filter(Boolean)) {
+      if (vistos.has(id)) throw new Error('Sorteio inválido: um atleta saiu em duas duplas. Nada foi gravado.')
+      vistos.add(id)
+    }
+  }
+  if (esperado != null && duplas.length !== esperado) throw new Error(`Sorteio inválido: ${duplas.length} duplas para ${esperado} esperadas. Nada foi gravado.`)
+}
+
 // Chave completa a partir das duplas na ordem do sorteio. Duplas 1..m ficam no lado A dos jogos
 // da 1ª rodada; o resto entra no lado B em ordem espalhada; lado B vazio = bye.
 export function montarChave(duplas, { terceiro = true } = {}) {
@@ -267,24 +280,97 @@ export function ordenarJogos(jogos) {
     || x.posicao - y.posicao)
 }
 
+// Dentro de cada rodada, intercala um jogo da metade de cima da chave com um da metade de baixo
+// (0, 4, 1, 5, 2, 6, 3, 7): os dois lados andam juntos e ninguém fica muito tempo parado.
+function intercalarLados(lista) {
+  const meio = Math.ceil(lista.length / 2)
+  const cima = lista.slice(0, meio)
+  const baixo = lista.slice(meio)
+  const out = []
+  for (let i = 0; i < meio; i++) {
+    out.push(cima[i])
+    if (baixo[i]) out.push(baixo[i])
+  }
+  return out
+}
+
 // Distribui os jogos (sem bye) em sequência pelas quadras: cada "rodada de quadras" começa
-// duracaoMin depois da anterior. O horário é "não antes de".
+// duracaoMin depois da anterior. O horário é "não antes de". Já sai a programação do torneio
+// inteiro (rodadas seguintes também), com os dois lados da chave intercalados.
 // Jogos da 1ª rodada com dupla incompleta ("A definir") vão para o fim da rodada, para dar tempo
 // de a organização convidar o(a) parceiro(a).
 export function agendar(jogos, quadras, horaInicio, duracaoMin, incompletas = new Set()) {
   const todos = ordenarJogos(jogos).filter(j => j.status !== 'bye')
   const temIncompleta = j => j.rodada === 1 && (incompletas.has(j.dupla_a_id) || incompletas.has(j.dupla_b_id))
-  const primeira = todos.filter(j => j.rodada === 1)
-  const lista = [...primeira.filter(j => !temIncompleta(j)), ...primeira.filter(temIncompleta), ...todos.filter(j => j.rodada !== 1)]
+  const R = totalRodadas(todos)
+  const lista = []
+  for (let r = 1; r <= R; r++) {
+    const daRodada = todos.filter(j => j.rodada === r)
+    const terceiro = daRodada.filter(j => j.fase === 'terceiro')
+    const normais = intercalarLados(daRodada.filter(j => j.fase !== 'terceiro').sort((a, b) => a.posicao - b.posicao))
+    if (r === 1) lista.push(...normais.filter(j => !temIncompleta(j)), ...normais.filter(temIncompleta))
+    else lista.push(...terceiro, ...normais)
+  }
+  return distribuir(lista, quadras, horaInicio, duracaoMin, true)
+}
+
+function distribuir(lista, quadras, horaInicio, duracaoMin, comOrdem) {
   const qs = quadras?.length ? quadras : ['Quadra 1']
   return lista.map((j, i) => ({
     id: j.id,
     patch: {
-      ordem: i + 1,
+      ...(comOrdem ? { ordem: i + 1 } : {}),
       quadra: qs[i % qs.length],
       horario: somarMinutos(horaInicio, Math.floor(i / qs.length) * duracaoMin),
     },
   }))
+}
+
+// Recalcula quadra e horário seguindo a ORDEM atual (a que a gestão arrumou com as setas).
+// Só devolve mudanças de jogos ainda agendados; os que já foram jogados não mudam.
+export function reagendarPelaOrdem(jogos, quadras, horaInicio, duracaoMin) {
+  const lista = jogos.filter(j => j.status !== 'bye').sort((a, b) => (a.ordem || 999) - (b.ordem || 999))
+  return distribuir(lista, quadras, horaInicio, duracaoMin, false)
+    .filter(m => jogos.find(j => j.id === m.id)?.status === 'agendado')
+}
+
+// De onde vem a dupla de uma vaga ainda vazia: "Vencedor do jogo 3" / "Perdedor do jogo 14".
+// Serve para mostrar a programação completa antes de as duplas estarem definidas.
+export function origemDaVaga(jogo, lado, jogos) {
+  if (!jogo || jogo.rodada <= 1) return null
+  if (jogo.fase === 'terceiro') {
+    const R = totalRodadas(jogos)
+    const semi = jogos.find(j => j.rodada === R - 1 && j.fase !== 'terceiro' && j.posicao === (lado === 'a' ? 0 : 1))
+    return semi?.ordem ? `Perdedor do jogo ${semi.ordem}` : null
+  }
+  const anterior = jogos.find(j => j.rodada === jogo.rodada - 1 && j.fase !== 'terceiro' && j.posicao === 2 * jogo.posicao + (lado === 'a' ? 0 : 1))
+  if (!anterior) return null
+  if (anterior.status === 'bye') return null
+  return anterior.ordem ? `Vencedor do jogo ${anterior.ordem}` : null
+}
+
+// ---------- tempo de jogo e atraso ----------
+
+// Minutos de atraso de um jogo agendado em relação ao horário previsto ("não antes de"), só no
+// dia do torneio. 0 quando ainda está no horário.
+export function msAtraso(jogo, dataTorneio, agora = Date.now()) {
+  if (!jogo?.horario || !dataTorneio || jogo.status !== 'agendado') return 0
+  const previsto = new Date(`${dataTorneio}T${jogo.horario}:00`).getTime()
+  return Number.isFinite(previsto) && agora > previsto ? agora - previsto : 0
+}
+
+export function msEmJogo(jogo, agora = Date.now()) {
+  if (jogo?.status !== 'ao_vivo' || !jogo.iniciado_em) return 0
+  return Math.max(0, agora - new Date(jogo.iniciado_em).getTime())
+}
+
+// 00:42 / 1:04:52
+export function formatarDuracao(ms) {
+  const s = Math.floor(ms / 1000)
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const ss = String(s % 60).padStart(2, '0')
+  return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${String(m).padStart(2, '0')}:${ss}`
 }
 
 // ---------- nomes ----------
@@ -346,19 +432,43 @@ function carregarImagem(src) {
   })
 }
 
-// Lê a foto escolhida, já reduz (fotos de celular têm 12 MP) e corrige a orientação do aparelho.
+function reduzirNoCanvas(fonte, larguraOrig, alturaOrig, maximo) {
+  const fator = Math.min(1, maximo / Math.max(larguraOrig, alturaOrig))
+  const w = Math.max(1, Math.round(larguraOrig * fator))
+  const h = Math.max(1, Math.round(alturaOrig * fator))
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  canvas.getContext('2d').drawImage(fonte, 0, 0, w, h)
+  const src = canvas.toDataURL('image/jpeg', 0.9)
+  canvas.width = 0
+  canvas.height = 0
+  return { src, w, h }
+}
+
+// Lê a foto escolhida, já reduz e corrige a orientação do aparelho.
+// Foto tirada na hora pela câmera costuma ser enorme (12 a 50 MP): decodificar inteira no <img>
+// estoura a memória de muitos celulares e a foto "não entra". Por isso o caminho principal é o
+// createImageBitmap, que já decodifica reduzido; o <img> fica de reserva para navegadores antigos.
 export async function prepararImagem(arquivo, maximo = 1400) {
+  if (!arquivo || (arquivo.size !== undefined && arquivo.size === 0)) throw new Error('A foto veio vazia. Tente de novo.')
+  if (typeof createImageBitmap === 'function') {
+    try {
+      // Só a largura: a altura acompanha a proporção. O canvas abaixo ainda limita o lado maior.
+      const reduzido = await createImageBitmap(arquivo, { imageOrientation: 'from-image', resizeWidth: maximo, resizeQuality: 'high' })
+      const r = reduzirNoCanvas(reduzido, reduzido.width, reduzido.height, maximo)
+      reduzido.close?.()
+      return r
+    } catch {
+      // segue para o caminho antigo
+    }
+  }
   const url = URL.createObjectURL(arquivo)
   try {
     const img = await carregarImagem(url)
-    const fator = Math.min(1, maximo / Math.max(img.naturalWidth, img.naturalHeight))
-    const w = Math.round(img.naturalWidth * fator)
-    const h = Math.round(img.naturalHeight * fator)
-    const canvas = document.createElement('canvas')
-    canvas.width = w
-    canvas.height = h
-    canvas.getContext('2d').drawImage(img, 0, 0, w, h)
-    return { src: canvas.toDataURL('image/jpeg', 0.9), w, h }
+    return reduzirNoCanvas(img, img.naturalWidth, img.naturalHeight, maximo)
+  } catch {
+    throw new Error('Não consegui abrir essa foto. Tente de novo ou escolha uma da galeria.')
   } finally {
     URL.revokeObjectURL(url)
   }

@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 // Utilitários da aba Campeonatos usados pelas telas (fora dos .jsx por causa do fast refresh).
 
 export const COR_DESTAQUE = 'var(--color-brand-lima)'
@@ -49,4 +51,30 @@ export function proximosPorQuadra(campeonato, jogos) {
     if (j) mapa.set(j.id, q)
   }
   return mapa
+}
+
+// Duplas já eliminadas (perderam e não têm mais jogo pela frente). Quem está nelas pode ser
+// convidado para completar uma dupla "A definir" ou substituir alguém.
+export function duplasEliminadas(jogos) {
+  const perdedoras = new Set()
+  for (const j of jogos) {
+    if (!['finalizado', 'wo'].includes(j.status) || !j.vencedor_id) continue
+    const p = j.vencedor_id === j.dupla_a_id ? j.dupla_b_id : j.dupla_a_id
+    if (p) perdedoras.add(p)
+  }
+  for (const j of jogos) {
+    if (['agendado', 'ao_vivo'].includes(j.status)) { perdedoras.delete(j.dupla_a_id); perdedoras.delete(j.dupla_b_id) }
+  }
+  return perdedoras
+}
+
+// Relógio que atualiza sozinho (cronômetro de jogo, atraso). Cada componente que usa tem o
+// próprio intervalo, então só ele re-renderiza a cada segundo, não a página toda.
+export function useAgora(intervaloMs = 1000) {
+  const [agora, setAgora] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setAgora(Date.now()), intervaloMs)
+    return () => clearInterval(t)
+  }, [intervaloMs])
+  return agora
 }

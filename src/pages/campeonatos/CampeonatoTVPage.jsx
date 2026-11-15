@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Radio, CalendarClock, Smartphone, Check, Maximize, Minimize } from 'lucide-react'
 import { useCampeonato } from '../../hooks/useCampeonato'
-import { nomeCurto, iniciais, rotuloFaseCurto, ordenarJogos } from '../../lib/campeonato'
-import { Marcas, CartaoJogo, Chave, SorteioAoVivo, QrCode, AvataresDupla } from './componentes'
+import { nomeCurto, iniciais, rotuloFaseCurto, ordenarJogos, origemDaVaga, formatarDuracao } from '../../lib/campeonato'
+import { Marcas, CartaoJogo, Chave, SorteioAoVivo, QrCode, AvataresDupla, TempoJogo, SeloQuadra } from './componentes'
 import { urlPublica, duplasOcultas, proximosPorQuadra } from './util'
 import { CelebracaoVitoria } from './CelebracaoVitoria'
 import { TelaPodio } from './PodioTV'
@@ -29,10 +29,10 @@ function useEscala() {
 function Relogio() {
   const [agora, setAgora] = useState(new Date())
   useEffect(() => {
-    const t = setInterval(() => setAgora(new Date()), 15000)
+    const t = setInterval(() => setAgora(new Date()), 1000)
     return () => clearInterval(t)
   }, [])
-  return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+  return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
 }
 
 // Tela cheia (some a barra de endereço e as abas). O navegador só deixa entrar com um clique,
@@ -151,8 +151,11 @@ function TelaJogos({ dados, escala }) {
     .sort((a, b) => (a.ordem || 999) - (b.ordem || 999))
   const aoVivo = ordenados.filter(j => j.status === 'ao_vivo')
   const quadras = [...new Set([...(campeonato.quadras || []), ...aoVivo.map(j => j.quadra).filter(Boolean)])]
-  const proximos = ordenados.filter(j => j.status === 'agendado' && j.dupla_a_id && j.dupla_b_id)
-  const aguardando = ordenados.filter(j => j.status === 'agendado' && !(j.dupla_a_id && j.dupla_b_id))
+  // Programação inteira na ordem dos jogos: os prontos e também os que esperam vencedores
+  // ("Vencedor do jogo 3").
+  const fila = ordenados.filter(j => j.status === 'agendado')
+  const resultados = ordenados.filter(j => ['finalizado', 'wo'].includes(j.status))
+    .sort((a, b) => String(b.finalizado_em).localeCompare(String(a.finalizado_em)))
 
   // Fim do torneio (final e 3º lugar decididos): depois da animação da final, abre o pódio.
   const finalJogo = jogos.find(j => j.fase === 'final')
@@ -168,46 +171,40 @@ function TelaJogos({ dados, escala }) {
           onFim={() => setCelebrados(s => new Set(s).add(celebrar.id))} />
       )}
       <Topo campeonato={campeonato} />
-      <div style={{ flex: 1, display: 'flex', gap: 22, padding: '18px 26px 20px', minHeight: 0 }}>
-        <div style={{ width: 470, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'flex', gap: 18, padding: '16px 22px 18px', minHeight: 0 }}>
+        {/* ESQUERDA: as quadras e, embaixo, os próximos jogos em destaque */}
+        <div style={{ width: 440, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
           <TituloBloco icone={Radio} cor="var(--color-accent-live)">Em quadra agora</TituloBloco>
-          <div style={{ display: 'grid', gap: 10 }}>
-            {quadras.map(q => {
-              const jogo = aoVivo.find(j => j.quadra === q)
-              if (jogo) return <CartaoJogo key={q} jogo={jogo} duplaPorId={duplaPorId} seguindo={semSeguidos} escala={1.08} numero={jogo.ordem || null} />
-              const prox = jogos.find(j => proximosMapa.get(j.id) === q)
-              return (
-                <div key={q} style={{ borderRadius: 16, padding: '12px 16px', backgroundColor: 'var(--color-surface-dark-raised)', border: '1px dashed var(--color-border-dark)' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                    <span className="cp-display" style={{ fontSize: 22, fontWeight: 700, whiteSpace: 'nowrap' }}>{q}</span>
-                    <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '2px', color: 'var(--color-text-dark-muted)' }}>{campeonato.status === 'encerrado' ? 'ENCERRADO' : 'AGUARDANDO'}</span>
-                  </div>
-                  {prox && (
-                    <div style={{ marginTop: 6, fontSize: 15, color: 'var(--color-text-dark-secondary)' }}>
-                      <span style={{ color: 'var(--color-state-success)', fontWeight: 800 }}>▶ Próximo:</span> <b style={{ color: 'var(--color-text-dark-primary)' }}>{nomesDupla(duplaPorId.get(prox.dupla_a_id))}</b> x <b style={{ color: 'var(--color-text-dark-primary)' }}>{nomesDupla(duplaPorId.get(prox.dupla_b_id))}</b>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          <div style={{ marginTop: 20, flex: 1, minHeight: 0, overflow: 'hidden' }}>
-            <TituloBloco icone={CalendarClock}>Próximos jogos</TituloBloco>
-            <div style={{ display: 'grid', gap: 8 }}>
-              {[...proximos, ...aguardando].slice(0, 7).map(j => (
-                <LinhaProximo key={j.id} jogo={j} duplaPorId={duplaPorId} />
+          {quadras.map(q => (
+            <CartaoQuadraTV key={q} quadra={q} jogo={aoVivo.find(j => j.quadra === q)} proximo={jogos.find(j => proximosMapa.get(j.id) === q)}
+              campeonato={campeonato} duplaPorId={duplaPorId} jogos={jogos} />
+          ))}
+          <div style={{ marginTop: 4, flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 20, padding: '12px 12px 6px', border: '2px solid var(--color-brand-lima)', backgroundColor: 'color-mix(in srgb, var(--color-brand-lima) 7%, var(--color-surface-dark-raised))' }}>
+            <TituloBloco icone={CalendarClock} cor="var(--color-brand-lima)">Próximos jogos</TituloBloco>
+            <div style={{ display: 'grid', gap: 8, paddingBottom: 6 }}>
+              {fila.slice(0, 2).map(j => (
+                <LinhaProximo key={j.id} jogo={j} duplaPorId={duplaPorId} jogos={jogos} campeonato={campeonato} chamado={proximosMapa.get(j.id)} />
               ))}
-              {!proximos.length && !aguardando.length && (
-                <div style={{ fontSize: 18, color: 'var(--color-text-dark-muted)' }}>{campeonato.status === 'encerrado' ? 'Torneio encerrado. Obrigado a todos!' : 'Nenhum jogo na fila.'}</div>
+              {!fila.length && (
+                <div style={{ fontSize: 18, color: 'var(--color-text-dark-muted)', padding: '6px 4px 10px' }}>{campeonato.status === 'encerrado' ? 'Torneio encerrado. Obrigado a todos!' : 'Nenhum jogo na fila.'}</div>
               )}
+              {fila.length > 2 && <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-dark-muted)', textAlign: 'center' }}>+ {fila.length - 2} jogos na programação</div>}
             </div>
           </div>
         </div>
 
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', borderRadius: 22, padding: '14px 4px 10px', backgroundColor: 'color-mix(in srgb, var(--color-surface-dark-raised) 55%, transparent)', border: '1px solid var(--color-border-dark-subtle)' }}>
+        {/* CENTRO: a chave */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', borderRadius: 22, padding: '14px 2px 10px', backgroundColor: 'color-mix(in srgb, var(--color-surface-dark-raised) 55%, transparent)', border: '1px solid var(--color-border-dark-subtle)' }}>
           <div style={{ flex: 1, minHeight: 0 }}>
-            <Chave campeonato={campeonato} jogos={jogos} duplas={duplas} duplaPorId={duplaPorId} seguindo={semSeguidos} espelhada escala={1.24} proximos={proximosMapa} />
+            <Chave campeonato={campeonato} jogos={jogos} duplas={duplas} duplaPorId={duplaPorId} seguindo={semSeguidos} espelhada escala={1.05} proximos={proximosMapa} />
+          </div>
+        </div>
+
+        {/* DIREITA: últimos resultados subindo */}
+        <div style={{ width: 335, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <TituloBloco icone={Check} cor="var(--color-text-dark-primary)">Últimos resultados</TituloBloco>
+            <ResultadosRolando resultados={resultados} duplaPorId={duplaPorId} />
           </div>
         </div>
       </div>
@@ -221,25 +218,144 @@ function nomesDupla(d) {
   return `${primeiro(d.atleta1)} & ${primeiro(d.atleta2)}`
 }
 
-function LinhaProximo({ jogo, duplaPorId }) {
-  const a = duplaPorId.get(jogo.dupla_a_id)
-  const b = duplaPorId.get(jogo.dupla_b_id)
+// Uma quadra, com o nome bem grande no topo. Com jogo: duplas, placar e o tempo de jogo correndo.
+// Livre: quem é chamado para ela, com o atraso em relação ao horário previsto.
+function CartaoQuadraTV({ quadra, jogo, proximo, campeonato, duplaPorId, jogos }) {
+  const aoVivo = !!jogo
+  const corBorda = aoVivo ? 'var(--color-accent-live)' : proximo ? 'var(--color-state-success)' : 'var(--color-border-dark)'
+  const fundoTopo = aoVivo ? 'var(--color-accent-live)' : proximo ? 'color-mix(in srgb, var(--color-state-success) 30%, var(--color-surface-dark-raised))' : 'var(--color-surface-dark-overlay)'
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 12, backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)' }}>
-      <div style={{ width: 62, flexShrink: 0, lineHeight: 1.15 }}>
-        <div className="cp-display" style={{ fontSize: 20, fontWeight: 700 }}>{jogo.horario || '--:--'}</div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-dark-muted)', whiteSpace: 'nowrap' }}>{jogo.quadra || ''}</div>
+    <div className={aoVivo ? 'cp-ao-vivo' : ''} style={{ borderRadius: 18, overflow: 'hidden', backgroundColor: 'var(--color-surface-dark-raised)', border: `2px solid ${corBorda}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', backgroundColor: fundoTopo, color: aoVivo ? 'var(--color-accent-on-live)' : 'var(--color-text-dark-primary)' }}>
+        <span className="cp-display" style={{ fontSize: 34, fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>{quadra}</span>
+        <span style={{ marginLeft: 'auto', textAlign: 'right', lineHeight: 1.2 }}>
+          {aoVivo ? (
+            <>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 7, justifyContent: 'flex-end', fontSize: 15, fontWeight: 800, letterSpacing: '2px' }}><span className="cp-pulso" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: 'var(--color-accent-on-live)' }} />AO VIVO</span>
+              <span style={{ fontSize: 13, fontWeight: 700, opacity: 0.9 }}>{rotuloFaseCurto(jogo.fase)}{jogo.ordem ? ` · Jogo ${jogo.ordem}` : ''}</span>
+            </>
+          ) : (
+            <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '2px', color: proximo ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-muted)' }}>
+              {campeonato.status === 'encerrado' ? 'ENCERRADO' : proximo ? 'CHAMANDO' : 'LIVRE'}
+            </span>
+          )}
+        </span>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '1.5px', color: 'var(--color-brand-saibro)', filter: 'brightness(1.4)', textTransform: 'uppercase' }}>{rotuloFaseCurto(jogo.fase)}{jogo.ordem ? ` · Jogo ${jogo.ordem}` : ''}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden' }}>
-          {a ? <AvataresDupla dupla={a} tamanho={22} /> : null}
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomesDupla(a)}</span>
-          <span style={{ color: 'var(--color-text-dark-muted)', fontWeight: 500 }}>x</span>
-          {b ? <AvataresDupla dupla={b} tamanho={22} /> : null}
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomesDupla(b)}</span>
+      {aoVivo ? (
+        <div style={{ padding: '6px 6px 10px' }}>
+          <CartaoJogo jogo={jogo} duplaPorId={duplaPorId} seguindo={SEM_SEGUIDOS} escala={1.12} jogos={jogos} compacto />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 12px 0' }}>
+            <TempoJogo jogo={jogo} dataTorneio={campeonato.data} tamanho={20} />
+          </div>
         </div>
+      ) : proximo ? (
+        <div style={{ padding: '10px 16px 12px' }}>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase' }}>
+            Jogo {proximo.ordem} · {rotuloFaseCurto(proximo.fase)} · previsto {proximo.horario}
+          </div>
+          {['a', 'b'].map((l, i) => {
+            const d = duplaPorId.get(proximo[`dupla_${l}_id`])
+            return (
+              <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: i ? 6 : 8 }}>
+                {d ? <AvataresDupla dupla={d} tamanho={34} /> : null}
+                <span style={{ fontSize: 21, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomesDupla(d)}</span>
+              </div>
+            )
+          })}
+          <div style={{ marginTop: 8 }}><TempoJogo jogo={proximo} dataTorneio={campeonato.data} tamanho={18} /></div>
+        </div>
+      ) : (
+        <div style={{ padding: '12px 16px', fontSize: 16, color: 'var(--color-text-dark-muted)' }}>Nenhum jogo pronto para esta quadra.</div>
+      )}
+    </div>
+  )
+}
+
+const SEM_SEGUIDOS = new Set()
+
+// Linha da programação na TV: horário e quadra grandes, as duplas (ou de onde elas vêm) e o
+// atraso em vermelho quando já passou do horário previsto.
+function LinhaProximo({ jogo, duplaPorId, jogos, campeonato, chamado }) {
+  const vaga = lado => {
+    const d = duplaPorId.get(jogo[`dupla_${lado}_id`])
+    return d ? { d, txt: nomesDupla(d) } : { d: null, txt: origemDaVaga(jogo, lado, jogos) || 'A definir' }
+  }
+  const lados = [vaga('a'), vaga('b')]
+  return (
+    <div style={{ padding: '8px 12px', borderRadius: 14, backgroundColor: chamado ? 'color-mix(in srgb, var(--color-state-success) 18%, var(--color-surface-dark-raised))' : 'var(--color-surface-dark-raised)', border: `1px solid ${chamado ? 'var(--color-state-success)' : 'var(--color-border-dark-subtle)'}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ lineHeight: 1 }}>
+          <span style={{ display: 'block', fontSize: 10, fontWeight: 800, letterSpacing: '1.5px', color: 'var(--color-text-dark-muted)', marginBottom: 2 }}>PREVISTO</span>
+          <span className="cp-display" style={{ fontSize: 28, fontWeight: 700 }}>{jogo.horario || '--:--'}</span>
+        </span>
+        <SeloQuadra quadra={jogo.quadra} escala={1.05} />
+        <span style={{ marginLeft: 'auto', textAlign: 'right' }}>
+          <TempoJogo jogo={jogo} dataTorneio={campeonato.data} tamanho={15} />
+        </span>
       </div>
+      <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: 6, color: chamado ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-secondary)' }}>
+        {chamado ? `▶ Próximo na ${chamado} · ` : ''}{rotuloFaseCurto(jogo.fase)}{jogo.ordem ? ` · Jogo ${jogo.ordem}` : ''}
+      </div>
+      {lados.map((v, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+          {v.d ? <AvataresDupla dupla={v.d} tamanho={24} /> : null}
+          <span style={{ fontSize: v.d ? 17 : 15, fontWeight: v.d ? 700 : 500, fontStyle: v.d ? 'normal' : 'italic', color: v.d ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.txt}</span>
+          {i === 0 && <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 800, color: 'var(--color-text-dark-muted)' }}>VS</span>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Últimos resultados numa lista que sobe devagar, sem parar (como no telão de torneio). Com
+// poucos resultados, fica parada. O conteúdo é duplicado para o loop não ter emenda.
+function ResultadosRolando({ resultados, duplaPorId }) {
+  if (!resultados.length) {
+    return <div style={{ fontSize: 17, color: 'var(--color-text-dark-muted)', padding: '4px 2px' }}>Os placares aparecem aqui assim que os jogos terminarem.</div>
+  }
+  const rola = resultados.length > 3
+  const itens = resultados.slice(0, 16)
+  const mascara = rola ? 'linear-gradient(to bottom, transparent, black 6%, black 92%, transparent)' : 'none'
+  return (
+    <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', maskImage: mascara, WebkitMaskImage: mascara }}>
+      <div className={rola ? 'cp-rolar-cima' : ''} style={{ '--duracao': `${itens.length * 5}s` }}>
+        {[0, ...(rola ? [1] : [])].map(copia => (
+          <div key={copia} style={{ display: 'grid', gap: 10, paddingBottom: 10 }}>
+            {itens.map(j => <CartaoResultado key={j.id} jogo={j} duplaPorId={duplaPorId} />)}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CartaoResultado({ jogo, duplaPorId }) {
+  const hora = jogo.finalizado_em ? new Date(jogo.finalizado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''
+  const duracao = jogo.iniciado_em && jogo.finalizado_em && jogo.status === 'finalizado' ? formatarDuracao(new Date(jogo.finalizado_em) - new Date(jogo.iniciado_em)) : null
+  return (
+    <div style={{ padding: '8px 12px', borderRadius: 14, backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-dark-muted)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {hora} · Jogo {jogo.ordem} · {rotuloFaseCurto(jogo.fase)}{jogo.quadra ? ` · ${jogo.quadra}` : ''}{duracao ? ` (${duracao})` : ''}
+      </div>
+      {['a', 'b'].map(l => {
+        const d = duplaPorId.get(jogo[`dupla_${l}_id`])
+        const venceu = !!jogo.vencedor_id && jogo.vencedor_id === d?.id
+        return (
+          <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', opacity: venceu ? 1 : 0.6 }}>
+            {d ? <AvataresDupla dupla={d} tamanho={24} destaque={venceu} /> : null}
+            <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: venceu ? 800 : 600, color: venceu ? 'var(--color-brand-lima)' : 'var(--color-text-dark-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomesDupla(d)}</span>
+            {jogo.status === 'wo'
+              ? (venceu ? <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-state-warning)' }}>W.O.</span> : null)
+              : (
+                <span style={{ display: 'flex', gap: 4 }}>
+                  {(jogo.sets || []).map((s, i) => (
+                    <span key={i} style={{ minWidth: 24, textAlign: 'center', borderRadius: 6, padding: '1px 0', fontSize: 17, fontWeight: 800, fontVariantNumeric: 'tabular-nums', backgroundColor: 'var(--color-surface-dark-overlay)', color: venceu ? 'var(--color-brand-lima)' : 'var(--color-text-dark-secondary)' }}>{s[l] ?? 0}</span>
+                  ))}
+                </span>
+              )}
+          </div>
+        )
+      })}
     </div>
   )
 }
