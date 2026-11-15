@@ -27,7 +27,7 @@ export const rotuloFase = (f) => FASES[f] || f
 export const rotuloFaseCurto = (f) => FASES_CURTAS[f] || f
 
 // Formato do torneio de 08/11: 1º e 2º sets até 4 games (diferença de 2, no 4 a 4 tie-break,
-// que fecha o set em 5 a 4); 3º set é direto no tie-break até 7 com diferença de 2.
+// que fecha o set em 5 a 4. Desde 15/11: no 3 a 3 tie-break direto, set fecha em 4 a 3); 3º set é direto no tie-break até 7 com diferença de 2.
 export const FORMATO_PADRAO = { games: 4, tiebreakFinal: 7 }
 
 export const STATUS_ENCERRADOS = ['finalizado', 'wo', 'bye']
@@ -248,8 +248,10 @@ export function vencedorDoSet(set, indice, formato = FORMATO_PADRAO) {
   const min = Math.min(a, b)
   if (a === b) return null
   if (indice < 2) {
+    // Regra de 15/11: set até 4 games; no 3 a 3, tie-break direto até 7 e o set fecha em 4 a 3.
+    // Então qualquer 4 a 0..3 fecha o set.
     const g = formato.games
-    if ((max >= g && max - min >= 2) || (max === g + 1 && min === g)) return a > b ? 'a' : 'b'
+    if (max === g && min < g) return a > b ? 'a' : 'b'
     return null
   }
   if (max >= formato.tiebreakFinal && max - min >= 2) return a > b ? 'a' : 'b'
@@ -329,12 +331,12 @@ export function validarPlacarDigitado(campos, formato = FORMATO_PADRAO) {
     const set = { a, b }
     const ganhou = vencedorDoSet(set, i, formato)
     if (!ganhou) {
-      return { sets, vencedor: null, erro: i < 2 ? `O ${i + 1}º set não fecha (${a} a ${b}): vai até ${formato.games} games com 2 de diferença, ou ${formato.games + 1} a ${formato.games} no tie-break.` : `O 3º set é tie-break até ${formato.tiebreakFinal} com 2 de diferença (${a} a ${b} não fecha).` }
+      return { sets, vencedor: null, erro: i < 2 ? `O ${i + 1}º set não fecha (${a} a ${b}): vai até ${formato.games} games; no 3 a 3 tie-break (o set fica ${formato.games} a ${formato.games - 1}).` : `O 3º set é tie-break até ${formato.tiebreakFinal} com 2 de diferença (${a} a ${b} não fecha).` }
     }
     if (i < 2) {
       const tA = num(c.tbA)
       const tB = num(c.tbB)
-      const ehTb = Math.max(a, b) === formato.games + 1 && Math.min(a, b) === formato.games
+      const ehTb = Math.max(a, b) === formato.games && Math.min(a, b) === formato.games - 1
       if (ehTb && (tA != null || tB != null)) {
         if (tA == null || tB == null) return { sets, vencedor: null, erro: `Complete o tie-break do ${i + 1}º set.` }
         const tbGanhou = vencedorDoSet({ a: tA, b: tB }, 2, formato)

@@ -965,7 +965,7 @@ function AbaRegras({ campeonato }) {
           <RegraNumero valor="7" rotulo="pontos no tie-break" />
         </div>
         <div style={{ display: 'grid', gap: 8 }}>
-          <RegraItem icone={Hash} titulo="1º e 2º sets">Até 4 games, com 2 de diferença. Deu 4 a 4? Tie-break até 7 (2 de diferença) e o set fecha em 5 a 4.</RegraItem>
+          <RegraItem icone={Hash} titulo="1º e 2º sets">Até 4 games. Deu 3 a 3? Tie-break direto até 7 (2 de diferença) e o set fecha em 4 a 3.</RegraItem>
           <RegraItem icone={Zap} titulo="Deu 1 set para cada?">O 3º set é direto um tie-break até 7 pontos (2 de diferença).</RegraItem>
           {vantagem && <RegraItem icone={Scale} titulo="Vantagem">{vantagem}</RegraItem>}
         </div>

@@ -1,7 +1,7 @@
 // Súmula de papel dos jogos do campeonato: 4 por folha A4 (retrato), separadas por linha
 // tracejada para cortar com régua. Cada uma tem os logos Beyond e Procopio, o nome do torneio,
 // o jogo (número, fase, quadra, horário), as duas duplas e os quadrados do placar: 1º e 2º sets
-// (com o quadradinho do tie-break do 4 a 4 ao lado) e o 3º set, que já é o tie-break até 7.
+// (com o quadradinho do tie-break do 3 a 3 ao lado) e o 3º set, que já é o tie-break até 7.
 // O vencedor traz a súmula preenchida e a gestão digita o placar no app.
 //
 // `montarSumulas` não depende do navegador (dá para rodar em Node com as imagens em base64);
@@ -162,7 +162,7 @@ function desenharCartao(doc, { x0, y0, largura, jogo, jogos, duplaPorId, campeon
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(6.5)
   doc.setTextColor(...APAGADO)
-  doc.text('Sets até 4 games. No 4 a 4, tie-break até 7 (anote os pontos no TB; o set fica 5 a 4). 1 set para cada: 3º set é tie-break até 7.', x0, yRod)
+  doc.text('Sets até 4 games. No 3 a 3, tie-break direto até 7 (anote os pontos no TB; o set fica 4 a 3). 1 set para cada: 3º set é tie-break até 7.', x0, yRod)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
   doc.setTextColor(...SECUNDARIO)

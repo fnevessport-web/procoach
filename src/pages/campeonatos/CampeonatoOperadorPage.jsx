@@ -118,7 +118,7 @@ export function CampeonatoOperadorPage() {
               return (
                 <div key={q} style={{ padding: 14, borderRadius: 18, backgroundColor: 'var(--color-surface-dark-raised)', border: `1px solid ${jogo ? 'var(--color-accent-live)' : 'var(--color-border-dark-subtle)'}` }}>
                   {jogo
-                    ? <PlacarAoVivo jogo={jogo} duplaPorId={duplaPorId} salvarJogo={salvarJogo} />
+                    ? <PlacarAoVivo jogo={jogo} duplaPorId={duplaPorId} salvarJogo={salvarJogo} quadras={quadrasTodas} aoVivo={aoVivo} />
                     : <QuadraLivre quadra={q} prontos={prontos} duplaPorId={duplaPorId} onIniciar={iniciar} />}
                 </div>
               )
@@ -179,7 +179,7 @@ function LancarResultado({ jogos, duplaPorId, salvarJogo }) {
   const jogo = candidatos.find(j => j.id === jogoId)
   return (
     <Painel titulo="Lançar resultado de outro jogo">
-      <div style={{ fontSize: 12, color: 'var(--color-text-dark-muted)', marginBottom: 10, lineHeight: 1.5 }}>Para um jogo que não foi iniciado aqui. Sets até 4 games (no 4 a 4, tie-break até 7: o set fica 5 a 4 e os pontos vão no quadrado do tie-break). 3º set é o tie-break até 7.</div>
+      <div style={{ fontSize: 12, color: 'var(--color-text-dark-muted)', marginBottom: 10, lineHeight: 1.5 }}>Para um jogo que não foi iniciado aqui. Sets até 4 games (no 3 a 3, tie-break direto até 7: o set fica 4 a 3 e os pontos vão no quadrado do tie-break). 3º set é o tie-break até 7.</div>
       <select value={jogoId} onChange={e => setJogoId(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '11px 12px', borderRadius: 12, border: '1px solid var(--color-border-dark)', backgroundColor: 'var(--color-surface-dark-overlay)', color: 'var(--color-text-dark-primary)', fontSize: 15, marginBottom: 12 }}>
         <option value="">Escolha o jogo</option>
         {candidatos.map(j => <option key={j.id} value={j.id}>Jogo {j.ordem} · {rotuloFaseCurto(j.fase)} · {nomesDupla(duplaPorId.get(j.dupla_a_id))} x {nomesDupla(duplaPorId.get(j.dupla_b_id))}</option>)}

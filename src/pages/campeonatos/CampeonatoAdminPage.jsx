@@ -227,7 +227,7 @@ function AbaOperacao({ dados, salvarJogo }) {
           return (
             <div key={q} style={{ padding: 14, borderRadius: 18, backgroundColor: 'var(--color-surface-dark-raised)', border: `1px solid ${jogo ? 'var(--color-accent-live)' : 'var(--color-border-dark-subtle)'}` }}>
               {jogo ? (
-                <PlacarAoVivo jogo={jogo} duplaPorId={duplaPorId} salvarJogo={salvarJogo} />
+                <PlacarAoVivo jogo={jogo} duplaPorId={duplaPorId} salvarJogo={salvarJogo} quadras={quadras} aoVivo={aoVivo} />
               ) : (
                 <QuadraLivre quadra={q} prontos={prontos} duplaPorId={duplaPorId} onIniciar={iniciar} />
               )}
@@ -297,12 +297,24 @@ export function QuadraLivre({ quadra, prontos, duplaPorId, onIniciar }) {
   )
 }
 
-export function PlacarAoVivo({ jogo, duplaPorId, salvarJogo }) {
+export function PlacarAoVivo({ jogo, duplaPorId, salvarJogo, quadras = [], aoVivo = [] }) {
+  // Trocar a quadra do jogo em andamento. Se a outra quadra também tem jogo, os dois trocam.
+  const mudarQuadra = async q => {
+    if (!q || q === jogo.quadra) return
+    const outro = aoVivo.find(x => x.id !== jogo.id && x.quadra === q)
+    if (!window.confirm(outro ? `A ${q} está com o Jogo ${outro.ordem}. Trocar as quadras dos dois jogos?` : `Mudar o Jogo ${jogo.ordem} para a ${q}?`)) return
+    if (outro && (await salvarJogo(outro.id, { quadra: jogo.quadra }, { silencioso: true })) === false) return
+    salvarJogo(jogo.id, { quadra: q })
+  }
+  const opcoes = [...new Set([jogo.quadra, ...quadras].filter(Boolean))]
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
         <div style={{ minWidth: 0, lineHeight: 1.15 }}>
-          <div className="cp-display" style={{ fontSize: 22, fontWeight: 700, whiteSpace: 'nowrap' }}>{jogo.quadra}</div>
+          <select value={jogo.quadra || ''} onChange={e => mudarQuadra(e.target.value)} title="Trocar a quadra deste jogo" className="cp-display"
+            style={{ fontSize: 22, fontWeight: 700, padding: '0 4px', marginLeft: -4, border: '1px dashed var(--color-border-dark)', borderRadius: 8, backgroundColor: 'transparent', color: 'var(--color-text-dark-primary)', cursor: 'pointer', maxWidth: '100%' }}>
+            {opcoes.map(q => <option key={q} value={q} style={{ backgroundColor: 'var(--color-surface-dark-raised)', fontFamily: 'Inter, sans-serif', fontSize: 15 }}>{q}</option>)}
+          </select>
           <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-text-dark-secondary)', whiteSpace: 'nowrap' }}>{rotuloFaseCurto(jogo.fase).toUpperCase()} · JOGO {jogo.ordem}</div>
         </div>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -322,7 +334,7 @@ export function PlacarAoVivo({ jogo, duplaPorId, salvarJogo }) {
 }
 
 // Placar digitado a partir da súmula de papel: toque no quadrado e escreva os games de cada set.
-// Set em 5 a 4 abre o quadradinho do tie-break (pontos até 7). Nada é gravado enquanto digita: só
+// Set em 4 a 3 (tie-break do 3 a 3) abre o quadradinho do tie-break (pontos até 7). Nada é gravado enquanto digita: só
 // o botão "Finalizar jogo" grava o placar, encerra o jogo e faz a dupla vencedora avançar na chave.
 export function PlacarManual({ jogo, duplaPorId, salvarJogo, aoFinalizar }) {
   const [campos, setCampos] = useState(() => camposDoPlacar(jogo.sets))
@@ -333,7 +345,7 @@ export function PlacarManual({ jogo, duplaPorId, salvarJogo, aoFinalizar }) {
   const ehTb = i => {
     const a = Number(campos[i].a)
     const b = Number(campos[i].b)
-    return preenchido(i) && Math.max(a, b) === 5 && Math.min(a, b) === 4
+    return preenchido(i) && Math.max(a, b) === 4 && Math.min(a, b) === 3
   }
   const v1 = preenchido(0) ? vencedorDoSet({ a: Number(campos[0].a), b: Number(campos[0].b) }, 0) : null
   const v2 = preenchido(1) ? vencedorDoSet({ a: Number(campos[1].a), b: Number(campos[1].b) }, 1) : null
@@ -411,7 +423,7 @@ export function PlacarManual({ jogo, duplaPorId, salvarJogo, aoFinalizar }) {
       <div style={{ height: 1, backgroundColor: 'var(--color-border-dark-subtle)' }} />
       {linha('b')}
       <div style={{ fontSize: 12, lineHeight: 1.4, minHeight: 18, marginTop: 6, color: vencedor ? 'var(--color-brand-lima)' : algoDigitado ? 'var(--color-state-warning)' : 'var(--color-text-dark-muted)' }}>
-        {vencedor ? `Vitória de ${nomesDupla(duplaPorId.get(lados[vencedor]))}` : algoDigitado ? erro : 'Toque nos quadrados e digite os games da súmula. No 5 a 4 aparece o quadrado do tie-break (até 7).'}
+        {vencedor ? `Vitória de ${nomesDupla(duplaPorId.get(lados[vencedor]))}` : algoDigitado ? erro : 'Toque nos quadrados e digite os games da súmula. No 4 a 3 aparece o quadrado do tie-break (até 7).'}
       </div>
       <Botao variante="primario" disabled={!vencedor || salvando} onClick={finalizar} estilo={{ width: '100%', marginTop: 8, padding: '13px 16px', fontSize: 16, justifyContent: 'center' }}><Flag size={17} />{salvando ? 'Salvando...' : 'Finalizar jogo'}</Botao>
     </div>
