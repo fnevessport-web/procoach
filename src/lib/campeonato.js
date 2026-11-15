@@ -377,20 +377,50 @@ export function formatarDuracao(ms) {
 
 const PARTICULAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'junior', 'júnior', 'filho', 'neto'])
 
+// Nomes que quase sempre vêm compostos: "Ana Flávia", "Ana Paula", "Luiz Gustavo", "João Vitor".
+// Quando o nome começa com um destes e tem mais de duas palavras, a 2ª palavra faz parte do
+// primeiro nome (no telão aparece "Ana Flávia Barbosa", não "Ana Barbosa").
+const PRIMEIROS_COMPOSTOS = new Set(['ana', 'anna', 'maria', 'joao', 'jose', 'luiz', 'luis'])
+
+function partesNome(nome) {
+  return String(nome || '').trim().split(/\s+/).filter(Boolean)
+}
+
+function temComposto(partes) {
+  return partes.length >= 3
+    && PRIMEIROS_COMPOSTOS.has(normalizar(partes[0]))
+    && !PARTICULAS.has(partes[1].toLowerCase())
+}
+
+// "Ana Flávia Pizzo Barbosa" -> "Ana Flávia"; "Luiza Pizzo Barbosa" -> "Luiza".
+export function primeiroNome(nome = '') {
+  const partes = partesNome(nome)
+  if (!partes.length) return ''
+  return temComposto(partes) ? `${partes[0]} ${partes[1]}` : partes[0]
+}
+
+// "Ana Flávia Pizzo Barbosa" -> "Ana Flávia Barbosa"; "Gisele Záccaro de Oliveira Manchon" -> "Gisele Manchon".
 export function nomeCurto(nome = '') {
   if (!nome || !String(nome).trim()) return 'A definir'
-  const partes = nome.trim().split(/\s+/).filter(Boolean)
+  const partes = partesNome(nome)
   if (partes.length <= 1) return partes[0] || ''
-  let ultimo = partes[partes.length - 1]
-  for (let i = partes.length - 1; i > 0; i--) {
-    if (!PARTICULAS.has(partes[i].toLowerCase())) { ultimo = partes[i]; break }
+  const inicio = temComposto(partes) ? 2 : 1
+  let ultimo = null
+  for (let i = partes.length - 1; i >= inicio; i--) {
+    if (!PARTICULAS.has(partes[i].toLowerCase())) {
+      // mantém o "da/de/do" colado no sobrenome: "Tatiana da Ponte"
+      const antes = partes[i - 1]?.toLowerCase()
+      ultimo = i - 1 >= inicio && ['de', 'da', 'do', 'dos', 'das'].includes(antes) ? `${partes[i - 1]} ${partes[i]}` : partes[i]
+      break
+    }
   }
-  return `${partes[0]} ${ultimo}`
+  const primeiro = partes.slice(0, inicio).join(' ')
+  return ultimo ? `${primeiro} ${ultimo}` : primeiro
 }
 
 export function iniciais(nome = '') {
   const p = nomeCurto(nome).split(' ')
-  return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase()
+  return ((p[0]?.[0] || '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase()
 }
 
 export function normalizar(txt = '') {

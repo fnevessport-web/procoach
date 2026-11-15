@@ -9,7 +9,7 @@ import { supabase } from '../../lib/supabase'
 import { useCampeonato, aplicarPatchesJogos } from '../../hooks/useCampeonato'
 import {
   sortearDuplas, montarChave, propagar, agendar, resumoPlacar, somarPonto, tirarPonto, nomeCurto,
-  rotuloFase, rotuloFaseCurto, ordenarJogos, normalizar, indiceSetAtual, duplaIncompleta, validarDuplas, reagendarPelaOrdem, origemDaVaga,
+  rotuloFase, rotuloFaseCurto, ordenarJogos, normalizar, indiceSetAtual, duplaIncompleta, validarDuplas, reagendarPelaOrdem, origemDaVaga, primeiroNome,
 } from '../../lib/campeonato'
 import { Avatar, AvataresDupla, Chave, SorteioAoVivo, QrCode, Marcas } from './componentes'
 import { rotuloStatusCampeonato, urlPublica, urlTV, proximosPorQuadra, duplasEliminadas } from './util'
@@ -487,11 +487,11 @@ function AbaAtletas({ dados }) {
     if (!window.confirm(`Tirar ${a.nome} do torneio?
 
 Vai para a lista de Desistências (dá para voltar com um toque).`)) return
-    atualizar(a.id, { situacao: 'desistiu', presente: false }, `${a.nome.split(' ')[0]} saiu do torneio`)
+    atualizar(a.id, { situacao: 'desistiu', presente: false }, `${primeiroNome(a.nome)} saiu do torneio`)
   }
   const chamar = (a) => {
     if (!window.confirm(`Chamar ${a.nome} da fila de espera para o torneio?`)) return
-    atualizar(a.id, { situacao: 'inscrito' }, `${a.nome.split(' ')[0]} entrou no torneio`)
+    atualizar(a.id, { situacao: 'inscrito' }, `${primeiroNome(a.nome)} entrou no torneio`)
   }
 
   const abas = [
@@ -574,7 +574,7 @@ Vai para a lista de Desistências (dá para voltar com um toque).`)) return
 
         {lista === 'desistiu' && (
           <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
-            {desistencias.filter(casaBusca).map(a => <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} telefone={contatos.get(a.id)} onTelefone={() => editarTelefone(a)} acoes={<Botao tamanho="sm" variante="destaque" onClick={() => atualizar(a.id, { situacao: 'inscrito' }, `${a.nome.split(' ')[0]} voltou para o torneio`)}><UserPlus size={14} />Voltar para o torneio</Botao>} />)}
+            {desistencias.filter(casaBusca).map(a => <LinhaAtleta key={a.id} atleta={a} atualizar={atualizar} excluir={excluir} telefone={contatos.get(a.id)} onTelefone={() => editarTelefone(a)} acoes={<Botao tamanho="sm" variante="destaque" onClick={() => atualizar(a.id, { situacao: 'inscrito' }, `${primeiroNome(a.nome)} voltou para o torneio`)}><UserPlus size={14} />Voltar para o torneio</Botao>} />)}
             {!desistencias.length && <div style={{ fontSize: 14, color: 'var(--color-text-dark-muted)' }}>Nenhuma desistência.</div>}
           </div>
         )}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Radio, CalendarClock, Smartphone, Check, Maximize, Minimize } from 'lucide-react'
 import { useCampeonato } from '../../hooks/useCampeonato'
-import { nomeCurto, iniciais, rotuloFaseCurto, ordenarJogos, origemDaVaga, formatarDuracao } from '../../lib/campeonato'
+import { nomeCurto, iniciais, rotuloFaseCurto, ordenarJogos, origemDaVaga, formatarDuracao, primeiroNome } from '../../lib/campeonato'
 import { Marcas, CartaoJogo, Chave, SorteioAoVivo, QrCode, AvataresDupla, TempoJogo, SeloQuadra } from './componentes'
 import { urlPublica, duplasOcultas, proximosPorQuadra } from './util'
 import { CelebracaoVitoria } from './CelebracaoVitoria'
@@ -214,7 +214,7 @@ function TelaJogos({ dados, escala }) {
 
 function nomesDupla(d) {
   if (!d) return 'A definir'
-  const primeiro = a => (a ? nomeCurto(a.nome).split(' ')[0] : 'A definir')
+  const primeiro = a => (a ? primeiroNome(a.nome) : 'A definir')
   return `${primeiro(d.atleta1)} & ${primeiro(d.atleta2)}`
 }
 
@@ -375,7 +375,8 @@ function TelaSorteio({ dados }) {
 // Peça da tela de entrada: a FOTO é a protagonista (muita gente não se conhece), nome pequeno
 // embaixo. Check-in = anel verde-lima + ✓; quem não chegou fica em preto e branco, apagado.
 function CartaoAtletaEntrada({ atleta: a, foto = 112 }) {
-  const [primeiro, ...resto] = nomeCurto(a.nome).split(' ')
+  const primeiro = primeiroNome(a.nome)
+  const resto = [nomeCurto(a.nome).slice(primeiro.length).trim()]
   return (
     <div className={a.presente ? 'cp-entrar' : ''} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: 0, gap: 8 }}>
       <div style={{ position: 'relative', width: foto, height: foto, flexShrink: 0 }}>

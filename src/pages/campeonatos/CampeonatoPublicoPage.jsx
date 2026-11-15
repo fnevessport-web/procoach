@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import { Search, Camera, Plus, Star, Radio, GitBranch, Users, UserRound, Check, CalendarClock, MapPin, MessageCircle, ImageIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCampeonato } from '../../hooks/useCampeonato'
-import { nomeCurto, normalizar, ordenarJogos, rotuloFaseCurto } from '../../lib/campeonato'
+import { nomeCurto, normalizar, ordenarJogos, rotuloFaseCurto, primeiroNome } from '../../lib/campeonato'
 import { EditorFoto } from './EditorFoto'
 import { Marcas, Avatar, AvataresDupla, CartaoJogo, Chave, SorteioAoVivo, TempoJogo } from './componentes'
 import { COR_DESTAQUE, jogoTemSeguido, duplasOcultas, proximosPorQuadra } from './util'
@@ -163,7 +163,7 @@ function SorteioCelular({ campeonato, duplas, duplaPorId, atletas, seguindo, eu,
       if (avisadas.current.has(d.id)) continue
       avisadas.current.add(d.id)
       const quem = [d.atleta1, d.atleta2].find(a => a && seguindo.has(a.id))
-      toast(`${quem?.nome.split(' ')[0] || 'Quem você segue'} já tem dupla!`, { icon: '⭐', duration: 3500 })
+      toast(`${primeiroNome(quem?.nome) || 'Quem você segue'} já tem dupla!`, { icon: '⭐', duration: 3500 })
     }
   }, [seguidas, seguindo])
 
@@ -179,7 +179,7 @@ function SorteioCelular({ campeonato, duplas, duplaPorId, atletas, seguindo, eu,
               <AvataresDupla dupla={minhaVisivel} tamanho={44} destaque />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '2px', color: COR_DESTAQUE }}>SUA DUPLA · Nº {minhaVisivel.numero}</div>
-                <div style={{ fontSize: 15, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Você & {parceiroDe(minhaVisivel)?.nome.split(' ')[0] || 'A definir'}</div>
+                <div style={{ fontSize: 15, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Você & {primeiroNome(parceiroDe(minhaVisivel)?.nome) || 'A definir'}</div>
               </div>
             </div>
           )}
@@ -374,7 +374,7 @@ function BuscaAtleta({ atletas, excluir = [], onEscolher, placeholder = 'Digite 
 function CardCheckin({ atleta, onMudou }) {
   const [salvando, setSalvando] = useState(false)
   const [pedindoTel, setPedindoTel] = useState(false)
-  const primeiro = atleta.nome.split(' ')[0]
+  const primeiro = primeiroNome(atleta.nome)
   const marcar = async (presente) => {
     setSalvando(true)
     const { error } = await supabase.rpc('campeonato_checkin', { p_atleta_id: atleta.id, p_presente: presente })
@@ -516,7 +516,7 @@ function AvisoMeuJogo({ campeonato, eu, duplas, jogos }) {
   if (chamado) {
     return (
       <div className="cp-entrar" style={{ position: 'sticky', top: 8, zIndex: 16, marginBottom: 16, padding: '18px 16px', borderRadius: 20, textAlign: 'center', border: '2px solid var(--color-brand-lima)', background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-brand-lima) 30%, var(--color-surface-dark-raised)), var(--color-surface-dark-raised))', boxShadow: '0 10px 30px color-mix(in srgb, var(--color-surface-dark-base) 70%, transparent)' }}>
-        <div className="cp-pulso" style={{ fontSize: 12, fontWeight: 800, letterSpacing: '3px', color: COR_DESTAQUE }}>🎾 FIQUE ATENTO, {eu.nome.split(' ')[0].toUpperCase()}!</div>
+        <div className="cp-pulso" style={{ fontSize: 12, fontWeight: 800, letterSpacing: '3px', color: COR_DESTAQUE }}>🎾 FIQUE ATENTO, {primeiroNome(eu.nome).toUpperCase()}!</div>
         <div className="cp-display" style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.15, margin: '6px 0 2px' }}>O próximo jogo da</div>
         <div className="cp-display" style={{ fontSize: 46, fontWeight: 700, lineHeight: 1.05, color: COR_DESTAQUE }}>{quadraChamada}</div>
         <div className="cp-display" style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.15 }}>é o seu!</div>
@@ -582,8 +582,8 @@ function CardParceiro({ campeonato, eu, duplas, atletaPorId }) {
     )
   }
 
-  const primeiro = parceiro.nome.split(' ')[0]
-  const meuPrimeiro = eu.nome.split(' ')[0]
+  const primeiro = primeiroNome(parceiro.nome)
+  const meuPrimeiro = primeiroNome(eu.nome)
   const mensagem = `Olá, ${primeiro}! 🎾 Sou ${meuPrimeiro}, sua dupla no ${campeonato.nome}. Bora combinar antes do nosso jogo? Esse é o meu contato. Até já na quadra!`
   const tel = contato.id === parceiroId ? contato.telefone : null
   const verde = 'rgb(37, 211, 102)' // verde do WhatsApp (cor de marca de terceiro)
@@ -716,11 +716,11 @@ function Onboarding({ campeonato, atletas, atletaPorId, slug, onConcluir }) {
         {passo === 'foto' && euAtual && (
           <div style={{ textAlign: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><Avatar atleta={euAtual} tamanho={110} destaque /></div>
-            <div className="cp-display" style={{ fontSize: 22, fontWeight: 700 }}>Olá, {euAtual.nome.split(' ')[0]}!</div>
+            <div className="cp-display" style={{ fontSize: 22, fontWeight: 700 }}>Olá, {primeiroNome(euAtual.nome)}!</div>
             <div style={{ fontSize: 14, color: 'var(--color-text-dark-secondary)', margin: '6px 0 18px', lineHeight: 1.5 }}>Coloque uma foto sua. Ela aparece na chave, no telão e no sorteio das duplas.</div>
             <BotaoFoto atleta={euAtual} rotulo={euAtual.foto ? 'Tirar outra foto' : 'Tirar foto agora'} onEnviada={() => concluir(euAtual.id)} />
             <div><button onClick={() => concluir(euAtual.id)} style={botaoTexto}>{euAtual.foto ? 'Continuar' : 'Agora não'}</button></div>
-            <div><button onClick={() => guardar(null)} style={{ ...botaoTexto, marginTop: 4, fontSize: 13 }}>Não sou {euAtual.nome.split(' ')[0]}</button></div>
+            <div><button onClick={() => guardar(null)} style={{ ...botaoTexto, marginTop: 4, fontSize: 13 }}>Não sou {primeiroNome(euAtual.nome)}</button></div>
           </div>
         )}
       </div>
