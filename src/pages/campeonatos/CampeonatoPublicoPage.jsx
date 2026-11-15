@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import { Search, Camera, Plus, Star, Radio, GitBranch, Users, UserRound, Check, CalendarClock, MapPin, MessageCircle, ImageIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCampeonato } from '../../hooks/useCampeonato'
-import { nomeCurto, normalizar, ordenarJogos, rotuloFaseCurto, primeiroNome } from '../../lib/campeonato'
+import { nomeCurto, normalizar, ordenarJogos, rotuloFaseCurto, primeiroNome, origemDaVaga } from '../../lib/campeonato'
 import { EditorFoto } from './EditorFoto'
 import { Marcas, Avatar, AvataresDupla, CartaoJogo, Chave, SorteioAoVivo, TempoJogo } from './componentes'
 import { COR_DESTAQUE, jogoTemSeguido, duplasOcultas, proximosPorQuadra } from './util'
@@ -95,7 +95,7 @@ export function CampeonatoPublicoPage() {
             : <ListaInscritos atletas={atletas} seguindo={seguindo} />
         )}
         {aba === 'eu' && (
-          <AbaEu atletas={atletas} atletaPorId={atletaPorId} prefs={prefs} salvarPrefs={salvarPrefs} />
+          <AbaEu campeonato={campeonato} atletas={atletas} atletaPorId={atletaPorId} duplas={duplas} duplaPorId={duplaPorId} jogos={jogos} prefs={prefs} salvarPrefs={salvarPrefs} />
         )}
       </main>
 
@@ -397,7 +397,7 @@ function CardCheckin({ atleta, onMudou }) {
   }
   const salvarTelefone = async (telefone) => {
     setSalvando(true)
-    const { error } = await supabase.rpc('campeonato_salvar_telefone', { p_atleta_id: atleta.id, p_telefone: telefone })
+    const { error } = await gravarTelefone(atleta.id, telefone)
     setSalvando(false)
     if (error) return toast.error(error.message)
     toast.success('WhatsApp salvo!')
@@ -447,7 +447,7 @@ const PAISES = [
 // WhatsApp em 3 partes: país (Brasil já escolhido), DDD e número. Fora do Brasil, número completo
 // com código de área. Grava só dígitos com o código do país (ex.: 5511999998888), que é o formato
 // do link wa.me.
-function FormTelefone({ primeiro, salvando, onSalvar, onPular }) {
+function FormTelefone({ primeiro, salvando, onSalvar, onPular, titulo, texto, textoBotao = 'Salvar e fazer meu check-in', textoPular = 'Não tenho WhatsApp, só fazer o check-in' }) {
   const [pais, setPais] = useState('55')
   const [outroCodigo, setOutroCodigo] = useState('')
   const [ddd, setDdd] = useState('')
@@ -459,8 +459,8 @@ function FormTelefone({ primeiro, salvando, onSalvar, onPular }) {
   const rotulo = t => <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-text-dark-secondary)', marginBottom: 5, textTransform: 'uppercase' }}>{t}</div>
   return (
     <div className="cp-entrar" style={{ marginBottom: 16, padding: 16, borderRadius: 16, border: '1px solid var(--color-brand-saibro)', backgroundColor: 'color-mix(in srgb, var(--color-brand-saibro) 14%, var(--color-surface-dark-raised))' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 800 }}><MessageCircle size={18} />Qual é o seu WhatsApp, {primeiro}?</div>
-      <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', margin: '4px 0 14px', lineHeight: 1.5 }}>Assim que sair o sorteio, sua dupla te chama por ele para vocês combinarem o jogo. 🎾</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 800 }}><MessageCircle size={18} />{titulo || `Qual é o seu WhatsApp, ${primeiro}?`}</div>
+      <div style={{ fontSize: 13, color: 'var(--color-text-dark-secondary)', margin: '4px 0 14px', lineHeight: 1.5 }}>{texto || 'Assim que sair o sorteio, sua dupla te chama por ele para vocês combinarem o jogo. 🎾'}</div>
       <div style={{ marginBottom: 10 }}>
         {rotulo('País')}
         <select value={pais} onChange={e => setPais(e.target.value)} style={{ ...campo, width: '100%' }}>
@@ -486,9 +486,9 @@ function FormTelefone({ primeiro, salvando, onSalvar, onPular }) {
         </div>
       </div>
       <button onClick={() => onSalvar(br ? `55${ddd}${numero}` : `${codigo}${numero}`)} disabled={!valido || salvando} style={{ ...botaoPrincipal, marginTop: 14, opacity: !valido || salvando ? 0.5 : 1 }}>
-        {salvando ? 'Salvando...' : 'Salvar e fazer meu check-in'}
+        {salvando ? 'Salvando...' : textoBotao}
       </button>
-      <button onClick={onPular} disabled={salvando} style={{ ...botaoTexto, marginTop: 10, fontSize: 13 }}>Não tenho WhatsApp, só fazer o check-in</button>
+      <button onClick={onPular} disabled={salvando} style={{ ...botaoTexto, marginTop: 10, fontSize: 13 }}>{textoPular}</button>
     </div>
   )
 }
@@ -736,12 +736,27 @@ const botaoPrincipal = { width: '100%', padding: '14px 18px', borderRadius: 14, 
 
 // ---------- aba "Eu" ----------
 
-function AbaEu({ atletas, atletaPorId, prefs, salvarPrefs }) {
+// Grava o WhatsApp pelo link público. Usa a função nova (aparelho "dono" pode editar); se ela ainda
+// não existir no banco, cai na antiga, que só cadastra quem ainda não tem telefone.
+async function gravarTelefone(atletaId, telefone) {
+  const r = await supabase.rpc('campeonato_editar_telefone', { p_atleta_id: atletaId, p_telefone: telefone, p_token: tokenDoAparelho() })
+  if (!r.error || !/function|schema cache|PGRST202/i.test(`${r.error.message} ${r.error.code}`)) return r
+  return supabase.rpc('campeonato_salvar_telefone', { p_atleta_id: atletaId, p_telefone: telefone })
+}
+
+function AbaEu({ campeonato, atletas, atletaPorId, duplas, duplaPorId, jogos, prefs, salvarPrefs }) {
   const p = prefs || { eu: null, seguindo: [] }
   const eu = p.eu ? atletaPorId.get(p.eu) : null
+  if (!eu) {
+    return (
+      <Secao titulo="Você" icone={UserRound}>
+        <BuscaAtleta atletas={atletas} placeholder="Se você está jogando, busque seu nome" onEscolher={a => salvarPrefs({ eu: a.id, seguindo: [] })} />
+      </Secao>
+    )
+  }
   return (
-    <Secao titulo="Você" icone={UserRound}>
-      {eu ? (
+    <>
+      <Secao titulo="Você" icone={UserRound}>
         <div style={{ padding: 14, borderRadius: 16, backgroundColor: 'var(--color-surface-dark-raised)', border: `1px solid ${COR_DESTAQUE}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <Avatar atleta={eu} tamanho={64} destaque />
@@ -752,9 +767,136 @@ function AbaEu({ atletas, atletaPorId, prefs, salvarPrefs }) {
             <button onClick={() => salvarPrefs({ eu: null, seguindo: [] })} style={{ ...botaoTexto, marginTop: 0, width: 'auto' }}>Não sou eu</button>
           </div>
         </div>
-      ) : (
-        <BuscaAtleta atletas={atletas} placeholder="Se você está jogando, busque seu nome" onEscolher={a => salvarPrefs({ eu: a.id, seguindo: [] })} />
-      )}
+      </Secao>
+      <MeuTelefone eu={eu} />
+      <MeuHistorico campeonato={campeonato} eu={eu} duplas={duplas} duplaPorId={duplaPorId} jogos={jogos} />
+    </>
+  )
+}
+
+// WhatsApp da pessoa: só o final do número aparece (privacidade). "Editar" abre o mesmo formulário
+// do check-in. Só o aparelho que cadastrou consegue trocar; os outros veem "fale com a mesa".
+function MeuTelefone({ eu }) {
+  const [info, setInfo] = useState(null)
+  const [editando, setEditando] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+  const [versao, setVersao] = useState(0)
+  useEffect(() => {
+    let vivo = true
+    supabase.rpc('campeonato_meu_telefone', { p_atleta_id: eu.id, p_token: tokenDoAparelho() }).then(({ data, error }) => {
+      if (vivo) setInfo(error ? { erro: true } : (data?.[0] || { final: null, pode_editar: true }))
+    })
+    return () => { vivo = false }
+  }, [eu.id, versao])
+
+  const salvar = async (tel) => {
+    setSalvando(true)
+    const { error } = await gravarTelefone(eu.id, tel)
+    setSalvando(false)
+    if (error) return toast.error(error.message)
+    toast.success('WhatsApp atualizado!')
+    setEditando(false)
+    setVersao(v => v + 1)
+  }
+
+  if (editando) {
+    return (
+      <Secao titulo="Seu WhatsApp" icone={MessageCircle}>
+        <FormTelefone primeiro={primeiroNome(eu.nome)} salvando={salvando} onSalvar={salvar} onPular={() => setEditando(false)}
+          titulo="Novo WhatsApp" texto="É por ele que sua dupla te chama para combinar o jogo. 🎾" textoBotao="Salvar WhatsApp" textoPular="Cancelar" />
+      </Secao>
+    )
+  }
+  const podeEditar = info && !info.erro && info.pode_editar
+  let conteudo
+  if (!info) conteudo = <span style={{ color: 'var(--color-text-dark-muted)' }}>Carregando...</span>
+  else if (info.erro) conteudo = <span style={{ color: 'var(--color-text-dark-secondary)' }}>Para ver ou trocar seu WhatsApp, fale com a mesa do torneio.</span>
+  else if (info.final) conteudo = <><b>Cadastrado</b> <span style={{ color: 'var(--color-text-dark-secondary)' }}>· final {info.final}</span></>
+  else conteudo = <span style={{ color: 'var(--color-state-warning)', fontWeight: 700 }}>Nenhum WhatsApp cadastrado. Sua dupla não vai conseguir te chamar.</span>
+  return (
+    <Secao titulo="Seu WhatsApp" icone={MessageCircle}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, borderRadius: 16, backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)' }}>
+        <div style={{ flex: 1, minWidth: 0, fontSize: 15, lineHeight: 1.4 }}>
+          {conteudo}
+          {info && !info.erro && !info.pode_editar && <div style={{ fontSize: 12, color: 'var(--color-text-dark-muted)', marginTop: 2 }}>Cadastrado por outro celular. Para trocar, fale com a mesa.</div>}
+        </div>
+        {podeEditar && (
+          <button onClick={() => setEditando(true)} style={{ flexShrink: 0, padding: '10px 14px', borderRadius: 12, border: '1px solid var(--color-border-dark)', backgroundColor: 'transparent', color: 'var(--color-text-dark-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            {info.final ? 'Editar' : 'Cadastrar'}
+          </button>
+        )}
+      </div>
+    </Secao>
+  )
+}
+
+// Jogos da pessoa no torneio: vitória em verde, derrota em vermelho, e o que ainda vem pela frente.
+function MeuHistorico({ campeonato, eu, duplas, duplaPorId, jogos }) {
+  const minha = duplas.find(d => d.atleta1_id === eu.id || d.atleta2_id === eu.id)
+  if (!minha || (campeonato.status === 'sorteio' && minha.numero > (campeonato.sorteio_revelados || 0))) return null
+  const meus = jogos
+    .filter(j => j.status !== 'bye' && (j.dupla_a_id === minha.id || j.dupla_b_id === minha.id))
+    .sort((a, b) => (a.ordem || 999) - (b.ordem || 999))
+  const encerrados = meus.filter(j => ['finalizado', 'wo'].includes(j.status) && j.vencedor_id)
+  const vitorias = encerrados.filter(j => j.vencedor_id === minha.id).length
+  const derrotas = encerrados.length - vitorias
+  const verde = 'var(--color-state-success)'
+  const vermelho = 'var(--color-state-danger)'
+  const placar = encerrados.length > 0 && (
+    <span style={{ fontSize: 12, fontWeight: 800 }}>
+      <span style={{ color: verde, filter: 'brightness(1.4)' }}>{vitorias}V</span>
+      <span style={{ color: 'var(--color-text-dark-muted)' }}> · </span>
+      <span style={{ color: vermelho, filter: 'brightness(1.4)' }}>{derrotas}D</span>
+    </span>
+  )
+  return (
+    <Secao titulo="Seus jogos no torneio" icone={Star} extra={placar}>
+      {!meus.length && <Vazio texto="Seus jogos aparecem aqui depois do sorteio." />}
+      <div style={{ display: 'grid', gap: 10 }}>
+        {meus.map(j => {
+          const encerrado = ['finalizado', 'wo'].includes(j.status) && !!j.vencedor_id
+          const venceu = encerrado && j.vencedor_id === minha.id
+          const lado = j.dupla_a_id === minha.id ? 'a' : 'b'
+          const outro = lado === 'a' ? 'b' : 'a'
+          const adv = duplaPorId.get(j[`dupla_${outro}_id`])
+          const aoVivo = j.status === 'ao_vivo'
+          const cor = !encerrado ? (aoVivo ? 'var(--color-accent-live)' : 'var(--color-border-dark)') : venceu ? verde : vermelho
+          let selo = aoVivo ? 'AO VIVO' : 'PRÓXIMO'
+          if (encerrado) selo = `${venceu ? 'VITÓRIA' : 'DERROTA'}${j.status === 'wo' ? ' (W.O.)' : ''}`
+          return (
+            <div key={j.id} style={{ borderRadius: 16, overflow: 'hidden', border: `2px solid ${cor}`, backgroundColor: encerrado ? `color-mix(in srgb, ${cor} 13%, var(--color-surface-dark-raised))` : 'var(--color-surface-dark-raised)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', backgroundColor: encerrado || aoVivo ? cor : 'var(--color-surface-dark-overlay)', color: encerrado || aoVivo ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-secondary)' }}>
+                <span style={{ fontSize: 12, fontWeight: 900, letterSpacing: '1.5px' }}>{selo}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, opacity: 0.9, textAlign: 'right' }}>
+                  {rotuloFaseCurto(j.fase)} · Jogo {j.ordem}{j.quadra ? ` · ${j.quadra}` : ''}{!encerrado && j.horario ? ` · previsto ${j.horario}` : ''}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
+                {adv ? <AvataresDupla dupla={adv} tamanho={34} /> : null}
+                <div style={{ flex: 1, minWidth: 0, lineHeight: 1.3 }}>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-dark-muted)', fontWeight: 700 }}>CONTRA</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {adv ? `${nomeCurto(adv.atleta1?.nome)} & ${nomeCurto(adv.atleta2?.nome)}` : (origemDaVaga(j, outro, jogos) || 'A definir')}
+                  </div>
+                </div>
+                {(j.sets || []).length > 0 && (
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {j.sets.map((s, i) => {
+                      const meu = Number(s[lado]) || 0
+                      const dele = Number(s[outro]) || 0
+                      return (
+                        <span key={i} style={{ minWidth: 38, textAlign: 'center', padding: 4, borderRadius: 8, fontSize: 15, fontWeight: 800, fontVariantNumeric: 'tabular-nums', backgroundColor: 'var(--color-surface-dark-overlay)', color: meu > dele ? 'var(--color-text-dark-primary)' : 'var(--color-text-dark-secondary)' }}>
+                          {meu}-{dele}
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </Secao>
   )
 }
