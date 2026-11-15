@@ -11,7 +11,7 @@ import {
   sortearDuplas, montarChave, propagar, agendar, resumoPlacar, somarPonto, tirarPonto, nomeCurto,
   rotuloFase, rotuloFaseCurto, ordenarJogos, normalizar, indiceSetAtual, duplaIncompleta, validarDuplas, reagendarPelaOrdem, origemDaVaga, primeiroNome,
 } from '../../lib/campeonato'
-import { Avatar, AvataresDupla, Chave, SorteioAoVivo, QrCode, Marcas } from './componentes'
+import { Avatar, AvataresDupla, Chave, SorteioAoVivo, QrCode, Marcas, TempoJogo } from './componentes'
 import { rotuloStatusCampeonato, urlPublica, urlTV, proximosPorQuadra, duplasEliminadas } from './util'
 import { EditorFoto } from './EditorFoto'
 
@@ -346,8 +346,11 @@ function PlacarAoVivo({ jogo, duplaPorId, salvarJogo }) {
           <span className="cp-display" style={{ fontSize: 22, fontWeight: 700, whiteSpace: 'nowrap' }}>{jogo.quadra}</span>
           <span style={{ marginLeft: 10, fontSize: 12, fontWeight: 800, letterSpacing: '1px', color: 'var(--color-text-dark-secondary)' }}>{rotuloFaseCurto(jogo.fase).toUpperCase()} · JOGO {jogo.ordem}</span>
         </div>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <TempoJogo jogo={jogo} tamanho={13} rotulo={false} cor="var(--color-text-dark-muted)" />
         <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-accent-on-live)', backgroundColor: 'var(--color-accent-live)', padding: '3px 8px', borderRadius: 999 }}>
           {atual === 2 ? 'TIE-BREAK 3º SET' : `${atual + 1}º SET`}
+        </span>
         </span>
       </div>
       {linha('a')}

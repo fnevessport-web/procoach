@@ -115,12 +115,13 @@ function LinhaDupla({ dupla, lado, jogo, seguindo, escala = 1, mostrarSets = tru
 // Cartão grande de jogo (ao vivo / próximos), com quadra, fase e placar.
 // Cronômetro do jogo ao vivo ("Tempo de jogo 22:10") ou atraso do jogo agendado ("Atrasado
 // 12:40"). Atualiza sozinho a cada segundo. Sem nada a mostrar, não ocupa espaço.
-export function TempoJogo({ jogo, dataTorneio, tamanho = 13, rotulo = true }) {
+export function TempoJogo({ jogo, dataTorneio, tamanho = 13, rotulo = true, cor, icone = true }) {
   const agora = useAgora(1000)
   if (jogo.status === 'ao_vivo' && jogo.iniciado_em) {
+    // Discreto (cinza): informa sem disputar atenção com o placar.
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: tamanho * 0.4, fontSize: tamanho, fontWeight: 800, color: 'var(--color-brand-lima)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-        <Timer size={tamanho * 1.1} />{rotulo ? 'Tempo de jogo ' : ''}{formatarDuracao(msEmJogo(jogo, agora))}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: tamanho * 0.35, fontSize: tamanho, fontWeight: 700, color: cor || 'var(--color-text-dark-secondary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+        {icone && <Timer size={tamanho * 1.05} />}{rotulo ? 'Tempo de jogo ' : ''}{formatarDuracao(msEmJogo(jogo, agora))}
       </span>
     )
   }
@@ -233,13 +234,23 @@ function JogoChave({ jogo, duplaPorId, seguindo, ocultas, escala = 1, proximos, 
         )
       })}
       {quadraProxima && !aoVivo && (
-        <div style={{ fontSize: 9.5 * escala, fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', padding: `${3 * escala}px ${7 * escala}px`, color: 'var(--color-text-dark-primary)', backgroundColor: 'var(--color-state-success)' }}>
+        <div style={{ fontSize: 9.5 * escala, fontWeight: 800, textTransform: 'uppercase', padding: `${3 * escala}px ${7 * escala}px`, color: 'var(--color-text-dark-primary)', backgroundColor: 'var(--color-state-success)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           ▶ Próximo · {quadraProxima}
         </div>
       )}
+      {/* Etiqueta de uma linha só: "● QUADRA 3" com o tempo de jogo à direita (ao vivo) ou
+          "QUADRA 3 · 10:50" (agendado). O vermelho já diz que é ao vivo. */}
       {!quadraProxima && (aoVivo || (jogo.status === 'agendado' && jogo.horario && linhas.some(Boolean))) && (
-        <div style={{ fontSize: 9 * escala, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', padding: `${2 * escala}px ${7 * escala}px`, color: aoVivo ? 'var(--color-accent-on-live)' : 'var(--color-text-dark-muted)', backgroundColor: aoVivo ? 'var(--color-accent-live)' : 'var(--color-surface-dark-overlay)' }}>
-          {aoVivo ? `● Ao vivo · ${jogo.quadra || ''}` : `${jogo.quadra || ''} · ${jogo.horario}`}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 * escala, fontSize: 9 * escala, fontWeight: 800, textTransform: 'uppercase', padding: `${2 * escala}px ${7 * escala}px`, whiteSpace: 'nowrap', color: aoVivo ? 'var(--color-accent-on-live)' : 'var(--color-text-dark-muted)', backgroundColor: aoVivo ? 'var(--color-accent-live)' : 'var(--color-surface-dark-overlay)' }}>
+          {aoVivo ? (
+            <>
+              <span className="cp-pulso" style={{ width: 5 * escala, height: 5 * escala, borderRadius: '50%', backgroundColor: 'var(--color-accent-on-live)', flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{jogo.quadra || 'Ao vivo'}</span>
+              <span style={{ marginLeft: 'auto', opacity: 0.85 }}><TempoJogo jogo={jogo} tamanho={9 * escala} rotulo={false} cor="var(--color-accent-on-live)" icone={false} /></span>
+            </>
+          ) : (
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{jogo.quadra || ''} · {jogo.horario}</span>
+          )}
         </div>
       )}
     </div>

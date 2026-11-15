@@ -244,8 +244,8 @@ function CartaoQuadraTV({ quadra, jogo, proximo, campeonato, duplaPorId, jogos }
       {aoVivo ? (
         <div style={{ padding: '6px 6px 10px' }}>
           <CartaoJogo jogo={jogo} duplaPorId={duplaPorId} seguindo={SEM_SEGUIDOS} escala={1.12} jogos={jogos} compacto />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 12px 0' }}>
-            <TempoJogo jogo={jogo} dataTorneio={campeonato.data} tamanho={20} />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '2px 12px 0' }}>
+            <TempoJogo jogo={jogo} dataTorneio={campeonato.data} tamanho={15} rotulo={false} cor="var(--color-text-dark-muted)" />
           </div>
         </div>
       ) : proximo ? (
