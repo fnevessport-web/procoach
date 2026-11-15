@@ -280,16 +280,19 @@ export function ordenarJogos(jogos) {
     || x.posicao - y.posicao)
 }
 
-// Dentro de cada rodada, intercala um jogo da metade de cima da chave com um da metade de baixo
-// (0, 4, 1, 5, 2, 6, 3, 7): os dois lados andam juntos e ninguém fica muito tempo parado.
-function intercalarLados(lista) {
+// Alterna os dois lados da chave (lado esquerdo = 1ª metade das posições, direito = 2ª metade),
+// pegando `bloco` jogos de cada lado por vez. Numeração pedida em 14/11 (chave de 16):
+//   1ª rodada, de 2 em 2: J1-J2 topo esquerdo, J3-J4 topo direito, J5-J6 esquerdo de baixo, J7-J8 direito de baixo
+//   quartas, de 1 em 1:   J9 esq. sup., J10 dir. sup., J11 esq. inf., J12 dir. inf.
+//   semis: J13 esquerda, J14 direita; depois J15 3º lugar e J16 final.
+// Assim a quadra que libera chama sempre o outro lado e as quartas já podem começar cedo.
+function intercalarLados(lista, bloco = 1) {
   const meio = Math.ceil(lista.length / 2)
-  const cima = lista.slice(0, meio)
-  const baixo = lista.slice(meio)
+  const esquerda = lista.slice(0, meio)
+  const direita = lista.slice(meio)
   const out = []
-  for (let i = 0; i < meio; i++) {
-    out.push(cima[i])
-    if (baixo[i]) out.push(baixo[i])
+  for (let i = 0; i < meio; i += bloco) {
+    out.push(...esquerda.slice(i, i + bloco), ...direita.slice(i, i + bloco))
   }
   return out
 }
@@ -307,7 +310,7 @@ export function agendar(jogos, quadras, horaInicio, duracaoMin, incompletas = ne
   for (let r = 1; r <= R; r++) {
     const daRodada = todos.filter(j => j.rodada === r)
     const terceiro = daRodada.filter(j => j.fase === 'terceiro')
-    const normais = intercalarLados(daRodada.filter(j => j.fase !== 'terceiro').sort((a, b) => a.posicao - b.posicao))
+    const normais = intercalarLados(daRodada.filter(j => j.fase !== 'terceiro').sort((a, b) => a.posicao - b.posicao), r === 1 ? 2 : 1)
     if (r === 1) lista.push(...normais.filter(j => !temIncompleta(j)), ...normais.filter(temIncompleta))
     else lista.push(...terceiro, ...normais)
   }

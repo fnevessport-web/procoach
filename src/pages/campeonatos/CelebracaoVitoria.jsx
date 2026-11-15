@@ -32,8 +32,11 @@ export function CelebracaoVitoria({ jogo, jogos, duplaPorId, palco, escala, onFi
   const [confete] = useState(() => gerarConfete(90))
 
   const vencedores = duplaPorId.get(jogo.vencedor_id)
-  const proximo = jogos.find(j => j.id !== jogo.id && j.fase !== 'terceiro' && j.rodada > jogo.rodada
-    && (j.dupla_a_id === jogo.vencedor_id || j.dupla_b_id === jogo.vencedor_id))
+  // Próximo jogo pela POSIÇÃO na chave (rodada seguinte, posição/2), não pela dupla: o avanço do
+  // vencedor é gravado logo depois do placar e o telão podia recarregar no meio, sem achar a dupla
+  // ainda lá, e a linha verde não acendia.
+  const proximo = jogo.fase === 'terceiro' || jogo.fase === 'final' ? null
+    : jogos.find(j => j.fase !== 'terceiro' && j.rodada === jogo.rodada + 1 && j.posicao === Math.floor(jogo.posicao / 2))
   const titulo = jogo.fase === 'final' ? 'Campeões!' : jogo.fase === 'terceiro' ? '3º lugar!' : 'Vitória!'
   const lado = jogo.vencedor_id === jogo.dupla_a_id ? 'a' : 'b'
   const placar = (jogo.sets || []).map(s => `${s[lado] ?? 0}-${s[lado === 'a' ? 'b' : 'a'] ?? 0}`).join('  ')

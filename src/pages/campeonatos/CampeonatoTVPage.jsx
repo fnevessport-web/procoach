@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Radio, CalendarClock, Smartphone, Check, Maximize, Minimize } from 'lucide-react'
 import { useCampeonato } from '../../hooks/useCampeonato'
 import { nomeCurto, iniciais, rotuloFaseCurto, ordenarJogos, origemDaVaga, formatarDuracao, primeiroNome } from '../../lib/campeonato'
-import { Marcas, CartaoJogo, Chave, SorteioAoVivo, QrCode, AvataresDupla, TempoJogo, SeloQuadra } from './componentes'
+import { Marcas, Avatar, CartaoJogo, Chave, QrCode, AvataresDupla, TempoJogo, SeloQuadra } from './componentes'
 import { urlPublica, duplasOcultas, proximosPorQuadra } from './util'
 import { CelebracaoVitoria } from './CelebracaoVitoria'
 import { TelaPodio } from './PodioTV'
@@ -360,13 +360,106 @@ function CartaoResultado({ jogo, duplaPorId }) {
   )
 }
 
+// Sorteio no telão: em cima, os nomes girando e a dupla que acabou de sair, seguida do sorteio do
+// número do jogo ("JOGO 3"); embaixo, a chave inteira de ponta a ponta, e a dupla entra no
+// quadrado do jogo dela. O ritmo vem da tela da gestão (campeonatos.sorteio_revelados).
 function TelaSorteio({ dados }) {
-  const { campeonato, atletas, duplas, duplaPorId } = dados
+  const { campeonato, atletas, duplas, jogos, duplaPorId } = dados
+  const revelados = campeonato.sorteio_revelados || 0
+  const total = duplas.length
+  const ultima = revelados > 0 ? duplas.find(d => d.numero === revelados) : null
+  const jogoDaUltima = ultima ? jogos.find(j => j.rodada === 1 && (j.dupla_a_id === ultima.id || j.dupla_b_id === ultima.id)) : null
+  const numerosR1 = jogos.filter(j => j.rodada === 1 && j.status !== 'bye' && j.ordem > 0).map(j => j.ordem)
+
+  // Etapas da dupla que acabou de sair: 'nome' -> 'numero' (girando) -> 'mostra' (número parado e
+  // a dupla entra no quadrado da chave) -> 'fixo' (volta a girar os nomes para a próxima)
+  const [etapa, setEtapa] = useState({ id: null, fase: 'fixo' })
+  const ultimaId = ultima?.id || null
+  useEffect(() => {
+    if (!ultimaId) return
+    const t0 = setTimeout(() => setEtapa({ id: ultimaId, fase: 'nome' }), 0)
+    const t1 = setTimeout(() => setEtapa({ id: ultimaId, fase: 'numero' }), 1300)
+    const t2 = setTimeout(() => setEtapa({ id: ultimaId, fase: 'mostra' }), 3100)
+    const t3 = setTimeout(() => setEtapa({ id: ultimaId, fase: 'fixo' }), 5300)
+    return () => { clearTimeout(t0); clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
+  }, [ultimaId])
+  const fase = !ultimaId ? 'fixo' : etapa.id === ultimaId ? etapa.fase : 'nome'
+
+  // número girando
+  const [giro, setGiro] = useState(0)
+  useEffect(() => {
+    if (fase !== 'numero') return
+    const t = setInterval(() => setGiro(g => g + 1), 85)
+    return () => clearInterval(t)
+  }, [fase])
+
+  // nomes girando enquanto espera a próxima dupla
+  const terminou = revelados >= total && total > 0
+  const homens = atletas.filter(a => a.genero === 'M' && a.situacao === 'inscrito')
+  const mulheres = atletas.filter(a => a.genero === 'F' && a.situacao === 'inscrito')
+  const [giroNome, setGiroNome] = useState(0)
+  const girandoNomes = !terminou && (!ultima || fase === 'fixo')
+  useEffect(() => {
+    if (!girandoNomes) return
+    const t = setInterval(() => setGiroNome(g => g + 1), 95)
+    return () => clearInterval(t)
+  }, [girandoNomes])
+
+  const dUltima = ultima ? duplaPorId.get(ultima.id) : null
+  const numeroMostrado = fase === 'numero' && numerosR1.length ? numerosR1[giro % numerosR1.length] : jogoDaUltima?.ordem
+  const parou = fase === 'mostra' || fase === 'fixo'
+  const realce = parou && jogoDaUltima ? jogoDaUltima.id : null
+  // a chave só mostra a dupla que acabou de sair depois que o número do jogo parou
+  const camp = parou ? campeonato : { ...campeonato, sorteio_revelados: Math.max(0, revelados - 1) }
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Topo campeonato={campeonato} />
-      <div style={{ flex: 1, padding: '34px 70px', overflow: 'hidden' }}>
-        <SorteioAoVivo campeonato={campeonato} duplas={duplas} duplaPorId={duplaPorId} atletas={atletas} escala={1.5} colunas={4} />
+      <div style={{ height: 250, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 40, padding: '0 70px' }}>
+        <div style={{ width: 330, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 18, fontWeight: 800, letterSpacing: '5px', color: 'var(--color-accent-live)' }}>
+            {!terminou && <span className="cp-pulso" style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'var(--color-accent-live)' }} />}
+            {terminou ? 'DUPLAS DEFINIDAS' : 'SORTEIO AO VIVO'}
+          </div>
+          <div className="cp-display" style={{ fontSize: 50, fontWeight: 700, lineHeight: 1.05, marginTop: 8 }}>
+            {terminou ? `${total} duplas` : `Dupla ${Math.min(revelados + (girandoNomes ? 1 : 0), total)} de ${total}`}
+          </div>
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 36 }}>
+          {girandoNomes ? (
+            <div className="cp-sorteando" style={{ display: 'flex', alignItems: 'center', gap: 26, padding: '22px 34px', borderRadius: 26, border: '3px solid', backgroundColor: 'var(--color-surface-dark-raised)' }}>
+              {[homens[giroNome % Math.max(1, homens.length)], mulheres[(giroNome * 7) % Math.max(1, mulheres.length)]].map((a, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, width: 380, justifyContent: i ? 'flex-start' : 'flex-end' }}>
+                  {i === 1 && <span className="cp-display" style={{ fontSize: 46, color: 'var(--color-brand-saibro)', filter: 'brightness(1.4)' }}>&amp;</span>}
+                  <Avatar atleta={a} tamanho={96} />
+                  <span style={{ fontSize: 30, fontWeight: 700, filter: 'blur(0.8px)', opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomeCurto(a?.nome)}</span>
+                </div>
+              ))}
+            </div>
+          ) : dUltima ? (
+            <>
+              <div key={dUltima.id} className="cp-zoom" style={{ display: 'flex', alignItems: 'center', gap: 26, padding: '14px 30px', borderRadius: 26, border: '3px solid var(--color-brand-lima)', backgroundColor: 'color-mix(in srgb, var(--color-brand-lima) 12%, var(--color-surface-dark-raised))', boxShadow: '0 0 50px color-mix(in srgb, var(--color-brand-lima) 25%, transparent)' }}>
+                {[dUltima.atleta1, dUltima.atleta2].map((a, i) => (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: 230 }}>
+                    <Avatar atleta={a} tamanho={104} destaque />
+                    <span className="cp-display" style={{ fontSize: 28, fontWeight: 700, textAlign: 'center', lineHeight: 1.1 }}>{a ? nomeCurto(a.nome) : 'A definir'}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ textAlign: 'center', width: 230 }}>
+                <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '6px', color: 'var(--color-text-dark-secondary)' }}>{fase === 'nome' ? 'SORTEANDO...' : 'JOGO'}</div>
+                <div className={parou ? 'cp-zoom' : ''} key={`${dUltima.id}-${parou ? 'p' : fase}`} style={{ fontFamily: 'var(--font-display)', fontSize: 124, fontWeight: 700, lineHeight: 1.05, color: parou ? 'var(--color-brand-lima)' : 'var(--color-text-dark-primary)', fontVariantNumeric: 'tabular-nums', opacity: fase === 'nome' ? 0.25 : 1 }}>
+                  {fase === 'nome' ? '?' : numeroMostrado || '?'}
+                </div>
+                {parou && jogoDaUltima && <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-dark-secondary)', marginTop: 10, whiteSpace: 'nowrap' }}>{jogoDaUltima.quadra} · previsto {jogoDaUltima.horario}</div>}
+              </div>
+            </>
+          ) : null}
+        </div>
+      </div>
+      <div style={{ flex: 1, minHeight: 0, margin: '0 24px 22px', borderRadius: 22, padding: '12px 2px 16px', backgroundColor: 'color-mix(in srgb, var(--color-surface-dark-raised) 55%, transparent)', border: '1px solid var(--color-border-dark-subtle)' }}>
+        <Chave campeonato={camp} jogos={jogos} duplas={duplas} duplaPorId={duplaPorId} seguindo={SEM_SEGUIDOS} espelhada escala={1.12} realce={realce} />
       </div>
     </div>
   )

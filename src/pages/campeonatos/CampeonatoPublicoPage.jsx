@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Search, Camera, Plus, Star, Radio, GitBranch, Users, UserRound, Check, CalendarClock, MapPin, MessageCircle, ImageIcon } from 'lucide-react'
+import { AlertTriangle, BookOpen, CalendarClock, Camera, Check, Clock, GitBranch, Hash, ImageIcon, MapPin, MessageCircle, Plus, Radio, Scale, Search, Shuffle, Star, Swords, Timer, Trophy, UserRound, Users, Zap } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useCampeonato } from '../../hooks/useCampeonato'
 import { nomeCurto, normalizar, ordenarJogos, rotuloFaseCurto, primeiroNome, origemDaVaga } from '../../lib/campeonato'
 import { EditorFoto } from './EditorFoto'
-import { Marcas, Avatar, AvataresDupla, CartaoJogo, Chave, SorteioAoVivo, TempoJogo } from './componentes'
+import { Marcas, Avatar, AvataresDupla, CartaoJogo, Chave, ChaveCelular, SorteioAoVivo, TempoJogo } from './componentes'
 import { COR_DESTAQUE, jogoTemSeguido, duplasOcultas, proximosPorQuadra } from './util'
 
 // Link público do campeonato (QR code no telão). Sem login. O associado escolhe o próprio nome
@@ -32,6 +32,7 @@ const ABAS = [
   { id: 'jogos', label: 'Jogos', icon: Radio },
   { id: 'chave', label: 'Chave', icon: GitBranch },
   { id: 'duplas', label: 'Duplas', icon: Users },
+  { id: 'regras', label: 'Regras', icon: BookOpen },
   { id: 'eu', label: 'Eu', icon: UserRound },
 ]
 
@@ -80,20 +81,19 @@ export function CampeonatoPublicoPage() {
         )}
 
         {/* Durante o sorteio, a tela (menos a aba "Eu") vira o sorteio ao vivo. */}
-        {emSorteio && aba !== 'eu' && (
+        {emSorteio && aba !== 'eu' && aba !== 'regras' && (
           <SorteioCelular campeonato={campeonato} duplas={duplas} duplaPorId={duplaPorId} atletas={atletas} seguindo={seguindo} eu={prefs?.eu} irParaTopo={irParaTopo} />
         )}
         {!emSorteio && aba === 'jogos' && <AbaJogos dados={dados} seguindo={seguindo} />}
         {!emSorteio && aba === 'chave' && (
-          <Secao titulo="Chaveamento">
-            <Chave campeonato={campeonato} jogos={jogos} duplas={duplas} duplaPorId={duplaPorId} seguindo={seguindo} porRodada proximos={proximosPorQuadra(campeonato, jogos)} />
-          </Secao>
+          <AbaChave campeonato={campeonato} jogos={jogos} duplas={duplas} duplaPorId={duplaPorId} seguindo={seguindo} />
         )}
         {!emSorteio && aba === 'duplas' && (
           duplas.length
             ? <SorteioAoVivo campeonato={campeonato} duplas={duplas} duplaPorId={duplaPorId} atletas={atletas} seguindo={seguindo} colunas={1} escala={0.95} />
             : <ListaInscritos atletas={atletas} seguindo={seguindo} />
         )}
+        {aba === 'regras' && <AbaRegras campeonato={campeonato} />}
         {aba === 'eu' && (
           <AbaEu campeonato={campeonato} atletas={atletas} atletaPorId={atletaPorId} duplas={duplas} duplaPorId={duplaPorId} jogos={jogos} prefs={prefs} salvarPrefs={salvarPrefs} />
         )}
@@ -234,6 +234,25 @@ function Cabecalho({ campeonato, seguindo, atletaPorId, onEditar }) {
         </button>
       ))}
     </header>
+  )
+}
+
+// Aba Chave: a chave completa espelhada (igual ao telão, em pé) ou uma fase por vez.
+function AbaChave({ campeonato, jogos, duplas, duplaPorId, seguindo }) {
+  const [modo, setModo] = useState('completa')
+  const proximos = proximosPorQuadra(campeonato, jogos)
+  return (
+    <Secao titulo="Chaveamento" extra={(
+      <span style={{ display: 'inline-flex', padding: 2, borderRadius: 999, border: '1px solid var(--color-border-dark)' }}>
+        {[['completa', 'Completa'], ['fase', 'Por fase']].map(([v, t]) => (
+          <button key={v} onClick={() => setModo(v)} style={{ padding: '5px 11px', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 800, backgroundColor: modo === v ? 'var(--color-brand-lima)' : 'transparent', color: modo === v ? 'var(--color-brand-verde-court)' : 'var(--color-text-dark-secondary)' }}>{t}</button>
+        ))}
+      </span>
+    )}>
+      {modo === 'completa'
+        ? <ChaveCelular campeonato={campeonato} jogos={jogos} duplas={duplas} duplaPorId={duplaPorId} seguindo={seguindo} proximos={proximos} />
+        : <Chave campeonato={campeonato} jogos={jogos} duplas={duplas} duplaPorId={duplaPorId} seguindo={seguindo} porRodada proximos={proximos} />}
+    </Secao>
   )
 }
 
@@ -898,5 +917,82 @@ function MeuHistorico({ campeonato, eu, duplas, duplaPorId, jogos }) {
         })}
       </div>
     </Secao>
+  )
+}
+
+function RegraNumero({ valor, rotulo }) {
+  return (
+    <div style={{ flex: 1, minWidth: 0, padding: '14px 8px', borderRadius: 16, textAlign: 'center', backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)' }}>
+      <div className="cp-display" style={{ fontSize: 34, fontWeight: 700, lineHeight: 1, color: COR_DESTAQUE }}>{valor}</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-dark-secondary)', marginTop: 6, lineHeight: 1.3 }}>{rotulo}</div>
+    </div>
+  )
+}
+
+function RegraItem({ icone: Icone, titulo, children }) {
+  return (
+    <div style={{ display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 14, backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)' }}>
+      <span style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'color-mix(in srgb, var(--color-brand-lima) 14%, transparent)', color: COR_DESTAQUE }}><Icone size={18} /></span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 800 }}>{titulo}</div>
+        <div style={{ fontSize: 13.5, color: 'var(--color-text-dark-secondary)', lineHeight: 1.5, marginTop: 2 }}>{children}</div>
+      </div>
+    </div>
+  )
+}
+
+// ---------- aba "Regras" ----------
+
+// Resumo do regulamento para ler em 30 segundos: placar em destaque (sets, games, tie-break,
+// vantagem) e os pontos práticos de quadra. O texto completo da organização fica no fim.
+// A vantagem só aparece se o regulamento falar dela (ex.: "Sem vantagem: ponto decisivo no 40 a 40").
+function AbaRegras({ campeonato }) {
+  const texto = campeonato.regras || ''
+  const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean)
+  const acha = re => linhas.find(l => re.test(normalizar(l)))
+  const vantagem = acha(/vantagem|ponto decisivo|no-ad|no ad/)
+  const aquecimento = acha(/aquecimento/)
+  const tolerancia = acha(/tolerancia|w\.?o/)
+  const ausencia = acha(/ausencia|suplente/)
+  const omissos = acha(/omisso|arbitr/)
+
+  return (
+    <>
+      <Secao titulo="Como é o placar" icone={Trophy}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <RegraNumero valor="3" rotulo="sets (vence quem ganhar 2)" />
+          <RegraNumero valor="4" rotulo="games por set" />
+          <RegraNumero valor="7" rotulo="pontos no tie-break" />
+        </div>
+        <div style={{ display: 'grid', gap: 8 }}>
+          <RegraItem icone={Hash} titulo="1º e 2º sets">Até 4 games, com 2 de diferença. Deu 4 a 4? Tie-break até 7 (2 de diferença) e o set fecha em 5 a 4.</RegraItem>
+          <RegraItem icone={Zap} titulo="Deu 1 set para cada?">O 3º set é direto um tie-break até 7 pontos (2 de diferença).</RegraItem>
+          {vantagem && <RegraItem icone={Scale} titulo="Vantagem">{vantagem}</RegraItem>}
+        </div>
+      </Secao>
+
+      <Secao titulo="Formato" icone={GitBranch}>
+        <div style={{ display: 'grid', gap: 8 }}>
+          <RegraItem icone={Shuffle} titulo="Duplas sorteadas na hora">Um homem e uma mulher, sorteados ao vivo entre quem fez check-in.</RegraItem>
+          <RegraItem icone={Swords} titulo="Mata-mata">Perdeu, saiu. Quem vence avança na chave até a final{campeonato.disputa_terceiro ? '. Quem perde na semifinal disputa o 3º lugar' : ''}.</RegraItem>
+        </div>
+      </Secao>
+
+      <Secao titulo="Na quadra" icone={Clock}>
+        <div style={{ display: 'grid', gap: 8 }}>
+          {aquecimento && <RegraItem icone={Timer} titulo="Aquecimento">{aquecimento}</RegraItem>}
+          {tolerancia && <RegraItem icone={AlertTriangle} titulo="Atraso">{tolerancia}</RegraItem>}
+          {ausencia && <RegraItem icone={UserRound} titulo="Ausência">{ausencia}</RegraItem>}
+          {omissos && <RegraItem icone={MessageCircle} titulo="Dúvidas">{omissos}</RegraItem>}
+        </div>
+      </Secao>
+
+      {texto && (
+        <details style={{ marginBottom: 22, padding: '12px 14px', borderRadius: 14, backgroundColor: 'var(--color-surface-dark-raised)', border: '1px solid var(--color-border-dark-subtle)' }}>
+          <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>Regulamento completo</summary>
+          <div style={{ whiteSpace: 'pre-line', fontSize: 13, lineHeight: 1.6, color: 'var(--color-text-dark-secondary)', marginTop: 8 }}>{texto}</div>
+        </details>
+      )}
+    </>
   )
 }

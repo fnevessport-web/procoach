@@ -683,7 +683,7 @@ async function atualizarCampeonato(id, patch) {
 function AbaSorteio({ dados, irPara }) {
   const { campeonato, atletas, duplas, jogos, duplaPorId, recarregar } = dados
   const [auto, setAuto] = useState(true)
-  const [segundos, setSegundos] = useState(6)
+  const [segundos, setSegundos] = useState(8)
   const iniciando = useRef(false)
   const [iniciandoUI, setIniciandoUI] = useState(false)
   const revelados = campeonato.sorteio_revelados || 0
