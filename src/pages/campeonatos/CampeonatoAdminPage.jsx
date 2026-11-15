@@ -708,6 +708,20 @@ function AbaSorteio({ dados, irPara }) {
     return () => clearTimeout(t)
   }, [emSorteio, auto, revelados, duplas.length, segundos, campeonato.id, recarregar])
 
+  // Revelada a última dupla, publica a chave sozinho depois de alguns segundos (dá tempo de a TV
+  // mostrar a última dupla). Antes dependia do botão "Publicar chave" e os celulares ficavam presos
+  // na tela do sorteio. O update é condicional: se alguém já publicou, não faz nada.
+  useEffect(() => {
+    if (!emSorteio || !duplas.length || revelados < duplas.length) return
+    const t = setTimeout(async () => {
+      const { error } = await supabase.from('campeonatos').update({ status: 'em_andamento' }).eq('id', campeonato.id).eq('status', 'sorteio')
+      if (error) return toast.error(error.message)
+      toast.success('Sorteio concluído. Chave publicada!')
+      recarregar()
+    }, 10000)
+    return () => clearTimeout(t)
+  }, [emSorteio, revelados, duplas.length, campeonato.id, recarregar])
+
   const iniciar = () => {
     if (qtdCompletas < 2) return toast.error('Precisa de pelo menos 2 homens e 2 mulheres')
     const sobra = qtdDuplas - qtdCompletas

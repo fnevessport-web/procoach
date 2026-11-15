@@ -56,7 +56,9 @@ export function CampeonatoPublicoPage() {
   if (carregando) return <div className="cp-fundo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Marcas altura={34} /></div>
   if (erro || !campeonato) return <div className="cp-fundo" style={{ padding: 40, textAlign: 'center' }}>{erro || 'Campeonato não encontrado'}</div>
 
-  const emSorteio = campeonato.status === 'sorteio'
+  // Sorteio "ao vivo" só enquanto ainda falta revelar dupla. Revelada a última, o celular já libera
+  // tudo (Sua dupla, WhatsApp, jogos), mesmo antes de a mesa publicar a chave.
+  const emSorteio = campeonato.status === 'sorteio' && (!duplas.length || (campeonato.sorteio_revelados || 0) < duplas.length)
 
   return (
     <div ref={rolagem} className="cp-fundo cp-rolagem" style={{ paddingBottom: 'calc(84px + env(safe-area-inset-bottom))' }}>
@@ -512,7 +514,7 @@ function AvisoMeuJogo({ campeonato, eu, duplas, jogos }) {
     try { navigator.vibrate?.([400, 150, 400, 150, 400]) } catch { /* sem vibração */ }
   }, [chamadoId])
 
-  if (!minha || campeonato.status === 'sorteio') return null
+  if (!minha || (campeonato.status === 'sorteio' && (campeonato.sorteio_revelados || 0) < duplas.length)) return null
   if (chamado) {
     return (
       <div className="cp-entrar" style={{ position: 'sticky', top: 8, zIndex: 16, marginBottom: 16, padding: '18px 16px', borderRadius: 20, textAlign: 'center', border: '2px solid var(--color-brand-lima)', background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-brand-lima) 30%, var(--color-surface-dark-raised)), var(--color-surface-dark-raised))', boxShadow: '0 10px 30px color-mix(in srgb, var(--color-surface-dark-base) 70%, transparent)' }}>
