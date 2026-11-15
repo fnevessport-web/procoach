@@ -8,7 +8,7 @@ import {
 import { supabase } from '../../lib/supabase'
 import { useCampeonato, aplicarPatchesJogos } from '../../hooks/useCampeonato'
 import {
-  sortearDuplas, montarChave, propagar, agendar, resumoPlacar, somarPonto, tirarPonto, nomeCurto,
+  sortearDuplas, montarChave, propagar, agendar, embaralhar, resumoPlacar, somarPonto, tirarPonto, nomeCurto,
   rotuloFase, rotuloFaseCurto, ordenarJogos, normalizar, indiceSetAtual, duplaIncompleta, validarDuplas, reagendarPelaOrdem, origemDaVaga, primeiroNome,
 } from '../../lib/campeonato'
 import { Avatar, AvataresDupla, Chave, SorteioAoVivo, QrCode, Marcas, TempoJogo } from './componentes'
@@ -749,6 +749,10 @@ function AbaSorteio({ dados, irPara }) {
       for (const m of agendar(chave, campeonato.quadras, campeonato.hora_inicio, campeonato.duracao_min, incompletas)) chave = chave.map(j => (j.id === m.id ? { ...j, ...m.patch } : j))
       // vencedor do bye já entra na 2ª rodada
       for (const m of propagar(chave)) chave = chave.map(j => (j.id === m.id ? { ...j, ...m.patch } : j))
+      // Ordem de REVELAÇÃO (campo numero) sorteada à parte da posição na chave: senão as duplas
+      // saíam na ordem dos jogos (Jogo 1, Jogo 2, Jogo 3...) e o sorteio parecia combinado.
+      // Só a dupla com parceiro(a) "A definir" continua saindo por último.
+      ;[...embaralhar(novas.filter(d => !duplaIncompleta(d))), ...novas.filter(duplaIncompleta)].forEach((d, i) => { d.numero = i + 1 })
 
       // Trava 2 (banco): não pode haver dupla gravada, e só UM aparelho consegue virar o status de
       // "inscrições" para "sorteio" (update condicional). Quem perder a corrida não grava nada.
