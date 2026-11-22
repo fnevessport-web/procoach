@@ -783,7 +783,7 @@ export function FinanceiroPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('professores')
-        .select('id, nome, ativo, trabalha_procopio, trabalha_beach, salario_fixo_procopio, salario_fixo_beach')
+        .select('id, nome, ativo, criado_em, trabalha_procopio, trabalha_beach, salario_fixo_procopio, salario_fixo_beach')
         .or('salario_fixo_procopio.not.is.null,salario_fixo_beach.not.is.null')
       if (error) return []
       return data || []
@@ -803,6 +803,9 @@ export function FinanceiroPage() {
     )
     const faltando = colabsSalarioFixo.filter(c => {
       if (c.ativo === false || jaTem.has(c.id)) return false
+      // Não gera salário de mês anterior à entrada do colaborador (ex.: Kleber entrou em 11/2026
+      // e não pode ganhar "Salário fixo" de outubro só porque alguém abriu o Financeiro de outubro).
+      if (c.criado_em && (anoSel * 12 + mes) < (Number(c.criado_em.slice(0, 4)) * 12 + Number(c.criado_em.slice(5, 7)))) return false
       const valor = empresaId === 'beach_arena' ? c.salario_fixo_beach : c.salario_fixo_procopio
       return valor > 0
     })

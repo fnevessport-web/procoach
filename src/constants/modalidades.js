@@ -289,7 +289,29 @@ export function aulaComTodosAusentes(aula) {
 // exatamente esse valor quando foi dada (decisão do coordenador em 05/11/2026).
 export const PROFESSOR_SUBSTITUTO_ID = 'a5e177c8-57a6-4df2-a67e-e6c078be770a'
 
+// Professores FIXOS com meta de ocupação (combinado com o coordenador em 17/11/2026): não
+// recebem por aula. Ganham salário mínimo garantido (salario_fixo_procopio no cadastro, que já
+// gera o lançamento "Salário fixo" do mês) e sobem de faixa conforme a % de vagas preenchidas
+// nas turmas em que são titulares. Regras e cálculo da ocupação em src/constants/metaOcupacao.js.
+export const PROFESSORES_META_OCUPACAO = {
+  // Kleber Pereira de Oliveira (Tênis, Procopio)
+  '385cea4d-51e0-4705-81d6-0785191e06c4': {
+    base: 7500,
+    // Começou em 16/11/2026 e a folha fecha dia 30: novembro paga metade (R$ 3.750, já lançado
+    // no Financeiro). De dezembro em diante, valor cheio.
+    primeiroMes: { mes: 11, ano: 2026, valor: 3750, texto: 'proporcional, início em 16/11' },
+    faixas: [
+      { min: 80, valor: 8000 },
+      { min: 85, valor: 8500 },
+      { min: 90, valor: 9000 },
+      { min: 95, valor: 10000 },
+    ],
+  },
+}
+
 export function calcularValorAula(aula, professor, empresa) {
+  // Fixo com meta: a aula em si não gera valor (o pagamento vem do salário e da faixa de meta).
+  if (PROFESSORES_META_OCUPACAO[professor?.id]) return 0
   if (professor?.id === PROFESSOR_SUBSTITUTO_ID) {
     return aula.status_aula === 'cancelada' ? 0 : Number(aula.substituto_valor || 0)
   }

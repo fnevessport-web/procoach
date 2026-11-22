@@ -17,7 +17,7 @@ import { apenasDigitosCPF, mascararCPF, cpfParaEmailSintetico } from '../../lib/
 import { buscarCep } from '../../lib/cep'
 import { nomeCurto } from '../../lib/nomes'
 import { BANCOS, ESTADOS } from '../../constants/geografia'
-import { calcularValorAula } from '../../constants/modalidades'
+import { calcularValorAula, PROFESSORES_META_OCUPACAO } from '../../constants/modalidades'
 import { empresaDaAula, aulaContaNoFinanceiro } from '../../hooks/useFinanceiro'
 import { BOLINHAS_VALOR } from '../../lib/valorOculto'
 import { DashboardProfessor } from '../professor/DashboardProfessor'
@@ -279,6 +279,8 @@ function BlocoDadosBancarios({ sufixo, titulo, cor, form, set, cardAberto }) {
 // mostrarValores: o professor vê o valor de cada aula (mesmo interruptor do painel dele, ver
 // useMostrarValoresProfessor); gestor/coordenação sempre vê.
 export function ModalDetalhesDia({ professorId, dataStr, onClose, mostrarValores = true }) {
+  // Professor fixo com meta (ex.: Kleber) não recebe por aula: nenhuma aula mostra valor.
+  const semValorPorAula = !!PROFESSORES_META_OCUPACAO[professorId]
   // Mesmos campos que o painel/financeiro usam pra calcularValorAula, pra que o valor de cada
   // aula aqui some exatamente o total do dia mostrado na lista do mês.
   const { data: aulas = [], isLoading } = useQuery({
@@ -345,7 +347,7 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose, mostrarValores
             <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>{dataLabel}</div>
             <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>
               {qtdDadas} aula{qtdDadas !== 1 ? 's' : ''} confirmada{qtdDadas !== 1 ? 's' : ''}
-              {professor && <> · <span style={{ color: 'var(--color-action-primary)', fontWeight: '600' }}>{mostrarValores ? fmtValor(totalDia) : `R$ ${BOLINHAS_VALOR}`}</span></>}
+              {professor && !semValorPorAula && <> · <span style={{ color: 'var(--color-action-primary)', fontWeight: '600' }}>{mostrarValores ? fmtValor(totalDia) : `R$ ${BOLINHAS_VALOR}`}</span></>}
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
@@ -372,9 +374,9 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose, mostrarValores
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text-dark-primary)' }}>{nome}</div>
                     {nivel && nivel !== nome && <div style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', marginTop: '1px' }}>{nivel}</div>}
-                    {chuva && <div style={{ fontSize: '10px', color: 'var(--color-state-info)', marginTop: '2px' }}>Cancelada por chuva · 50% do valor</div>}
-                    {temPendente && <div style={{ fontSize: '10px', color: 'var(--color-state-warning)', marginTop: '2px' }}>Inclusão aguardando aprovação · não conta no valor até aprovar</div>}
-                    {presencas.length === 0 && <div style={{ fontSize: '10px', color: 'var(--color-text-dark-muted)', marginTop: '2px' }}>Sem aluno · não gera pagamento</div>}
+                    {chuva && <div style={{ fontSize: '10px', color: 'var(--color-state-info)', marginTop: '2px' }}>Cancelada por chuva{semValorPorAula ? '' : ' · 50% do valor'}</div>}
+                    {temPendente && !semValorPorAula && <div style={{ fontSize: '10px', color: 'var(--color-state-warning)', marginTop: '2px' }}>Inclusão aguardando aprovação · não conta no valor até aprovar</div>}
+                    {presencas.length === 0 && <div style={{ fontSize: '10px', color: 'var(--color-text-dark-muted)', marginTop: '2px' }}>Sem aluno{semValorPorAula ? '' : ' · não gera pagamento'}</div>}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', flexShrink: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -386,7 +388,7 @@ export function ModalDetalhesDia({ professorId, dataStr, onClose, mostrarValores
                         </span>
                       )}
                     </div>
-                    {professor && (
+                    {professor && !semValorPorAula && (
                       <span style={{ fontSize: '10px', fontWeight: '600', color: valor > 0 ? 'var(--color-text-dark-secondary)' : 'var(--color-text-dark-muted)', fontVariantNumeric: 'tabular-nums' }}>
                         {mostrarValores ? fmtValor(valor) : `R$ ${BOLINHAS_VALOR}`}
                       </span>

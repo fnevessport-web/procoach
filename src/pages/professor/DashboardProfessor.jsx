@@ -19,6 +19,7 @@ import { horarioParaMinutos, horarioInicioDaAula, horarioFimDaAula, diaSemanaDaD
 import { useMostrarValoresProfessor } from '../../hooks/useConfiguracoesApp'
 import { BOLINHAS_VALOR } from '../../lib/valorOculto'
 import { Loading } from '../../components/ui/Loading'
+import { metaOcupacaoDoProfessor, calcularOcupacao, situacaoDaMeta } from '../../constants/metaOcupacao'
 import { ModalDetalhesDia } from '../cadastros/ProfessoresPage'
 import toast from 'react-hot-toast'
 
@@ -184,8 +185,10 @@ export function DashboardProfessor({ professorIdProp } = {}) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('turmas')
-        .select('*, modalidades(nome, icone_emoji, cor_hex), niveis(nome), quadras(nome), turmas_alunos(id, ativo, alunos(nome))')
+        .select('*, modalidades(nome, icone_emoji, cor_hex), niveis(nome), quadras(nome), turmas_alunos(id, ativo, alunos(nome, ativo))')
         .eq('professor_titular_id', professorId)
+        // Turma desativada não aparece na grade nem conta na ocupação.
+        .or('ativo.is.null,ativo.eq.true')
       if (error) throw error
       return data || []
     },
@@ -301,6 +304,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
   if (loadingProf || !professor) return <Loading text="Carregando painel..." />
 
   const modalidadeLabel = professor.modalidades?.nome || ''
+  const metaOcupacao = metaOcupacaoDoProfessor(professorId)
 
   return (
     <div className="fade-in">
@@ -346,6 +350,8 @@ export function DashboardProfessor({ professorIdProp } = {}) {
           )}
         </div>
       </div>
+
+      {metaOcupacao && <CardMetaOcupacao meta={metaOcupacao} turmas={turmasProprias} />}
 
       {/* Confirmações pendentes — avaliações de outro professor aguardando confirmação */}
       {pendencias.length > 0 && (
@@ -401,8 +407,8 @@ export function DashboardProfessor({ professorIdProp } = {}) {
       {/* Ao vivo: quem da equipe está em quadra agora */}
       <AoVivoEquipe />
 
-      {/* Financeiro */}
-      <div style={{ backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '14px', padding: '16px', border: '1px solid rgba(165,76,46,0.15)', marginBottom: '16px' }}>
+      {/* Financeiro (professor pago por aula; quem é fixo com meta vê o card de meta no topo) */}
+      {!metaOcupacao && <div style={{ backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '14px', padding: '16px', border: '1px solid rgba(165,76,46,0.15)', marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div style={{ fontSize: '10px', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
@@ -417,7 +423,7 @@ export function DashboardProfessor({ professorIdProp } = {}) {
             <div style={{ fontSize: '8px', color: 'var(--color-text-dark-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>Total de<br/>Aulas</div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Ver grade completa */}
       <button
@@ -639,6 +645,145 @@ function CardConfirmacaoPendente({ pendencia, confirmando, onConfirmar, onDiscut
   )
 }
 
+const DIA_CURTO = { segunda: 'Seg', terca: 'Ter', quarta: 'Qua', quinta: 'Qui', sexta: 'Sex', sabado: 'Sáb', domingo: 'Dom' }
+const fmtMil = v => v % 1000 === 0 ? `R$ ${v / 1000} mil` : `R$ ${(v / 1000).toFixed(1).replace('.', ',')} mil`
+const fmtReais = v => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 0 })
+
+// Professor fixo com meta: % de vagas preenchidas nas turmas dele, em destaque, com a faixa de
+// salário atual e quanto falta para a próxima. Regras em src/constants/metaOcupacao.js.
+function CardMetaOcupacao({ meta, turmas }) {
+  const [verVagas, setVerVagas] = useState(false)
+  const ocup = calcularOcupacao(turmas)
+  const sit = situacaoDaMeta(meta, ocup)
+  const agora = new Date()
+  const bateuTopo = !sit.proxima
+  const ehPrimeiroMes = !!meta.primeiroMes && meta.primeiroMes.mes === agora.getMonth() + 1 && meta.primeiroMes.ano === agora.getFullYear()
+  const corPct = sit.atual ? 'var(--color-state-success)' : 'var(--color-action-primary)'
+  const escalaMin = 50 // a barra começa em 50% para as faixas (80 a 95) ficarem legíveis
+  const posicao = pct => `${Math.min(Math.max((pct - escalaMin) / (100 - escalaMin), 0), 1) * 100}%`
+  const comVaga = ocup.linhas.filter(l => l.livres > 0)
+    .sort((a, b) => DIAS_SEMANA.indexOf(a.turma.horario_dia_semana) - DIAS_SEMANA.indexOf(b.turma.horario_dia_semana) || (a.turma.horario_inicio || '').localeCompare(b.turma.horario_inicio || ''))
+  const totalLivres = comVaga.reduce((s, l) => s + l.livres, 0)
+
+  return (
+    <div style={{
+      borderRadius: '16px', padding: '18px', marginBottom: '16px', position: 'relative', overflow: 'hidden',
+      background: 'linear-gradient(150deg, color-mix(in srgb, var(--color-action-primary) 22%, var(--color-surface-dark-raised)) 0%, var(--color-surface-dark-raised) 55%)',
+      border: '1px solid color-mix(in srgb, var(--color-action-primary) 45%, transparent)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--color-text-dark-secondary)' }}>
+          Ocupação das minhas turmas
+        </div>
+        <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px', color: 'var(--color-text-dark-muted)' }}>{MESES[agora.getMonth()]} {agora.getFullYear()}</div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '14px', marginTop: '6px' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '68px', fontWeight: 700, lineHeight: 0.95, color: corPct, letterSpacing: '-1px' }}>
+          {ocup.pct}<span style={{ fontSize: '34px' }}>%</span>
+        </div>
+        <div style={{ paddingBottom: '8px' }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-text-dark-primary)' }}>{ocup.ocupadas} de {ocup.vagas} vagas</div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)' }}>preenchidas em {ocup.linhas.length} turmas</div>
+        </div>
+      </div>
+
+      {/* Barra com as faixas */}
+      <div style={{ position: 'relative', marginTop: '18px', marginBottom: '22px' }}>
+        <div style={{ position: 'absolute', top: '15px', left: 0, fontSize: '10px', fontWeight: 700, color: 'var(--color-text-dark-muted)' }}>{escalaMin}%</div>
+        <div style={{ height: '12px', borderRadius: '6px', backgroundColor: 'var(--color-surface-dark-base)', overflow: 'hidden', border: '1px solid var(--color-border-dark)' }}>
+          <div style={{ width: posicao(ocup.pct), height: '100%', borderRadius: '6px', background: `linear-gradient(90deg, color-mix(in srgb, ${corPct} 55%, transparent), ${corPct})`, transition: 'width .6s ease' }} />
+        </div>
+        {meta.faixas.map(f => {
+          const ok = ocup.pct >= f.min
+          return (
+            <div key={f.min} style={{ position: 'absolute', top: '-3px', left: posicao(f.min), transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ width: '2px', height: '18px', backgroundColor: ok ? 'var(--color-state-success)' : 'var(--color-text-dark-muted)' }} />
+              <div style={{ fontSize: '10px', fontWeight: 800, color: ok ? 'var(--color-state-success)' : 'var(--color-text-dark-secondary)', marginTop: '2px' }}>{f.min}%</div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Faixas de salário */}
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${meta.faixas.length}, 1fr)`, gap: '6px', marginBottom: '10px' }}>
+        {meta.faixas.map(f => {
+          const ok = ocup.pct >= f.min
+          const eAtual = sit.atual?.min === f.min
+          return (
+            <div key={f.min} style={{
+              borderRadius: '10px', padding: '7px 4px', textAlign: 'center',
+              backgroundColor: eAtual ? 'color-mix(in srgb, var(--color-state-success) 18%, transparent)' : 'var(--color-surface-dark-base)',
+              border: `1px solid ${ok ? 'var(--color-state-success)' : 'var(--color-border-dark)'}`,
+            }}>
+              <div style={{ fontSize: '10px', fontWeight: 800, color: ok ? 'var(--color-state-success)' : 'var(--color-text-dark-secondary)' }}>{ok ? '✓ ' : ''}{f.min}%{f === meta.faixas[meta.faixas.length - 1] ? '+' : ''}</div>
+              <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--color-text-dark-primary)', marginTop: '1px' }}>{fmtMil(f.valor)}</div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Salário hoje + próxima meta */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+        <div style={{ backgroundColor: 'var(--color-surface-dark-base)', borderRadius: '12px', padding: '12px', border: '1px solid var(--color-border-dark)' }}>
+          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--color-text-dark-secondary)' }}>Salário hoje</div>
+          <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-text-dark-primary)', marginTop: '4px' }}>{fmtReais(sit.salarioAtual)}</div>
+          <div style={{ fontSize: '11px', color: sit.atual ? 'var(--color-state-success)' : 'var(--color-text-dark-muted)', marginTop: '2px' }}>
+            {sit.atual ? `Faixa de ${sit.atual.min}% atingida` : 'Mínimo garantido'}
+          </div>
+          {ehPrimeiroMes && (
+            <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '6px', paddingTop: '6px', borderTop: '1px solid var(--color-border-dark-subtle)' }}>
+              {MESES[agora.getMonth()]}: <b style={{ color: 'var(--color-text-dark-primary)' }}>{fmtReais(meta.primeiroMes.valor)}</b> ({meta.primeiroMes.texto})
+            </div>
+          )}
+        </div>
+        <div style={{ backgroundColor: 'var(--color-surface-dark-base)', borderRadius: '12px', padding: '12px', border: `1px solid ${bateuTopo ? 'var(--color-state-success)' : 'color-mix(in srgb, var(--color-action-primary) 50%, transparent)'}` }}>
+          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--color-text-dark-secondary)' }}>{bateuTopo ? 'Meta máxima' : 'Próxima meta'}</div>
+          {bateuTopo ? (
+            <>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-state-success)', marginTop: '4px' }}>Batida!</div>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>Acima de {meta.faixas[meta.faixas.length - 1].min}% de ocupação</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-action-primary)', marginTop: '4px' }}>{fmtReais(sit.proxima.valor)}</div>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginTop: '2px' }}>
+                ao chegar em {sit.proxima.min}% · faltam <b style={{ color: 'var(--color-text-dark-primary)' }}>{sit.alunosParaProxima} {sit.alunosParaProxima === 1 ? 'aluno' : 'alunos'}</b>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Onde tem vaga */}
+      {comVaga.length > 0 && (
+        <div style={{ marginTop: '12px' }}>
+          <button onClick={() => setVerVagas(v => !v)} style={{
+            width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: '10px', cursor: 'pointer',
+            backgroundColor: 'transparent', border: '1px dashed var(--color-border-dark)', color: 'var(--color-text-dark-primary)', fontSize: '12px', fontWeight: 600,
+          }}>
+            <span>Onde tem vaga: {totalLivres} {totalLivres === 1 ? 'vaga livre' : 'vagas livres'} em {comVaga.length} turmas</span>
+            <ChevronRight size={15} style={{ transform: verVagas ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }} color="var(--color-text-dark-secondary)" />
+          </button>
+          {verVagas && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+              {comVaga.map(l => (
+                <div key={l.turma.id} style={{ padding: '6px 9px', borderRadius: '8px', backgroundColor: 'var(--color-surface-dark-base)', border: '1px solid var(--color-border-dark)', fontSize: '11px', color: 'var(--color-text-dark-secondary)' }}>
+                  <b style={{ color: 'var(--color-text-dark-primary)' }}>{DIA_CURTO[l.turma.horario_dia_semana]} {l.turma.horario_inicio?.slice(0, 5)}</b> · {l.turma.niveis?.nome?.replace(/ - .*/, '') || ''} · <span style={{ color: 'var(--color-action-primary)', fontWeight: 700 }}>{l.inscritos}/{l.vagas}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ fontSize: '10.5px', color: 'var(--color-text-dark-muted)', marginTop: '12px', lineHeight: 1.45 }}>
+        Contam só os alunos matriculados nas suas turmas. Reposição e cortesia não ocupam vaga. Turma individual tem 1 vaga, turma em grupo 4, Kids 1 tem 8 e os demais Kids 6.
+      </div>
+    </div>
+  )
+}
+
 function CardResumoDia({ titulo, valor, cor, pulsando, onClick }) {
   return (
     <button onClick={onClick} style={{ backgroundColor: 'var(--color-surface-dark-raised)', borderRadius: '12px', padding: '14px 10px', border: '1px solid var(--color-border-dark)', textAlign: 'center', cursor: 'pointer' }}>
@@ -666,6 +811,7 @@ function Legenda({ cor, label, tipo }) {
 }
 
 function MesExpandidoDetalhe({ mes, ano, aulas, professor, mostrarValores, onClose, onSelecionarDia }) {
+  const semValorPorAula = !!metaOcupacaoDoProfessor(professor?.id)
   const porDia = {}
   aulas.forEach(a => { (porDia[a.data_aula] ||= []).push(a) })
   const dias = Object.keys(porDia).sort((a, b) => b.localeCompare(a))
@@ -692,7 +838,7 @@ function MesExpandidoDetalhe({ mes, ano, aulas, professor, mostrarValores, onClo
                 <span style={{ textTransform: 'capitalize' }}>{format(new Date(dataStr + 'T12:00'), "dd 'de' MMM", { locale: ptBR })}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ color: 'var(--color-text-dark-secondary)' }}>{doDia.length} aula{doDia.length !== 1 ? 's' : ''}</span>
-                  <span style={{ color: 'var(--color-action-primary)', fontWeight: '600' }}>R$ {mostrarValores ? totalDia.toFixed(2).replace('.', ',') : BOLINHAS_VALOR}</span>
+                  {!semValorPorAula && <span style={{ color: 'var(--color-action-primary)', fontWeight: '600' }}>R$ {mostrarValores ? totalDia.toFixed(2).replace('.', ',') : BOLINHAS_VALOR}</span>}
                   <ChevronRight size={14} color="var(--color-text-dark-secondary)" />
                 </span>
               </button>

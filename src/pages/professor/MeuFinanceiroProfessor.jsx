@@ -8,6 +8,7 @@ import { useMostrarValoresProfessor } from '../../hooks/useConfiguracoesApp'
 import { BOLINHAS_VALOR } from '../../lib/valorOculto'
 import { Loading } from '../../components/ui/Loading'
 import { Modal } from '../../components/ui/Modal'
+import { PROFESSORES_META_OCUPACAO } from '../../constants/modalidades'
 
 const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
 const MESES_EXT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -78,6 +79,9 @@ export function MeuFinanceiroProfessor() {
       return data
     },
   })
+
+  // Professor fixo com meta (ex.: Kleber) não recebe por aula: a tela mostra só o salário/extras.
+  const semValorPorAula = !!PROFESSORES_META_OCUPACAO[professorId]
 
   const ehMultiEmpresa = !!(professor?.trabalha_procopio && professor?.trabalha_beach)
   const empresaAtual = ehMultiEmpresa ? empresaSel : (professor?.trabalha_beach ? 'beach_arena' : 'procopio')
@@ -245,7 +249,7 @@ export function MeuFinanceiroProfessor() {
             <div style={{ fontSize: '30px', fontWeight: '700', color: 'var(--color-action-primary)' }}>{mostrarValores ? fmtBRL(valorMesSel) : `R$ ${BOLINHAS_VALOR}`}</div>
             <div style={{ fontSize: '12px', color: 'var(--color-text-dark-secondary)', marginTop: '4px' }}>
               {aulasMesSel.length} {aulasMesSel.length === 1 ? 'aula' : 'aulas'}
-              {extrasMesSel.length > 0 && mostrarValores && <> · {fmtBRL(valorAulasMesSel)} em aulas</>}
+              {extrasMesSel.length > 0 && mostrarValores && !semValorPorAula && <> · {fmtBRL(valorAulasMesSel)} em aulas</>}
             </div>
             {extrasMesSel.length > 0 && (
               <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--color-border-dark-subtle)', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
@@ -253,7 +257,7 @@ export function MeuFinanceiroProfessor() {
                   const desconto = Number(e.valor) < 0
                   return (
                     <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '12px' }}>
-                      <span style={{ color: 'var(--color-text-dark-secondary)' }}>{desconto ? 'Desconto' : 'Extra'}{e.descricao ? ` · ${e.descricao}` : ''}</span>
+                      <span style={{ color: 'var(--color-text-dark-secondary)' }}>{semValorPorAula && e.descricao === 'Salário fixo' ? 'Salário fixo' : <>{desconto ? 'Desconto' : 'Extra'}{e.descricao ? ` · ${e.descricao}` : ''}</>}</span>
                       <span style={{ fontWeight: '700', color: desconto ? 'var(--color-state-danger)' : 'var(--color-state-success)', whiteSpace: 'nowrap' }}>
                         {mostrarValores ? `${desconto ? '− ' : '+ '}${fmtBRL(Math.abs(Number(e.valor)))}` : `R$ ${BOLINHAS_VALOR}`}
                       </span>
@@ -356,7 +360,7 @@ export function MeuFinanceiroProfessor() {
                     {a.horario && <span style={{ fontSize: '11px', color: 'var(--color-text-dark-secondary)', marginLeft: '8px' }}>{a.horario.slice(0, 5)}</span>}
                     {a.turmas?.nome && <span style={{ fontSize: '11px', color: 'var(--color-text-dark-muted)', marginLeft: '8px' }}>{a.turmas.nome}</span>}
                   </div>
-                  <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-state-success)' }}>{mostrarValores ? fmtBRL(a.valor) : `R$ ${BOLINHAS_VALOR}`}</span>
+                  {!semValorPorAula && <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-state-success)' }}>{mostrarValores ? fmtBRL(a.valor) : `R$ ${BOLINHAS_VALOR}`}</span>}
                 </div>
               ))}
             </div>
