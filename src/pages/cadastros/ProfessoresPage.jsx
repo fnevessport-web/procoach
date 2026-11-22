@@ -81,7 +81,7 @@ const TIPOS_COLABORADOR = [
 const FUNCAO_PARA_ROLE = { professor: 'professor', gerente: 'gestor', financeiro: 'financeiro', auxiliar: 'auxiliar', coordenador: 'coordenador', auxiliar_quadra: 'auxiliar_quadra' }
 
 const FORM_VAZIO = {
-  id: null, nome: '', email: '', telefone: '', instagram: '', apelido: '',
+  id: null, nome: '', email: '', telefone: '', instagram: '', apelido: '', eh_substituto: false,
   tem_cref: false, numero_cref: '', cref_url: '',
   cnpj: '', razao_social: '',
   modalidade_id: '', modalidades_ids: [], valor_aula: '', valor_aula_beach: '', trabalha_procopio: true, trabalha_beach: false, salario_fixo_procopio: '', salario_fixo_beach: '', funcao: 'professor', ativo: true,
@@ -701,6 +701,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       tipo_pagamento_beach: prof.tipo_pagamento_beach || 'pix', chave_pix_beach: prof.chave_pix_beach || '',
       nome_titular_beach: prof.nome_titular_beach || '', cpf_titular_beach: prof.cpf_titular_beach || '', titular_proprio_beach: false,
       apelido: prof.apelido || '',
+      eh_substituto: !!prof.eh_substituto,
       tem_cref: prof.tem_cref || false,
       numero_cref: prof.numero_cref || '',
       cref_url: prof.cref_url || '',
@@ -777,6 +778,7 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
       tipo_pagamento_beach: form.tipo_pagamento_beach || 'pix', chave_pix_beach: form.chave_pix_beach || null,
       nome_titular_beach: form.nome_titular_beach || null, cpf_titular_beach: form.cpf_titular_beach || null,
       apelido: form.apelido || null,
+      eh_substituto: form.funcao === 'professor' ? !!form.eh_substituto : false,
       tem_cref: form.tem_cref || false,
       numero_cref: form.numero_cref || null,
       cref_url: form.cref_url || null,
@@ -1293,6 +1295,11 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                   {prof.apelido || nomeCurto(prof.nome)}
                 </span>
               </div>
+              {prof.eh_substituto && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '4px' }}>
+                  <span style={{ padding: '1px 6px', borderRadius: '4px', border: '1px solid color-mix(in srgb, var(--color-state-info) 55%, transparent)', backgroundColor: 'color-mix(in srgb, var(--color-state-info) 10%, transparent)', color: 'var(--color-state-info)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Substituto</span>
+                </div>
+              )}
               <div style={{ fontSize: '11px', color: 'var(--color-text-light-secondary)', marginTop: '4px', lineHeight: 1.4, wordBreak: 'break-word' }}>
                 {prof.funcao && prof.funcao !== 'professor'
                   ? prof.funcao.charAt(0).toUpperCase() + prof.funcao.slice(1)
@@ -1794,6 +1801,19 @@ export default function ProfessoresPage({ autoAbrirProprio = false } = {}) {
                       <option value="coordenador">Coordenador</option>
                     </select></div>
                 </div>
+                {form.funcao === 'professor' && (
+                  <button type="button" onClick={() => set('eh_substituto', !form.eh_substituto)} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', cursor: 'pointer', width: '100%', textAlign: 'left',
+                    border: `1px solid ${form.eh_substituto ? 'var(--color-state-info)' : 'var(--color-border-light)'}`,
+                    backgroundColor: form.eh_substituto ? 'color-mix(in srgb, var(--color-state-info) 10%, var(--color-surface-light-overlay))' : 'var(--color-surface-light-overlay)',
+                  }}>
+                    <span style={{ width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${form.eh_substituto ? 'var(--color-state-info)' : 'var(--color-border-light)'}`, backgroundColor: form.eh_substituto ? 'var(--color-state-info)' : 'transparent', color: 'white', fontSize: '12px', fontWeight: 800 }}>{form.eh_substituto ? '✓' : ''}</span>
+                    <span>
+                      <span style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--color-text-light-primary)' }}>Professor substituto</span>
+                      <span style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-light-secondary)' }}>Não é titular de grade. Aparece com selo no Financeiro.</span>
+                    </span>
+                  </button>
+                )}
 
                 {/* Remuneração fica na aba Financeiro agora (Salário Fixo pra quem não é
                     professor, Valor por Aula pra quem é) — antes esse campo ficava aqui e

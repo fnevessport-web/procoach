@@ -724,7 +724,7 @@ export function FinanceiroPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pagamentos_extras')
-        .select('professor_id, valor, descricao, empresa, professores(id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, salario_fixo_procopio, salario_fixo_beach, ativo, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular, chave_pix_beach, banco_beach, agencia_beach, conta_beach, tipo_conta_beach, tipo_pagamento_beach, nome_titular_beach, cpf_titular_beach)')
+        .select('professor_id, valor, descricao, empresa, professores(id, nome, foto_url, eh_substituto, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, salario_fixo_procopio, salario_fixo_beach, ativo, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular, chave_pix_beach, banco_beach, agencia_beach, conta_beach, tipo_conta_beach, tipo_pagamento_beach, nome_titular_beach, cpf_titular_beach)')
         .eq('mes', mes)
         .eq('ano', anoSel)
       if (error) return []
@@ -1485,6 +1485,7 @@ export function FinanceiroPage() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-text-dark-primary)' }}>
               {professorSel.nome}
+              {professorSel.eh_substituto && <span style={{ marginLeft: '8px', verticalAlign: 'middle', display: 'inline-block' }}><span title="Professor substituto (não é titular de grade)" style={{ padding: '1px 6px', borderRadius: '4px', border: '1px solid color-mix(in srgb, var(--color-state-info) 55%, transparent)', backgroundColor: 'color-mix(in srgb, var(--color-state-info) 14%, transparent)', color: 'var(--color-state-info)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0 }}>Prof substituto</span></span>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
               {pag.banco && (
@@ -2225,7 +2226,7 @@ export function FinanceiroPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '600', color: pago ? 'var(--color-state-success)' : 'var(--color-text-dark-primary)' }}>{prof.nome}</span>
+                      <span style={{ fontSize: '13px', fontWeight: '600', color: pago ? 'var(--color-state-success)' : 'var(--color-text-dark-primary)', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>{prof.nome}{prof.eh_substituto && <span title="Professor substituto (não é titular de grade)" style={{ padding: '1px 6px', borderRadius: '4px', border: '1px solid color-mix(in srgb, var(--color-state-info) 55%, transparent)', backgroundColor: 'color-mix(in srgb, var(--color-state-info) 14%, transparent)', color: 'var(--color-state-info)', fontSize: '8px', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0 }}>Prof substituto</span>}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, marginLeft: '8px' }}>
                         <span style={{ fontSize: '13px', fontWeight: '700', color: pago ? 'var(--color-state-success)' : 'var(--color-state-danger)' }}>
                           {fmtBRL(totalComExtras)}

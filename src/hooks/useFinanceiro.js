@@ -233,7 +233,7 @@ export function useAtualizarFechamento() {
 // Novos hooks — Financeiro por empresa
 // ──────────────────────────────────────────────────────────────────────
 
-const CAMPOS_PROF_PAGAMENTO = 'id, nome, foto_url, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular, chave_pix_beach, banco_beach, agencia_beach, conta_beach, tipo_conta_beach, tipo_pagamento_beach, nome_titular_beach, cpf_titular_beach'
+const CAMPOS_PROF_PAGAMENTO = 'id, nome, foto_url, eh_substituto, valor_aula, valor_hora_aula, valor_aula_beach, trabalha_procopio, trabalha_beach, chave_pix, banco, agencia, conta, tipo_conta, tipo_pagamento, nome_titular, cpf_titular, chave_pix_beach, banco_beach, agencia_beach, conta_beach, tipo_conta_beach, tipo_pagamento_beach, nome_titular_beach, cpf_titular_beach'
 
 // Custo total de professores agrupado por professor, filtrado por empresa+período
 export function useCustoProfessores({ empresa, dataInicio, dataFim }) {
