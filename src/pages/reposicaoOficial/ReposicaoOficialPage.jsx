@@ -407,6 +407,73 @@ function EtapaPainel({ painel, form, onEscolher }) {
   )
 }
 
+// ---- 2b. nível (aluno só de individual que quer repor em grupo) -----------------------------
+
+const NIVEIS_ADULTO = ['Iniciante 1', 'Iniciante 2', 'Intermediário 1', 'Intermediário 2', 'Avançado']
+const NIVEIS_KIDS = ['Kids 1 - 4 a 6 anos', 'Kids 2 - 7 a 10 anos', 'Kids Iniciante - 11 a 13 anos', 'Kids Intermediário - 11 a 13 anos']
+
+// Quem só tem turma individual não tem nível de grupo cadastrado. Se tiver crédito individual,
+// pergunta o nível antes da grade: o servidor mostra as turmas em grupo desse nível e 1 abaixo
+// (Kids: só o mesmo), usando o crédito individual (script 2026-11-23_reposicao_individual_em_grupo.sql).
+function precisaPerguntarNivel(painel) {
+  const saldo = resumoCreditos(painel.creditos || [])
+  const temNivelGrupo = (painel.turmas || []).some(t => t.nivel && t.nivel.trim() !== 'Individual')
+  return saldo.individual > 0 && !temNivelGrupo
+}
+
+function EtapaNivel({ painel, nivelInicial, onContinuar, onVoltar }) {
+  const opcoes = painel.aluno?.menor ? NIVEIS_KIDS : NIVEIS_ADULTO
+  const [nivel, setNivel] = useState(nivelInicial || '')
+  const [ciente, setCiente] = useState(!!nivelInicial)
+
+  return (
+    <div style={{ animation: 'repoSobe 0.25s ease-out' }}>
+      <Titulo kicker="Reposição em grupo" sub="Suas reposições são de aula individual. Você pode repor numa aula individual ou também numa turma em grupo do seu nível.">
+        Qual é o seu nível?
+      </Titulo>
+
+      <Cartao>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          {opcoes.map(n => (
+            <Chip key={n} ativo={nivel === n} onClick={() => setNivel(n)}>{partesNivel(n).titulo}{partesNivel(n).sub ? ` (${partesNivel(n).sub})` : ''}</Chip>
+          ))}
+        </div>
+        <div style={{ fontSize: '12.5px', lineHeight: 1.6, color: 'var(--color-text-light-secondary)', marginTop: '12px' }}>
+          {painel.aluno?.menor
+            ? 'Vamos mostrar as turmas em grupo da mesma faixa do nível escolhido.'
+            : 'Vamos mostrar as turmas em grupo do nível escolhido e de 1 nível abaixo.'}
+          {' '}As aulas individuais livres continuam aparecendo.
+        </div>
+      </Cartao>
+
+      <button type="button" onClick={() => setCiente(c => !c)} style={{
+        display: 'flex', alignItems: 'flex-start', gap: '10px', width: '100%', textAlign: 'left', marginTop: '12px', padding: '14px',
+        borderRadius: '12px', cursor: 'pointer', fontSize: '13.5px', lineHeight: 1.55, color: 'var(--color-text-light-primary)',
+        backgroundColor: ciente ? 'color-mix(in srgb, var(--color-state-warning) 10%, var(--color-surface-light-overlay))' : 'var(--color-surface-light-overlay)',
+        border: `1px solid ${ciente ? 'var(--color-state-warning)' : 'var(--color-border-light)'}`,
+      }}>
+        <span style={{
+          width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0, marginTop: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          border: `2px solid ${ciente ? 'var(--color-state-warning)' : 'var(--color-border-light)'}`,
+          backgroundColor: ciente ? 'var(--color-state-warning)' : 'transparent', color: 'var(--color-action-on-primary)', fontSize: '13px', fontWeight: 800,
+        }}>{ciente ? '✓' : ''}</span>
+        <span>
+          Estou ciente de que, ao escolher uma <strong>aula em grupo</strong>, vou usar um crédito de
+          <strong> reposição de aula individual</strong>.
+        </span>
+      </button>
+
+      <BarraInferior>
+        <Botao disabled={!nivel || !ciente} onClick={() => onContinuar(nivel)}>
+          <CalendarCheck size={17} /> {nivel && ciente ? 'Ver horários' : 'Escolha o nível e confirme'}
+        </Botao>
+        <Botao variante="secundario" onClick={() => onContinuar(null)}>Quero só aula individual</Botao>
+        <Botao variante="suave" onClick={onVoltar}>Voltar</Botao>
+      </BarraInferior>
+    </div>
+  )
+}
+
 // ---- 3. grade ---------------------------------------------------------------------------
 
 function EtapaGrade({ painel, grade, carregando, selecionadas, setSelecionadas, onRevisar, onVoltar, onNenhum }) {
@@ -623,12 +690,13 @@ export function ReposicaoOficialPage() {
   const [selecionadas, setSelecionadas] = useState([])
   const [enviando, setEnviando] = useState(false)
   const [resultado, setResultado] = useState(null)
+  const [nivelDeclarado, setNivelDeclarado] = useState(null)
 
   // Painel/grade só abrem depois da etapa do telefone (quando ela existe).
   const alunoId = escolhido && etapa !== 'telefone' ? escolhido.id : null
   const chave = escolhido?.chave
   const { data: painel, isLoading: carregandoPainel } = usePainel(alunoId, chave)
-  const { data: gradeResp, isLoading: carregandoGrade } = useGrade(etapa === 'grade' || etapa === 'revisar' ? alunoId : null, chave)
+  const { data: gradeResp, isLoading: carregandoGrade } = useGrade(etapa === 'grade' || etapa === 'revisar' ? alunoId : null, chave, nivelDeclarado)
   const grade = gradeResp?.ok ? gradeResp.aulas : []
 
   function aoIdentificar(r) {
@@ -645,7 +713,7 @@ export function ReposicaoOficialPage() {
   async function confirmar() {
     setEnviando(true)
     try {
-      const r = await agendar({ alunoId, telefone: chave, aulaIds: selecionadas.map(s => s.aula_id) })
+      const r = await agendar({ alunoId, telefone: chave, aulaIds: selecionadas.map(s => s.aula_id), nivelDeclarado })
       if (r?.ok) {
         setResultado(r)
         setSelecionadas([])
@@ -672,12 +740,12 @@ export function ReposicaoOficialPage() {
   }
 
   function recomecar() {
-    setForm(FORM_VAZIO); setCandidatos([]); setEscolhido(null); setSelecionadas([]); setResultado(null)
+    setForm(FORM_VAZIO); setCandidatos([]); setEscolhido(null); setSelecionadas([]); setResultado(null); setNivelDeclarado(null)
     setEtapa('identificar')
   }
 
   const painelOk = painel?.ok ? separarCompetitivo(painel) : null
-  const precisaPainel = ['painel', 'grade', 'revisar', 'sem_horario', 'final'].includes(etapa)
+  const precisaPainel = ['painel', 'nivel', 'grade', 'revisar', 'sem_horario', 'final'].includes(etapa)
 
   return (
     <Pagina resetKey={etapa} largura={640}>
@@ -709,11 +777,17 @@ export function ReposicaoOficialPage() {
           : <EtapaNaoEncontrado form={form} motivo="nao_encontrado" onTentarDeNovo={recomecar} />
       )}
 
-      {painelOk && etapa === 'painel' && <EtapaPainel painel={painelOk} form={form} onEscolher={() => setEtapa('grade')} />}
+      {painelOk && etapa === 'painel' && <EtapaPainel painel={painelOk} form={form} onEscolher={() => setEtapa(precisaPerguntarNivel(painelOk) ? 'nivel' : 'grade')} />}
+
+      {painelOk && etapa === 'nivel' && (
+        <EtapaNivel painel={painelOk} nivelInicial={nivelDeclarado}
+          onContinuar={n => { if (n !== nivelDeclarado) setSelecionadas([]); setNivelDeclarado(n); setEtapa('grade') }}
+          onVoltar={() => setEtapa('painel')} />
+      )}
 
       {painelOk && etapa === 'grade' && (
         <EtapaGrade painel={painelOk} grade={grade} carregando={carregandoGrade} selecionadas={selecionadas} setSelecionadas={setSelecionadas}
-          onRevisar={() => setEtapa('revisar')} onVoltar={() => setEtapa('painel')} onNenhum={() => setEtapa('sem_horario')} />
+          onRevisar={() => setEtapa('revisar')} onVoltar={() => setEtapa(precisaPerguntarNivel(painelOk) ? 'nivel' : 'painel')} onNenhum={() => setEtapa('sem_horario')} />
       )}
 
       {painelOk && etapa === 'revisar' && (

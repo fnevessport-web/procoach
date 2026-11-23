@@ -18,8 +18,10 @@ async function chamar(nomeFuncao, args) {
 export const identificar = ({ nome, telefone }) => modoDemo() ? demo.identificar({ telefone }) :
   chamar('repo_identificar', { p_nome: nome, p_telefone: telefone })
 
-export const agendar = ({ alunoId, telefone, aulaIds }) => modoDemo() ? demo.agendar({ aulaIds }) :
-  chamar('repo_agendar', { p_aluno_id: alunoId, p_telefone: telefone, p_aula_ids: aulaIds })
+// nivelDeclarado: aluno só de aula individual que escolheu repor em grupo informa o nível
+// (script 2026-11-23_reposicao_individual_em_grupo.sql); null = regra normal.
+export const agendar = ({ alunoId, telefone, aulaIds, nivelDeclarado = null }) => modoDemo() ? demo.agendar({ aulaIds }) :
+  chamar('repo_agendar', { p_aluno_id: alunoId, p_telefone: telefone, p_aula_ids: aulaIds, p_nivel_declarado: nivelDeclarado })
 
 export const entrarListaEspera = ({ alunoId, telefone, dias, faixas, observacao }) => modoDemo() ? demo.ok() :
   chamar('repo_lista_espera', { p_aluno_id: alunoId, p_telefone: telefone, p_dias: dias, p_faixas: faixas, p_observacao: observacao })
@@ -35,15 +37,15 @@ export function usePainel(alunoId, telefone) {
 
 // Vagas "quase em tempo real" (mesmo raciocínio do link antigo): a decisão final é do servidor,
 // então uma tela até 20s defasada só gera o aviso de "acabou de lotar".
-export function useGrade(alunoId, telefone) {
+export function useGrade(alunoId, telefone, nivelDeclarado = null) {
   return useQuery({
-    queryKey: ['repo-grade', alunoId],
+    queryKey: ['repo-grade', alunoId, nivelDeclarado],
     enabled: !!alunoId,
     refetchInterval: 20000,
     refetchOnWindowFocus: true,
     staleTime: 5000,
     queryFn: async () => {
-      const r = await (modoDemo() ? demo.grade() : chamar('repo_grade', { p_aluno_id: alunoId, p_telefone: telefone }))
+      const r = await (modoDemo() ? demo.grade() : chamar('repo_grade', { p_aluno_id: alunoId, p_telefone: telefone, p_nivel_declarado: nivelDeclarado }))
       // Feriado não tem aula e Kids Competitivo é só pelo WhatsApp: o servidor já tira
       // (scripts 2026-10-30 e 2026-10-30b), aqui é a segunda trava.
       if (r?.ok && Array.isArray(r.aulas)) return { ...r, aulas: r.aulas.filter(a => !ehFeriado(a.data_aula) && !ehCompetitivo(a.nivel)) }
