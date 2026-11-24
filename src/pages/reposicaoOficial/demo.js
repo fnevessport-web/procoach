@@ -108,12 +108,20 @@ export const demo = {
       const i = estado.creditos.findIndex(c => c.formato === a.formato)
       const j = i >= 0 ? i : a.formato === 'grupo' ? estado.creditos.findIndex(c => c.formato === 'individual') : -1
       if (j < 0) return esperar({ ok: false, codigo: 'sem_saldo' })
-      estado.creditos.splice(j, 1)
-      const item = { aula_id: id, data: a.data_aula, horario: a.horario, nivel: a.nivel, professor: a.professor, extra: a.extra }
+      const [credito] = estado.creditos.splice(j, 1)
+      const item = { aula_id: id, data: a.data_aula, horario: a.horario, nivel: a.nivel, professor: a.professor, extra: a.extra,
+        pode_cancelar: true, data_limite: credito.data_limite, _credito: credito }
       estado.agendadas.push(item)
       feitos.push(item)
     }
     return esperar({ ok: true, agendadas: feitos, saldo: estado.creditos.length }, 600)
+  },
+  cancelar: ({ aulaId }) => {
+    const i = estado.agendadas.findIndex(x => x.aula_id === aulaId)
+    if (i < 0) return esperar({ ok: false, codigo: 'nao_encontrada' })
+    const [item] = estado.agendadas.splice(i, 1)
+    estado.creditos.push(item._credito)
+    return esperar({ ok: true, saldo: estado.creditos.length })
   },
   ok: () => esperar({ ok: true }),
 }

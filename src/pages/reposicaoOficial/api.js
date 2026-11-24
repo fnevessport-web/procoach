@@ -23,6 +23,11 @@ export const identificar = ({ nome, telefone }) => modoDemo() ? demo.identificar
 export const agendar = ({ alunoId, telefone, aulaIds, nivelDeclarado = null }) => modoDemo() ? demo.agendar({ aulaIds }) :
   chamar('repo_agendar', { p_aluno_id: alunoId, p_telefone: telefone, p_aula_ids: aulaIds, p_nivel_declarado: nivelDeclarado })
 
+// Aluno desmarca uma reposição já agendada (até 2h antes): sai da aula e o crédito volta
+// (script 2026-11-23b_chuva_falta_futura_cancelar_reposicao.sql).
+export const cancelarAgendamento = ({ alunoId, telefone, aulaId }) => modoDemo() ? demo.cancelar({ aulaId }) :
+  chamar('repo_cancelar_agendamento', { p_aluno_id: alunoId, p_telefone: telefone, p_aula_id: aulaId })
+
 export const entrarListaEspera = ({ alunoId, telefone, dias, faixas, observacao }) => modoDemo() ? demo.ok() :
   chamar('repo_lista_espera', { p_aluno_id: alunoId, p_telefone: telefone, p_dias: dias, p_faixas: faixas, p_observacao: observacao })
 

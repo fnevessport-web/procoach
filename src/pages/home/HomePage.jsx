@@ -11,6 +11,7 @@ import { Loading } from '../../components/ui/Loading'
 import { FotoProfessor } from '../../components/ui/FotoProfessor'
 import { ICONES_MODALIDADES, LOGO_EMPRESA, EMPRESAS, horarioParaMinutos } from '../../constants/modalidades'
 import { nomeProfessor } from '../../lib/nomes'
+import { ReposicoesDoDia } from './ReposicoesDoDia'
 
 function useAgoraEmSegundos() {
   const [agora, setAgora] = useState(() => Date.now())
@@ -181,6 +182,9 @@ export function HomePage() {
           </div>
         </div>
       )}
+
+      {/* Quem vem repor hoje/amanhã: em dia de chuva é a lista de quem avisar */}
+      <ReposicoesDoDia />
 
       {/* Saúde do mês — pulso geral do clube, atalho pro relatório completo */}
       {saudeMes && (

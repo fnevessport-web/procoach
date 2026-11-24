@@ -179,7 +179,7 @@ function aulaEstaAoVivo(aula) {
 // aluno pede o PIN combinado com a coordenação antes de executar (ver PIN_EXCLUSAO_AGENDA
 // abaixo) — só o role auxiliar_quadra passa isso `true`.
 export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMarcarPresenca = !somenteLeitura, professorProprioId = null, restringirPresencaAoVivo = false, precisaPinParaExcluir = false }) {
-  const { modalidadeSelecionada, setOrigemAulas, user, setNavRecolhida } = useAppStore()
+  const { modalidadeSelecionada, setOrigemAulas, user, setNavRecolhida, perfil } = useAppStore()
   const alturaVisivel = useVisualViewportHeight()
   const qc = useQueryClient()
   // Financeiro (fin_custos_prof/fin_aulas_prof/fin_aulas_ano_prof) tem staleTime próprio e
@@ -422,10 +422,31 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   const salvarPresencas = useSalvarPresencas()
   const avisarFalta = useAvisarFalta()
 
-  async function handleAvisarFalta(aulaId, alunoId, nomeAluno) {
+  // Falta em aula FUTURA (aluno avisou antes): nunca grava direto. Abre a confirmação "o aluno
+  // avisou que não vem na aula de tal dia?" com o motivo, e grava na hora quem marcou e quando.
+  const [faltaFutura, setFaltaFutura] = useState(null) // { aulaId, alunoId, nome, tipo, tipoParticipacao, motivo }
+  const MOTIVOS_FALTA_RAPIDOS = ['Viagem', 'Doença', 'Trabalho', 'Compromisso pessoal', 'Lesão']
+
+  function pedirConfirmacaoFalta(aulaId, aluno, tipo = 'falta_justificada') {
+    setFaltaFutura({ aulaId, alunoId: aluno.aluno_id, nome: aluno.nome, tipo, tipoParticipacao: aluno.tipo_participacao, motivo: '' })
+  }
+
+  async function confirmarFaltaFutura() {
+    const f = faltaFutura
+    if (!f) return
+    if (!f.motivo.trim()) { toast.error('Diga o motivo que o aluno deu (ex.: viagem).', { style: toastStyle }); return }
     try {
-      await avisarFalta.mutateAsync({ aulaId, alunoId })
-      toast.success(`Falta de ${nomeAluno} avisada — vaga aberta pra aula avulsa`, { style: toastStyle })
+      await avisarFalta.mutateAsync({ aulaId: f.aulaId, alunoId: f.alunoId, motivo: f.motivo, tipo: f.tipo, tipoParticipacao: f.tipoParticipacao })
+      const nomeEu = perfil?.nome || null
+      setPresencasLocal(prev => ({
+        ...prev,
+        [f.aulaId]: { ...prev[f.aulaId], [f.alunoId]: {
+          ...prev[f.aulaId]?.[f.alunoId], status_presenca: f.tipo,
+          falta_avisada_em: new Date().toISOString(), falta_avisada_por_nome: nomeEu, falta_motivo: f.motivo.trim(),
+        } },
+      }))
+      setFaltaFutura(null)
+      toast.success(`Falta de ${f.nome} registrada. A vaga ficou livre para reposição.`, { style: toastStyle })
     } catch (err) {
       toast.error(err.message, { style: toastStyle })
     }
@@ -661,6 +682,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
         criado_em: p.criado_em || null,
         status_inclusao_professor: p.status_inclusao_professor || null,
         motivo_inclusao: p.motivo_inclusao || null,
+        falta_avisada_em: p.falta_avisada_em || null,
+        falta_avisada_por_nome: p.falta_avisada_por_nome || null,
+        falta_motivo: p.falta_motivo || null,
       }
     })
     const alunosOriginaisIds = new Set(Object.keys(inicial))
@@ -683,6 +707,7 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
   }
 
   function fecharModal() {
+    setFaltaFutura(null)
     setRemovidosLocal({})
     setAdicionandoAuxiliar(false)
     setAulaModal(null)
@@ -2264,7 +2289,10 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {aulaEhFutura
-                          ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: 'var(--color-text-light-muted)' }}><Clock size={9} /> agendada</span>
+                          ? <>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: 'var(--color-text-light-muted)' }}><Clock size={9} /> agendada</span>
+                            {qtdF > 0 && <span title="Aluno avisou que não vem: vaga livre para reposição" style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-state-warning)' }}>✗{qtdF} avisou</span>}
+                          </>
                           : <>
                             <span style={{ fontSize: '10px', color: textoApagado ? 'var(--color-text-light-faded)' : 'var(--color-text-light-secondary)' }}><b>T</b>{qtdTotal}</span>
                             {qtdP > 0 && <span style={{ fontSize: '10px', color: 'var(--color-state-success)' }}>✓{qtdP}</span>}
@@ -2937,8 +2965,8 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                             style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)', color: isReposicao ? COR_REPOSICAO : isCortesia ? COR_CORTESIA : 'var(--color-text-light-secondary)', cursor: 'pointer', outline: 'none' }}>
                             {TIPO_PARTICIPACAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                           </select>
-                          {aulaFutura && aluno.status_presenca !== 'falta_justificada' && (
-                            <button onClick={() => handleAvisarFalta(aula.id, aluno.aluno_id, aluno.nome)} title="Avisar falta — abre vaga avulsa" disabled={avisarFalta.isPending} style={{ display: 'flex', alignItems: 'center', padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(201,138,60,0.1)', color: 'var(--color-state-warning)' }}>
+                          {aulaFutura && aluno.status_presenca !== 'falta_justificada' && aluno.status_presenca !== 'falta' && (
+                            <button onClick={() => pedirConfirmacaoFalta(aula.id, aluno)} title="Aluno avisou que não vem: registrar falta com motivo e abrir a vaga" disabled={avisarFalta.isPending} style={{ display: 'flex', alignItems: 'center', padding: '3px 6px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(201,138,60,0.1)', color: 'var(--color-state-warning)' }}>
                               <MessageSquareText size={12} />
                             </button>
                           )}
@@ -2948,6 +2976,72 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                         </div>
                       )}
                     </div>
+
+                    {(aluno.status_presenca === 'falta' || aluno.status_presenca === 'falta_justificada') && (aluno.falta_avisada_em || aulaFutura) && (
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '11px', lineHeight: 1.45, color: 'var(--color-text-light-secondary)', marginBottom: '8px', backgroundColor: 'rgba(201,138,60,0.08)', border: '1px solid rgba(201,138,60,0.25)', borderRadius: '6px', padding: '7px 9px' }}>
+                        <MessageSquareText size={12} color="var(--color-state-warning)" style={{ flexShrink: 0, marginTop: '1px' }} />
+                        <span>
+                          <strong style={{ color: 'var(--color-state-warning)' }}>Avisou que não vem</strong>
+                          {aluno.falta_motivo ? <> · motivo: <strong style={{ color: 'var(--color-text-light-primary)' }}>{aluno.falta_motivo}</strong></> : ' · sem motivo registrado'}
+                          {aluno.status_presenca === 'falta_justificada' ? ' · gera reposição' : ' · sem reposição'}
+                          {(aluno.falta_avisada_por_nome || aluno.falta_avisada_em) && (
+                            <span style={{ display: 'block', color: 'var(--color-text-light-muted)' }}>
+                              Marcado{aluno.falta_avisada_por_nome ? ` por ${aluno.falta_avisada_por_nome}` : ''}
+                              {aluno.falta_avisada_em ? ` em ${format(new Date(aluno.falta_avisada_em), "dd/MM 'às' HH:mm")}` : ''} · a vaga fica livre para reposição
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                    {faltaFutura?.aulaId === aula.id && faltaFutura?.alunoId === aluno.aluno_id && (
+                      <div style={{ backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '8px', border: '1px solid rgba(201,138,60,0.45)', padding: '10px', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-light-primary)', lineHeight: 1.45 }}>
+                          Confirmar que <strong>{aluno.nome}</strong> avisou que <strong>não vem</strong> na aula de{' '}
+                          <strong>{format(new Date(aula.data_aula + 'T12:00'), "EEEE, dd/MM", { locale: ptBR })} às {getHorario(aula)}</strong>?
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '10px', color: 'var(--color-text-light-secondary)', marginBottom: '4px' }}>Motivo que o aluno deu</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+                            {MOTIVOS_FALTA_RAPIDOS.map(m => (
+                              <button key={m} type="button" onClick={() => setFaltaFutura(f => ({ ...f, motivo: m }))} style={{
+                                fontSize: '11px', padding: '4px 8px', borderRadius: '999px', cursor: 'pointer',
+                                border: faltaFutura.motivo === m ? '1px solid var(--color-state-warning)' : '1px solid var(--color-border-light)',
+                                backgroundColor: faltaFutura.motivo === m ? 'rgba(201,138,60,0.15)' : 'var(--color-surface-light-overlay)',
+                                color: faltaFutura.motivo === m ? 'var(--color-state-warning)' : 'var(--color-text-light-secondary)', fontWeight: 600,
+                              }}>{m}</button>
+                            ))}
+                          </div>
+                          <input value={faltaFutura.motivo} onChange={e => setFaltaFutura(f => ({ ...f, motivo: e.target.value }))}
+                            placeholder="Ex.: aluno disse que está viajando" style={{ ...inputStyle, fontSize: '12px' }} />
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {[
+                            { v: 'falta_justificada', t: 'Falta justificada', d: 'gera crédito de reposição' },
+                            { v: 'falta', t: 'Falta', d: 'sem crédito' },
+                          ].map(o => (
+                            <button key={o.v} type="button" onClick={() => setFaltaFutura(f => ({ ...f, tipo: o.v }))} style={{
+                              flex: 1, padding: '7px 6px', borderRadius: '8px', cursor: 'pointer', textAlign: 'center', boxSizing: 'border-box',
+                              border: faltaFutura.tipo === o.v ? '1px solid var(--color-action-primary)' : '1px solid var(--color-border-light)',
+                              backgroundColor: faltaFutura.tipo === o.v ? 'rgba(165,76,46,0.1)' : 'var(--color-surface-light-overlay)',
+                              color: faltaFutura.tipo === o.v ? 'var(--color-action-primary)' : 'var(--color-text-light-secondary)',
+                            }}>
+                              <div style={{ fontSize: '11px', fontWeight: 700 }}>{o.t}</div>
+                              <div style={{ fontSize: '10px' }}>{o.d}</div>
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'var(--color-text-light-muted)' }}>
+                          A vaga desse aluno fica livre na hora para alguém agendar reposição.
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={() => setFaltaFutura(null)} style={{ flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid var(--color-border-light)', background: 'none', color: 'var(--color-text-light-secondary)', fontSize: '11px', cursor: 'pointer' }}>Cancelar</button>
+                          <button onClick={confirmarFaltaFutura} disabled={avisarFalta.isPending} style={{ flex: 2, padding: '7px', borderRadius: '8px', border: 'none', background: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                            {avisarFalta.isPending ? 'Salvando...' : 'Confirmar falta avisada'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {origemAberta === aluno.aluno_id && isReposicao && (() => {
                       const peloLink = aluno.criado_por_nome === 'Link de reposição'
@@ -3065,7 +3159,9 @@ export function AulasCoordenador({ onCelulaVazia, somenteLeitura = false, podeMa
                     {podeMarcarPresencaAgora && (
                       <div style={{ display: 'flex', gap: '6px' }}>
                         {STATUS_PRESENCA.map(sp => (
-                          <button key={sp.value} onClick={() => updatePresenca(aula.id, aluno.aluno_id, 'status_presenca', sp.value)} style={{
+                          <button key={sp.value} onClick={() => (aulaFutura && sp.value !== 'presente' && aluno.status_presenca !== sp.value
+                            ? pedirConfirmacaoFalta(aula.id, aluno, sp.value)
+                            : updatePresenca(aula.id, aluno.aluno_id, 'status_presenca', sp.value))} style={{
                             flex: 1, padding: '6px 4px', borderRadius: '6px', border: 'none', fontSize: '11px', fontWeight: '500', cursor: 'pointer',
                             backgroundColor: aluno.status_presenca === sp.value ? sp.color + '30' : 'var(--color-surface-light-raised)',
                             color: aluno.status_presenca === sp.value ? sp.color : 'var(--color-text-light-muted)',

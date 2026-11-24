@@ -26,7 +26,7 @@ export function useAulas({ data, dataInicio, dataFim, professorId, modalidadeId,
           professores!professor_executou_id(id, nome, apelido, foto_url),
           auxiliar:professores!professor_auxiliar_id(id, nome, apelido, foto_url),
           prof_titular:professores!professor_titular_id(id, nome, apelido),
-          presencas(id, aluno_id, presente, status_presenca, tipo_participacao, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof, criado_por, criado_por_nome, criado_em, status_inclusao_professor, motivo_inclusao, alunos(id, nome, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof)),
+          presencas(id, aluno_id, presente, status_presenca, tipo_participacao, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof, criado_por, criado_por_nome, criado_em, status_inclusao_professor, motivo_inclusao, falta_avisada_em, falta_avisada_por_nome, falta_motivo, alunos(id, nome, alerta_nivel, nivel_avaliado_prof, obs_nivel_prof)),
           contratantes(id, nome, tipo)
         `)
         .order('data_aula', { ascending: false })
@@ -173,8 +173,18 @@ export const PRAZO_REPOSICAO_DIAS = 30
 // Quem estava nessa aula REPONDO outra (crédito já agendado pra cá) não ganha crédito novo: o
 // crédito original volta a ficar pendente, com esta aula registrada em `historico` (a origem
 // continua sendo a aula cancelada lá atrás) e o prazo renovado a partir de hoje.
+//
+// Desde 23/11/2026 isso mora no banco (scripts/2026-11-23b_chuva_falta_futura_cancelar_reposicao.sql):
+// um trigger em `aulas` aplica tudo assim que a aula vira "cancelada por Chuva", por qualquer
+// tela, e travas em presencas/reposicoes impedem que salvar a lista depois desfaça. Aqui só
+// chama a mesma função (idempotente) pra garantir; o código antigo abaixo fica de reserva caso
+// a função ainda não exista no banco.
 export async function gerarReposicoesPorCancelamento(aulaId, motivoCancelamento) {
   if (!MOTIVOS_FORCA_MAIOR.includes(motivoCancelamento)) return
+
+  const { error: errRpc } = await supabase.rpc('repo_aplicar_cancelamento_chuva', { p_aula_id: aulaId })
+  if (!errRpc) return
+  if (errRpc.code !== 'PGRST202') throw errRpc
 
   const { data: aula } = await supabase
     .from('aulas')
@@ -440,7 +450,16 @@ export function useSalvarPresencas() {
         )
       }
 
-      const faltasJustificadas = presencas.filter(p => p.status_presenca === 'falta_justificada')
+      // Quem estava REPONDO e avisou falta justificada: o crédito que trouxe ele pra cá volta a
+      // ficar pendente (não ganha um crédito novo com origem nesta aula).
+      const repondoQueFaltou = presencas.filter(p => p.status_presenca === 'falta_justificada' && p.tipo_participacao === 'reposicao')
+      for (const p of repondoQueFaltou) {
+        await supabase.rpc('repo_devolver_credito', { p_aula_id: aulaId, p_aluno_id: p.aluno_id, p_motivo: 'Falta avisada' })
+      }
+
+      // ignoreDuplicates: só cria o crédito que ainda não existe. Antes, salvar a mesma aula de
+      // novo regravava 'pendente' por cima de um crédito que o aluno já tinha usado.
+      const faltasJustificadas = presencas.filter(p => p.status_presenca === 'falta_justificada' && p.tipo_participacao !== 'reposicao')
       if (faltasJustificadas.length > 0) {
         const dataLimite = format(addDays(new Date(), 60), 'yyyy-MM-dd')
         const repos = faltasJustificadas.map(p => ({
@@ -450,14 +469,14 @@ export function useSalvarPresencas() {
           modalidade_id: modalidadeId,
           data_limite: dataLimite,
         }))
-        const { error: errRepos } = await supabase.from('reposicoes').upsert(repos, { onConflict: 'aluno_id,aula_origem_id' })
+        const { error: errRepos } = await supabase.from('reposicoes').upsert(repos, { onConflict: 'aluno_id,aula_origem_id', ignoreDuplicates: true })
         if (errRepos) throw errRepos
       }
 
       // Aluno marcado como "Reposição" nesta aula (fora da aba dedicada de Reposição) também
       // baixa a falta pendente mais antiga dele — os dois fluxos convergem pro mesmo lugar.
       const reposicoesBaixadas = []
-      for (const p of presencas.filter(p => p.tipo_participacao === 'reposicao')) {
+      for (const p of presencas.filter(p => p.tipo_participacao === 'reposicao' && p.status_presenca !== 'falta_justificada')) {
         const resultado = await resolverReposicaoFIFO({ alunoId: p.aluno_id, aulaDestinoId: aulaId })
         if (resultado) reposicoesBaixadas.push(resultado)
       }
@@ -791,16 +810,46 @@ export function useGerarAulas() {
 // específica (não recorrente). Marca a presença como falta_justificada (mesma regra de
 // reposição automática das faltas justificadas manuais) e abre a vaga como avulsa pra
 // qualquer outro aluno comprar.
+//
+// 23/11/2026: grava o rastro (quem marcou, quando e o motivo, ex.: "viagem") e aceita os dois
+// tipos: 'falta_justificada' (gera crédito de reposição) ou 'falta' (sem crédito). Nos dois a
+// vaga abre: falta não ocupa lugar na grade do link de reposição. Quem estava REPONDO nessa aula
+// e avisa falta justificada recebe de volta o crédito que usou (não ganha um novo).
 export function useAvisarFalta() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ aulaId, alunoId }) => {
+    mutationFn: async ({ aulaId, alunoId, motivo = null, tipo = 'falta_justificada', tipoParticipacao = 'mensalista' }) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      let nomeQuemMarcou = null
+      if (session?.user?.id) {
+        const { data: perfil } = await supabase.from('perfis_usuario').select('nome').eq('user_id', session.user.id).maybeSingle()
+        nomeQuemMarcou = perfil?.nome || null
+      }
       const { error: errPres } = await supabase
         .from('presencas')
-        .update({ status_presenca: 'falta_justificada', presente: false })
+        .update({
+          status_presenca: tipo, presente: false,
+          falta_avisada_em: new Date().toISOString(),
+          falta_avisada_por: session?.user?.email || null,
+          falta_avisada_por_nome: nomeQuemMarcou,
+          falta_motivo: motivo?.trim() || null,
+        })
         .eq('aula_id', aulaId)
         .eq('aluno_id', alunoId)
       if (errPres) throw errPres
+
+      const { error: errVaga } = await supabase.from('vagas_avulsas').insert({
+        aula_id: aulaId,
+        origem: 'falta_avisada',
+        status: 'aberta',
+      })
+      if (errVaga) throw errVaga
+
+      if (tipo !== 'falta_justificada') return
+      if (tipoParticipacao === 'reposicao') {
+        await supabase.rpc('repo_devolver_credito', { p_aula_id: aulaId, p_aluno_id: alunoId, p_motivo: 'Falta avisada' })
+        return
+      }
 
       const { data: repoExistente } = await supabase
         .from('reposicoes')
@@ -820,13 +869,6 @@ export function useAvisarFalta() {
           data_limite: dataLimite,
         })
       }
-
-      const { error: errVaga } = await supabase.from('vagas_avulsas').insert({
-        aula_id: aulaId,
-        origem: 'falta_avisada',
-        status: 'aberta',
-      })
-      if (errVaga) throw errVaga
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['aulas'] })

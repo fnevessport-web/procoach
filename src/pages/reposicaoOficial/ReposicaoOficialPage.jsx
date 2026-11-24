@@ -9,7 +9,7 @@ import { estiloInput } from '../reposicao/constantes'
 import { mascararTelefoneBR, apenasDigitosTelefone } from '../../lib/telefone'
 import { PainelFrequenciaMeses } from '../../components/PainelFrequenciaMeses'
 import { modoDemo } from './demo'
-import { identificar, agendar, entrarListaEspera, atualizarTelefone, usePainel, useGrade } from './api'
+import { identificar, agendar, cancelarAgendamento, entrarListaEspera, atualizarTelefone, usePainel, useGrade } from './api'
 import { GradeReposicao } from './GradeReposicao'
 import {
   PRAZO_DIAS, WHATSAPP_EXIBIDO, linkWhats, DIAS_SEMANA, FAIXAS_HORARIO, nomeDiaSemana, ordenarTurmas,
@@ -253,8 +253,16 @@ function AvisoCompetitivo({ aluno, form, creditos }) {
   )
 }
 
-function EtapaPainel({ painel, form, onEscolher }) {
+function EtapaPainel({ painel, form, onEscolher, onCancelar }) {
   const { aluno, turmas, creditos, agendadas, frequencia, outros_pendentes: outros } = painel
+  const [cancelando, setCancelando] = useState(null)
+  const [enviandoCancelamento, setEnviandoCancelamento] = useState(false)
+  const hojeIso = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })
+
+  async function confirmarCancelamento() {
+    setEnviandoCancelamento(true)
+    try { await onCancelar(cancelando) } finally { setEnviandoCancelamento(false); setCancelando(null) }
+  }
   const competitivo = painel.creditos_competitivo || []
   const saldo = resumoCreditos(creditos)
   const nome = primeiroNome(aluno.nome)
@@ -329,8 +337,13 @@ function EtapaPainel({ painel, form, onEscolher }) {
                     {/* só entradas de "reposição que choveu" (têm data_aula); qualquer outra anotação no
                         histórico é ignorada aqui, senão derruba a página inteira (caso Juracy, 04/11). */}
                     {(() => {
-                      const choveu = Array.isArray(c.historico) ? c.historico.filter(h => typeof h?.data_aula === 'string') : []
-                      return choveu.length > 0 && ` · reposição de ${choveu.map(h => dataCurta(h.data_aula)).join(', ')} também cancelada, crédito devolvido`
+                      const hist = Array.isArray(c.historico) ? c.historico.filter(h => typeof h?.data_aula === 'string') : []
+                      const choveu = hist.filter(h => !h.motivo || h.motivo === 'Chuva')
+                      const desmarcou = hist.filter(h => h.motivo && h.motivo !== 'Chuva')
+                      return <>
+                        {choveu.length > 0 && ` · reposição de ${choveu.map(h => dataCurta(h.data_aula)).join(', ')} também cancelada por chuva, crédito devolvido`}
+                        {desmarcou.length > 0 && ` · reposição de ${desmarcou.map(h => dataCurta(h.data_aula)).join(', ')} desmarcada, crédito devolvido`}
+                      </>
                     })()}
                   </div>
                 </div>
@@ -363,13 +376,40 @@ function EtapaPainel({ painel, form, onEscolher }) {
         <Bloco titulo="Reposições já agendadas" icone={<CalendarCheck size={18} />}>
           <Cartao style={{ padding: '6px 16px' }}>
             {agendadas.map(a => (
-              <div key={a.aula_id} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', padding: '10px 0', borderBottom: '1px solid var(--color-border-light-subtle)', fontSize: '13.5px' }}>
-                <strong>{diaCurto(a.data)} · {a.horario}</strong>
-                <span style={{ color: 'var(--color-text-light-secondary)', textAlign: 'right' }}>{partesNivel(a.nivel).titulo}{a.professor ? ` · Prof. ${primeiroNome(a.professor)}` : ''}</span>
+              <div key={a.aula_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 0', borderBottom: '1px solid var(--color-border-light-subtle)', fontSize: '13.5px' }}>
+                <div style={{ minWidth: 0 }}>
+                  <strong>{diaCurto(a.data)} · {a.horario}</strong>
+                  <div style={{ color: 'var(--color-text-light-secondary)', fontSize: '12.5px' }}>{partesNivel(a.nivel).titulo}{a.professor ? ` · Prof. ${primeiroNome(a.professor)}` : ''}</div>
+                </div>
+                {a.pode_cancelar ? (
+                  <button type="button" onClick={() => setCancelando(a)} style={{
+                    flexShrink: 0, fontSize: '12.5px', fontWeight: 700, padding: '7px 12px', borderRadius: '999px', cursor: 'pointer',
+                    border: '1px solid var(--color-state-danger)', backgroundColor: 'transparent', color: 'var(--color-state-danger)',
+                  }}>Cancelar</button>
+                ) : (
+                  <span style={{ flexShrink: 0, fontSize: '11.5px', color: 'var(--color-text-light-muted)', textAlign: 'right', maxWidth: '120px' }}>Faltam menos de 2h, fale com a equipe</span>
+                )}
               </div>
             ))}
           </Cartao>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-light-muted)', marginTop: '6px', lineHeight: 1.5 }}>
+            Não vai conseguir ir? Cancele aqui até 2 horas antes da aula. A reposição volta para o seu saldo na hora.
+          </div>
         </Bloco>
+      )}
+
+      {cancelando && (
+        <ModalAviso icone={<AlertCircle size={22} />} titulo="Cancelar esta reposição?"
+          acoes={<>
+            <Botao disabled={enviandoCancelamento} onClick={confirmarCancelamento}>{enviandoCancelamento ? 'Cancelando…' : 'Sim, cancelar'}</Botao>
+            <Botao variante="secundario" disabled={enviandoCancelamento} onClick={() => setCancelando(null)}>Manter agendada</Botao>
+          </>}>
+          Você vai sair da aula de <strong>{diaLongo(cancelando.data)} às {cancelando.horario}</strong> e a reposição volta para o seu saldo,
+          para agendar em outro horário.
+          {cancelando.data_limite && cancelando.data_limite < hojeIso
+            ? <> <strong>Atenção:</strong> o prazo dessa reposição terminou em {dataCurta(cancelando.data_limite)}, então ela não poderá ser remarcada.</>
+            : cancelando.data_limite ? <> Lembre que ela vale até <strong>{dataCurta(cancelando.data_limite)}</strong>.</> : null}
+        </ModalAviso>
       )}
 
       {saldo.total > 0 && (
@@ -382,7 +422,7 @@ function EtapaPainel({ painel, form, onEscolher }) {
               <li>Adultos podem agendar no <strong>seu nível ou em 1 nível abaixo</strong>. Kids agendam <strong>somente na turma da mesma faixa</strong> (por exemplo, Kids 7 a 10 só em Kids 7 a 10), com até 6 alunos. Turmas Kids e adulto não se misturam.</li>
               <li>O agendamento fecha <strong>2 horas antes</strong> do início da aula.</li>
               <li>Se você tem reposição individual e escolher uma aula em grupo, ela será descontada da sua reposição individual.</li>
-              <li>Teve um imprevisto? Avise no nosso WhatsApp para a equipe liberar a vaga.</li>
+              <li>Teve um imprevisto? Cancele a reposição agendada aqui mesmo, até 2 horas antes da aula. Ela volta para o seu saldo na hora.</li>
             </ul>
             <div style={{ marginTop: '10px', fontSize: '13px', lineHeight: 1.6, color: 'var(--color-text-light-secondary)' }}>
               Alguma aula ficou de fora ou algo não está certo? Fale com a gente no WhatsApp{' '}
@@ -739,6 +779,19 @@ export function ReposicaoOficialPage() {
     }
   }
 
+  async function cancelarAgendada(a) {
+    try {
+      const r = await cancelarAgendamento({ alunoId, telefone: chave, aulaId: a.aula_id })
+      if (r?.ok) toast.success('Reposição cancelada. Ela voltou para o seu saldo.')
+      else if (r?.codigo === 'fora_do_prazo') toast.error('Faltam menos de 2 horas para a aula. Fale com a equipe no WhatsApp.')
+      else toast.error('Essa reposição não foi encontrada. Atualize a página.')
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      recarregar()
+    }
+  }
+
   function recomecar() {
     setForm(FORM_VAZIO); setCandidatos([]); setEscolhido(null); setSelecionadas([]); setResultado(null); setNivelDeclarado(null)
     setEtapa('identificar')
@@ -777,7 +830,7 @@ export function ReposicaoOficialPage() {
           : <EtapaNaoEncontrado form={form} motivo="nao_encontrado" onTentarDeNovo={recomecar} />
       )}
 
-      {painelOk && etapa === 'painel' && <EtapaPainel painel={painelOk} form={form} onEscolher={() => setEtapa(precisaPerguntarNivel(painelOk) ? 'nivel' : 'grade')} />}
+      {painelOk && etapa === 'painel' && <EtapaPainel painel={painelOk} form={form} onCancelar={cancelarAgendada} onEscolher={() => setEtapa(precisaPerguntarNivel(painelOk) ? 'nivel' : 'grade')} />}
 
       {painelOk && etapa === 'nivel' && (
         <EtapaNivel painel={painelOk} nivelInicial={nivelDeclarado}

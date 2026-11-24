@@ -5,7 +5,9 @@ import { AlunoCard } from './AlunoCard'
 
 // Ficha do aluno em pop-up, aberta clicando no nome dele dentro da aula (agenda). Clicar num
 // familiar troca a ficha ali mesmo (pilha, com "Voltar" pro anterior) em vez de sair da agenda.
-export function ModalCardAluno({ alunoId, onClose, onVoltarGrade }) {
+// theme/rotuloVoltar: aberto fora da agenda (ex.: dashboard, contexto escuro) a ficha continua
+// clara (theme="theme-light") e o botão vira "Fechar".
+export function ModalCardAluno({ alunoId, onClose, onVoltarGrade, theme, rotuloVoltar = 'Voltar para a aula' }) {
   const [pilha, setPilha] = useState([alunoId])
   const atual = pilha[pilha.length - 1]
 
@@ -15,13 +17,13 @@ export function ModalCardAluno({ alunoId, onClose, onVoltarGrade }) {
   }
 
   return (
-    <Modal open onClose={onClose} title="Ficha do aluno" size="lg">
+    <Modal open onClose={onClose} title="Ficha do aluno" size="lg" theme={theme}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
         <button
           onClick={() => (pilha.length > 1 ? setPilha(p => p.slice(0, -1)) : onClose())}
           style={{ ...estiloBotao, border: '1px solid var(--color-border-light)', backgroundColor: 'var(--color-surface-light-overlay)', color: 'var(--color-text-light-primary)' }}
         >
-          <ChevronLeft size={14} /> {pilha.length > 1 ? 'Voltar' : 'Voltar para a aula'}
+          <ChevronLeft size={14} /> {pilha.length > 1 ? 'Voltar' : rotuloVoltar}
         </button>
         {onVoltarGrade && (
           <button onClick={onVoltarGrade} style={{ ...estiloBotao, border: 'none', backgroundColor: 'var(--color-action-primary)', color: 'var(--color-action-on-primary)' }}>
