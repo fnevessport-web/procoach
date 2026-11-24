@@ -44,10 +44,64 @@ const TIPO_VINCULO_LABEL = {
   responsavel: 'Responsável',
 }
 
+// Falta justificada em azul (info): é a falta que gera crédito de reposição, diferente da falta comum.
 const STATUS_PRESENCA_LABEL = {
   presente: { label: 'Presente', cor: 'var(--color-state-success)' },
   falta: { label: 'Falta', cor: 'var(--color-state-danger)' },
-  falta_justificada: { label: 'Falta Just.', cor: 'var(--color-state-warning)' },
+  falta_justificada: { label: 'Falta just. · gera reposição', cor: 'var(--color-state-info)' },
+}
+
+// Topo da ficha: total de reposições pra usar (qualquer origem: chuva, falta avisada...) e
+// quantos dias faltam pra vencer a mais próxima. Pedido de 24/11/2026: acesso rápido a isso.
+function DestaqueReposicoes({ alunoId }) {
+  const { data: repos } = useReposicoesDoAluno(alunoId)
+  if (!repos) return null
+  const hoje = format(new Date(), 'yyyy-MM-dd')
+  const pendentes = repos.filter(r => r.status === 'pendente' && (!r.data_limite || r.data_limite >= hoje))
+  const agendadas = repos.filter(r => r.status === 'agendada' && (r.aula_reposicao?.data_aula || '') >= hoje)
+  const comPrazo = pendentes.filter(r => r.data_limite).sort((a, b) => a.data_limite.localeCompare(b.data_limite))
+  const proxima = comPrazo[0]
+  const prazo = proxima ? calcStatusPorPrazo(proxima.data_limite) : null
+  const qtdNoDia = proxima ? comPrazo.filter(r => r.data_limite === proxima.data_limite).length : 0
+  const fmtData = d => format(new Date(d + 'T12:00'), 'dd/MM')
+
+  const caixa = {
+    flex: '1 1 120px', minWidth: 0, padding: '12px 14px', borderRadius: '14px', boxSizing: 'border-box',
+    backgroundColor: 'var(--color-surface-light-raised)', border: '1px solid var(--color-border-light)',
+  }
+  const numero = cor => ({ fontFamily: 'var(--font-display)', fontSize: '38px', fontWeight: 700, lineHeight: 1, color: cor })
+  const legenda = { fontSize: '11.5px', color: 'var(--color-text-light-secondary)', marginTop: '6px', lineHeight: 1.35 }
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+      <div style={caixa}>
+        <div style={numero(pendentes.length ? 'var(--color-state-info)' : 'var(--color-text-light-muted)')}>{pendentes.length}</div>
+        <div style={legenda}>
+          <strong style={{ color: 'var(--color-text-light-primary)' }}>{pendentes.length === 1 ? 'reposição para usar' : 'reposições para usar'}</strong>
+          {agendadas.length > 0 && <><br />+ {agendadas.length} já agendada{agendadas.length > 1 ? 's' : ''}</>}
+        </div>
+      </div>
+      <div style={caixa}>
+        {prazo ? (
+          <>
+            <div style={numero(prazo.cor)}>{Math.max(prazo.diasRestantes, 0)}<span style={{ fontSize: '16px', marginLeft: '3px' }}>{prazo.diasRestantes === 1 ? 'dia' : 'dias'}</span></div>
+            <div style={legenda}>
+              <strong style={{ color: 'var(--color-text-light-primary)' }}>
+                {prazo.diasRestantes <= 0 ? 'vence hoje' : 'para vencer'}
+              </strong>{' '}
+              {qtdNoDia > 1 ? `${qtdNoDia} reposições` : '1 reposição'} em {fmtData(proxima.data_limite)}
+              {comPrazo.length > qtdNoDia && <><br />{comPrazo.length - qtdNoDia} vence{comPrazo.length - qtdNoDia > 1 ? 'm' : ''} depois</>}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={numero('var(--color-text-light-muted)')}>-</div>
+            <div style={legenda}>{pendentes.length ? 'sem data de vencimento' : 'nenhuma reposição pendente'}</div>
+          </>
+        )}
+      </div>
+    </div>
+  )
 }
 
 const DIA_SEMANA_LABEL = { domingo: 'DOM', segunda: 'SEG', terca: 'TER', quarta: 'QUA', quinta: 'QUI', sexta: 'SEX', sabado: 'SAB' }
@@ -223,6 +277,9 @@ export function AlunoCard({ alunoId, onAbrirAluno }) {
           )}
         </div>
       </div>
+
+      {/* Reposições em destaque: saldo e quantos dias faltam pra vencer a próxima */}
+      <DestaqueReposicoes alunoId={aluno.id} />
 
       {/* Dados pessoais */}
       <div style={{ backgroundColor: 'var(--color-surface-light-raised)', borderRadius: '14px', border: '1px solid var(--color-border-light)', padding: '14px 16px', marginBottom: '20px' }}>
@@ -890,6 +947,7 @@ function ModalDetalheModalidade({ aluno, modalidade, mesInicial = null, onClose 
               {presencasPorMes.map(grupo => {
                 const presentes = grupo.itens.filter(p => p.status_presenca === 'presente' && !ehAulaDeFeriado(p)).length
                 const faltas = grupo.itens.filter(p => p.status_presenca === 'falta' && !ehAulaDeFeriado(p)).length
+                const justificadas = grupo.itens.filter(p => p.status_presenca === 'falta_justificada' && !ehAulaDeFeriado(p)).length
                 return (
                   <button
                     key={grupo.chave}
@@ -903,10 +961,20 @@ function ModalDetalheModalidade({ aluno, modalidade, mesInicial = null, onClose 
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '6px' }}>
                       <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-state-success)' }}>{presentes}</span>
                       <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-state-danger)' }}>{faltas}</span>
+                      {justificadas > 0 && (
+                        <span title="Faltas justificadas (geram reposição)" style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-state-info)' }}>{justificadas}</span>
+                      )}
                     </div>
                   </button>
                 )
               })}
+            </div>
+          )}
+          {presencasPorMes.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: '6px', fontSize: '10.5px', color: 'var(--color-text-light-secondary)' }}>
+              <span><b style={{ color: 'var(--color-state-success)' }}>●</b> presença</span>
+              <span><b style={{ color: 'var(--color-state-danger)' }}>●</b> falta</span>
+              <span><b style={{ color: 'var(--color-state-info)' }}>●</b> falta justificada (gera reposição)</span>
             </div>
           )}
         </div>
