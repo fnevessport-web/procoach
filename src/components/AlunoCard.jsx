@@ -17,6 +17,7 @@ import { useProfessoresDoAlunoNaModalidade } from '../hooks/useProfessoresDoAlun
 import { useAbrirConversaDoAluno } from '../hooks/useMensagens'
 import { calcStatusPorPrazo } from '../constants/reposicao'
 import { ICONES_MODALIDADES } from '../constants/modalidades'
+import { getFeriado } from '../constants/feriados'
 import { supabase } from '../lib/supabase'
 import { abrirWhatsApp } from '../lib/telefone'
 import useAppStore from '../store/useAppStore'
@@ -51,6 +52,10 @@ const STATUS_PRESENCA_LABEL = {
 
 const DIA_SEMANA_LABEL = { domingo: 'DOM', segunda: 'SEG', terca: 'TER', quarta: 'QUA', quinta: 'QUI', sexta: 'SEX', sabado: 'SAB' }
 const DIAS_SEMANA_POR_INDICE = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado']
+
+// Aula em dia de feriado não aconteceu, mas fica com o status padrão ("presente") no banco e para
+// o aluno parecia presença. Nunca entra na contagem de presença/falta e aparece como "Feriado".
+const ehAulaDeFeriado = p => !!getFeriado(p.aulas?.data_aula)
 
 function diaSemanaLabel(dataStr) {
   const [ano, mes, dia] = dataStr.split('-').map(Number)
@@ -883,8 +888,8 @@ function ModalDetalheModalidade({ aluno, modalidade, mesInicial = null, onClose 
           ) : (
             <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
               {presencasPorMes.map(grupo => {
-                const presentes = grupo.itens.filter(p => p.status_presenca === 'presente').length
-                const faltas = grupo.itens.filter(p => p.status_presenca === 'falta').length
+                const presentes = grupo.itens.filter(p => p.status_presenca === 'presente' && !ehAulaDeFeriado(p)).length
+                const faltas = grupo.itens.filter(p => p.status_presenca === 'falta' && !ehAulaDeFeriado(p)).length
                 return (
                   <button
                     key={grupo.chave}
@@ -993,7 +998,10 @@ function ModalDetalheMes({ grupo, cor, onClose, onAbrirAula }) {
     <Modal open onClose={onClose} title={grupo.label} size="sm">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {grupo.itens.map(p => {
-          const info = STATUS_PRESENCA_LABEL[p.status_presenca] || { label: p.status_presenca || '—', cor: 'var(--color-text-light-secondary)' }
+          const feriado = getFeriado(p.aulas?.data_aula)
+          const info = feriado
+            ? { label: `Feriado · ${feriado}`, cor: 'var(--color-state-warning)' }
+            : STATUS_PRESENCA_LABEL[p.status_presenca] || { label: p.status_presenca || '—', cor: 'var(--color-text-light-secondary)' }
           return (
             <button
               key={p.id}

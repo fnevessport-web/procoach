@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { addMonths, endOfMonth, format, getDay, startOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { X } from 'lucide-react'
+import { getFeriado } from '../constants/feriados'
 
 // Frequência do aluno no mês anterior + mês atual (em novembro mostra outubro e novembro).
 // Usado no link público de reposição e na ficha do aluno — por isso usa os aliases genéricos
@@ -16,14 +17,25 @@ export const STATUS_FREQ = {
   falta: { rotulo: 'Faltas', cor: 'var(--color-state-danger)' },
   cancelada: { rotulo: 'Canceladas', cor: 'var(--color-state-info)' },
   agendada: { rotulo: 'Próximas', cor: 'var(--color-border-light)' },
+  feriado: { rotulo: 'Feriados', cor: 'var(--color-state-warning)' },
 }
-const GRUPO = { presente: 'presente', falta: 'falta', falta_justificada: 'falta', chuva: 'cancelada', cancelada: 'cancelada', agendada: 'agendada' }
+const GRUPO = { presente: 'presente', falta: 'falta', falta_justificada: 'falta', chuva: 'cancelada', cancelada: 'cancelada', agendada: 'agendada', feriado: 'feriado' }
 const grupoDe = s => GRUPO[s] || 'agendada'
-const ORDEM = ['presente', 'falta', 'cancelada', 'agendada']
+const ORDEM = ['presente', 'falta', 'cancelada', 'feriado', 'agendada']
 const LEGENDA = ['presente', 'falta', 'cancelada']
 const SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
+// Aula em dia de feriado não aconteceu: no banco ela fica com o status padrão ("presente"), o que
+// para o aluno parecia presença. Aqui vira "feriado" (fora da % de presença), salvo se foi
+// cancelada por outro motivo, que já aparece como cancelada.
+function marcarFeriado(i) {
+  const nome = getFeriado(i.data)
+  if (!nome || i.status === 'chuva' || i.status === 'cancelada') return i
+  return { ...i, status: 'feriado', feriado: nome }
+}
+
 function descricao(i) {
+  if (i.status === 'feriado') return { texto: `Feriado (${i.feriado}) · não houve aula`, cor: STATUS_FREQ.feriado.cor }
   if (i.status === 'chuva') return { texto: 'Aula cancelada por chuva', cor: STATUS_FREQ.cancelada.cor }
   if (i.status === 'cancelada') return { texto: `Aula cancelada${i.motivo ? ` (${i.motivo.toLowerCase()})` : ''}`, cor: STATUS_FREQ.cancelada.cor }
   if (i.status === 'agendada') return { texto: 'Aula agendada', cor: 'var(--color-text-light-muted)' }
@@ -105,8 +117,8 @@ function CartaoMes({ inicio, itens, onDia }) {
         ))}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '14px' }}>
-        {LEGENDA.map(k => (
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '6px 10px', marginBottom: '14px' }}>
+        {[...LEGENDA, ...(cont.feriado ? ['feriado'] : [])].map(k => (
           <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-text-light-secondary)' }}>
             <span style={{ width: '9px', height: '9px', borderRadius: '3px', backgroundColor: STATUS_FREQ[k].cor, flexShrink: 0 }} />
             <span>{STATUS_FREQ[k].rotulo}</span>
@@ -159,7 +171,7 @@ export function PainelFrequenciaMeses({ frequencia = [], hoje = new Date() }) {
   const anterior = startOfMonth(addMonths(hoje, -1))
   const doMes = ini => {
     const chave = format(ini, 'yyyy-MM')
-    return frequencia.filter(f => (f.data || '').startsWith(chave))
+    return frequencia.filter(f => (f.data || '').startsWith(chave)).map(marcarFeriado)
   }
   const abrir = (data, itens) => setDia({ data, itens: [...itens].sort((a, b) => (a.horario || '').localeCompare(b.horario || '')) })
   return (
